@@ -203,7 +203,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                       <span>{bin.locationName}</span>
                     </h4>
                     <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
-                      Category: {bin.type} · Fill: {bin.fillLevel}%
+                      Category: {bin.type}
                     </p>
                   </div>
                   <button

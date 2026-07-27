@@ -85,7 +85,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
         <div className="mt-6 pt-5 border-t border-[#00271D]/10 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold gap-1">
             <span className="text-[#00271D]/60 uppercase text-[10px] tracking-wider">Quarterly Certificate Progress</span>
-            <span className="text-[#C69B26]">Rank #2 — 82% Progress to Rank 1 (Quarterly Certificate Unlocks at Rank 1)</span>
+            <span className="text-[#C69B26]">Rank #2 — Progress to Rank 1 (Quarterly Certificate Unlocks at Rank 1)</span>
           </div>
           <div className="h-2.5 w-full bg-[#C69B26]/15 rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-[#C69B26] to-amber-500 rounded-full transition-all duration-700" style={{ width: '82%' }} />
@@ -158,7 +158,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
                 🍾 Plastic Bottles
               </span>
               <p className="text-xs text-[#00271D]/60 mt-2.5 font-medium leading-relaxed">
-                Plastic Bottles account for 45% of campus recyclables.
+                Plastic Bottles account for campus recyclables.
               </p>
             </div>
           </div>
@@ -285,7 +285,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
           {[
             { tag: 'MRF UPDATE', tagColor: 'bg-[#00A77C]/15 text-[#00A77C] border-[#00A77C]/30', date: 'Feb 24, 2026', Icon: Radio, iconBg: 'bg-[#00A77C]', title: 'Extended Collection Hours Campus-Wide', body: 'Starting March 1, MRF collection trucks will operate from 6 AM to 8 PM on weekdays.' },
             { tag: 'NEW FACILITY', tagColor: 'bg-sky-100 text-sky-800 border-sky-200', date: 'Feb 20, 2026', Icon: Recycle, iconBg: 'bg-sky-500', title: '5 New Segregation Stations Installed', body: 'Color-coded recycling stations are now live near Science Hall, the Gym, and Admin Building.' },
-            { tag: 'ACHIEVEMENT', tagColor: 'bg-[#C69B26]/15 text-[#C69B26] border-[#C69B26]/30', date: 'Feb 18, 2026', Icon: TrendingUp, iconBg: 'bg-[#C69B26]', title: 'Campus Hits 2,000+ Reports This Semester', body: 'Thanks to student participation, our campus filed over 2,000 waste reports — a 68% increase.' },
+            { tag: 'ACHIEVEMENT', tagColor: 'bg-[#C69B26]/15 text-[#C69B26] border-[#C69B26]/30', date: 'Feb 18, 2026', Icon: TrendingUp, iconBg: 'bg-[#C69B26]', title: 'Campus Hits 2,000+ Reports This Semester', body: 'Thanks to student participation, our campus filed over 2,000 waste reports this semester.' },
           ].map((item, i) => {
             const Icon = item.Icon;
             return (

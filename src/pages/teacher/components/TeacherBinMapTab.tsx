@@ -253,7 +253,7 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
                       <span>{activeBinDetail.locationName}</span>
                     </h4>
                     <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
-                      Category: {activeBinDetail.type} · Fill: {activeBinDetail.fillLevel}%
+                      Category: {activeBinDetail.type}
                     </p>
                   </div>
                   <button
