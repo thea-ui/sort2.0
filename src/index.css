@@ -2,13 +2,70 @@
 
 @import "tailwindcss";
 
+@config "../tailwind.config.js";
+
+:root {
+  --background: #F9F3F0;
+  --main-text: #00271D;
+  --primary: #00271D;
+  --accent: #00A77C;
+  --secondary: #00A77C;
+  --gold: #C69B26;
+  --text-primary: #00271D;
+  --link: #00A77C;
+  --font-body: 'Tenon', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@theme {
+  --color-background: #F9F3F0;
+  --color-bg: #F9F3F0;
+  --color-primary: #00271D;
+  --color-main-text: #00271D;
+  --color-accent: #00A77C;
+  --color-secondary: #00A77C;
+  --color-gold: #C69B26;
+  --color-text-primary: #00271D;
+  --color-link: #00A77C;
+  
+  --font-sans: var(--font-body);
+  --font-body: var(--font-body);
+  --font-heading: var(--font-heading);
+
+  --text-h1: 72px;
+  --text-h2: 32px;
+  --text-body: 16px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+}
+
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #ffffff;
-    color: #111827;
+    font-family: 'Tenon', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #F9F3F0;
+    color: #012625;
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1 {
+    font-family: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 72px;
+    line-height: 1.1;
+    color: #012625;
+  }
+
+  h2 {
+    font-family: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 32px;
+    line-height: 1.25;
+    color: #012625;
   }
   
   code {

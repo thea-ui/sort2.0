@@ -130,43 +130,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
           {/* Section Header */}
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
                 Operational Telemetry
               </span>
-              <h2 className="text-xl font-extrabold text-gray-900 tracking-tight mt-1.5">Campus Operational Analytics</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Real-time reporting frequency, grade level distribution, and material breakdowns.</p>
+              <h2 className="text-xl font-extrabold text-[#00271D] tracking-tight mt-1.5">Campus Operational Analytics</h2>
+              <p className="text-xs text-[#00271D]/50 mt-0.5">Real-time reporting frequency, grade level distribution, and material breakdowns.</p>
             </div>
-            <span className="hidden sm:inline-flex text-xs font-bold text-slate-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-xs">
+            <span className="hidden sm:inline-flex text-xs font-bold text-[#00271D] bg-white border border-[#00271D]/10 px-3 py-1.5 rounded-xl shadow-sm">
               📊 Live Status Hub
             </span>
           </div>
 
           {/* Module 2: STUDENT REPORTING FREQUENCY (Summary Quick-Stat Cards) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between text-emerald-600 mb-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Reports Today</span>
-                <span className="p-1.5 bg-emerald-50 rounded-lg">📊</span>
+            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <div className="flex items-center justify-between text-[#00A77C] mb-1">
+                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">Reports Today</span>
+                <span className="p-1.5 bg-[#00A77C]/10 rounded-lg">📊</span>
               </div>
-              <p className="text-3xl font-black text-gray-900">24</p>
-              <p className="text-[11px] font-semibold text-emerald-600">+8% vs yesterday</p>
+              <p className="text-3xl font-black text-[#00271D]">24</p>
+              <p className="text-[11px] font-semibold text-[#00A77C]">+8% vs yesterday</p>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between text-sky-600 mb-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">This Week</span>
+                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">This Week</span>
                 <span className="p-1.5 bg-sky-50 rounded-lg">📅</span>
               </div>
-              <p className="text-3xl font-black text-gray-900">142</p>
+              <p className="text-3xl font-black text-[#00271D]">142</p>
               <p className="text-[11px] font-semibold text-sky-600">Active campus submissions</p>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md hover:-translate-y-0.5 transition-all">
               <div className="flex items-center justify-between text-amber-600 mb-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Peak Activity Time</span>
+                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">Peak Activity Time</span>
                 <span className="p-1.5 bg-amber-50 rounded-lg">⏰</span>
               </div>
-              <p className="text-xl font-black text-gray-900 mt-1">12:00 PM - 2:00 PM</p>
+              <p className="text-xl font-black text-[#00271D] mt-1">12:00 PM - 2:00 PM</p>
               <p className="text-[11px] font-semibold text-amber-600">Highest daily traffic window</p>
             </div>
           </div>
@@ -175,13 +175,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* Module 1: REPORTS BY GRADE LEVEL (Breakdown Card) */}
-            <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
+            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
               <div>
-                <h4 className="text-xs font-extrabold text-gray-900 flex items-center gap-2">
+                <h4 className="text-xs font-extrabold text-[#00271D] flex items-center gap-2">
                   <span className="text-emerald-500 text-sm">🎓</span>
                   <span>Reports by Grade Level</span>
                 </h4>
-                <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                <p className="text-[11px] text-[#00271D]/40 font-medium mt-0.5">
                   Report distribution volume across academic grade levels
                 </p>
               </div>
@@ -210,13 +210,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
             </div>
 
             {/* Module 3: TOP RECYCLED MATERIALS (Breakdown List) */}
-            <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
+            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
               <div>
-                <h4 className="text-xs font-extrabold text-gray-900 flex items-center gap-2">
+                <h4 className="text-xs font-extrabold text-[#00271D] flex items-center gap-2">
                   <span className="text-emerald-500 text-sm">♻️</span>
                   <span>Most Reported Materials</span>
                 </h4>
-                <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                <p className="text-[11px] text-[#00271D]/40 font-medium mt-0.5">
                   Item categories submitted by students across campus
                 </p>
               </div>
@@ -513,7 +513,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
                   <Activity size={14} className="text-indigo-600" />
@@ -524,7 +524,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
                   type="button"
                   onClick={handleSyncClick}
                   disabled={syncing}
-                  className="px-3 py-1.5 bg-indigo-650 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg text-[10px] font-bold shadow-md shadow-indigo-100 flex items-center gap-1"
+                  className="px-3 py-1.5 hover:opacity-90 disabled:opacity-60 text-white rounded-lg text-[10px] font-bold shadow-md shadow-[#00A77C]/15 flex items-center gap-1"
+                  style={{ background: 'linear-gradient(135deg, #00A77C, #00c491)' }}
                 >
                   <RefreshCw size={11} className={syncing ? 'animate-spin' : ''} />
                   {syncing ? 'Syncing...' : 'Simulate Synchronization'}

@@ -88,9 +88,9 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab }) => {
           
           {/* Dispatch Cards */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
-                <Truck size={14} className="text-indigo-600" />
+            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-xs font-bold text-[#00271D]/50 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                <Truck size={14} className="text-[#00A77C]" />
                 Active Incident Dispatches
               </h3>
 
@@ -123,7 +123,8 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab }) => {
                             type="button"
                             onClick={() => startRouteSimulation(rep)}
                             disabled={gpsNavigating}
-                            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 flex items-center justify-center gap-1 shadow-md shadow-indigo-100"
+                            className="w-full sm:w-auto px-4 py-2 text-white rounded-xl text-xs font-bold hover:opacity-90 flex items-center justify-center gap-1 shadow-md shadow-[#00A77C]/15"
+                            style={{ background: 'linear-gradient(135deg, #00A77C, #00c491)' }}
                           >
                             <Play size={12} /> Start Route
                           </button>
@@ -142,20 +143,20 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab }) => {
 
           {/* GPS Simulation Panel */}
           <div className="lg:col-span-1">
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="border-b border-gray-150 pb-3">
-                <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded uppercase tracking-wider">
-                  Dispatch Nav system
+            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="border-b border-[#00271D]/8 pb-3">
+                <span className="text-[9px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Dispatch Nav System
                 </span>
-                <h4 className="text-sm font-bold text-gray-800 mt-2">Active Navigation Telemetry</h4>
+                <h4 className="text-sm font-bold text-[#00271D] mt-2">Active Navigation Telemetry</h4>
               </div>
 
               <div className="space-y-4">
                 {routeStep > 0 ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Compass size={14} className={`text-indigo-600 ${gpsNavigating ? 'animate-spin' : ''}`} />
-                      <span className="text-xs font-bold text-gray-800">
+                      <Compass size={14} className={`text-[#00A77C] ${gpsNavigating ? 'animate-spin' : ''}`} />
+                      <span className="text-xs font-bold text-[#00271D]">
                         {routeStep === 4 ? 'Arrived & Emptying Complete' : 'GPS Route in Progress...'}
                       </span>
                     </div>
@@ -163,7 +164,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab }) => {
                     <div className="relative border-l border-gray-200 pl-4 ml-2 space-y-3">
                       {navLogs.map((log, i) => (
                         <div key={i} className="text-[10px] font-mono text-gray-500 relative">
-                          <div className="absolute -left-[21px] top-1 h-2 w-2 rounded-full bg-indigo-600" />
+                          <div className="absolute -left-[21px] top-1 h-2 w-2 rounded-full bg-[#00A77C]" />
                           {log}
                         </div>
                       ))}
@@ -183,12 +184,12 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab }) => {
 
       {/* 2. WEIGHT PAYLOAD REGISTER VIEW */}
       {activeTab === 'payload-register' && (
-        <div className="max-w-md mx-auto bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+        <div className="max-w-md mx-auto bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
           <div className="mb-4">
-            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-widest">
+            <span className="text-[9px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2 py-0.5 rounded-full border border-[#00A77C]/20 uppercase tracking-widest">
               Weighbridge Operations
             </span>
-            <h3 className="text-base font-bold text-gray-900 mt-2">Log Collection Weight Payload</h3>
+            <h3 className="text-base font-bold text-[#00271D] mt-2">Log Collection Weight Payload</h3>
             <p className="text-[11px] text-gray-500 mt-0.5">Register weight payload values collected from site incidents to complete and allocate user points.</p>
           </div>
 
@@ -234,7 +235,8 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab }) => {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-emerald-600 shadow-md shadow-emerald-100 flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 text-white font-bold text-xs uppercase tracking-wider rounded-xl hover:opacity-90 shadow-md shadow-[#00A77C]/15 flex items-center justify-center gap-1.5"
+              style={{ background: 'linear-gradient(135deg, #00A77C, #00c491)' }}
             >
               <Scale size={13} />
               <span>Record & Log Weight</span>
@@ -245,29 +247,29 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab }) => {
 
       {/* 3. BINS STATUS MONITOR VIEW */}
       {activeTab === 'bins-monitor' && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
-            <MapPin size={14} className="text-emerald-500" />
+        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
+          <h3 className="text-xs font-bold text-[#00271D]/50 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+            <MapPin size={14} className="text-[#00A77C]" />
             Global Bins Status & Level Overrides
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {bins.map(bin => {
               const isCrit = bin.fillLevel >= 85;
-              const fillBarColor = isCrit ? 'bg-red-500' : bin.fillLevel >= 60 ? 'bg-amber-400' : 'bg-emerald-500';
-              const textLvlColor = isCrit ? 'text-red-600' : bin.fillLevel >= 60 ? 'text-amber-600' : 'text-emerald-600';
+              const fillBarColor = isCrit ? 'bg-red-500' : bin.fillLevel >= 60 ? 'bg-amber-400' : 'bg-[#00A77C]';
+              const textLvlColor = isCrit ? 'text-red-600' : bin.fillLevel >= 60 ? 'text-amber-600' : 'text-[#00A77C]';
               
               return (
-                <div key={bin.id} className="p-4 rounded-xl border border-gray-200 bg-white hover:border-gray-250 shadow-sm space-y-3">
+                <div key={bin.id} className="p-4 rounded-xl border border-[#00271D]/10 bg-white/80 hover:shadow-md hover:-translate-y-0.5 transition-all shadow-sm space-y-3">
                   <div className="flex justify-between items-start gap-2">
                     <div>
-                      <p className="text-xs font-bold text-gray-800">{bin.name}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{bin.locationName}</p>
+                      <p className="text-xs font-bold text-[#00271D]">{bin.name}</p>
+                      <p className="text-[10px] text-[#00271D]/50 mt-0.5">{bin.locationName}</p>
                     </div>
                     <span className={`text-xs font-black tabular-nums ${textLvlColor}`}>{bin.fillLevel}%</span>
                   </div>
 
-                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-[#00271D]/8 rounded-full overflow-hidden">
                     <div className={`h-full rounded-full ${fillBarColor}`} style={{ width: `${bin.fillLevel}%` }} />
                   </div>
 
@@ -288,10 +290,10 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab }) => {
                     <button
                       type="button"
                       onClick={() => toggleBinDispatch(bin.id)}
-                      className={`px-2 py-0.5 rounded border text-[9px] font-bold ${
+                      className={`px-2 py-0.5 rounded-full border text-[9px] font-bold transition-all ${
                         bin.activeDispatch
                           ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          : 'bg-[#00A77C]/10 text-[#00A77C] border-[#00A77C]/20'
                       }`}
                     >
                       {bin.activeDispatch ? 'Active' : 'Dispatch'}

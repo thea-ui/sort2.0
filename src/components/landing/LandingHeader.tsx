@@ -1,5 +1,6 @@
 import React from 'react';
-import { Leaf, ShieldCheck, Truck } from 'lucide-react';
+import { ShieldCheck, Truck } from 'lucide-react';
+import { SortLogo } from '../common/SortLogo';
 
 interface LandingHeaderProps {
   onNavigate: (route: string) => void;
@@ -10,17 +11,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onNavigate }) => {
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
         {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 shadow-sm shadow-emerald-200">
-            <Leaf size={15} className="text-white" strokeWidth={2.5} />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[15px] font-bold tracking-tight text-gray-900">S.O.R.T</span>
-            <span className="hidden text-[11px] font-medium text-gray-400 sm:block">
-              Smart Operational Recovery & Tracking
-            </span>
-          </div>
-        </div>
+        <SortLogo size={48} subtitle="Smart Operational Recovery & Tracking" />
 
         {/* Right nav */}
         <div className="flex items-center gap-1">

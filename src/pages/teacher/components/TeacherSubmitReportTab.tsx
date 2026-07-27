@@ -97,17 +97,17 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
 
       {/* Page header */}
-      <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-indigo-700">
-          <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+      <div className="bg-gradient-to-br from-white/95 via-white/90 to-[#e0f2ec]/60 border border-white/90 rounded-3xl p-7 shadow-xl shadow-[#00271D]/5 backdrop-blur-md">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00A77C]/40 bg-[#00A77C]/15 px-3.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest text-[#00A77C]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#00A77C] animate-pulse" />
           Faculty Service Portal
         </span>
-        <h2 className="mt-2 text-xl font-extrabold tracking-tight text-gray-900">Advanced Multi-Category Asset Report</h2>
-        <p className="mt-1 text-xs text-gray-500">File structural maintenance tickets, broken assets, or environmental anomalies directly to MRF administrators.</p>
+        <h2 className="mt-2 text-2xl font-heading font-black tracking-tight text-[#00271D]">Multi-Category Asset & Waste Report</h2>
+        <p className="mt-1 text-xs text-[#00271D]/60 font-medium">File structural maintenance tickets, broken classroom items, or bin overflow reports directly to MRF staff.</p>
       </div>
 
       {/* Step tracker */}
-      <div className="rounded-3xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
+      <div className="rounded-2xl border border-white/80 bg-white/90 backdrop-blur-md px-6 py-5 shadow-sm">
         <div className="flex items-center gap-0">
           {STEPS.map((step, idx) => {
             const n = idx + 1;
@@ -117,16 +117,16 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
               <React.Fragment key={step}>
                 <div className="flex flex-col items-center">
                   <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black transition-all ${
-                    done   ? 'bg-indigo-600 text-white' :
-                    active ? 'bg-indigo-600 text-white ring-4 ring-indigo-100' :
-                             'bg-gray-100 text-gray-400'
+                    done   ? 'bg-[#00A77C] text-white shadow-xs' :
+                    active ? 'bg-[#00A77C] text-white ring-4 ring-[#00A77C]/20 shadow-xs' :
+                             'bg-[#00271D]/10 text-[#00271D]/40'
                   }`}>
                     {done ? <CheckCircle size={14} /> : n}
                   </div>
-                  <p className={`mt-1.5 text-[10px] font-bold ${active ? 'text-indigo-600' : 'text-gray-400'}`}>{step}</p>
+                  <p className={`mt-1.5 text-[10px] font-bold ${active ? 'text-[#00A77C]' : 'text-[#00271D]/50'}`}>{step}</p>
                 </div>
                 {idx < STEPS.length - 1 && (
-                  <div className={`mx-2 mb-5 h-px flex-1 transition-all ${wizardStep > n ? 'bg-indigo-600' : 'bg-gray-200'}`} />
+                  <div className={`mx-2 mb-5 h-px flex-1 transition-all ${wizardStep > n ? 'bg-[#00A77C]' : 'bg-[#00271D]/10'}`} />
                 )}
               </React.Fragment>
             );
@@ -136,17 +136,17 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
 
       {/* Success alert */}
       {submitSuccess && (
-        <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-700 shadow-sm animate-fade-in">
-          <CheckCircle size={18} className="mt-0.5 shrink-0 text-emerald-600" />
+        <div className="flex items-start gap-3 rounded-2xl border border-[#00A77C]/30 bg-[#00A77C]/15 p-4 text-xs text-[#00A77C] shadow-xs animate-fade-in">
+          <CheckCircle size={18} className="mt-0.5 shrink-0 text-[#00A77C]" />
           <div>
             <p className="font-bold">Maintenance Ticket Logged Successfully!</p>
-            <p className="mt-0.5 text-[10px] text-emerald-600/90">The MRF operations center has been notified of this structural log.</p>
+            <p className="mt-0.5 text-[10px] text-[#00A77C]/90">The MRF operations center has been notified of this structural log.</p>
           </div>
         </div>
       )}
 
       {/* Form card */}
-      <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-white/80 bg-white/90 backdrop-blur-md p-7 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-5 text-xs">
 
           {/* ── Step 1 ── */}
@@ -154,7 +154,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
             <div className="space-y-5">
               {/* Category tiles */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">1. Select Recovery Category</label>
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">1. Select Recovery Category</label>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                   {(Object.entries(PILLAR_META) as [InfrastructurePillar, typeof PILLAR_META.waste][]).map(([id, meta]) => {
                     const selected = pillarCategory === id;
@@ -165,13 +165,13 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                         onClick={() => setPillarCategory(id)}
                         className={`group flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 text-center transition-all select-none cursor-pointer ${
                           selected
-                            ? `bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-200`
-                            : `bg-gray-50 border-gray-200 hover:border-indigo-300 text-gray-600`
+                            ? `bg-[#00A77C] border-[#00A77C] text-white shadow-md shadow-[#00A77C]/25`
+                            : `bg-white border-[#00271D]/15 hover:border-[#00A77C] text-[#00271D]/70 hover:bg-[#F9F3F0]`
                         }`}
                       >
                         <span className="text-lg">{meta.emoji}</span>
                         <span className="text-xs font-bold">{meta.label}</span>
-                        <span className={`text-[9px] leading-tight ${selected ? 'text-indigo-200' : 'text-gray-400'}`}>{meta.desc}</span>
+                        <span className={`text-[9px] leading-tight ${selected ? 'text-white/90' : 'text-[#00271D]/40'}`}>{meta.desc}</span>
                       </button>
                     );
                   })}
@@ -180,13 +180,13 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
 
               {/* Title */}
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">2. Maintenance Subject / Title</label>
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">2. Maintenance Subject / Title</label>
                 <input
                   type="text" required
                   placeholder="e.g. Broken Desk in Room 204 or Overhead Projector flickering"
                   value={reportTitle}
                   onChange={e => setReportTitle(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-900 outline-none transition-all focus:border-indigo-500 focus:bg-white font-bold placeholder:font-normal"
+                  className="w-full rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] px-4 py-3 text-xs text-[#00271D] outline-none transition-all focus:border-[#00A77C] focus:bg-white font-bold placeholder:font-normal"
                 />
               </div>
 
@@ -195,7 +195,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                   type="button"
                   disabled={!reportTitle.trim()}
                   onClick={() => setWizardStep(2)}
-                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-full bg-[#00A77C] px-6 py-3 text-xs font-bold text-white shadow-md shadow-[#00A77C]/25 hover:bg-[#008f6a] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition-all"
                 >
                   Continue <ChevronRight size={13} />
                 </button>
@@ -208,31 +208,31 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
             <div className="space-y-5">
               {/* Photo */}
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">1. Verification Photo</label>
-                <div className="relative h-40 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 flex items-center justify-center">
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">1. Verification Photo</label>
+                <div className="relative h-40 overflow-hidden rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] flex items-center justify-center">
                   {isCapturing ? (
                     <div className="animate-pulse text-center">
-                      <Camera className="mx-auto text-indigo-500" size={24} />
-                      <p className="mt-1 text-[9px] font-bold text-indigo-600 uppercase">Accessing Camera...</p>
+                      <Camera className="mx-auto text-[#00A77C]" size={24} />
+                      <p className="mt-1 text-[9px] font-bold text-[#00A77C] uppercase">Accessing Camera...</p>
                     </div>
                   ) : capturedImage ? (
                     <div className="group relative h-full w-full">
                       <img src={capturedImage} alt="Evidence" className="h-full w-full object-cover" />
                       <div className="absolute inset-0 flex items-center justify-center bg-white/80 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button type="button" onClick={handleCapture} className="rounded-xl bg-indigo-600 px-4 py-2 text-[10px] font-bold text-white cursor-pointer shadow">
+                        <button type="button" onClick={handleCapture} className="rounded-full bg-[#00A77C] px-5 py-2 text-[10px] font-bold text-white cursor-pointer shadow">
                           Retake Photo
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-2 px-4 text-center">
-                      <Camera className="mx-auto text-gray-300" size={24} />
-                      <p className="text-[10px] text-gray-400 font-medium">Capture or upload evidence photo</p>
+                      <Camera className="mx-auto text-[#00271D]/30" size={24} />
+                      <p className="text-[10px] text-[#00271D]/50 font-medium">Capture or upload evidence photo</p>
                       <div className="flex justify-center gap-2">
-                        <button type="button" onClick={handleCapture} className="rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-[10px] font-bold text-gray-600 shadow-sm hover:bg-gray-50 cursor-pointer">
+                        <button type="button" onClick={handleCapture} className="rounded-full border border-[#00271D]/15 bg-white px-4 py-1.5 text-[10px] font-bold text-[#00271D] shadow-2xs hover:bg-[#F9F3F0] cursor-pointer">
                           Mock Camera
                         </button>
-                        <label className="cursor-pointer rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-[10px] font-bold text-gray-600 shadow-sm hover:bg-gray-50">
+                        <label className="cursor-pointer rounded-full border border-[#00271D]/15 bg-white px-4 py-1.5 text-[10px] font-bold text-[#00271D] shadow-2xs hover:bg-[#F9F3F0]">
                           Upload File
                           <input type="file" accept="image/*" className="hidden" onChange={e => {
                             const f = e.target.files?.[0];
@@ -257,8 +257,8 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsPinningMode(!isPinningMode)}
-                      className={`ml-3 flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-[10px] font-bold transition-all cursor-pointer ${
-                        isPinningMode ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      className={`ml-3 flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-1.5 text-[10px] font-bold transition-all cursor-pointer ${
+                        isPinningMode ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-md shadow-[#00A77C]/25' : 'bg-white border-[#00271D]/15 text-[#00271D]/70 hover:bg-gray-50'
                       }`}
                     >
                       <Compass size={12} className={isPinningMode ? 'animate-spin' : ''} />
@@ -373,7 +373,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                   type="button"
                   disabled={!isWasteCategory ? !roomNumber.trim() : !gpsCoords}
                   onClick={() => setWizardStep(3)}
-                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-full bg-[#00A77C] px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-[#00A77C]/25 hover:bg-[#008f6a] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                 >
                   Continue <ChevronRight size={13} />
                 </button>
@@ -386,11 +386,11 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
             <div className="space-y-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">1. Priority Severity</label>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">1. Priority Severity</label>
                   <select
                     value={urgency}
                     onChange={e => setUrgency(e.target.value as any)}
-                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white cursor-pointer"
+                    className="w-full rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] px-4 py-3 text-xs font-bold text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white cursor-pointer"
                   >
                     <option value="LOW">🟢 Low Severity</option>
                     <option value="MEDIUM">🟡 Medium Priority</option>
@@ -399,11 +399,11 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">2. Condition / Observation</label>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">2. Condition / Observation</label>
                   <select
                     value={observation}
                     onChange={e => setObservation(e.target.value)}
-                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white cursor-pointer"
+                    className="w-full rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] px-4 py-3 text-xs font-bold text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white cursor-pointer"
                   >
                     {OBSERVATION_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
@@ -411,33 +411,33 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">3. Detailed Observations</label>
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">3. Detailed Observations</label>
                 <textarea
                   required rows={3}
                   placeholder="Describe specific damage, affected area, or any additional operational notes..."
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white placeholder:font-normal"
+                  className="w-full resize-none rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] px-4 py-3 text-xs font-bold text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white placeholder:font-normal"
                 />
               </div>
 
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-2">
-                <span className="inline-block rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-700">Ticket Preview</span>
+              <div className="rounded-2xl border border-[#00271D]/10 bg-[#F9F3F0] p-4 space-y-2">
+                <span className="inline-block rounded-full border border-[#00A77C]/40 bg-[#00A77C]/15 px-3 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-[#00A77C]">Ticket Preview</span>
                 <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
-                  <div className="text-gray-500">Category: <span className="font-bold capitalize text-gray-800">{PILLAR_META[pillarCategory].label}</span></div>
-                  <div className="text-gray-500">Severity: <span className="font-bold uppercase text-gray-800">{urgency}</span></div>
-                  <div className="text-gray-500">Condition: <span className="font-bold text-gray-800">{observation}</span></div>
-                  <div className="text-gray-500">Location: <span className="font-bold text-gray-800">{isWasteCategory ? 'Map pin' : `${selectedBuilding}${roomNumber ? ` · ${roomNumber}` : ''}`}</span></div>
-                  <div className="col-span-2 text-gray-500">Subject: <span className="font-bold text-gray-800">{reportTitle}</span></div>
+                  <div className="text-[#00271D]/60 font-medium">Category: <span className="font-bold capitalize text-[#00271D]">{PILLAR_META[pillarCategory].label}</span></div>
+                  <div className="text-[#00271D]/60 font-medium">Severity: <span className="font-bold uppercase text-[#00271D]">{urgency}</span></div>
+                  <div className="text-[#00271D]/60 font-medium">Condition: <span className="font-bold text-[#00271D]">{observation}</span></div>
+                  <div className="text-[#00271D]/60 font-medium">Location: <span className="font-bold text-[#00271D]">{isWasteCategory ? 'Map pin' : `${selectedBuilding}${roomNumber ? ` · ${roomNumber}` : ''}`}</span></div>
+                  <div className="col-span-2 text-[#00271D]/60 font-medium">Subject: <span className="font-bold text-[#00271D]">{reportTitle}</span></div>
                 </div>
               </div>
 
               <div className="flex justify-between pt-1">
-                <button type="button" onClick={() => setWizardStep(2)} className="rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-200 cursor-pointer">← Back</button>
+                <button type="button" onClick={() => setWizardStep(2)} className="rounded-full bg-[#00271D]/10 px-5 py-2.5 text-xs font-bold text-[#00271D] hover:bg-[#00271D]/20 cursor-pointer">← Back</button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !notes.trim()}
-                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-full bg-[#00A77C] px-6 py-3 text-xs font-bold text-white shadow-md shadow-[#00A77C]/25 hover:bg-[#008f6a] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition-all"
                 >
                   {isSubmitting ? (
                     <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" /><span>Logging...</span></>

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <!-- Main Outer Teal/Emerald Gradient -->
+    <linearGradient id="sortOuterGrad" x1="120" y1="460" x2="380" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#004D40"/>
+      <stop offset="35%" stop-color="#007A5E"/>
+      <stop offset="70%" stop-color="#00A77C"/>
+      <stop offset="100%" stop-color="#2DD4BF"/>
+    </linearGradient>
+
+    <!-- Inner Central Leaf Gradient -->
+    <linearGradient id="sortInnerLeafGrad" x1="260" y1="360" x2="340" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#007A5E"/>
+      <stop offset="60%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+
+    <!-- Warm Gold Highlight Curve -->
+    <linearGradient id="sortGoldAccent" x1="240" y1="340" x2="270" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#C69B26"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#FBBF24"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Flame / Leaf Swirl Body -->
+  <path d="M 285,92 C 285,92 235,160 185,190 C 135,220 115,265 125,325 C 138,395 195,442 265,442 C 340,442 400,385 398,310 C 397,275 385,248 375,230 C 370,245 365,268 350,285 C 330,310 295,315 270,305 C 240,293 228,260 238,230 C 248,198 280,165 308,135 C 315,128 318,118 312,108 C 306,98 295,92 285,92 Z" fill="url(#sortOuterGrad)"/>
+
+  <!-- White Inner Crescent Sweep -->
+  <path d="M 265,442 C 195,442 138,395 125,325 C 115,265 135,220 185,190 C 235,160 285,92 285,92 C 285,92 270,140 230,195 C 190,250 195,320 250,355 C 290,380 345,365 372,330 C 382,315 390,295 395,275 C 392,365 330,442 265,442 Z" fill="#FFFFFF" opacity="0.95"/>
+
+  <!-- Inner Center Leaf -->
+  <path d="M 270,365 C 260,320 270,255 335,220 C 345,215 352,225 348,235 C 335,270 340,320 305,355 C 295,365 280,368 270,365 Z" fill="url(#sortInnerLeafGrad)"/>
+
+  <!-- Central Leaf Vein Cutout -->
+  <path d="M 290,345 C 310,315 320,270 330,240 C 322,275 308,310 285,340 Z" fill="#FFFFFF" opacity="0.9"/>
+
+  <!-- Warm Gold Left Spine Highlight -->
+  <path d="M 268,360 C 263,330 268,280 295,250 C 285,275 278,315 272,358 Z" fill="url(#sortGoldAccent)"/>
+</svg>

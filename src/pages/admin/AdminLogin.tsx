@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { ShieldAlert, ArrowLeft, KeyRound, AlertOctagon, HelpCircle } from 'lucide-react';
+import { SortLogo } from '../../components/common/SortLogo';
 
 interface AdminLoginProps {
   onNavigate: (route: string) => void;
@@ -8,7 +9,7 @@ interface AdminLoginProps {
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
   const { login } = useMockData();
-  
+
   const [email, setEmail] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -21,14 +22,11 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
       setErrorMsg('Required parameters missing.');
       return;
     }
-
     setLoading(true);
     setErrorMsg(null);
-
     setTimeout(() => {
       const success = login(employeeId, email);
       setLoading(false);
-
       if (success) {
         onNavigate('dashboard');
       } else {
@@ -38,79 +36,84 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center font-sans p-6 relative overflow-hidden">
-      
-      {/* Structural security guidelines grids */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(244,63,94,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(244,63,94,0.015)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
-      
-      {/* Background glow */}
-      <div className="absolute h-96 w-96 bg-red-950/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden" style={{ background: '#F9F3F0' }}>
 
-      <div className="w-full max-w-sm z-10 space-y-6">
-        
+      {/* Organic backdrop waves */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <ellipse cx="15%" cy="20%" rx="38%" ry="30%" fill="#e0f2ec" opacity="0.55" />
+        <ellipse cx="85%" cy="75%" rx="42%" ry="32%" fill="#d1f0e4" opacity="0.45" />
+        <ellipse cx="55%" cy="50%" rx="25%" ry="18%" fill="#e0f2ec" opacity="0.3" />
+      </svg>
+
+      <div className="w-full max-w-sm z-10 space-y-4">
+
         {/* Back Button */}
         <button
           onClick={() => onNavigate('landing')}
-          className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 hover:text-zinc-300 transition-colors uppercase tracking-wider"
+          className="flex items-center gap-1.5 text-[11px] font-bold text-[#00271D]/60 hover:text-[#00A77C] transition-colors uppercase tracking-wider"
         >
-          <ArrowLeft size={12} />
-          <span>Exit Security Gate</span>
+          <ArrowLeft size={13} />
+          <span>Back to Landing</span>
         </button>
 
-        <div className="glass-panel border border-zinc-800 rounded-xl p-6 md:p-8 shadow-2xl relative">
-          
-          {/* Industrial Heading */}
+        {/* Card */}
+        <div className="bg-white/90 backdrop-blur-xl border border-white/80 rounded-3xl p-6 md:p-8 shadow-xl shadow-[#00271D]/5">
+
+          {/* Header */}
           <div className="text-center space-y-2 mb-6">
-            <div className="h-10 w-10 bg-red-950/20 border border-red-900/30 text-red-500 rounded-lg flex items-center justify-center mx-auto mb-2">
-              <ShieldAlert size={20} />
+            <div className="h-12 w-12 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #C69B26, #e0b730)' }}>
+              <ShieldAlert size={22} className="text-white" />
             </div>
-            <h2 className="text-lg font-black tracking-widest text-zinc-200 uppercase">Admin Gate</h2>
-            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-              Protected Audit Console Access
-            </p>
+            <SortLogo size={32} />
+            <div>
+              <h2 className="text-base font-black tracking-tight text-[#00271D] mt-1">Admin Gate</h2>
+              <p className="text-[11px] text-[#00271D]/50 font-semibold">Protected Audit Console Access</p>
+            </div>
           </div>
 
           {errorMsg && (
-            <div className="mb-4 p-3 bg-red-950/30 border border-red-900/30 text-red-400 text-xs rounded-lg flex gap-2">
+            <div className="mb-4 p-3 bg-rose-50 border border-rose-100 text-rose-600 text-xs rounded-xl flex gap-2">
               <AlertOctagon size={14} className="shrink-0 mt-0.5" />
-              <span className="font-mono text-[10px] leading-relaxed">{errorMsg}</span>
+              <span className="font-semibold leading-normal">{errorMsg}</span>
             </div>
           )}
 
           <form onSubmit={handleAdminSubmit} className="space-y-4 text-xs">
             <div className="space-y-1.5">
-              <label className="font-bold text-zinc-500 uppercase tracking-widest text-[9px]">Admin Email</label>
+              <label className="font-bold text-[#00271D]/50 uppercase tracking-widest text-[9px]">Admin Email</label>
               <input
                 type="email"
                 required
                 placeholder="root@sort.admin"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full glass-input px-3.5 py-2 rounded-lg text-xs font-mono text-red-400 border-zinc-800/80"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-xs text-[#00271D] outline-none focus:border-[#C69B26] focus:bg-white transition-all"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="font-bold text-zinc-500 uppercase tracking-widest text-[9px]">Administrative ID</label>
+              <label className="font-bold text-[#00271D]/50 uppercase tracking-widest text-[9px]">Administrative ID</label>
               <input
                 type="text"
                 required
                 placeholder="ADM-XXXX-XXX"
                 value={employeeId}
                 onChange={e => setEmployeeId(e.target.value)}
-                className="w-full glass-input px-3.5 py-2 rounded-lg text-xs font-mono text-red-400 border-zinc-800/80"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-xs text-[#00271D] outline-none focus:border-[#C69B26] focus:bg-white transition-all"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-2.5 bg-zinc-900 border border-zinc-850 hover:border-red-950 hover:text-red-400 text-zinc-300 font-bold text-xs uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-1.5"
+              className="w-full mt-2 py-3 text-white font-black text-xs uppercase tracking-wider rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#C69B26]/20"
+              style={{ background: 'linear-gradient(135deg, #C69B26, #e0b730)' }}
             >
               {loading ? (
                 <>
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-500 border-t-transparent"></div>
-                  <span className="font-mono text-[10px]">Validating Cryptography...</span>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Validating Credentials...</span>
                 </>
               ) : (
                 <>
@@ -121,34 +124,33 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
             </button>
           </form>
 
-          {/* Helper details */}
-          <div className="mt-5 pt-3.5 border-t border-zinc-900">
+          {/* Credentials helper */}
+          <div className="mt-5 pt-3.5 border-t border-[#00271D]/8">
             <button
               type="button"
               onClick={() => setShowHelper(!showHelper)}
-              className="w-full flex items-center justify-center gap-1.5 text-[9px] text-zinc-600 hover:text-zinc-400 transition-colors font-bold uppercase tracking-wider"
+              className="w-full flex items-center justify-center gap-1.5 text-[9px] text-[#00271D]/40 hover:text-[#C69B26] transition-colors font-bold uppercase tracking-wider"
             >
               <HelpCircle size={10} />
               {showHelper ? 'Hide Key' : 'Reveal Security Credentials'}
             </button>
 
             {showHelper && (
-              <div className="mt-3 bg-zinc-950/80 border border-zinc-900 rounded-lg p-3 font-mono text-[9px] text-red-450/80 leading-normal space-y-1 text-center">
-                <span className="font-black text-red-500 block uppercase">Root Provision Key</span>
-                Email: <span className="text-zinc-300 select-all">admin.sort@campus.edu</span><br />
-                ID: <span className="text-zinc-300 select-all">ADM-2026-007</span>
+              <div className="mt-3 bg-[#F9F3F0] border border-[#00271D]/10 rounded-xl p-3 text-[9px] text-[#00271D]/60 leading-normal space-y-1 text-center">
+                <span className="font-bold text-[#C69B26] block uppercase">Root Provision Key</span>
+                Email: <span className="text-[#00271D] select-all font-mono">admin.sort@campus.edu</span><br />
+                ID: <span className="text-[#00271D] select-all font-mono">ADM-2026-007</span>
               </div>
             )}
           </div>
 
         </div>
 
-        <div className="text-center font-mono text-[9px] text-zinc-600">
-          SECURE CONNECTION PROTOCOL V2 // SORT-ROOT-GATEWAY
+        <div className="text-center text-[9px] text-[#00271D]/30 font-semibold tracking-wider uppercase">
+          S.O.R.T. Campus Gate v2.0 · Secure Protocol
         </div>
 
       </div>
-
     </div>
   );
 };

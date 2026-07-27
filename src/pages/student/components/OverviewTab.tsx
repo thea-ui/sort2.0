@@ -2,13 +2,24 @@ import React from 'react';
 import {
   Flame,
   Trophy,
-  AlertTriangle,
-  Zap,
   Camera,
   MapPin,
   Clock,
   Activity,
-  ArrowRight
+  Trees,
+  Recycle,
+  TrendingUp,
+  CheckCircle2,
+  ShieldCheck,
+  Star,
+  Newspaper,
+  Award,
+  Droplet,
+  FlaskConical,
+  Radio,
+  AlertTriangle,
+  ArrowRight,
+  FileText
 } from 'lucide-react';
 import { User, Report } from '../../../types';
 
@@ -19,257 +30,249 @@ interface OverviewTabProps {
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, setActiveTab }) => {
-  const personalReports = reports.filter(r => r.reporterId === 'current');
+  const personalReports = reports.filter(r => r.reporterId === 'current' || r.reporterId === currentUser.id);
+  const totalReports = personalReports.length || 1;
+  const resolvedReports = personalReports.filter(r => r.status === 'RESOLVED').length;
+  const pendingReports = personalReports.filter(r => r.status === 'PENDING').length;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
-      
-      {/* Welcome Header Banner */}
-      <div className="bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between relative overflow-hidden">
-        <div className="flex items-center gap-5 relative z-10">
-          <div className="h-20 w-20 rounded-2xl bg-emerald-500 text-white font-black text-3xl flex items-center justify-center shadow-md shadow-emerald-500/30 shrink-0">
-            SD
-          </div>
-          <div>
-            <p className="text-xs font-bold text-gray-400">Welcome back,</p>
-            <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-none mt-1">{currentUser.name}</h2>
-            <p className="text-xs font-bold text-emerald-600 mt-2 flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Active Eco-Reporter · Grade 10 - Newton
-            </p>
-          </div>
-        </div>
+    <div className="max-w-6xl mx-auto space-y-8 pb-10">
 
-        <div className="flex items-center gap-8 mt-6 md:mt-0 relative z-10">
-          <div className="text-center">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Rank</p>
-            <p className="text-3xl font-black text-gray-900 leading-none">
-              <span className="text-amber-500 text-2xl mr-0.5">#</span>2
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Eco-Points</p>
-            <p className="text-3xl font-black text-gray-900 leading-none flex items-center justify-center">
-              <Flame size={20} className="text-orange-500 mr-1 fill-orange-500" />
-              {currentUser.points}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">My Reports</p>
-            <p className="text-3xl font-black text-gray-900 leading-none">
-              {personalReports.length}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* The Top 3 Race Card */}
-      <div className="bg-[#fcfdfa] border border-amber-150 rounded-3xl p-6 shadow-sm relative overflow-hidden">
-        <div className="flex items-start gap-4 relative z-10">
-          <div className="h-10 w-10 shrink-0 rounded-2xl bg-amber-100 flex items-center justify-center">
-            <Trophy size={20} className="text-amber-500" strokeWidth={2.5} />
-          </div>
-          <div className="flex-1 space-y-3">
+      {/* ── 2026 Hero Welcome Card ── */}
+      <div className="bg-gradient-to-br from-white/95 via-white/90 to-[#e0f2ec]/60 border border-white/90 rounded-3xl p-7 md:p-8 shadow-xl shadow-[#00271D]/5 backdrop-blur-md relative overflow-hidden transition-all hover:shadow-2xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          
+          <div className="flex items-center gap-5">
+            <div className="h-16 w-16 rounded-2xl bg-[#00A77C] text-white font-heading font-black text-2xl flex items-center justify-center shadow-lg shadow-[#00A77C]/25 shrink-0">
+              {currentUser.name.split(' ').map(n => n[0]).join('')}
+            </div>
             <div>
-              <h3 className="text-sm font-extrabold text-gray-900">The Top 3 Race</h3>
-              <p className="text-[11px] text-gray-500 font-semibold mt-0.5">Quarterly certificates are exclusively awarded to the top 3 eco-champions.</p>
-            </div>
-
-            <div className="flex items-center gap-2 text-[11px] text-gray-600 font-medium bg-gray-50/80 border border-gray-150 rounded-xl py-2 px-3 w-fit">
-              <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-              <span>Quarterly certificates are exclusively awarded to the top 3 eco-champions. Keep reporting to reach the top next quarter!</span>
-            </div>
-
-            <div className="pt-1 max-w-2xl">
-              <div className="flex justify-between items-center text-[10px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">
-                <span>Your Standing</span>
-                <span className="text-gray-900">Rank <span className="text-amber-500 font-black">#2</span></span>
-              </div>
-              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-500 rounded-full" style={{ width: '85%' }} />
+              <p className="text-xs font-semibold text-[#00271D]/60">Welcome back,</p>
+              <h2 className="text-2xl sm:text-3xl font-heading font-black text-[#00271D] tracking-tight mt-0.5">
+                {currentUser.name}
+              </h2>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="h-2 w-2 rounded-full bg-[#00A77C] animate-pulse" />
+                <span className="text-xs font-bold text-[#00A77C] bg-[#00A77C]/15 border border-[#00A77C]/30 px-3 py-0.5 rounded-full">
+                  Active Eco-Reporter · Student
+                </span>
               </div>
             </div>
+          </div>
+
+          {/* Stats Pod */}
+          <div className="flex items-center gap-6 border-t md:border-t-0 md:border-l border-[#00271D]/10 pt-4 md:pt-0 md:pl-8">
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider mb-0.5">Rank</p>
+              <p className="text-2xl font-heading font-black text-[#00271D]">
+                <span className="text-[#C69B26] font-black mr-0.5">#</span>2
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider mb-0.5">Eco-Points</p>
+              <p className="text-2xl font-heading font-black text-[#00A77C] flex items-center justify-center">
+                <Flame size={18} className="text-[#00A77C] mr-1 fill-[#00A77C]" />
+                {currentUser.points}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider mb-0.5">Reports</p>
+              <p className="text-2xl font-heading font-black text-[#00271D]">
+                {totalReports}
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Progress bar strip */}
+        <div className="mt-6 pt-5 border-t border-[#00271D]/10">
+          <div className="flex items-center justify-between text-xs mb-1.5 font-bold">
+            <span className="text-[#00271D]/60 uppercase text-[10px] tracking-wider">Quarterly Certificate Progress</span>
+            <span className="text-[#C69B26]">Rank #2 · 82% to Top Eco-Champion Certificate</span>
+          </div>
+          <div className="h-2.5 w-full bg-[#C69B26]/15 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-[#C69B26] to-amber-500 rounded-full transition-all duration-700" style={{ width: '82%' }} />
           </div>
         </div>
       </div>
 
-      {/* Quick Action Navigation Grid */}
+      {/* ── Campus Impact Cards (Color Indicator System) ── */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <Zap size={16} className="text-emerald-500" />
-          <h3 className="text-sm font-bold text-gray-900">Quick Actions</h3>
+          <Trees size={18} className="text-[#10B981]" />
+          <h3 className="text-sm font-heading font-bold text-[#00271D]">Campus Impact</h3>
         </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button 
-            onClick={() => setActiveTab?.('submit-report')}
-            className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm text-left hover:border-emerald-400 transition-all group cursor-pointer active:scale-[0.98]"
-          >
-            <div className="h-11 w-11 rounded-xl bg-emerald-500 flex items-center justify-center mb-3 text-white group-hover:scale-105 transition-transform shadow-md shadow-emerald-500/20">
-              <Camera size={20} />
-            </div>
-            <h4 className="text-xs font-bold text-gray-900">Report Waste Bin</h4>
-            <p className="text-[10px] text-gray-400 font-medium mt-0.5">Snap or pin full bins</p>
-          </button>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-          <button 
-            onClick={() => setActiveTab?.('bin-map')}
-            className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm text-left hover:border-sky-400 transition-all group cursor-pointer active:scale-[0.98]"
-          >
-            <div className="h-11 w-11 rounded-xl bg-sky-500 flex items-center justify-center mb-3 text-white group-hover:scale-105 transition-transform shadow-md shadow-sky-500/20">
-              <MapPin size={20} />
+          {/* Impact Card 1: Trees Saved */}
+          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-[#00271D]/60">Trees Saved</p>
+              <p className="text-2xl font-heading font-extrabold text-[#00271D] mt-1">0 <span className="text-xs font-normal text-[#00271D]/50">Trees</span></p>
+              <p className="text-[11px] text-[#00271D]/50 mt-1 font-medium">Equivalent environmental impact</p>
             </div>
-            <h4 className="text-xs font-bold text-gray-900">Live Bin Map</h4>
-            <p className="text-[10px] text-gray-400 font-medium mt-0.5">Check bin availability</p>
-          </button>
+            <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10">
+              <Trees size={22} strokeWidth={2} />
+            </div>
+          </div>
 
-          <button 
-            onClick={() => setActiveTab?.('report-history')}
-            className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm text-left hover:border-purple-400 transition-all group cursor-pointer active:scale-[0.98]"
-          >
-            <div className="h-11 w-11 rounded-xl bg-purple-500 flex items-center justify-center mb-3 text-white group-hover:scale-105 transition-transform shadow-md shadow-purple-500/20">
-              <Clock size={20} />
+          {/* Impact Card 2: Recycled KG */}
+          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-[#00271D]/60">Recycled Waste</p>
+              <p className="text-2xl font-heading font-extrabold text-[#00271D] mt-1">0 <span className="text-xs font-normal text-[#00271D]/50">KG</span></p>
+              <p className="text-[11px] text-[#00271D]/50 mt-1 font-medium">Diverted from campus landfill</p>
             </div>
-            <h4 className="text-xs font-bold text-gray-900">My Activity</h4>
-            <p className="text-[10px] text-gray-400 font-medium mt-0.5">View filed reports</p>
-          </button>
+            <div className="h-11 w-11 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/10">
+              <Recycle size={22} strokeWidth={2} />
+            </div>
+          </div>
 
-          <button 
-            onClick={() => setActiveTab?.('gamification')}
-            className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm text-left hover:border-amber-400 transition-all group cursor-pointer active:scale-[0.98]"
-          >
-            <div className="h-11 w-11 rounded-xl bg-amber-500 flex items-center justify-center mb-3 text-white group-hover:scale-105 transition-transform shadow-md shadow-amber-500/20">
-              <Trophy size={20} />
+          {/* Impact Card 3: Campus Progress */}
+          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-[#00271D]/60">Campus Progress</p>
+              <p className="text-2xl font-heading font-extrabold text-[#00271D] mt-1">87.5 <span className="text-xs font-normal text-[#00271D]/50">%</span></p>
+              <p className="text-[11px] text-[#00271D]/50 mt-1 font-medium">Overall recycling rate target</p>
             </div>
-            <h4 className="text-xs font-bold text-gray-900">Ranks & Badges</h4>
-            <p className="text-[10px] text-gray-400 font-medium mt-0.5">Leaderboard standings</p>
-          </button>
+            <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10">
+              <TrendingUp size={22} strokeWidth={2} />
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {/* Operational Analytics Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity size={18} className="text-emerald-500" />
-            <h3 className="text-sm font-bold text-gray-900">Campus Operational Analytics</h3>
+      {/* ── Quick Actions Grid ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Activity size={18} className="text-[#00A77C]" />
+          <h3 className="text-sm font-heading font-bold text-[#00271D]">Quick Actions</h3>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Report Bin', desc: 'Snap a full bin', tab: 'submit-report', gradient: 'from-orange-500 to-rose-500', shadow: 'shadow-orange-500/20', hover: 'hover:border-rose-300', icon: Camera },
+            { label: 'Live Bin Map', desc: 'Campus bins status', tab: 'bin-map', gradient: 'from-sky-400 to-blue-600', shadow: 'shadow-sky-500/20', hover: 'hover:border-sky-300', icon: MapPin },
+            { label: 'My Activity', desc: 'Track your reports', tab: 'report-history', gradient: 'from-purple-500 to-indigo-600', shadow: 'shadow-purple-500/20', hover: 'hover:border-purple-300', icon: Clock },
+            { label: 'Leaderboard', desc: 'See top eco-champs', tab: 'gamification', gradient: 'from-amber-400 to-orange-500', shadow: 'shadow-amber-500/20', hover: 'hover:border-amber-300', icon: Trophy },
+          ].map(action => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.tab}
+                onClick={() => setActiveTab?.(action.tab)}
+                className={`bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group ${action.hover}`}
+              >
+                <div className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${action.gradient} text-white flex items-center justify-center mb-3 shadow-md ${action.shadow} group-hover:scale-105 transition-transform`}>
+                  <Icon size={20} strokeWidth={2} />
+                </div>
+                <p className="text-xs font-bold text-[#00271D]">{action.label}</p>
+                <p className="text-[11px] text-[#00271D]/60 mt-0.5 font-medium">{action.desc}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Two-column: My Stats + Recent Reports ── */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+
+        {/* My Stats */}
+        <div className="md:col-span-2 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm p-6">
+          <h3 className="text-sm font-heading font-bold text-[#00271D] mb-4">My Stats</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Total Reports', value: totalReports, Icon: CheckCircle2, bg: 'bg-[#00A77C]/15', color: 'text-[#00A77C]', ring: 'border-[#00A77C]/30' },
+              { label: 'Pending', value: pendingReports, Icon: Clock, bg: 'bg-amber-50', color: 'text-amber-600', ring: 'border-amber-200' },
+              { label: 'Resolved', value: resolvedReports, Icon: ShieldCheck, bg: 'bg-sky-50', color: 'text-sky-600', ring: 'border-sky-200' },
+              { label: 'Points Today', value: '+45', Icon: Star, bg: 'bg-[#C69B26]/15', color: 'text-[#C69B26]', ring: 'border-[#C69B26]/30' },
+            ].map((s, i) => {
+              const Icon = s.Icon;
+              return (
+                <div key={i} className="flex flex-col items-center justify-center bg-white/60 border border-gray-100 rounded-2xl p-4 text-center shadow-xs">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.bg} border ${s.ring} mb-2`}>
+                    <Icon size={16} className={s.color} />
+                  </div>
+                  <p className="text-xl font-heading font-black text-[#00271D]">{s.value}</p>
+                  <p className="text-[10px] text-[#00271D]/50 font-bold uppercase mt-0.5">{s.label}</p>
+                </div>
+              );
+            })}
           </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab?.('bin-map')}
-            className="text-xs text-emerald-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <span>View Bin Map</span>
-            <ArrowRight size={13} />
-          </button>
         </div>
 
-        {/* Module 2: STUDENT REPORTING FREQUENCY (Quick-Stat Counter Cards) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between text-emerald-600 mb-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Reports Today</span>
-              <span className="p-1.5 bg-emerald-50 rounded-lg">📊</span>
+        {/* Recent Reports */}
+        <div className="md:col-span-3 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[#00271D]/10">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 flex items-center justify-center rounded-xl bg-[#00A77C]/10 text-[#00A77C]">
+                <FileText size={14} />
+              </div>
+              <h3 className="text-sm font-heading font-bold text-[#00271D]">Recent Submissions</h3>
             </div>
-            <p className="text-3xl font-black text-gray-900">24</p>
-            <p className="text-[11px] font-semibold text-emerald-600">+8% vs yesterday</p>
+            <button
+              onClick={() => setActiveTab?.('report-history')}
+              className="flex items-center gap-1 text-[11px] font-bold text-[#00A77C] hover:text-[#008f6a] cursor-pointer"
+            >
+              View all <ArrowRight size={12} />
+            </button>
           </div>
-
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between text-sky-600 mb-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">This Week</span>
-              <span className="p-1.5 bg-sky-50 rounded-lg">📅</span>
-            </div>
-            <p className="text-3xl font-black text-gray-900">142</p>
-            <p className="text-[11px] font-semibold text-sky-600">Active campus submissions</p>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between text-amber-600 mb-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Peak Activity Time</span>
-              <span className="p-1.5 bg-amber-50 rounded-lg">⏰</span>
-            </div>
-            <p className="text-xl font-black text-gray-900 mt-1">12:00 PM - 2:00 PM</p>
-            <p className="text-[11px] font-semibold text-amber-600">Highest daily traffic window</p>
+          <div className="divide-y divide-[#00271D]/5">
+            {personalReports.slice(0, 4).map(rep => (
+              <div key={rep.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-[#00A77C]/5 transition-colors">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-base border border-gray-200/60 shadow-xs">📋</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-[#00271D]">{rep.title}</p>
+                  <p className="text-[10px] text-[#00271D]/50 font-medium">{rep.locationName} · {rep.timestamp}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-3 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${
+                  rep.status === 'RESOLVED' ? 'bg-[#00A77C]/15 text-[#00A77C] border-[#00A77C]/30' :
+                  rep.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                  'bg-gray-100 text-gray-600 border-gray-200'
+                }`}>{rep.status}</span>
+              </div>
+            ))}
+            {personalReports.length === 0 && (
+              <div className="px-6 py-10 text-center">
+                <AlertTriangle className="mx-auto mb-2 text-gray-300" size={24} />
+                <p className="text-xs font-medium text-gray-400">No reports yet. Submit your first report!</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 2-Column Grid: Grade Level & Materials Breakdown Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      </div>
 
-          {/* Module 1: REPORTS BY GRADE LEVEL */}
-          <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
-            <div>
-              <h4 className="text-xs font-extrabold text-gray-900 flex items-center gap-2">
-                <span className="text-emerald-500 text-sm">🎓</span>
-                <span>Reports by Grade Level</span>
-              </h4>
-              <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                Report distribution volume across academic grade levels
-              </p>
-            </div>
-
-            <div className="space-y-3 pt-1">
-              {[
-                { grade: 'Grade 7', pct: 28, count: 120, barBg: 'bg-emerald-500', bg: 'bg-emerald-50/60', text: 'text-emerald-700', border: 'border-emerald-100' },
-                { grade: 'Grade 8', pct: 25, count: 108, barBg: 'bg-sky-500', bg: 'bg-sky-50/60', text: 'text-sky-700', border: 'border-sky-100' },
-                { grade: 'Grade 9', pct: 22, count: 95, barBg: 'bg-amber-500', bg: 'bg-amber-50/60', text: 'text-amber-700', border: 'border-amber-100' },
-                { grade: 'Grade 10', pct: 25, count: 105, barBg: 'bg-purple-500', bg: 'bg-purple-50/60', text: 'text-purple-700', border: 'border-purple-100' },
-              ].map((item) => (
-                <div key={item.grade} className={`p-3 rounded-2xl border ${item.bg} ${item.border} space-y-1.5`}>
-                  <div className="flex justify-between items-center text-xs font-bold text-gray-900">
-                    <span>{item.grade}</span>
-                    <span className={item.text}>{item.pct}% · {item.count} reports</span>
+      {/* ── Campus News Highlights ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Newspaper size={18} className="text-[#00A77C]" />
+          <h3 className="text-sm font-heading font-bold text-[#00271D]">Campus News & Updates</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { tag: 'MRF UPDATE', tagColor: 'bg-[#00A77C]/15 text-[#00A77C] border-[#00A77C]/30', date: 'Feb 24, 2026', Icon: Radio, iconBg: 'bg-[#00A77C]', title: 'Extended Collection Hours Campus-Wide', body: 'Starting March 1, MRF collection trucks will operate from 6 AM to 8 PM on weekdays.' },
+            { tag: 'NEW FACILITY', tagColor: 'bg-sky-100 text-sky-800 border-sky-200', date: 'Feb 20, 2026', Icon: Recycle, iconBg: 'bg-sky-500', title: '5 New Segregation Stations Installed', body: 'Color-coded recycling stations are now live near Science Hall, the Gym, and Admin Building.' },
+            { tag: 'ACHIEVEMENT', tagColor: 'bg-[#C69B26]/15 text-[#C69B26] border-[#C69B26]/30', date: 'Feb 18, 2026', Icon: TrendingUp, iconBg: 'bg-[#C69B26]', title: 'Campus Hits 2,000+ Reports This Semester', body: 'Thanks to student participation, our campus filed over 2,000 waste reports — a 68% increase.' },
+          ].map((item, i) => {
+            const Icon = item.Icon;
+            return (
+              <div key={i} className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col justify-between space-y-3">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className={`px-3 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${item.tagColor}`}>{item.tag}</span>
+                    <span className="text-[10px] text-[#00271D]/50 font-medium">{item.date}</span>
                   </div>
-                  <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${item.barBg} transition-all duration-500`}
-                      style={{ width: `${item.pct}%` }}
-                    />
+                  <div className={`h-10 w-10 rounded-2xl ${item.iconBg} text-white flex items-center justify-center shadow-sm`}>
+                    <Icon size={18} strokeWidth={2} />
                   </div>
+                  <h4 className="text-xs font-bold text-[#00271D] leading-snug">{item.title}</h4>
+                  <p className="text-[11px] text-[#00271D]/60 font-medium leading-relaxed">{item.body}</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Module 3: TOP RECYCLED MATERIALS */}
-          <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
-            <div>
-              <h4 className="text-xs font-extrabold text-gray-900 flex items-center gap-2">
-                <span className="text-emerald-500 text-sm">♻️</span>
-                <span>Most Reported Materials</span>
-              </h4>
-              <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                Item categories submitted by students across campus
-              </p>
-            </div>
-
-            <div className="space-y-3 pt-1">
-              {[
-                { name: 'Plastic Bottles', pct: 45, count: 210, icon: '🥤', barBg: 'bg-emerald-500', bg: 'bg-emerald-50/60', text: 'text-emerald-700', border: 'border-emerald-100' },
-                { name: 'Aluminum Cans', pct: 30, count: 140, icon: '🥫', barBg: 'bg-sky-500', bg: 'bg-sky-50/60', text: 'text-sky-700', border: 'border-sky-100' },
-                { name: 'Paper / Cardboard', pct: 15, count: 70, icon: '📦', barBg: 'bg-amber-500', bg: 'bg-amber-50/60', text: 'text-amber-700', border: 'border-amber-100' },
-                { name: 'Glass / Others', pct: 10, count: 45, icon: '🍾', barBg: 'bg-purple-500', bg: 'bg-purple-50/60', text: 'text-purple-700', border: 'border-purple-100' },
-              ].map((item) => (
-                <div key={item.name} className={`p-3 rounded-2xl border ${item.bg} ${item.border} space-y-1.5`}>
-                  <div className="flex justify-between items-center text-xs font-bold text-gray-900">
-                    <span className="flex items-center gap-1.5">
-                      <span>{item.icon}</span>
-                      <span>{item.name}</span>
-                    </span>
-                    <span className={item.text}>{item.pct}% · {item.count} reports</span>
-                  </div>
-                  <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${item.barBg} transition-all duration-500`}
-                      style={{ width: `${item.pct}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
+              </div>
+            );
+          })}
         </div>
       </div>
 

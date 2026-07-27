@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { Role } from '../../types';
+import { SortLogo } from '../common/SortLogo';
 import {
   LayoutDashboard,
   FilePlus,
@@ -80,27 +81,24 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
   if (!currentUser) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col font-sans">
+    <div className="min-h-screen text-[#00271D] flex flex-col font-sans relative" style={{ background: '#F9F3F0' }}>
+      {/* Organic backdrop waves */}
+      <svg className="fixed inset-0 w-full h-full pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <ellipse cx="5%" cy="15%" rx="30%" ry="22%" fill="#e0f2ec" opacity="0.5" />
+        <ellipse cx="90%" cy="80%" rx="35%" ry="28%" fill="#d1f0e4" opacity="0.4" />
+        <ellipse cx="60%" cy="45%" rx="20%" ry="15%" fill="#e0f2ec" opacity="0.25" />
+      </svg>
       
       {/* HEADER BAR */}
-      <header className="sticky top-0 z-40 w-full bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+      <header className="sticky top-0 z-40 w-full bg-white/85 backdrop-blur-xl border-b border-[#00271D]/10 px-4 py-3 flex items-center justify-between shadow-sm shadow-[#00271D]/5">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-150 md:hidden transition-colors"
+            className="p-1.5 rounded-lg text-[#00271D]/50 hover:text-[#00271D] hover:bg-[#00271D]/5 md:hidden transition-colors"
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          
-          {/* Logo Area */}
-          <div className="flex items-center gap-2">
-            <div className="bg-emerald-500 text-white p-1.5 rounded-lg font-black tracking-wider text-xs">
-              S.O.R.T
-            </div>
-            <span className="hidden sm:inline font-bold tracking-tight text-sm text-gray-800">
-              Campus Environmental Management
-            </span>
-          </div>
+          <SortLogo size={38} subtitle={currentUser.role === 'ADMIN' ? 'Admin Console' : 'MRF Terminal'} />
         </div>
 
         {/* Header Right Interactions */}
@@ -262,15 +260,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
         {/* SIDEBAR */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 pt-20 pb-4 px-3 flex flex-col justify-between
+            fixed inset-y-0 left-0 z-30 w-64 bg-white/90 backdrop-blur-xl border-r border-[#00271D]/10 pt-20 pb-4 px-3 flex flex-col justify-between
             transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:pt-4
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           `}
         >
           <div className="flex flex-col gap-5">
             
-            <div className="px-3 pb-1 border-b border-gray-100 hidden md:block">
-              <span className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">
+            <div className="px-3 pb-1 border-b border-[#00271D]/8 hidden md:block">
+              <span className="text-[10px] font-bold text-[#00271D]/40 tracking-widest uppercase">
                 Control Center
               </span>
             </div>
@@ -283,17 +281,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
                 const isStudent = currentUser.role === 'STUDENT';
                 const isTeacher = currentUser.role === 'TEACHER';
                 
-                const activeBtnStyle = isStudent
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-250/60 shadow-sm shadow-emerald-500/5'
-                  : isTeacher
-                    ? 'bg-indigo-50 text-indigo-700 border-indigo-250/60 shadow-sm shadow-indigo-500/5'
-                    : 'bg-violet-50 text-violet-750 border-violet-250/60 shadow-sm shadow-violet-500/5';
-                    
-                const activeIconStyle = isStudent
-                  ? 'text-emerald-600'
-                  : isTeacher
-                    ? 'text-indigo-600'
-                    : 'text-violet-600';
+                const activeBtnStyle = 'bg-[#00A77C]/10 text-[#00A77C] border-[#00A77C]/20 shadow-sm shadow-[#00A77C]/5';
+                const activeIconStyle = 'text-[#00A77C]';
                 
                 return (
                   <button
@@ -306,14 +295,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
                       w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide border border-transparent transition-all group cursor-pointer
                       ${isActive
                         ? activeBtnStyle
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        : 'text-[#00271D]/60 hover:bg-[#00271D]/5 hover:text-[#00271D]'
                       }
                     `}
                   >
                     <IconComponent
                       size={15}
                       className={`transition-colors ${
-                        isActive ? activeIconStyle : 'text-gray-400 group-hover:text-gray-700'
+                        isActive ? activeIconStyle : 'text-[#00271D]/35 group-hover:text-[#00271D]'
                       }`}
                     />
                     <span>{item.label}</span>
@@ -327,10 +316,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
           </div>
 
           {/* Sidebar Footer */}
-          <div className="px-3 pt-4 border-t border-gray-100 flex flex-col gap-3.5">
+          <div className="px-3 pt-4 border-t border-[#00271D]/8 flex flex-col gap-3.5">
             <button
               onClick={() => logout()}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-[#00271D]/50 hover:text-rose-600 hover:bg-rose-50 transition-all"
             >
               <LogOut size={15} />
               <span>Sign Out Session</span>
@@ -358,7 +347,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
         )}
 
         {/* MAIN DISPLAY REGION */}
-        <main className="flex-1 overflow-y-auto px-3 py-5 md:px-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-y-auto px-3 py-5 md:px-8 max-w-7xl mx-auto w-full relative z-10">
           {children}
         </main>
         

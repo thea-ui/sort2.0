@@ -22,14 +22,14 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-900">
+    <div className="min-h-screen bg-[#F9F3F0] font-sans text-[#012625]">
       <LandingHeader onNavigate={onNavigate} />
       <HeroSection scrollToLogin={scrollToLogin} />
       <MetricsRow />
       <FeaturesSection />
 
       {/* Main content area */}
-      <div className="bg-gray-50">
+      <div className="bg-[#F9F3F0]">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
 

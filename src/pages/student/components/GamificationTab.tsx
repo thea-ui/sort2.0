@@ -68,7 +68,6 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
     e.gradeSection.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Top 3 Podium entries (ordered Rank 2, Rank 1, Rank 3 or top 3)
   const rank1 = leaderboardEntries.find(e => e.rank === 1);
   const rank2 = leaderboardEntries.find(e => e.rank === 2);
   const rank3 = leaderboardEntries.find(e => e.rank === 3);
@@ -76,36 +75,33 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
   const top3Podium = [rank2, rank1, rank3].filter(Boolean) as typeof leaderboardEntries;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
-      
-      {/* Header Section (Matches Screenshot 693) */}
+    <div className="max-w-5xl mx-auto space-y-6 pb-10">
+
+      {/* Header Section */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-extrabold tracking-tight text-gray-900 flex items-center gap-2">
-            <Trophy className="text-amber-500" size={20} />
+          <h2 className="text-lg font-heading font-extrabold tracking-tight text-[#00271D] flex items-center gap-2">
+            <Trophy className="text-[#C69B26]" size={20} />
             <span>Eco-Champions Leaderboard</span>
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5">Showing top reporters for this academic quarter</p>
+          <p className="text-xs text-gray-400 mt-0.5">Showing top reporters for this academic quarter</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Refresh Action Button (Matches Screenshot 693) */}
-          <button
-            type="button"
-            onClick={() => {}}
-            title="Refresh Leaderboard"
-            className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-500 hover:text-emerald-600 hover:border-emerald-200 shadow-sm transition-all cursor-pointer"
-          >
-            <RotateCcw size={15} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {}}
+          title="Refresh Leaderboard"
+          className="p-2 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-[#00A77C] hover:border-[#00A77C] shadow-sm transition-all cursor-pointer"
+        >
+          <RotateCcw size={14} />
+        </button>
       </div>
 
-      {/* Simulator Quick Controls (Preserved Simulator Feature) */}
-      <div className="flex items-center justify-between bg-gray-50/80 border border-gray-200 rounded-xl p-3 text-xs">
+      {/* Simulator Quick Controls */}
+      <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl p-3.5 text-xs shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tournament State:</span>
-          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isPeriodOver ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${isPeriodOver ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-[#00A77C]/10 text-[#00A77C] border-[#00A77C]/20'}`}>
             {isPeriodOver ? 'Ended' : 'Active'}
           </span>
         </div>
@@ -113,14 +109,14 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
           <button
             type="button"
             onClick={() => setIsPeriodOver(!isPeriodOver)}
-            className="px-2.5 py-1 text-[10px] font-bold rounded border bg-white border-gray-200 text-gray-700 hover:bg-gray-100 cursor-pointer select-none"
+            className="px-3 py-1.5 text-[10px] font-bold rounded-lg border bg-gray-50 border-gray-200 text-[#00271D] hover:bg-gray-100 cursor-pointer select-none"
           >
             {isPeriodOver ? 'Resume Period' : 'End Period Now'}
           </button>
           <button
             type="button"
             onClick={() => deductPoints('current', -300)}
-            className="px-2.5 py-1 text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded cursor-pointer select-none"
+            className="px-3 py-1.5 text-[10px] font-bold bg-[#00A77C]/10 text-[#00A77C] border border-[#00A77C]/20 rounded-lg cursor-pointer select-none"
           >
             +300 PTS
           </button>
@@ -129,70 +125,68 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
 
       {/* Claim success alert */}
       {claimedSuccess && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center gap-3 animate-fade-in text-xs shadow-sm">
-          <CheckCircle size={20} className="shrink-0 text-emerald-600" />
+        <div className="p-4 bg-[#00A77C]/20 border border-[#00A77C]/50 text-[#00A77C] rounded-2xl flex items-center gap-3 animate-fade-in text-xs shadow-xs">
+          <CheckCircle size={20} className="shrink-0 text-[#00A77C]" />
           <div>
             <p className="font-bold text-sm">Certificate Claimed Successfully!</p>
-            <p className="text-emerald-700 mt-0.5">
+            <p className="text-[#00A77C] mt-0.5">
               "Top 1 Institutional Certificate" has been added to your Showcase.
             </p>
           </div>
         </div>
       )}
 
-      {/* Amber Banner: How Points Work (Matches Screenshot 693) */}
-      <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 sm:p-5 text-amber-950 shadow-sm space-y-3">
-        <div className="flex items-center gap-2 font-bold text-xs text-amber-900">
-          <Lightbulb className="text-amber-500 shrink-0" size={16} />
+      {/* Banner: How Points Work */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5 text-[#00271D] shadow-sm space-y-3">
+        <div className="flex items-center gap-2 font-bold text-xs text-[#00A77C]">
+          <Lightbulb className="text-[#00A77C] shrink-0" size={16} />
           <span>How Points Work</span>
         </div>
-        <p className="text-xs text-amber-800/90 leading-relaxed font-medium">
+        <p className="text-xs text-[#00271D]/80 leading-relaxed font-medium">
           When the same bin is reported by multiple students, only the first 3 get points after admin verification:
         </p>
 
         <div className="flex flex-wrap gap-2 pt-0.5">
-          <span className="px-3 py-1 bg-amber-100/90 border border-amber-200/80 text-amber-800 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
+          <span className="px-3 py-1 bg-[#C69B26]/20 border border-[#C69B26]/40 text-[#C69B26] rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
             <span>🥇</span> <span>15 pts — 1st reporter</span>
           </span>
-          <span className="px-3 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
+          <span className="px-3 py-1 bg-[#F9F3F0] border border-[#00271D]/15 text-[#00271D] rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
             <span>🥈</span> <span>10 pts — 2nd reporter</span>
           </span>
-          <span className="px-3 py-1 bg-orange-100/80 border border-orange-200/80 text-amber-900 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
+          <span className="px-3 py-1 bg-[#F9F3F0] border border-[#00271D]/15 text-[#00271D]/80 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
             <span>🥉</span> <span>5 pts — 3rd reporter</span>
           </span>
         </div>
       </div>
 
-      {/* Top 3 Winner Podium Cards (Matches Screenshot 693) */}
+      {/* Top 3 Winner Podium Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {top3Podium.map((entry) => {
           const isUser = entry.isCurrentUser;
-          const medalIcon = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : '🥉';
-          const badgeBg = entry.rank === 1 ? 'bg-amber-100 border-amber-200 text-amber-800' :
-                          entry.rank === 2 ? 'bg-slate-100 border-slate-200 text-slate-700' :
-                          'bg-orange-100 border-orange-200 text-amber-900';
+          const badgeBg = entry.rank === 1 ? 'bg-[#C69B26]/20 border-[#C69B26] text-[#C69B26]' :
+                          entry.rank === 2 ? 'bg-[#F9F3F0] border-[#00271D]/20 text-[#00271D]' :
+                          'bg-[#F9F3F0] border-[#00271D]/15 text-[#00271D]/80';
 
           return (
             <div
               key={entry.studentId}
-              className={`bg-white rounded-2xl p-5 border text-center flex flex-col items-center justify-center transition-all ${
+              className={`bg-white rounded-2xl p-6 border text-center flex flex-col items-center justify-center transition-all hover:shadow-md ${
                 isUser
-                  ? 'border-2 border-emerald-500 ring-2 ring-emerald-500/10 shadow-sm'
-                  : 'border-gray-200 shadow-sm hover:shadow-md'
+                  ? 'border-2 border-[#00A77C] shadow-sm'
+                  : 'border-gray-200 shadow-sm'
               }`}
             >
-              {/* Top Medal Icon Badge (Matches Screenshot 693) */}
-              <div className={`h-8 w-8 rounded-full border flex items-center justify-center text-sm mb-3 shadow-inner font-bold ${badgeBg}`}>
+              <div className={`h-9 w-9 rounded-full border flex items-center justify-center text-sm mb-3 font-bold ${badgeBg}`}>
                 {entry.rank}
               </div>
 
-              <h3 className={`text-xs font-bold ${isUser ? 'text-emerald-950 font-extrabold' : 'text-gray-900'}`}>
+              <h3 className={`text-xs font-bold ${isUser ? 'text-[#00A77C] font-extrabold' : 'text-[#00271D]'}`}>
                 {entry.studentName} {isUser && '(You)'}
               </h3>
-              <p className="text-[11px] text-gray-400 font-medium mt-0.5">Student</p>
+              <p className="text-[11px] text-[#00271D]/50 font-medium mt-0.5">Student</p>
 
-              <div className="flex items-center gap-1 mt-2.5 font-black text-xs text-gray-900">
-                <Flame size={14} className="text-orange-500 fill-orange-500" />
+              <div className="flex items-center gap-1 mt-2.5 font-black text-xs text-[#00A77C]">
+                <Flame size={14} className="text-[#00A77C] fill-[#00A77C]" />
                 <span>{entry.pointsBalance}</span>
               </div>
             </div>
@@ -200,22 +194,22 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         })}
       </div>
 
-      {/* Search Input Bar (Matches Screenshot 693) */}
+      {/* Search Input Bar */}
       <div className="relative">
-        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#00271D]/40 pointer-events-none" />
         <input
           type="text"
           placeholder="Search by name or course..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs text-gray-800 placeholder-gray-400 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all shadow-sm font-medium"
+          className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-[#00271D] placeholder-gray-400 outline-none focus:border-[#00A77C] transition-all shadow-sm font-medium"
         />
       </div>
 
-      {/* Full Leaderboard Directory List (Matches Screenshot 693) */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-150 shadow-sm">
+      {/* Full Leaderboard Directory List */}
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100 shadow-sm">
         {filteredEntries.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-xs font-medium">
+          <div className="p-8 text-center text-[#00271D]/50 text-xs font-medium">
             No students found matching your search.
           </div>
         ) : (
@@ -228,45 +222,41 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
                 key={user.studentId}
                 className={`p-4 flex items-center justify-between transition-colors ${
                   isUser
-                    ? 'bg-emerald-50/40 border-l-4 border-emerald-500'
-                    : 'hover:bg-gray-50'
+                    ? 'bg-[#00A77C]/15 border-l-4 border-[#00A77C]'
+                    : 'hover:bg-[#F9F3F0]'
                 }`}
               >
                 <div className="flex items-center gap-3.5">
-                  {/* Medal / Rank Indicator Badge */}
                   <div className="w-6 text-center text-sm font-bold">
                     {user.rank === 1 ? (
-                      <span className="h-6 w-6 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-extrabold inline-flex items-center justify-center">1</span>
+                      <span className="h-6 w-6 rounded-full bg-[#C69B26]/20 border border-[#C69B26] text-[#C69B26] text-[11px] font-extrabold inline-flex items-center justify-center">1</span>
                     ) : user.rank === 2 ? (
-                      <span className="h-6 w-6 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-extrabold inline-flex items-center justify-center">2</span>
+                      <span className="h-6 w-6 rounded-full bg-[#F9F3F0] border border-[#00271D]/20 text-[#00271D] text-[11px] font-extrabold inline-flex items-center justify-center">2</span>
                     ) : user.rank === 3 ? (
-                      <span className="h-6 w-6 rounded-full bg-orange-100 border border-orange-200 text-amber-900 text-[11px] font-extrabold inline-flex items-center justify-center">3</span>
+                      <span className="h-6 w-6 rounded-full bg-[#F9F3F0] border border-[#00271D]/15 text-[#00271D]/80 text-[11px] font-extrabold inline-flex items-center justify-center">3</span>
                     ) : (
-                      <span className="text-gray-400 text-xs font-bold">#{user.rank}</span>
+                      <span className="text-[#00271D]/40 text-xs font-bold">#{user.rank}</span>
                     )}
                   </div>
 
-                  {/* Avatar Circle */}
                   <div className={`h-9 w-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                    isUser ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-800'
+                    isUser ? 'bg-[#00A77C] text-white' : 'bg-[#00A77C]/20 text-[#00A77C]'
                   }`}>
                     {initial}
                   </div>
 
-                  {/* Name & Subtitle */}
                   <div>
-                    <h4 className={`text-xs font-bold ${isUser ? 'text-emerald-950 font-extrabold' : 'text-gray-900'}`}>
+                    <h4 className={`text-xs font-bold ${isUser ? 'text-[#00A77C] font-extrabold' : 'text-[#00271D]'}`}>
                       {user.studentName} {isUser && '(You)'}
                     </h4>
-                    <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                    <p className="text-[11px] text-[#00271D]/50 font-medium mt-0.5">
                       Student · {user.reportsCount} {user.reportsCount === 1 ? 'report' : 'reports'}
                     </p>
                   </div>
                 </div>
 
-                {/* Fire Points Display */}
-                <div className="flex items-center gap-1 font-black text-xs text-gray-900">
-                  <Flame size={14} className="text-orange-500 fill-orange-500" />
+                <div className="flex items-center gap-1 font-black text-xs text-[#00271D]">
+                  <Flame size={14} className="text-[#00A77C] fill-[#00A77C]" />
                   <span>{user.pointsBalance}</span>
                 </div>
               </div>
@@ -275,20 +265,20 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         )}
       </div>
 
-      {/* Claim Certificate Action Bar (If winner) */}
+      {/* Claim Certificate Action Bar */}
       {isWinner && isPeriodOver && (
-        <div className="p-5 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-2xl text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-6 bg-[#00A77C] rounded-2xl text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
           <div>
             <h4 className="font-extrabold text-sm flex items-center gap-1.5">
               <Award size={18} />
               <span>Rank #1 Winner Prize Available!</span>
             </h4>
-            <p className="text-xs text-amber-100 mt-0.5">You finished as the #1 Ecology Champion for this quarter.</p>
+            <p className="text-xs text-white/80 mt-0.5">You finished as the #1 Ecology Champion for this quarter.</p>
           </div>
           <button
             type="button"
             onClick={handleClaim}
-            className="py-2.5 px-4 bg-white text-amber-800 font-extrabold text-xs rounded-xl shadow cursor-pointer hover:bg-amber-50 transition-all active:scale-95 shrink-0"
+            className="py-2.5 px-5 bg-white text-[#00A77C] font-extrabold text-xs rounded-full shadow cursor-pointer hover:bg-[#F9F3F0] transition-all shrink-0"
           >
             Claim Institutional Certificate
           </button>
@@ -296,9 +286,9 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
       )}
 
       {/* Active Challenges Section */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-          <Trophy size={14} className="text-amber-500" />
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <h3 className="text-xs font-bold text-[#00271D]/50 uppercase tracking-widest flex items-center gap-2">
+          <Trophy size={14} className="text-[#C69B26]" />
           <span>Active Accumulation Challenges</span>
         </h3>
 
@@ -307,25 +297,25 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
             const pct = Math.round((ch.progress / ch.target) * 100);
 
             return (
-              <div key={ch.id} className="bg-gray-50/70 rounded-xl p-4 border border-gray-200 space-y-3">
+              <div key={ch.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
                 <div className="flex justify-between items-start gap-3">
                   <div>
-                    <h4 className="text-xs font-bold text-gray-800">{ch.title}</h4>
-                    <p className="text-[11px] text-gray-500 mt-0.5 leading-normal">{ch.description}</p>
+                    <h4 className="text-xs font-bold text-[#00271D]">{ch.title}</h4>
+                    <p className="text-[11px] text-[#00271D]/60 mt-0.5 leading-normal">{ch.description}</p>
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded shrink-0">
+                  <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/20 border border-[#00A77C]/40 px-2.5 py-0.5 rounded-full shrink-0">
                     +{ch.pointsAwarded} PTS
                   </span>
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] font-semibold text-gray-400">
+                  <div className="flex justify-between text-[10px] font-semibold text-[#00271D]/50">
                     <span>Progress</span>
                     <span>{ch.progress} / {ch.target} ({pct}%)</span>
                   </div>
-                  <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-[#00271D]/10 h-1.5 rounded-full overflow-hidden">
                     <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                      className="bg-[#00A77C] h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(pct, 100)}%` }}
                     />
                   </div>

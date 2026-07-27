@@ -8,42 +8,76 @@ export default {
   theme: {
     extend: {
       colors: {
+        background: '#F9F3F0',
+        bg: '#F9F3F0',
+        primary: {
+          DEFAULT: '#00271D',
+          dark: '#001a13',
+          light: '#00A77C',
+        },
+        secondary: {
+          DEFAULT: '#00A77C',
+          light: '#33b996',
+          dark: '#008563',
+        },
+        accent: {
+          DEFAULT: '#00A77C',
+          hover: '#008b67',
+        },
+        gold: {
+          DEFAULT: '#C69B26',
+          light: '#d6b14d',
+          dark: '#a17e1e',
+        },
+        mainText: '#00271D',
+        textPrimary: '#00271D',
+        link: '#00A77C',
+        brand: {
+          primary: '#00271D',
+          secondary: '#00A77C',
+          accent: '#00A77C',
+          gold: '#C69B26',
+          bg: '#F9F3F0',
+          text: '#00271D',
+          link: '#00A77C',
+        },
         emerald: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7',
-          400: '#34d399',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
-          950: '#022c22',
+          50: '#e0f2ec',
+          100: '#d1f0e4',
+          200: '#33b996',
+          300: '#33b996',
+          400: '#1ab089',
+          500: '#00A77C',
+          600: '#008b67',
+          700: '#00271D',
+          800: '#00271D',
+          900: '#001a13',
+          950: '#00150f',
         },
         slate: {
-          950: '#020617',
+          950: '#00271D',
         }
       },
-      animation: {
-        'pulse-glow': 'pulse-glow 2.5s infinite ease-in-out',
-        'fade-in-up': 'fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-        'shimmer': 'shimmer 2.5s infinite linear',
+      fontFamily: {
+        sans: ['Tenon', 'Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        body: ['Tenon', 'Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        heading: ['Korolev', 'Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        primary: ['Tenon', 'Plus Jakarta Sans', 'sans-serif'],
       },
-      keyframes: {
-        'pulse-glow': {
-          '0%, 100%': { opacity: '0.7', filter: 'drop-shadow(0 0 4px rgba(16, 185, 129, 0.4))' },
-          '50%': { opacity: '1', filter: 'drop-shadow(0 0 16px rgba(16, 185, 129, 0.7))' },
-        },
-        'fade-in-up': {
-          '0%': { opacity: '0', transform: 'translateY(12px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        'shimmer': {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        }
+      fontSize: {
+        'h1': ['72px', { lineHeight: '1.1', fontWeight: '700' }],
+        'h2': ['32px', { lineHeight: '1.25', fontWeight: '600' }],
+        'body': ['16px', { lineHeight: '1.5' }],
       },
+      borderRadius: {
+        sm: '6px',
+        md: '10px',
+        lg: '12px',
+        xl: '16px',
+        '2xl': '20px',
+        '3xl': '24px',
+        full: '9999px',
+      }
     },
   },
   plugins: [],

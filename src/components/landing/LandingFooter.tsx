@@ -1,5 +1,5 @@
 import React from 'react';
-import { Leaf } from 'lucide-react';
+import { SortLogo } from '../common/SortLogo';
 
 export const LandingFooter: React.FC = () => {
   return (
@@ -8,12 +8,7 @@ export const LandingFooter: React.FC = () => {
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           {/* Brand */}
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500">
-                <Leaf size={13} className="text-white" strokeWidth={2.5} />
-              </div>
-              <span className="text-sm font-bold text-gray-900">S.O.R.T</span>
-            </div>
+            <SortLogo size={28} showText={true} />
             <p className="max-w-[220px] text-[11px] leading-relaxed text-gray-400">
               Smart Operational Recovery & Tracking — campus ecological waste management platform.
             </p>
