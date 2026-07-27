@@ -61,19 +61,20 @@ interface SubmitReportTabProps {
 }
 
 const DEFAULT_LOCATIONS = [
-  { name: 'Cafeteria – Block A', status: 'Available', isFull: false, lat: 14.6005, lng: 120.9835 },
-  { name: 'Library Entrance', status: 'Unavailable', isFull: true, lat: 14.5988, lng: 120.9868 },
-  { name: 'Gym Hallway', status: 'Available', isFull: false, lat: 14.6022, lng: 120.9830 },
-  { name: 'Engineering Bldg – 2F', status: 'Available', isFull: false, lat: 14.5995, lng: 120.9855 },
-  { name: 'Parking Lot B', status: 'Available', isFull: false, lat: 14.6010, lng: 120.9870 },
-  { name: 'Science Hall Cafeteria Side', status: 'Unavailable', isFull: true, lat: 14.6018, lng: 120.9860 },
+  { name: 'Cafeteria – Block A', status: 'Available', isFull: false, bioFull: false, nonBioFull: false, lat: 14.6005, lng: 120.9835 },
+  { name: 'Library Entrance', status: 'Unavailable', isFull: true, bioFull: true, nonBioFull: false, lat: 14.5988, lng: 120.9868 },
+  { name: 'Gym Hallway', status: 'Available', isFull: false, bioFull: false, nonBioFull: false, lat: 14.6022, lng: 120.9830 },
+  { name: 'Engineering Bldg – 2F', status: 'Available', isFull: false, bioFull: false, nonBioFull: false, lat: 14.5995, lng: 120.9855 },
+  { name: 'Parking Lot B', status: 'Available', isFull: false, bioFull: false, nonBioFull: true, lat: 14.6010, lng: 120.9870 },
+  { name: 'Science Hall Cafeteria Side', status: 'Unavailable', isFull: true, bioFull: true, nonBioFull: true, lat: 14.6018, lng: 120.9860 },
 ];
 
-const CATEGORIES: { key: WasteCategory; label: string; icon: string; bg: string; text: string; border: string }[] = [
-  { key: 'RECYCLABLE', label: 'Recyclable', icon: '♻️', bg: 'bg-[#67D695]/20', text: 'text-[#00615F]', border: 'border-[#67D695]/40' },
-  { key: 'ORGANIC', label: 'Organic', icon: '🍏', bg: 'bg-[#67D695]/20', text: 'text-[#00615F]', border: 'border-[#67D695]/40' },
-  { key: 'HAZARDOUS', label: 'Hazardous', icon: '⚠️', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
-  { key: 'GENERAL', label: 'General', icon: '🗑️', bg: 'bg-[#F9F3F0]', text: 'text-[#012625]', border: 'border-[#012625]/15' },
+const RECYCLABLE_CATEGORIES = [
+  { id: 'plastic', label: 'Plastic Bottles', icon: '🍾', desc: 'PET bottles, beverage containers' },
+  { id: 'glass', label: 'Glass / Tanduay Bottles', icon: '🍶', desc: 'Glass bottles, jars' },
+  { id: 'aluminum', label: 'Aluminum Cans', icon: '🥫', desc: 'Soda cans, tin containers' },
+  { id: 'paper', label: 'Paper & Cardboard', icon: '📦', desc: 'Cardboard boxes, papers' },
+  { id: 'residual', label: 'Residual Waste', icon: '🗑️', desc: 'General non-recyclables' },
 ];
 
 export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
@@ -207,9 +208,9 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
           <AlertTriangle className="text-white" size={20} />
         </div>
         <div className="flex-1">
-          <h3 className="font-heading font-bold text-sm text-[#00271D]">Report a Full Trashbin</h3>
+          <h3 className="font-heading font-bold text-sm text-[#00271D]">Report Campus Waste</h3>
           <p className="text-xs text-[#00271D]/70 mt-0.5 font-medium">
-            Take a photo, select location, and submit. MRF staff will handle the rest.
+            Select recyclable type, pin location or pick a bin station, and submit photo evidence.
           </p>
         </div>
       </div>
@@ -356,7 +357,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Bin Location & Map */}
+        {/* Card 2: Bin Location & Map with Side-by-Side Color-Coded Trash Cans */}
         <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-md transition-all space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2">
@@ -429,7 +430,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
           {/* Interactive Campus Grid Map */}
           <div className="space-y-1.5 pt-1">
             <div className="flex justify-between items-center text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">
-              <span>Campus Map Grid View</span>
+              <span>Campus Map Grid View (Side-by-Side Dual Trash Can Stations)</span>
               {locationName && <span className="text-[#00A77C] normal-case font-semibold truncate max-w-[200px]">Selected: {locationName}</span>}
             </div>
 
@@ -456,7 +457,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                 setIsScatteredDebris(true);
                 setLocationName(`Scattered Debris at Grid [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
               }}
-              className={`relative w-full h-[280px] rounded-2xl border bg-[#00271D] border-[#00271D] overflow-hidden shadow-inner flex items-center justify-center transition-all ${
+              className={`relative w-full h-[300px] rounded-2xl border bg-[#00271D] border-[#00271D] overflow-hidden shadow-inner flex items-center justify-center transition-all ${
                 isPinningMode ? 'cursor-crosshair ring-2 ring-[#00A77C]' : 'cursor-default'
               }`}
             >
@@ -483,43 +484,70 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                 <text x="74%" y="83%" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle">Main Library</text>
               </svg>
 
-              <div className="absolute top-2 left-2 bg-[#00271D]/80 backdrop-blur-sm px-2.5 py-1 rounded-full text-[8px] text-white font-bold uppercase border border-[#00A77C]">
-                Interactive Grid Coordinate System
+              <div className="absolute top-2 left-2 bg-[#00271D]/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[8px] text-[#00A77C] font-bold uppercase border border-[#00A77C]">
+                📍 Side-by-Side Color-Coded Stations
               </div>
 
-              {bins.map(bin => {
+              {/* Side-by-Side Dual Trash Cans plot */}
+              {DEFAULT_LOCATIONS.map(loc => {
                 const minLat = 14.5980;
                 const maxLat = 14.6030;
                 const minLng = 120.9820;
                 const maxLng = 120.9880;
 
-                const pctY = ((maxLat - bin.coordinates.lat) / (maxLat - minLat)) * 100;
-                const pctX = ((bin.coordinates.lng - minLng) / (maxLng - minLng)) * 100;
+                const pctY = ((maxLat - loc.lat) / (maxLat - minLat)) * 100;
+                const pctX = ((loc.lng - minLng) / (maxLng - minLng)) * 100;
 
-                const isSelected = binId === bin.id || locationName === bin.locationName;
-                const unavail = bin.activeDispatch || bin.fillLevel >= 85;
-
-                const trashColor = unavail
-                  ? 'text-rose-400 bg-rose-950/80 border-rose-800'
-                  : 'text-[#00A77C] bg-[#00271D]/90 border-[#00A77C]/50';
+                const isSelected = locationName === loc.name;
 
                 return (
                   <div
-                    key={bin.id}
+                    key={loc.name}
                     style={{ left: `${pctX}%`, top: `${pctY}%` }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setBinId(bin.id);
+                      setLocationName(loc.name);
+                      setBinId(null);
                       setIsScatteredDebris(false);
-                      setGpsCoords(bin.coordinates);
-                      setLocationName(bin.locationName);
+                      setGpsCoords({ lat: loc.lat, lng: loc.lng });
                     }}
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 p-1.5 rounded-xl border flex flex-col items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-all select-none z-20 ${trashColor} ${
-                      isSelected ? 'ring-2 ring-[#00A77C] scale-110' : ''
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 z-20 group ${
+                      isSelected
+                        ? 'scale-125 z-40 ring-4 ring-[#00A77C] ring-offset-2 ring-offset-[#00271D] rounded-2xl shadow-[0_0_25px_rgba(0,167,124,0.9)] animate-pulse'
+                        : 'hover:scale-110'
                     }`}
                   >
-                    <Trash2 size={12} className="stroke-[2.5]" />
-                    <span className="text-[5.5px] font-black block text-center uppercase tracking-wider mt-0.5">{bin.type.slice(0, 4)}</span>
+                    {/* Station Pair Box with Two Side-by-Side Trash Cans */}
+                    <div className={`flex items-center gap-1.5 bg-[#00271D]/90 backdrop-blur-md px-2 py-1.5 rounded-xl border shadow-xl ${
+                      isSelected ? 'border-[#00A77C] bg-[#00271D]' : 'border-[#00A77C]/40'
+                    }`}>
+                      {/* Left Trash Can: Biodegradable (Emerald Green or Rose if Full) */}
+                      <div className="flex flex-col items-center">
+                        <div className={`p-1 rounded-md flex items-center justify-center transition-colors ${
+                          loc.bioFull ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
+                        }`}>
+                          <Trash2 size={12} strokeWidth={2.5} />
+                        </div>
+                        <span className="text-[6px] font-black text-emerald-300 uppercase tracking-tighter mt-0.5">Bio</span>
+                      </div>
+
+                      {/* Right Trash Can: Non-Biodegradable / Recyclable (Sky Blue or Rose if Full) */}
+                      <div className="flex flex-col items-center">
+                        <div className={`p-1 rounded-md flex items-center justify-center transition-colors ${
+                          loc.nonBioFull ? 'bg-rose-500 text-white' : 'bg-sky-500 text-white'
+                        }`}>
+                          <Trash2 size={12} strokeWidth={2.5} />
+                        </div>
+                        <span className="text-[6px] font-black text-sky-300 uppercase tracking-tighter mt-0.5">Non-Bio</span>
+                      </div>
+                    </div>
+
+                    {/* Location Tooltip label on hover/select */}
+                    <div className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded bg-black/80 text-white text-[8px] font-bold pointer-events-none transition-opacity ${
+                      isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}>
+                      {loc.name}
+                    </div>
                   </div>
                 );
               })}
@@ -542,32 +570,45 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
           </div>
         </div>
 
-        {/* Card 3: Waste Category */}
+        {/* Card 3: Primary Recyclable Category Selection (Reporting-Focused) */}
         <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-md transition-all space-y-4">
-          <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2">
-            <Tag size={18} className="text-[#00A77C]" />
-            <span>Waste Category</span>
-            <span className="text-rose-500">*</span>
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2">
+              <Tag size={18} className="text-[#00A77C]" />
+              <span>Primary Recyclable Category</span>
+              <span className="text-rose-500">*</span>
+            </h3>
+            <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-0.5 rounded-full w-fit">
+              Selection Only · Weight & Price at MRF
+            </span>
+          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {CATEGORIES.map(cat => {
-              const isSelected = category === cat.key;
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            {RECYCLABLE_CATEGORIES.map(cat => {
+              const isSelected = reportTitle === cat.label || (selectedMaterials && selectedMaterials.includes(cat.label));
               return (
                 <button
-                  key={cat.key}
+                  key={cat.id}
                   type="button"
-                  onClick={() => setCategory && setCategory(cat.key)}
-                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  onClick={() => {
+                    setReportTitle(cat.label);
+                    setSelectedMaterials?.([cat.label]);
+                  }}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between select-none ${
                     isSelected
-                      ? 'bg-[#00A77C]/15 border-[#00A77C] text-[#00A77C] font-bold shadow-xs'
-                      : 'bg-white border-[#00271D]/15 text-[#00271D]/70 hover:bg-[#F9F3F0]'
+                      ? 'bg-[#00A77C]/15 border-[#00A77C] text-[#00271D] font-bold ring-2 ring-[#00A77C]/40 shadow-sm'
+                      : 'bg-white border-[#00271D]/15 text-[#00271D]/70 hover:bg-[#F9F3F0] hover:border-[#00A77C]/50'
                   }`}
                 >
-                  <div className="text-xl">{cat.icon}</div>
-                  <span className={`text-xs font-bold mt-2 ${isSelected ? 'text-[#00A77C]' : 'text-[#00271D]'}`}>
-                    {cat.label}
-                  </span>
+                  <div className="text-2xl mb-2">{cat.icon}</div>
+                  <div>
+                    <p className={`text-xs font-bold ${isSelected ? 'text-[#00A77C]' : 'text-[#00271D]'}`}>
+                      {cat.label}
+                    </p>
+                    <p className="text-[10px] text-[#00271D]/50 font-normal mt-0.5 leading-snug">
+                      {cat.desc}
+                    </p>
+                  </div>
                 </button>
               );
             })}

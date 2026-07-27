@@ -4,15 +4,15 @@ import {
   Trash2,
   Search,
   Filter,
-  Compass
+  Radio
 } from 'lucide-react';
 import { Bin } from '../../../types';
 
 interface BinMapTabProps {
   bins: Bin[];
-  setActiveTab?: (tab: string) => void;
-  setBinId?: (id: string | null) => void;
-  setLocationName?: (name: string) => void;
+  setActiveTab: (tab: string) => void;
+  setBinId: (id: string | null) => void;
+  setLocationName: (name: string) => void;
 }
 
 export const isBinUnavailable = (bin: Bin): boolean => {
@@ -53,7 +53,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
 
-      {/* ── Main Live Bin Map Card ── */}
+      {/* ── Main Live Bin Map Card (Matches Screenshot 705) ── */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-7 shadow-sm space-y-5">
         
         {/* Header & Status Indicator */}
@@ -75,7 +75,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           </div>
         </div>
 
-        {/* Filter Pills */}
+        {/* Filter Pills below header */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -123,25 +123,25 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           </button>
         </div>
 
-        {/* ── Dark Mode Blueprint Grid Canvas ── */}
-        <div className="relative w-full h-[380px] sm:h-[420px] rounded-2xl border border-slate-700 bg-slate-900 overflow-hidden shadow-2xl flex items-center justify-center transition-all">
+        {/* Crisp Light Blueprint Grid Map (Matches Screenshot 705) */}
+        <div className="relative w-full h-[360px] sm:h-[400px] rounded-2xl border border-gray-200 bg-[#F8FAFC] overflow-hidden shadow-inner flex items-center justify-center transition-all">
           
-          {/* Dark Grid Overlay Lines */}
-          <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          {/* Light Grid Lines */}
+          <svg className="absolute inset-0 w-full h-full opacity-60 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <pattern id="dark-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-                <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#334155" strokeWidth="1" />
+              <pattern id="light-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#dark-grid)" />
+            <rect width="100%" height="100%" fill="url(#light-grid)" />
           </svg>
 
-          {/* Campus Map Badge */}
-          <div className="absolute top-4 left-4 bg-slate-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] text-slate-200 font-bold border border-slate-700 shadow-md pointer-events-none flex items-center gap-1.5">
-            <span>📍 Campus Grid Map</span>
+          {/* Map Top Badge */}
+          <div className="absolute top-4 left-4 bg-white px-3 py-1.5 rounded-full text-[11px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1.5">
+            <span>📍 Campus Map</span>
           </div>
 
-          {/* Plot Side-By-Side Color-Coded Trash Can Icons */}
+          {/* Plot Bins as Colored Dots on Map */}
           {filteredBins.map(bin => {
             const minLat = 14.5980;
             const maxLat = 14.6030;
@@ -158,39 +158,15 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
               <div
                 key={bin.id}
                 style={{ left: `${pctX}%`, top: `${pctY}%` }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSelectBin(bin);
-                }}
+                onClick={() => handleSelectBin(bin)}
                 className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 z-20 group ${
                   isSelected ? 'scale-150 z-30' : 'hover:scale-125'
                 }`}
               >
-                {/* ── Two Distinct Side-by-Side Color-Coded Trash Cans ── */}
-                <div className={`flex items-center gap-1 p-1 rounded-xl bg-slate-900/90 border-2 border-white shadow-xl transition-all ${
-                  isSelected
-                    ? 'ring-4 ring-[#00A77C]/70 shadow-[#00A77C]/40 animate-pulse'
-                    : 'group-hover:border-[#00A77C]'
-                }`}>
-                  {/* Left Trash Can Icon: Biodegradable / Organic */}
-                  <div
-                    className={`p-1 rounded-md transition-colors ${
-                      unavail ? 'bg-rose-500 text-white' : 'bg-[#10B981] text-white'
-                    }`}
-                    title="Biodegradable / Organic Bin"
-                  >
-                    <Trash2 size={13} />
-                  </div>
-
-                  {/* Right Trash Can Icon: Non-Biodegradable / Recyclable */}
-                  <div
-                    className={`p-1 rounded-md transition-colors ${
-                      unavail ? 'bg-rose-500 text-white' : 'bg-[#0091EA] text-white'
-                    }`}
-                    title="Non-Biodegradable / Recyclable Bin"
-                  >
-                    <Trash2 size={13} />
-                  </div>
+                <div className={`p-1 rounded-md border-2 border-white shadow-md transition-all flex items-center justify-center ${
+                  unavail ? 'bg-rose-500 text-white' : 'bg-[#10B981] text-white'
+                } ${isSelected ? 'ring-4 ring-[#00A77C]/30' : ''}`}>
+                  <Trash2 size={16} />
                 </div>
               </div>
             );
@@ -238,22 +214,22 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           })()}
         </div>
 
-        {/* Legend Footer */}
+        {/* Legend Footer (Matching Screenshot 705) */}
         <div className="flex items-center gap-4 text-xs text-[#00271D]/70 font-semibold pt-1">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" /> Organic / Biodegradable
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Full
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#0091EA]" /> Recyclable / Non-Bio
+            <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" /> Available
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Full / Unavailable
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-400" /> Unavailable
           </span>
         </div>
 
       </div>
 
-      {/* ── All Campus Bins Directory List ── */}
+      {/* ── All Campus Bins Directory List (Matches Screenshot 705) ── */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-7 shadow-sm space-y-4">
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -291,8 +267,8 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                 <div
                   key={bin.id}
                   onClick={() => handleSelectBin(bin)}
-                  className={`py-3.5 px-3 flex items-center justify-between gap-3 cursor-pointer transition-colors rounded-xl ${
-                    isSelected ? 'bg-[#00A77C]/15 font-bold border border-[#00A77C]/30 shadow-xs' : 'hover:bg-gray-50'
+                  className={`py-3.5 px-2 flex items-center justify-between gap-3 cursor-pointer transition-colors rounded-xl ${
+                    isSelected ? 'bg-[#00A77C]/10 font-bold' : 'hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -318,4 +294,3 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
     </div>
   );
 };
-
