@@ -94,17 +94,13 @@ const CATEGORY_DETAILS: Record<InfrastructurePillar, {
     title: 'Report Waste / Bin',
     subtitle: 'Litter issues, overflows',
     icon: Trash2,
-    itemsLabel: 'Select Waste Type *',
+    itemsLabel: 'Select Primary Recyclable Category *',
     items: [
-      { id: 'general-trash', label: 'General Trash Bin', icon: '🗑️' },
-      { id: 'plastic-recycle', label: 'Plastic Recycling Bin', icon: '♻️' },
-      { id: 'paper-cardboard', label: 'Paper & Cardboard Bin', icon: '📦' },
-      { id: 'organic-waste', label: 'Organic Waste Bin', icon: '🌱' },
-      { id: 'e-waste', label: 'E-Waste Recycling Bin', icon: '💻' },
-      { id: 'hazardous-container', label: 'Hazardous Waste Container', icon: '☣️' },
-      { id: 'outdoor-trash-can', label: 'Outdoor Trash Can', icon: '🧹' },
-      { id: 'dumpster-station', label: 'Dumpster Station', icon: '🏢' },
-      { id: 'overflow-debris', label: 'Overflowing Debris Area', icon: '⚠️' },
+      { id: 'plastic-bottles', label: 'Plastic Bottles', icon: '🍾' },
+      { id: 'glass-bottles', label: 'Glass / Tanduay Bottles', icon: '🍶' },
+      { id: 'aluminum-cans', label: 'Aluminum Cans', icon: '🥫' },
+      { id: 'paper-cardboard', label: 'Paper & Cardboard', icon: '📦' },
+      { id: 'residual-waste', label: 'Residual Waste', icon: '🗑️' },
     ]
   },
   electronics: {
