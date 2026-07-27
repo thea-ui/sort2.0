@@ -27,8 +27,6 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'UNAVAILABLE' | 'AVAILABLE'>('ALL');
   const [selectedBinId, setSelectedBinIdState] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isPinningMode, setIsPinningMode] = useState<boolean>(false);
-  const [customPinCoords, setCustomPinCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const unavailableBinsCount = bins.filter(isBinUnavailable).length;
   const availableBinsCount = bins.length - unavailableBinsCount;
@@ -58,7 +56,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
       {/* ── Main Live Bin Map Card ── */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-7 shadow-sm space-y-5">
         
-        {/* Header & Pinning Trigger */}
+        {/* Header & Status Indicator */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -70,23 +68,6 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Pin Scattered Trash Mode Toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsPinningMode(!isPinningMode);
-                if (!isPinningMode) setSelectedBinIdState(null);
-              }}
-              className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                isPinningMode
-                  ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-md shadow-[#00A77C]/25'
-                  : 'border-gray-200 bg-white text-[#00271D] hover:bg-gray-50'
-              }`}
-            >
-              <Compass size={13} className={isPinningMode ? 'animate-spin' : ''} />
-              {isPinningMode ? 'Pinning Active' : 'Pin Scattered Trash'}
-            </button>
-
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
               <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
               Live · Updated Just Now
@@ -143,22 +124,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
         </div>
 
         {/* ── Dark Mode Blueprint Grid Canvas ── */}
-        <div
-          onClick={e => {
-            if (!isPinningMode) return;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const pctX = (e.clientX - rect.left) / rect.width;
-            const pctY = (e.clientY - rect.top) / rect.height;
-            const minLat = 14.5980; const maxLat = 14.6030;
-            const minLng = 120.9820; const maxLng = 120.9880;
-            const lat = maxLat - pctY * (maxLat - minLat);
-            const lng = minLng + pctX * (maxLng - minLng);
-            setCustomPinCoords({ lat, lng });
-          }}
-          className={`relative w-full h-[380px] sm:h-[420px] rounded-2xl border border-slate-700 bg-slate-900 overflow-hidden shadow-2xl flex items-center justify-center transition-all ${
-            isPinningMode ? 'cursor-crosshair ring-2 ring-[#00A77C]/60' : 'cursor-default'
-          }`}
-        >
+        <div className="relative w-full h-[380px] sm:h-[420px] rounded-2xl border border-slate-700 bg-slate-900 overflow-hidden shadow-2xl flex items-center justify-center transition-all">
           
           {/* Dark Grid Overlay Lines */}
           <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
@@ -174,20 +140,6 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           <div className="absolute top-4 left-4 bg-slate-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] text-slate-200 font-bold border border-slate-700 shadow-md pointer-events-none flex items-center gap-1.5">
             <span>📍 Campus Grid Map</span>
           </div>
-
-          {/* Off-Grid Custom Pin */}
-          {customPinCoords && (
-            <div
-              style={{
-                left: `${((customPinCoords.lng - 120.9820) / (120.9880 - 120.9820)) * 100}%`,
-                top: `${((14.6030 - customPinCoords.lat) / (14.6030 - 14.5980)) * 100}%`
-              }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-white shadow-xl animate-bounce"
-              title="Off-Grid Scattered Debris Pinned"
-            >
-              <MapPin size={16} strokeWidth={2.5} />
-            </div>
-          )}
 
           {/* Plot Side-By-Side Color-Coded Trash Can Icons */}
           {filteredBins.map(bin => {
@@ -207,7 +159,6 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                 key={bin.id}
                 style={{ left: `${pctX}%`, top: `${pctY}%` }}
                 onClick={(e) => {
-                  if (isPinningMode) return;
                   e.stopPropagation();
                   handleSelectBin(bin);
                 }}
