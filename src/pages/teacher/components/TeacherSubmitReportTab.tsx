@@ -1,11 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CheckCircle,
   Camera,
   MapPin,
-  Compass,
-  ChevronRight,
-  Send
+  ChevronLeft,
+  Send,
+  Search,
+  Building2,
+  ShieldAlert,
+  AlertTriangle,
+  FileText,
+  Trash2,
+  Armchair,
+  Tv,
+  Zap,
+  Wrench,
+  HelpCircle,
+  Package
 } from 'lucide-react';
 
 type InfrastructurePillar = 'waste' | 'furniture' | 'electronics' | 'fixtures' | 'equipment' | 'other';
@@ -52,6 +63,151 @@ interface TeacherSubmitReportTabProps {
   coordToPct: (lat: number, lng: number) => { pctX: number; pctY: number };
 }
 
+const CATEGORY_DETAILS: Record<InfrastructurePillar, {
+  label: string;
+  title: string;
+  subtitle: string;
+  icon: React.ComponentType<any>;
+  itemsLabel: string;
+  items: { id: string; label: string; icon: string }[];
+}> = {
+  furniture: {
+    label: 'Furniture',
+    title: 'Report Furniture',
+    subtitle: 'Chairs, tables, desks, cabinets',
+    icon: Armchair,
+    itemsLabel: 'Select Furniture *',
+    items: [
+      { id: 'arm-chair-plastic', label: 'Arm Chair (Plastic)', icon: '🪑' },
+      { id: 'arm-chair-wooden', label: 'Arm Chair (Wooden)', icon: '🪑' },
+      { id: 'office-chair', label: 'Office Chair', icon: '🪑' },
+      { id: 'student-desk', label: 'Student Desk', icon: '🪑' },
+      { id: 'teachers-table', label: "Teacher's Table", icon: '🪑' },
+      { id: 'wooden-table', label: 'Wooden Table', icon: '🪑' },
+      { id: 'filing-cabinet', label: 'Filing Cabinet', icon: '🗄️' },
+      { id: 'bookshelf', label: 'Bookshelf', icon: '📚' },
+      { id: 'whiteboard-stand', label: 'Whiteboard Stand', icon: '📋' },
+    ]
+  },
+  waste: {
+    label: 'Waste / Bin',
+    title: 'Report Waste / Bin',
+    subtitle: 'Litter issues, overflows',
+    icon: Trash2,
+    itemsLabel: 'Select Waste Type *',
+    items: [
+      { id: 'general-trash', label: 'General Trash Bin', icon: '🗑️' },
+      { id: 'plastic-recycle', label: 'Plastic Recycling Bin', icon: '♻️' },
+      { id: 'paper-cardboard', label: 'Paper & Cardboard Bin', icon: '📦' },
+      { id: 'organic-waste', label: 'Organic Waste Bin', icon: '🌱' },
+      { id: 'e-waste', label: 'E-Waste Recycling Bin', icon: '💻' },
+      { id: 'hazardous-container', label: 'Hazardous Waste Container', icon: '☣️' },
+      { id: 'outdoor-trash-can', label: 'Outdoor Trash Can', icon: '🧹' },
+      { id: 'dumpster-station', label: 'Dumpster Station', icon: '🏢' },
+      { id: 'overflow-debris', label: 'Overflowing Debris Area', icon: '⚠️' },
+    ]
+  },
+  electronics: {
+    label: 'Electronics',
+    title: 'Report Electronics',
+    subtitle: 'Projectors, display screens',
+    icon: Tv,
+    itemsLabel: 'Select Electronics *',
+    items: [
+      { id: 'projector', label: 'Projector', icon: '📹' },
+      { id: 'display-monitor', label: 'Display Monitor / TV', icon: '🖥️' },
+      { id: 'desktop-pc', label: 'Desktop PC', icon: '🖥️' },
+      { id: 'laptop', label: 'Laptop', icon: '💻' },
+      { id: 'speaker-system', label: 'Speaker / Sound System', icon: '🔊' },
+      { id: 'printer-scanner', label: 'Printer / Scanner', icon: '🖨️' },
+      { id: 'microphone', label: 'Microphone', icon: '🎙️' },
+      { id: 'router-ap', label: 'Wi-Fi Router / Access Point', icon: '📡' },
+      { id: 'cable-adapter', label: 'Cable / Adapter', icon: '🔌' },
+    ]
+  },
+  fixtures: {
+    label: 'Fixtures',
+    title: 'Report Fixtures',
+    subtitle: 'AC, fans, lights, switches',
+    icon: Zap,
+    itemsLabel: 'Select Fixtures *',
+    items: [
+      { id: 'ceiling-light', label: 'Ceiling Light / Bulb', icon: '💡' },
+      { id: 'ac-unit', label: 'Air Conditioner (AC)', icon: '❄️' },
+      { id: 'light-switch', label: 'Light Switch', icon: '🔘' },
+      { id: 'electrical-outlet', label: 'Electrical Socket / Outlet', icon: '🔌' },
+      { id: 'ceiling-fan', label: 'Ceiling Fan', icon: '🌀' },
+      { id: 'door-lock', label: 'Door Lock / Handle', icon: '🚪' },
+      { id: 'window-blinds', label: 'Window Blinds / Glass', icon: '🪟' },
+      { id: 'water-dispenser', label: 'Water Dispenser / Sink', icon: '🚰' },
+      { id: 'whiteboard-chalkboard', label: 'Whiteboard / Chalkboard', icon: '📋' },
+    ]
+  },
+  equipment: {
+    label: 'Equipment',
+    title: 'Report Equipment',
+    subtitle: 'Lab tools, janitorial assets',
+    icon: Wrench,
+    itemsLabel: 'Select Equipment *',
+    items: [
+      { id: 'lab-tool', label: 'Lab Tool / Apparatus', icon: '🔬' },
+      { id: 'janitorial-cart', label: 'Janitorial Cart / Mop', icon: '🧹' },
+      { id: 'microscope', label: 'Science Microscope', icon: '🔬' },
+      { id: 'sports-gear', label: 'Gym / Sports Gear', icon: '⚽' },
+      { id: 'safety-equipment', label: 'Safety Equipment', icon: '🧯' },
+      { id: 'podium-lectern', label: 'Podium / Lectern', icon: '🗣️' },
+      { id: 'extension-cord', label: 'Extension Cord', icon: '🔌' },
+      { id: 'cleaning-supplies', label: 'Cleaning Supplies', icon: '🧴' },
+      { id: 'paper-shredder', label: 'Paper Shredder', icon: '📄' },
+    ]
+  },
+  other: {
+    label: 'Other',
+    title: 'Report General Repairs',
+    subtitle: 'General structural repair',
+    icon: HelpCircle,
+    itemsLabel: 'Select Issue Type *',
+    items: [
+      { id: 'wall-damage', label: 'Wall Damage / Paint', icon: '🧱' },
+      { id: 'floor-tile', label: 'Floor Tile / Carpet', icon: '🪵' },
+      { id: 'ceiling-leak', label: 'Ceiling Leak / Stain', icon: '💧' },
+      { id: 'plumbing-pipe', label: 'Plumbing / Pipe', icon: '🚰' },
+      { id: 'structural-issue', label: 'Structural Issue', icon: '🏗️' },
+      { id: 'safety-hazard', label: 'Safety Hazard', icon: '⚠️' },
+      { id: 'pest-issue', label: 'Pest Issue', icon: '🐜' },
+      { id: 'general-repair', label: 'General Repair', icon: '🔧' },
+    ]
+  }
+};
+
+const LOCATIONS = [
+  'Room 101 – Science Hall',
+  'Room 102 – Admin Building',
+  'Room 201 – Science Hall',
+  'Room 204 – Arts Building',
+  'Room 305 – Engineering',
+  'Computer Lab 2 – IT Building',
+  'Computer Lab 3 – IT Building',
+  'Faculty Office – Admin Building',
+  'Conference Room – Admin Building',
+  'Library – 2nd Floor',
+  'Main Courtyard (Quad)',
+  'Sports Complex Entrance B',
+];
+
+const CONDITIONS = [
+  { id: 'Damaged', label: 'Damaged', desc: 'Broken but may be repairable' },
+  { id: 'Malfunctioning', label: 'Malfunctioning', desc: 'Not working properly' },
+  { id: 'Worn Out', label: 'Worn Out', desc: 'Heavy wear, needs replacement' },
+  { id: 'Missing Parts', label: 'Missing Parts', desc: 'Incomplete, parts missing' },
+];
+
+const URGENCIES = [
+  { id: 'Low', label: 'Low', desc: 'Minor issue, no immediate impact', value: 'LOW' as const },
+  { id: 'Normal', label: 'Normal', desc: 'Needs repair or attention soon', value: 'MEDIUM' as const },
+  { id: 'Urgent', label: 'Urgent', desc: 'Dangerous condition (e.g. broken glass, unstable)', value: 'HIGH' as const },
+];
+
 export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
   pillarCategory,
   setPillarCategory,
@@ -65,74 +221,63 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
   setSelectedBuilding,
   roomNumber,
   setRoomNumber,
-  wizardStep,
-  setWizardStep,
   capturedImage,
   setCapturedImage,
   isCapturing,
   handleCapture,
-  gpsCoords,
-  setGpsCoords,
-  gpsLoading,
-  handleGPSDetect,
   isSubmitting,
   submitSuccess,
   urgency,
   setUrgency,
-  isPinningMode,
-  setIsPinningMode,
-  isCustomDebrisPin,
-  setIsCustomDebrisPin,
-  assignedLocationText,
-  setAssignedLocationText,
   handleSubmit,
   PILLAR_META,
-  OBSERVATION_OPTIONS,
-  STEPS,
-  isWasteCategory,
-  MAP_BOUNDS,
-  coordToPct
 }) => {
+  const [selectedCategory, setSelectedCategoryState] = useState<InfrastructurePillar | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string>('');
+  const [selectedLocation, setSelectedLocation] = useState<string>(roomNumber ? `${selectedBuilding} – ${roomNumber}` : 'Room 101 – Science Hall');
+  const [locationSearch, setLocationSearch] = useState<string>('');
+  const [selectedCondition, setSelectedConditionState] = useState<string>(observation || 'Damaged');
+  const [selectedUrgencyState, setSelectedUrgencyState] = useState<'LOW' | 'MEDIUM' | 'HIGH'>(urgency || 'MEDIUM');
+
+  const handleSelectCategory = (catKey: InfrastructurePillar) => {
+    setSelectedCategoryState(catKey);
+    setPillarCategory(catKey);
+  };
+
+  const handleLocationSelect = (locName: string) => {
+    setSelectedLocation(locName);
+    const parts = locName.split(' – ');
+    if (parts.length > 1) {
+      setRoomNumber(parts[0]);
+      setSelectedBuilding(parts[1]);
+    } else {
+      setRoomNumber(locName);
+    }
+  };
+
+  const handleItemSelect = (itemLabel: string) => {
+    setSelectedItem(itemLabel);
+    setReportTitle(itemLabel);
+  };
+
+  const handleConditionSelect = (condLabel: string) => {
+    setSelectedConditionState(condLabel);
+    setObservation(condLabel);
+  };
+
+  const handleUrgencySelect = (urgVal: 'LOW' | 'MEDIUM' | 'HIGH') => {
+    setSelectedUrgencyState(urgVal);
+    setUrgency(urgVal);
+  };
+
+  const filteredLocations = LOCATIONS.filter(loc =>
+    loc.toLowerCase().includes(locationSearch.toLowerCase())
+  );
+
+  const activeMeta = selectedCategory ? CATEGORY_DETAILS[selectedCategory] : null;
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
-
-      {/* Page header */}
-      <div className="bg-gradient-to-br from-white/95 via-white/90 to-[#e0f2ec]/60 border border-white/90 rounded-3xl p-7 shadow-xl shadow-[#00271D]/5 backdrop-blur-md">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00A77C]/40 bg-[#00A77C]/15 px-3.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest text-[#00A77C]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#00A77C] animate-pulse" />
-          Faculty Service Portal
-        </span>
-        <h2 className="mt-2 text-2xl font-heading font-black tracking-tight text-[#00271D]">Multi-Category Asset & Waste Report</h2>
-        <p className="mt-1 text-xs text-[#00271D]/60 font-medium">File structural maintenance tickets, broken classroom items, or bin overflow reports directly to MRF staff.</p>
-      </div>
-
-      {/* Step tracker */}
-      <div className="rounded-2xl border border-white/80 bg-white/90 backdrop-blur-md px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-0">
-          {STEPS.map((step, idx) => {
-            const n = idx + 1;
-            const done   = wizardStep > n;
-            const active = wizardStep === n;
-            return (
-              <React.Fragment key={step}>
-                <div className="flex flex-col items-center">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black transition-all ${
-                    done   ? 'bg-[#00A77C] text-white shadow-xs' :
-                    active ? 'bg-[#00A77C] text-white ring-4 ring-[#00A77C]/20 shadow-xs' :
-                             'bg-[#00271D]/10 text-[#00271D]/40'
-                  }`}>
-                    {done ? <CheckCircle size={14} /> : n}
-                  </div>
-                  <p className={`mt-1.5 text-[10px] font-bold ${active ? 'text-[#00A77C]' : 'text-[#00271D]/50'}`}>{step}</p>
-                </div>
-                {idx < STEPS.length - 1 && (
-                  <div className={`mx-2 mb-5 h-px flex-1 transition-all ${wizardStep > n ? 'bg-[#00A77C]' : 'bg-[#00271D]/10'}`} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </div>
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12">
 
       {/* Success alert */}
       {submitSuccess && (
@@ -145,311 +290,334 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
         </div>
       )}
 
-      {/* Form card */}
-      <div className="rounded-3xl border border-white/80 bg-white/90 backdrop-blur-md p-7 shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-5 text-xs">
+      {/* ── STEP 1: CATEGORY SELECTION MENU (If no category is selected) ── */}
+      {!selectedCategory ? (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-white/95 via-white/90 to-[#e0f2ec]/60 border border-white/90 rounded-3xl p-7 shadow-xl shadow-[#00271D]/5 backdrop-blur-md">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00A77C]/40 bg-[#00A77C]/15 px-3.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest text-[#00A77C]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#00A77C] animate-pulse" />
+              Faculty Service Portal
+            </span>
+            <h2 className="mt-2 text-2xl font-heading font-black tracking-tight text-[#00271D]">
+              Multi-Category Asset & Waste Report
+            </h2>
+            <p className="mt-1 text-xs text-[#00271D]/60 font-medium">
+              File structural maintenance tickets, broken classroom items, or bin overflow reports directly to MRF staff.
+            </p>
+          </div>
 
-          {/* ── Step 1 ── */}
-          {wizardStep === 1 && (
-            <div className="space-y-5">
-              {/* Category tiles */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">1. Select Recovery Category</label>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                  {(Object.entries(PILLAR_META) as [InfrastructurePillar, typeof PILLAR_META.waste][]).map(([id, meta]) => {
-                    const selected = pillarCategory === id;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setPillarCategory(id)}
-                        className={`group flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 text-center transition-all select-none cursor-pointer ${
-                          selected
-                            ? `bg-[#00A77C] border-[#00A77C] text-white shadow-md shadow-[#00A77C]/25`
-                            : `bg-white border-[#00271D]/15 hover:border-[#00A77C] text-[#00271D]/70 hover:bg-[#F9F3F0]`
-                        }`}
-                      >
-                        <span className="text-lg">{meta.emoji}</span>
-                        <span className="text-xs font-bold">{meta.label}</span>
-                        <span className={`text-[9px] leading-tight ${selected ? 'text-white/90' : 'text-[#00271D]/40'}`}>{meta.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Title */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">2. Maintenance Subject / Title</label>
-                <input
-                  type="text" required
-                  placeholder="e.g. Broken Desk in Room 204 or Overhead Projector flickering"
-                  value={reportTitle}
-                  onChange={e => setReportTitle(e.target.value)}
-                  className="w-full rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] px-4 py-3 text-xs text-[#00271D] outline-none transition-all focus:border-[#00A77C] focus:bg-white font-bold placeholder:font-normal"
-                />
-              </div>
-
-              <div className="flex justify-end pt-1">
+          <div className="rounded-3xl border border-white/80 bg-white/90 backdrop-blur-md p-7 shadow-sm space-y-4">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-[#00271D]/60">
+              1. Select Recovery Category
+            </label>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {(Object.entries(PILLAR_META) as [InfrastructurePillar, typeof PILLAR_META.waste][]).map(([id, meta]) => (
                 <button
+                  key={id}
                   type="button"
-                  disabled={!reportTitle.trim()}
-                  onClick={() => setWizardStep(2)}
-                  className="flex items-center gap-1.5 rounded-full bg-[#00A77C] px-6 py-3 text-xs font-bold text-white shadow-md shadow-[#00A77C]/25 hover:bg-[#008f6a] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition-all"
+                  onClick={() => handleSelectCategory(id)}
+                  className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200/80 bg-white p-5 text-center transition-all hover:border-[#00A77C] hover:bg-[#00A77C]/5 hover:shadow-md cursor-pointer select-none"
                 >
-                  Continue <ChevronRight size={13} />
+                  <span className="text-2xl">{meta.emoji}</span>
+                  <span className="text-sm font-bold text-[#00271D]">{meta.label}</span>
+                  <span className="text-[10px] text-[#00271D]/50 font-medium">{meta.desc}</span>
                 </button>
-              </div>
+              ))}
             </div>
-          )}
+          </div>
+        </div>
+      ) : (
+        /* ── STEP 2: CATEGORY REPORT FORM (Matching Screenshot 699 & 700 Layout) ── */
+        <form onSubmit={handleSubmit} className="space-y-5">
+          
+          {/* Header Category Banner with Back button (Matches Screenshot 699) */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 p-6 text-white shadow-lg shadow-blue-500/15 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setSelectedCategoryState(null)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition-all hover:bg-white/30 cursor-pointer"
+              title="Back to category selection"
+            >
+              <ChevronLeft size={20} />
+            </button>
 
-          {/* ── Step 2 ── */}
-          {wizardStep === 2 && (
-            <div className="space-y-5">
-              {/* Photo */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">1. Verification Photo</label>
-                <div className="relative h-40 overflow-hidden rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] flex items-center justify-center">
-                  {isCapturing ? (
-                    <div className="animate-pulse text-center">
-                      <Camera className="mx-auto text-[#00A77C]" size={24} />
-                      <p className="mt-1 text-[9px] font-bold text-[#00A77C] uppercase">Accessing Camera...</p>
-                    </div>
-                  ) : capturedImage ? (
-                    <div className="group relative h-full w-full">
-                      <img src={capturedImage} alt="Evidence" className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/80 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button type="button" onClick={handleCapture} className="rounded-full bg-[#00A77C] px-5 py-2 text-[10px] font-bold text-white cursor-pointer shadow">
-                          Retake Photo
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 px-4 text-center">
-                      <Camera className="mx-auto text-[#00271D]/30" size={24} />
-                      <p className="text-[10px] text-[#00271D]/50 font-medium">Capture or upload evidence photo</p>
-                      <div className="flex justify-center gap-2">
-                        <button type="button" onClick={handleCapture} className="rounded-full border border-[#00271D]/15 bg-white px-4 py-1.5 text-[10px] font-bold text-[#00271D] shadow-2xs hover:bg-[#F9F3F0] cursor-pointer">
-                          Mock Camera
-                        </button>
-                        <label className="cursor-pointer rounded-full border border-[#00271D]/15 bg-white px-4 py-1.5 text-[10px] font-bold text-[#00271D] shadow-2xs hover:bg-[#F9F3F0]">
-                          Upload File
-                          <input type="file" accept="image/*" className="hidden" onChange={e => {
-                            const f = e.target.files?.[0];
-                            if (f) { const r = new FileReader(); r.onload = ev => setCapturedImage(ev.target?.result as string); r.readAsDataURL(f); }
-                          }} />
-                        </label>
-                      </div>
-                    </div>
-                  )}
+            {activeMeta && (
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-inner">
+                  <activeMeta.icon size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-heading font-black text-white tracking-tight">{activeMeta.title}</h2>
+                  <p className="text-xs text-white/80 font-medium">{activeMeta.subtitle}</p>
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* CONDITIONAL LOCATION LOGIC */}
-              {isWasteCategory ? (
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">2. Pin Location on Campus Map</label>
-                  <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5">
-                    <div>
-                      <p className="text-[10px] font-bold text-amber-800">Waste / Bin Category — Map Pinning Required</p>
-                      <p className="text-[9px] text-amber-700">Enable pinning mode and click the exact location on the campus grid.</p>
-                    </div>
+          {/* Card 1: Photo Evidence (Matches Screenshot 699) */}
+          <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <Camera size={16} className="text-[#00271D]/60" />
+              <h3 className="text-xs font-bold text-[#00271D]">
+                Photo Evidence <span className="text-rose-500">*</span>
+              </h3>
+            </div>
+
+            <div className="relative h-44 w-full overflow-hidden rounded-2xl border-2 border-dashed border-blue-200/80 bg-[#F8FAFC] flex items-center justify-center transition-all hover:bg-blue-50/20">
+              {isCapturing ? (
+                <div className="animate-pulse text-center">
+                  <Camera className="mx-auto text-blue-500" size={28} />
+                  <p className="mt-1 text-[10px] font-bold text-blue-500 uppercase">Accessing Camera...</p>
+                </div>
+              ) : capturedImage ? (
+                <div className="group relative h-full w-full">
+                  <img src={capturedImage} alt="Evidence" className="h-full w-full object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       type="button"
-                      onClick={() => setIsPinningMode(!isPinningMode)}
-                      className={`ml-3 flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-1.5 text-[10px] font-bold transition-all cursor-pointer ${
-                        isPinningMode ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-md shadow-[#00A77C]/25' : 'bg-white border-[#00271D]/15 text-[#00271D]/70 hover:bg-gray-50'
-                      }`}
+                      onClick={handleCapture}
+                      className="rounded-full bg-blue-500 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-blue-600 cursor-pointer"
                     >
-                      <Compass size={12} className={isPinningMode ? 'animate-spin' : ''} />
-                      {isPinningMode ? 'Pinning Active' : 'Enable Pinning'}
+                      Retake Photo
                     </button>
                   </div>
-
-                  {/* Map Grid */}
-                  <div
-                    onClick={e => {
-                      if (!isPinningMode) return;
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const pctX = (e.clientX - rect.left) / rect.width;
-                      const pctY = (e.clientY - rect.top) / rect.height;
-                      const lat = MAP_BOUNDS.maxLat - pctY * (MAP_BOUNDS.maxLat - MAP_BOUNDS.minLat);
-                      const lng = MAP_BOUNDS.minLng + pctX * (MAP_BOUNDS.maxLng - MAP_BOUNDS.minLng);
-                      setGpsCoords({ lat, lng });
-                      setIsCustomDebrisPin(true);
-                      setAssignedLocationText(`Pinned at [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
-                    }}
-                    className={`relative h-60 w-full overflow-hidden rounded-2xl border bg-slate-900 border-slate-700 shadow-inner transition-all ${
-                      isPinningMode ? 'cursor-crosshair ring-2 ring-indigo-500/50' : 'cursor-default'
-                    }`}
-                  >
-                    <svg className="absolute inset-0 h-full w-full opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-                      <defs>
-                        <pattern id="wizard-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#334155" strokeWidth="0.5" />
-                        </pattern>
-                      </defs>
-                      <rect width="100%" height="100%" fill="url(#wizard-grid)" />
-                      <rect x="15%" y="10%" width="20%" height="15%" rx="8" fill="#475569" />
-                      <text x="25%" y="19%" fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">Sports Gym</text>
-                      <rect x="65%" y="12%" width="22%" height="18%" rx="8" fill="#475569" />
-                      <text x="76%" y="22%" fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">Science Hall</text>
-                      <circle cx="50%" cy="50%" r="36" fill="#334155" />
-                      <text x="50%" y="51%" fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">Quad</text>
-                      <rect x="10%" y="70%" width="25%" height="18%" rx="8" fill="#475569" />
-                      <text x="22%" y="81%" fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
-                      <rect x="60%" y="72%" width="28%" height="18%" rx="8" fill="#475569" />
-                      <text x="74%" y="83%" fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">Main Library</text>
-                    </svg>
-                    <div className="absolute left-2 top-2 rounded border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-[7px] font-bold uppercase text-slate-400 backdrop-blur-sm pointer-events-none">
-                      Campus Grid
-                    </div>
-                    {isCustomDebrisPin && gpsCoords && (() => {
-                      const { pctX, pctY } = coordToPct(gpsCoords.lat, gpsCoords.lng);
-                      return (
-                        <div style={{ left: `${pctX}%`, top: `${pctY}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-rose-500 text-white shadow-xl animate-bounce">
-                          <MapPin size={14} strokeWidth={2.5} />
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  {gpsCoords && (
-                    <p className="text-[10px] text-indigo-600 font-bold text-center">
-                      📍 Pinned: {gpsCoords.lat.toFixed(4)}, {gpsCoords.lng.toFixed(4)}
-                    </p>
-                  )}
-                  {!gpsCoords && (
-                    <p className="text-[10px] text-gray-400 text-center animate-pulse">
-                      Enable pinning mode and click a location on the map above
-                    </p>
-                  )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">2. Campus Building</label>
-                    <select
-                      value={selectedBuilding}
-                      onChange={e => setSelectedBuilding(e.target.value)}
-                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white cursor-pointer"
+                <div className="space-y-2 text-center p-4">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+                    <Camera size={20} />
+                  </div>
+                  <h4 className="text-xs font-bold text-[#00271D]">Take a Photo</h4>
+                  <p className="text-[10px] text-gray-400 font-medium">Open camera to capture evidence</p>
+                  
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleCapture}
+                      className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-[10px] font-bold text-[#00271D] shadow-2xs hover:bg-gray-50 cursor-pointer"
                     >
-                      <option value="Main Courtyard (Quad)">Main Courtyard (Quad)</option>
-                      <option value="Science Hall Cafeteria Side">Science Hall</option>
-                      <option value="Chemistry Building Room 302 Entrance">Chemistry Building</option>
-                      <option value="Main Library Lobby Entrance">Main Library</option>
-                      <option value="Sports Complex Entrance B">Sports Complex</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">3. Floor / Room Number</label>
-                    <input
-                      type="text" required
-                      placeholder="e.g. Room 302 or 2nd Floor"
-                      value={roomNumber}
-                      onChange={e => setRoomNumber(e.target.value)}
-                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white"
-                    />
+                      Mock Camera
+                    </button>
+                    <label className="cursor-pointer rounded-full border border-gray-200 bg-white px-4 py-1.5 text-[10px] font-bold text-[#00271D] shadow-2xs hover:bg-gray-50">
+                      Upload File
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (f) {
+                            const r = new FileReader();
+                            r.onload = ev => setCapturedImage(ev.target?.result as string);
+                            r.readAsDataURL(f);
+                          }
+                        }}
+                      />
+                    </label>
                   </div>
                 </div>
               )}
+            </div>
+          </div>
 
-              {!isWasteCategory && (
-                <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2.5">
-                  <div>
-                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Telemetry Coordinates</p>
-                    <p className="font-mono text-[10px] text-gray-600">{gpsCoords ? `${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lng.toFixed(4)}` : 'Not detected'}</p>
-                  </div>
-                  <button type="button" onClick={handleGPSDetect} disabled={gpsLoading}
-                    className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-gray-600 shadow-sm hover:border-indigo-400 hover:text-indigo-600 cursor-pointer">
-                    <MapPin size={11} className={gpsLoading ? 'animate-spin' : ''} />
-                    {gpsLoading ? 'Detecting...' : 'Detect GPS'}
+          {/* Card 2: Location List & Search (Matches Screenshot 699) */}
+          <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <MapPin size={16} className="text-[#00271D]/60" />
+              <h3 className="text-xs font-bold text-[#00271D]">
+                Location <span className="text-rose-500">*</span>
+              </h3>
+            </div>
+
+            <div className="relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search room or building..."
+                value={locationSearch}
+                onChange={e => setLocationSearch(e.target.value)}
+                className="w-full rounded-2xl border border-gray-200 bg-[#F8FAFC] pl-9 pr-4 py-2.5 text-xs text-[#00271D] outline-none transition-all focus:border-blue-400 focus:bg-white font-medium"
+              />
+            </div>
+
+            <div className="max-h-48 overflow-y-auto rounded-2xl border border-gray-100 bg-[#F8FAFC]/50 p-1.5 space-y-1 divide-y divide-gray-100">
+              {filteredLocations.map(loc => {
+                const isSelected = selectedLocation === loc;
+                return (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => handleLocationSelect(loc)}
+                    className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2.5 ${
+                      isSelected
+                        ? 'bg-blue-50 text-blue-900 font-bold border border-blue-200 shadow-2xs'
+                        : 'text-gray-700 hover:bg-gray-100/80'
+                    }`}
+                  >
+                    <Building2 size={14} className={isSelected ? 'text-blue-600' : 'text-gray-400'} />
+                    <span>{loc}</span>
                   </button>
-                </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Card 3: Select Category Item Grid (Matches Screenshot 699) */}
+          {activeMeta && (
+            <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <Package size={16} className="text-[#00271D]/60" />
+                <h3 className="text-xs font-bold text-[#00271D]">
+                  {activeMeta.itemsLabel}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {activeMeta.items.map(item => {
+                  const isSelected = selectedItem === item.label;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleItemSelect(item.label)}
+                      className={`flex items-center gap-2.5 rounded-2xl border p-3.5 text-left text-xs transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-50/80 border-blue-400 text-blue-900 font-bold shadow-xs'
+                          : 'bg-white border-gray-200/80 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="text-base">{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Card 4 & 5: Condition & Urgency Side-by-Side (Matches Screenshot 700) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            {/* Condition Card */}
+            <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={16} className="text-[#00271D]/60" />
+                <h3 className="text-xs font-bold text-[#00271D]">Condition</h3>
+              </div>
+
+              <div className="space-y-2">
+                {CONDITIONS.map(cond => {
+                  const isSelected = selectedCondition === cond.id;
+                  return (
+                    <button
+                      key={cond.id}
+                      type="button"
+                      onClick={() => handleConditionSelect(cond.id)}
+                      className={`w-full text-left p-3 rounded-2xl border text-xs transition-all cursor-pointer flex items-start gap-3 ${
+                        isSelected
+                          ? 'bg-blue-50/80 border-blue-400 text-blue-900 shadow-2xs font-bold'
+                          : 'bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className={`mt-0.5 h-3.5 w-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                        isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                      }`}>
+                        {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                      </span>
+                      <div>
+                        <p className="font-bold text-xs">{cond.label}</p>
+                        <p className="text-[10px] text-gray-400 font-normal mt-0.5">{cond.desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Urgency Level Card */}
+            <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} className="text-[#00271D]/60" />
+                <h3 className="text-xs font-bold text-[#00271D]">Urgency Level</h3>
+              </div>
+
+              <div className="space-y-2">
+                {URGENCIES.map(urg => {
+                  const isSelected = selectedUrgencyState === urg.value;
+                  return (
+                    <button
+                      key={urg.id}
+                      type="button"
+                      onClick={() => handleUrgencySelect(urg.value)}
+                      className={`w-full text-left p-3 rounded-2xl border text-xs transition-all cursor-pointer flex items-start gap-3 ${
+                        isSelected
+                          ? 'bg-amber-50/80 border-amber-400 text-amber-900 shadow-2xs font-bold'
+                          : 'bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className={`mt-0.5 h-3.5 w-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                        isSelected ? 'border-amber-500 bg-amber-500' : 'border-gray-300'
+                      }`}>
+                        {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                      </span>
+                      <div>
+                        <p className="font-bold text-xs">{urg.label}</p>
+                        <p className="text-[10px] text-gray-400 font-normal mt-0.5">{urg.desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Card 6: Additional Notes (Matches Screenshot 700) */}
+          <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <FileText size={16} className="text-[#00271D]/60" />
+              <h3 className="text-xs font-bold text-[#00271D]">Additional Notes <span className="text-gray-400 font-normal">(optional)</span></h3>
+            </div>
+
+            <textarea
+              rows={3}
+              maxLength={300}
+              placeholder="Describe the issue..."
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              className="w-full resize-none rounded-2xl border border-gray-200 bg-[#F8FAFC] p-3.5 text-xs text-[#00271D] outline-none transition-all focus:border-blue-400 focus:bg-white placeholder:text-gray-400 font-medium"
+            />
+            <p className="text-[10px] text-gray-400 font-medium">
+              {notes.length}/300 characters
+            </p>
+          </div>
+
+          {/* Submit Button & Subtext (Matches Screenshot 700) */}
+          <div className="space-y-2 pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting || !selectedItem || !selectedLocation}
+              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/25 hover:from-blue-500 hover:to-indigo-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Submitting Report...</span>
+                </>
+              ) : (
+                <>
+                  <Send size={16} />
+                  <span>Submit Report</span>
+                </>
               )}
+            </button>
+            <p className="text-center text-[10px] text-gray-400 font-medium">
+              Reports are reviewed by the appropriate department within 24 hours.
+            </p>
+          </div>
 
-              <div className="flex justify-between pt-1">
-                <button type="button" onClick={() => setWizardStep(1)} className="rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-200 cursor-pointer">← Back</button>
-                <button
-                  type="button"
-                  disabled={!isWasteCategory ? !roomNumber.trim() : !gpsCoords}
-                  onClick={() => setWizardStep(3)}
-                  className="flex items-center gap-1.5 rounded-full bg-[#00A77C] px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-[#00A77C]/25 hover:bg-[#008f6a] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-                >
-                  Continue <ChevronRight size={13} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 3 ── */}
-          {wizardStep === 3 && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">1. Priority Severity</label>
-                  <select
-                    value={urgency}
-                    onChange={e => setUrgency(e.target.value as any)}
-                    className="w-full rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] px-4 py-3 text-xs font-bold text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white cursor-pointer"
-                  >
-                    <option value="LOW">🟢 Low Severity</option>
-                    <option value="MEDIUM">🟡 Medium Priority</option>
-                    <option value="HIGH">🔴 Critical (Immediate)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">2. Condition / Observation</label>
-                  <select
-                    value={observation}
-                    onChange={e => setObservation(e.target.value)}
-                    className="w-full rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] px-4 py-3 text-xs font-bold text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white cursor-pointer"
-                  >
-                    {OBSERVATION_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/50">3. Detailed Observations</label>
-                <textarea
-                  required rows={3}
-                  placeholder="Describe specific damage, affected area, or any additional operational notes..."
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  className="w-full resize-none rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] px-4 py-3 text-xs font-bold text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white placeholder:font-normal"
-                />
-              </div>
-
-              <div className="rounded-2xl border border-[#00271D]/10 bg-[#F9F3F0] p-4 space-y-2">
-                <span className="inline-block rounded-full border border-[#00A77C]/40 bg-[#00A77C]/15 px-3 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-[#00A77C]">Ticket Preview</span>
-                <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
-                  <div className="text-[#00271D]/60 font-medium">Category: <span className="font-bold capitalize text-[#00271D]">{PILLAR_META[pillarCategory].label}</span></div>
-                  <div className="text-[#00271D]/60 font-medium">Severity: <span className="font-bold uppercase text-[#00271D]">{urgency}</span></div>
-                  <div className="text-[#00271D]/60 font-medium">Condition: <span className="font-bold text-[#00271D]">{observation}</span></div>
-                  <div className="text-[#00271D]/60 font-medium">Location: <span className="font-bold text-[#00271D]">{isWasteCategory ? 'Map pin' : `${selectedBuilding}${roomNumber ? ` · ${roomNumber}` : ''}`}</span></div>
-                  <div className="col-span-2 text-[#00271D]/60 font-medium">Subject: <span className="font-bold text-[#00271D]">{reportTitle}</span></div>
-                </div>
-              </div>
-
-              <div className="flex justify-between pt-1">
-                <button type="button" onClick={() => setWizardStep(2)} className="rounded-full bg-[#00271D]/10 px-5 py-2.5 text-xs font-bold text-[#00271D] hover:bg-[#00271D]/20 cursor-pointer">← Back</button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !notes.trim()}
-                  className="flex items-center gap-1.5 rounded-full bg-[#00A77C] px-6 py-3 text-xs font-bold text-white shadow-md shadow-[#00A77C]/25 hover:bg-[#008f6a] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition-all"
-                >
-                  {isSubmitting ? (
-                    <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" /><span>Logging...</span></>
-                  ) : (
-                    <><Send size={13} /><span>Log Maintenance Ticket</span></>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
         </form>
-      </div>
+      )}
 
     </div>
   );

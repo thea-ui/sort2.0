@@ -163,9 +163,11 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                   isSelected ? 'scale-150 z-30' : 'hover:scale-125'
                 }`}
               >
-                <div className={`h-4 w-4 rounded-full border-2 border-white shadow-md transition-all ${
-                  unavail ? 'bg-rose-500' : 'bg-[#10B981]'
-                } ${isSelected ? 'ring-4 ring-[#00A77C]/30' : ''}`} />
+                <div className={`p-1 rounded-md border-2 border-white shadow-md transition-all flex items-center justify-center ${
+                  unavail ? 'bg-rose-500 text-white' : 'bg-[#10B981] text-white'
+                } ${isSelected ? 'ring-4 ring-[#00A77C]/30' : ''}`}>
+                  <Trash2 size={16} />
+                </div>
               </div>
             );
           })}
