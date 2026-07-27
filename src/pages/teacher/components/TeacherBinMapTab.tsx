@@ -195,7 +195,7 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
             );
           })()}
 
-          {/* Plot Bins as Colored Dots on Map */}
+          {/* Plot Side-By-Side Color-Coded Trash Can Icons */}
           {filteredBins.map(bin => {
             const { pctX, pctY } = coordToPct(bin.coordinates.lat, bin.coordinates.lng);
             const isSelected = selectedBinId === bin.id;
@@ -214,10 +214,31 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
                   isSelected ? 'scale-150 z-30' : 'hover:scale-125'
                 }`}
               >
-                <div className={`p-1 rounded-md border-2 border-white shadow-md transition-all flex items-center justify-center ${
-                  unavail ? 'bg-rose-500 text-white' : 'bg-[#10B981] text-white'
-                } ${isSelected ? 'ring-4 ring-[#00A77C]/30' : ''}`}>
-                  <Trash2 size={16} />
+                {/* ── Two Distinct Side-by-Side Color-Coded Trash Cans ── */}
+                <div className={`flex items-center gap-1 p-1 rounded-xl bg-slate-900/90 border-2 border-white shadow-xl transition-all ${
+                  isSelected
+                    ? 'ring-4 ring-[#00A77C]/70 shadow-[#00A77C]/40 animate-pulse'
+                    : 'group-hover:border-[#00A77C]'
+                }`}>
+                  {/* Left Trash Can Icon: Biodegradable / Organic */}
+                  <div
+                    className={`p-1 rounded-md transition-colors ${
+                      unavail ? 'bg-rose-500 text-white' : 'bg-[#10B981] text-white'
+                    }`}
+                    title="Biodegradable / Organic Bin"
+                  >
+                    <Trash2 size={13} />
+                  </div>
+
+                  {/* Right Trash Can Icon: Non-Biodegradable / Recyclable */}
+                  <div
+                    className={`p-1 rounded-md transition-colors ${
+                      unavail ? 'bg-rose-500 text-white' : 'bg-[#0091EA] text-white'
+                    }`}
+                    title="Non-Biodegradable / Recyclable Bin"
+                  >
+                    <Trash2 size={13} />
+                  </div>
                 </div>
               </div>
             );

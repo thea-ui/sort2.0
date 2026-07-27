@@ -4,15 +4,15 @@ import {
   Trash2,
   Search,
   Filter,
-  Radio
+  Compass
 } from 'lucide-react';
 import { Bin } from '../../../types';
 
 interface BinMapTabProps {
   bins: Bin[];
-  setActiveTab: (tab: string) => void;
-  setBinId: (id: string | null) => void;
-  setLocationName: (name: string) => void;
+  setActiveTab?: (tab: string) => void;
+  setBinId?: (id: string | null) => void;
+  setLocationName?: (name: string) => void;
 }
 
 export const isBinUnavailable = (bin: Bin): boolean => {
@@ -27,6 +27,8 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'UNAVAILABLE' | 'AVAILABLE'>('ALL');
   const [selectedBinId, setSelectedBinIdState] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPinningMode, setIsPinningMode] = useState<boolean>(false);
+  const [customPinCoords, setCustomPinCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const unavailableBinsCount = bins.filter(isBinUnavailable).length;
   const availableBinsCount = bins.length - unavailableBinsCount;
@@ -53,10 +55,10 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
 
-      {/* ── Main Live Bin Map Card (Matches Screenshot 705) ── */}
+      {/* ── Main Live Bin Map Card ── */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-7 shadow-sm space-y-5">
         
-        {/* Header & Status Indicator */}
+        {/* Header & Pinning Trigger */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -68,6 +70,23 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Pin Scattered Trash Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsPinningMode(!isPinningMode);
+                if (!isPinningMode) setSelectedBinIdState(null);
+              }}
+              className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                isPinningMode
+                  ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-md shadow-[#00A77C]/25'
+                  : 'border-gray-200 bg-white text-[#00271D] hover:bg-gray-50'
+              }`}
+            >
+              <Compass size={13} className={isPinningMode ? 'animate-spin' : ''} />
+              {isPinningMode ? 'Pinning Active' : 'Pin Scattered Trash'}
+            </button>
+
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
               <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
               Live · Updated Just Now
@@ -75,7 +94,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           </div>
         </div>
 
-        {/* Filter Pills below header */}
+        {/* Filter Pills */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -123,25 +142,54 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           </button>
         </div>
 
-        {/* Crisp Light Blueprint Grid Map (Matches Screenshot 705) */}
-        <div className="relative w-full h-[360px] sm:h-[400px] rounded-2xl border border-gray-200 bg-[#F8FAFC] overflow-hidden shadow-inner flex items-center justify-center transition-all">
+        {/* ── Dark Mode Blueprint Grid Canvas ── */}
+        <div
+          onClick={e => {
+            if (!isPinningMode) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pctX = (e.clientX - rect.left) / rect.width;
+            const pctY = (e.clientY - rect.top) / rect.height;
+            const minLat = 14.5980; const maxLat = 14.6030;
+            const minLng = 120.9820; const maxLng = 120.9880;
+            const lat = maxLat - pctY * (maxLat - minLat);
+            const lng = minLng + pctX * (maxLng - minLng);
+            setCustomPinCoords({ lat, lng });
+          }}
+          className={`relative w-full h-[380px] sm:h-[420px] rounded-2xl border border-slate-700 bg-slate-900 overflow-hidden shadow-2xl flex items-center justify-center transition-all ${
+            isPinningMode ? 'cursor-crosshair ring-2 ring-[#00A77C]/60' : 'cursor-default'
+          }`}
+        >
           
-          {/* Light Grid Lines */}
-          <svg className="absolute inset-0 w-full h-full opacity-60 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          {/* Dark Grid Overlay Lines */}
+          <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <pattern id="light-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-                <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
+              <pattern id="dark-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#334155" strokeWidth="1" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#light-grid)" />
+            <rect width="100%" height="100%" fill="url(#dark-grid)" />
           </svg>
 
-          {/* Map Top Badge */}
-          <div className="absolute top-4 left-4 bg-white px-3 py-1.5 rounded-full text-[11px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1.5">
-            <span>📍 Campus Map</span>
+          {/* Campus Map Badge */}
+          <div className="absolute top-4 left-4 bg-slate-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] text-slate-200 font-bold border border-slate-700 shadow-md pointer-events-none flex items-center gap-1.5">
+            <span>📍 Campus Grid Map</span>
           </div>
 
-          {/* Plot Bins as Colored Dots on Map */}
+          {/* Off-Grid Custom Pin */}
+          {customPinCoords && (
+            <div
+              style={{
+                left: `${((customPinCoords.lng - 120.9820) / (120.9880 - 120.9820)) * 100}%`,
+                top: `${((14.6030 - customPinCoords.lat) / (14.6030 - 14.5980)) * 100}%`
+              }}
+              className="absolute -translate-x-1/2 -translate-y-1/2 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-white shadow-xl animate-bounce"
+              title="Off-Grid Scattered Debris Pinned"
+            >
+              <MapPin size={16} strokeWidth={2.5} />
+            </div>
+          )}
+
+          {/* Plot Side-By-Side Color-Coded Trash Can Icons */}
           {filteredBins.map(bin => {
             const minLat = 14.5980;
             const maxLat = 14.6030;
@@ -158,15 +206,40 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
               <div
                 key={bin.id}
                 style={{ left: `${pctX}%`, top: `${pctY}%` }}
-                onClick={() => handleSelectBin(bin)}
+                onClick={(e) => {
+                  if (isPinningMode) return;
+                  e.stopPropagation();
+                  handleSelectBin(bin);
+                }}
                 className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 z-20 group ${
                   isSelected ? 'scale-150 z-30' : 'hover:scale-125'
                 }`}
               >
-                <div className={`p-1 rounded-md border-2 border-white shadow-md transition-all flex items-center justify-center ${
-                  unavail ? 'bg-rose-500 text-white' : 'bg-[#10B981] text-white'
-                } ${isSelected ? 'ring-4 ring-[#00A77C]/30' : ''}`}>
-                  <Trash2 size={16} />
+                {/* ── Two Distinct Side-by-Side Color-Coded Trash Cans ── */}
+                <div className={`flex items-center gap-1 p-1 rounded-xl bg-slate-900/90 border-2 border-white shadow-xl transition-all ${
+                  isSelected
+                    ? 'ring-4 ring-[#00A77C]/70 shadow-[#00A77C]/40 animate-pulse'
+                    : 'group-hover:border-[#00A77C]'
+                }`}>
+                  {/* Left Trash Can Icon: Biodegradable / Organic */}
+                  <div
+                    className={`p-1 rounded-md transition-colors ${
+                      unavail ? 'bg-rose-500 text-white' : 'bg-[#10B981] text-white'
+                    }`}
+                    title="Biodegradable / Organic Bin"
+                  >
+                    <Trash2 size={13} />
+                  </div>
+
+                  {/* Right Trash Can Icon: Non-Biodegradable / Recyclable */}
+                  <div
+                    className={`p-1 rounded-md transition-colors ${
+                      unavail ? 'bg-rose-500 text-white' : 'bg-[#0091EA] text-white'
+                    }`}
+                    title="Non-Biodegradable / Recyclable Bin"
+                  >
+                    <Trash2 size={13} />
+                  </div>
                 </div>
               </div>
             );
@@ -214,22 +287,22 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           })()}
         </div>
 
-        {/* Legend Footer (Matching Screenshot 705) */}
+        {/* Legend Footer */}
         <div className="flex items-center gap-4 text-xs text-[#00271D]/70 font-semibold pt-1">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Full
+            <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" /> Organic / Biodegradable
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" /> Available
+            <span className="h-2.5 w-2.5 rounded-full bg-[#0091EA]" /> Recyclable / Non-Bio
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-400" /> Unavailable
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Full / Unavailable
           </span>
         </div>
 
       </div>
 
-      {/* ── All Campus Bins Directory List (Matches Screenshot 705) ── */}
+      {/* ── All Campus Bins Directory List ── */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-7 shadow-sm space-y-4">
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -267,8 +340,8 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                 <div
                   key={bin.id}
                   onClick={() => handleSelectBin(bin)}
-                  className={`py-3.5 px-2 flex items-center justify-between gap-3 cursor-pointer transition-colors rounded-xl ${
-                    isSelected ? 'bg-[#00A77C]/10 font-bold' : 'hover:bg-gray-50'
+                  className={`py-3.5 px-3 flex items-center justify-between gap-3 cursor-pointer transition-colors rounded-xl ${
+                    isSelected ? 'bg-[#00A77C]/15 font-bold border border-[#00A77C]/30 shadow-xs' : 'hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -294,3 +367,4 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
     </div>
   );
 };
+
