@@ -97,47 +97,73 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
         </div>
       </div>
 
-      {/* ── Campus Impact Cards (Color Indicator System) ── */}
+      {/* ── Campus Operational Overview (Replaces Environmental Offset Metrics) ── */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <Trees size={18} className="text-[#10B981]" />
-          <h3 className="text-sm font-heading font-bold text-[#00271D]">Campus Impact</h3>
+          <Activity size={18} className="text-[#00A77C]" />
+          <h3 className="text-sm font-heading font-bold text-[#00271D]">Campus Operational Overview</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-          {/* Impact Card 1: Trees Saved */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#00271D]/60">Trees Saved</p>
-              <p className="text-2xl font-heading font-extrabold text-[#00271D] mt-1">0 <span className="text-xs font-normal text-[#00271D]/50">Trees</span></p>
-              <p className="text-[11px] text-[#00271D]/50 mt-1 font-medium">Equivalent environmental impact</p>
+          {/* 1. Grade Level Standing Card */}
+          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-[#00271D]/60">My Grade Standing</p>
+              <div className="h-9 w-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10">
+                <Award size={18} strokeWidth={2} />
+              </div>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10">
-              <Trees size={22} strokeWidth={2} />
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/80 text-amber-900 border border-amber-200 text-xs font-black">
+                Grade 10 — #2 Most Active
+              </span>
+              <div className="mt-3 space-y-1">
+                <div className="flex justify-between text-[11px] text-[#00271D]/60 font-semibold">
+                  <span>Grade Activity</span>
+                  <span>150 Reports</span>
+                </div>
+                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full" style={{ width: '75%' }} />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Impact Card 2: Recycled KG */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#00271D]/60">Recycled Waste</p>
-              <p className="text-2xl font-heading font-extrabold text-[#00271D] mt-1">0 <span className="text-xs font-normal text-[#00271D]/50">KG</span></p>
-              <p className="text-[11px] text-[#00271D]/50 mt-1 font-medium">Diverted from campus landfill</p>
+          {/* 2. Today's Campus Activity Card */}
+          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-[#00271D]/60">Today's Campus Reports</p>
+              <div className="h-9 w-9 rounded-xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/10">
+                <FileText size={18} strokeWidth={2} />
+              </div>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/10">
-              <Recycle size={22} strokeWidth={2} />
+            <div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-heading font-black text-[#00271D]">24</p>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                  Live Volume
+                </span>
+              </div>
+              <p className="text-xs text-[#00271D]/60 mt-1 font-medium">Reports submitted across campus today</p>
             </div>
           </div>
 
-          {/* Impact Card 3: Campus Progress */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#00271D]/60">Campus Progress</p>
-              <p className="text-2xl font-heading font-extrabold text-[#00271D] mt-1">87.5 <span className="text-xs font-normal text-[#00271D]/50">%</span></p>
-              <p className="text-[11px] text-[#00271D]/50 mt-1 font-medium">Overall recycling rate target</p>
+          {/* 3. Top Recyclable Material Card */}
+          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-[#00271D]/60">Most Reported Material</p>
+              <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10">
+                <Recycle size={18} strokeWidth={2} />
+              </div>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10">
-              <TrendingUp size={22} strokeWidth={2} />
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/80 text-emerald-900 border border-emerald-200 text-xs font-black">
+                🍾 Plastic Bottles
+              </span>
+              <p className="text-xs text-[#00271D]/60 mt-2 font-medium">
+                <span className="font-bold text-[#00271D]">45%</span> of total recycling reports
+              </p>
             </div>
           </div>
 
