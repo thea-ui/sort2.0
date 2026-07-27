@@ -195,7 +195,7 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
             );
           })()}
 
-          {/* Plot Bins as Colored Dots on Map */}
+          {/* Plot Bins as Side-by-Side Dual Color-Coded Trash Cans on Map */}
           {filteredBins.map(bin => {
             const { pctX, pctY } = coordToPct(bin.coordinates.lat, bin.coordinates.lng);
             const isSelected = selectedBinId === bin.id;
@@ -211,13 +211,30 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
                   setSelectedBinId(bin.id);
                 }}
                 className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 z-20 group ${
-                  isSelected ? 'scale-150 z-30' : 'hover:scale-125'
+                  isSelected ? 'scale-125 z-40 ring-4 ring-[#00A77C]/40 rounded-2xl shadow-lg animate-pulse' : 'hover:scale-110'
                 }`}
               >
-                <div className={`p-1 rounded-md border-2 border-white shadow-md transition-all flex items-center justify-center ${
-                  unavail ? 'bg-rose-500 text-white' : 'bg-[#10B981] text-white'
-                } ${isSelected ? 'ring-4 ring-[#00A77C]/30' : ''}`}>
-                  <Trash2 size={16} />
+                {/* Dual Side-by-Side Trash Cans container */}
+                <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md px-2 py-1.5 rounded-xl border border-gray-200 shadow-md">
+                  {/* Left Trash Can: Biodegradable */}
+                  <div className="flex flex-col items-center">
+                    <div className={`p-1 rounded-md flex items-center justify-center text-white ${
+                      unavail ? 'bg-rose-500' : 'bg-[#10B981]'
+                    }`}>
+                      <Trash2 size={12} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[6px] font-black text-emerald-700 uppercase tracking-tighter mt-0.5">Bio</span>
+                  </div>
+
+                  {/* Right Trash Can: Non-Biodegradable / Recyclable */}
+                  <div className="flex flex-col items-center">
+                    <div className={`p-1 rounded-md flex items-center justify-center text-white ${
+                      unavail ? 'bg-rose-500' : 'bg-sky-500'
+                    }`}>
+                      <Trash2 size={12} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[6px] font-black text-sky-700 uppercase tracking-tighter mt-0.5">Non-Bio</span>
+                  </div>
                 </div>
               </div>
             );
