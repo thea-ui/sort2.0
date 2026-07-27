@@ -278,14 +278,14 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
                   <button
                     type="button"
                     onClick={() => updateBinLevel(activeBinDetail.id, unavail ? 20 : 90)}
-                    className="flex-1 py-1.5 text-[10px] font-bold rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-[#00271D] cursor-pointer"
+                    className="flex-1 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-[#00271D] cursor-pointer"
                   >
-                    Set {unavail ? 'Empty (20%)' : 'Full (90%)'}
+                    Set {unavail ? 'Empty' : 'Full'}
                   </button>
                   <button
                     type="button"
                     onClick={() => toggleBinDispatch(activeBinDetail.id)}
-                    className="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-[#00A77C] text-white hover:bg-[#008f6a] cursor-pointer"
+                    className="flex-1 py-2 text-xs font-bold rounded-xl bg-[#00A77C] text-white hover:bg-[#008f6a] cursor-pointer shadow-sm"
                   >
                     {activeBinDetail.activeDispatch ? 'Cancel Dispatch' : 'Dispatch MRF'}
                   </button>
@@ -295,16 +295,16 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
           })()}
         </div>
 
-        {/* Legend Footer (Matching Screenshot 705) */}
-        <div className="flex items-center gap-4 text-xs text-[#00271D]/70 font-semibold pt-1">
+        {/* Legend Footer */}
+        <div className="flex flex-wrap items-center gap-4 text-xs text-[#00271D]/70 font-semibold pt-1">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Full
+            <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" /> Biodegradable (Bio)
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" /> Available
+            <span className="h-2.5 w-2.5 rounded-full bg-sky-500" /> Non-Biodegradable (Non-Bio)
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-400" /> Unavailable
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Full / Unavailable
           </span>
         </div>
 
