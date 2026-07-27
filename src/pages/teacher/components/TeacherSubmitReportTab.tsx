@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   CheckCircle,
   Camera,
+  Compass,
   MapPin,
   ChevronLeft,
   Send,
