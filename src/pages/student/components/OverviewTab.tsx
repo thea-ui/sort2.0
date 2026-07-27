@@ -83,7 +83,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             </div>
           </div>
 
-        <        {/* Progress bar strip */}
+                {/* Progress bar strip */}
         <div className="mt-6 pt-5 border-t border-[#00271D]/10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs mb-2 font-bold gap-1">
             <span className="text-[#00271D]/60 uppercase text-[10px] tracking-wider">Quarterly Certificate Progress</span>
