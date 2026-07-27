@@ -86,17 +86,6 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => { setIsPinningMode(!isPinningMode); if (!isPinningMode) setSelectedBinId(null); }}
-              className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                isPinningMode ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-md shadow-[#00A77C]/25' : 'border-gray-200 bg-white text-[#00271D] hover:bg-gray-50'
-              }`}
-            >
-              <Compass size={13} className={isPinningMode ? 'animate-spin' : ''} />
-              {isPinningMode ? 'Pinning Active' : 'Drop Debris Pin'}
-            </button>
-
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
               <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
               Live · Updated Just Now
