@@ -252,9 +252,6 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
                       <Trash2 size={14} className={unavail ? 'text-rose-500' : 'text-[#10B981]'} />
                       <span>{activeBinDetail.locationName}</span>
                     </h4>
-                    <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
-                      Category: {activeBinDetail.type}
-                    </p>
                   </div>
                   <button
                     type="button"

@@ -202,9 +202,6 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                       <Trash2 size={14} className={unavail ? 'text-rose-500' : 'text-[#10B981]'} />
                       <span>{bin.locationName}</span>
                     </h4>
-                    <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
-                      Category: {bin.type}
-                    </p>
                   </div>
                   <button
                     type="button"
