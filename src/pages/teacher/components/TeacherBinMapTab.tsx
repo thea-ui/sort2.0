@@ -272,24 +272,6 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
                     {unavail ? 'Bin Location Unavailable' : 'Available'}
                   </span>
                 </div>
-
-                {/* Faculty Override Controls */}
-                <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateBinLevel(activeBinDetail.id, unavail ? 20 : 90)}
-                    className="flex-1 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-[#00271D] cursor-pointer"
-                  >
-                    Set {unavail ? 'Empty' : 'Full'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleBinDispatch(activeBinDetail.id)}
-                    className="flex-1 py-2 text-xs font-bold rounded-xl bg-[#00A77C] text-white hover:bg-[#008f6a] cursor-pointer shadow-sm"
-                  >
-                    {activeBinDetail.activeDispatch ? 'Cancel Dispatch' : 'Dispatch MRF'}
-                  </button>
-                </div>
               </div>
             );
           })()}
