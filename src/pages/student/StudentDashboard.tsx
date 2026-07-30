@@ -17,6 +17,8 @@ interface StudentDashboardProps {
 
 const CATEGORY_META: Record<WasteCategory, { label: string; icon: React.ComponentType<any>; color: string; bg: string; border: string }> = {
   RECYCLABLE: { label: 'Recyclable', icon: Scale, color: 'text-blue-600', bg: 'bg-blue-50/50', border: 'border-blue-100' },
+  BIODEGRADABLE: { label: 'Biodegradable', icon: Sparkles, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100' },
+  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', icon: Trash2, color: 'text-rose-600', bg: 'bg-rose-50/50', border: 'border-rose-100' },
   ORGANIC: { label: 'Organic', icon: Sparkles, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100' },
   HAZARDOUS: { label: 'Hazardous', icon: Flame, color: 'text-rose-600', bg: 'bg-rose-50/50', border: 'border-rose-100' },
   GENERAL: { label: 'General', icon: Trash2, color: 'text-zinc-600', bg: 'bg-zinc-50/50', border: 'border-zinc-200' },
@@ -68,10 +70,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
   const [claimedSuccess, setClaimedSuccess] = useState(false);
 
   // Filter personal reports
-  const personalReports = reports.filter(r => r.reporterId === 'current');
+  const personalReports = reports.filter(r =>
+    r.reporterId === currentUser?.id ||
+    r.reporterId === 'current' ||
+    r.reporterName === currentUser?.name ||
+    (r.reporterId && currentUser?.email && r.reporterId.toLowerCase() === currentUser.email.toLowerCase())
+  );
 
   const mockImages: Record<WasteCategory, string> = {
     RECYCLABLE: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=400&q=80',
+    BIODEGRADABLE: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80',
+    NON_BIODEGRADABLE: 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&w=400&q=80',
     ORGANIC: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80',
     HAZARDOUS: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80',
     GENERAL: 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&w=400&q=80',
@@ -153,7 +162,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
         <SubmitReportTab
           currentUser={currentUser}
           bins={bins}
+          reports={reports}
           settings={settings}
+          setActiveTab={setActiveTab}
           createReport={createReport}
           reportTitle={reportTitle}
           setReportTitle={setReportTitle}
@@ -192,6 +203,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
       {activeTab === 'bin-map' && (
         <BinMapTab
           bins={bins}
+          reports={reports}
           setActiveTab={setActiveTab || (() => {})}
           setBinId={setBinId}
           setLocationName={setLocationName}
@@ -211,6 +223,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
         <GamificationTab
           currentUser={currentUser}
           users={users}
+          reports={reports}
           challenges={challenges}
           isPeriodOver={isPeriodOver}
           setIsPeriodOver={setIsPeriodOver}

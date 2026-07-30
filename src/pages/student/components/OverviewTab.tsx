@@ -27,8 +27,14 @@ interface OverviewTabProps {
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, setActiveTab }) => {
-  const personalReports = reports.filter(r => r.reporterId === 'current' || r.reporterId === currentUser.id);
-  const totalReports = personalReports.length || 1;
+  const personalReports = reports.filter(r =>
+    r.reporterId === currentUser.id ||
+    r.reporterId === 'current' ||
+    r.reporterName === currentUser.name ||
+    (r.reporterId && currentUser.email && r.reporterId.toLowerCase() === currentUser.email.toLowerCase())
+  );
+  const totalReports = personalReports.length;
+  const progressPercent = Math.min(100, Math.round((currentUser.points / 500) * 100));
 
   return (
     <div className="max-w-6xl mx-auto space-y-9 pb-12">
@@ -61,7 +67,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             <div className="text-center min-w-[60px]">
               <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider mb-0.5">Rank</p>
               <p className="text-2xl font-heading font-black text-[#00271D]">
-                <span className="text-[#C69B26] font-black mr-0.5">#</span>2
+                <span className="text-[#C69B26] font-black mr-0.5">#</span>{currentUser.points === 0 ? '-' : '1'}
               </p>
             </div>
             <div className="text-center min-w-[80px]">
@@ -85,10 +91,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
         <div className="mt-6 pt-5 border-t border-[#00271D]/10 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold gap-1">
             <span className="text-[#00271D]/60 uppercase text-[10px] tracking-wider">Quarterly Certificate Progress</span>
-            <span className="text-[#C69B26]">Rank #2 — Progress to Rank 1 (Quarterly Certificate Unlocks at Rank 1)</span>
+            <span className="text-[#C69B26]">
+              {currentUser.points > 0 ? `Progress: ${progressPercent}%` : '0 Points — Submit reports to start earning points and certificates!'}
+            </span>
           </div>
           <div className="h-2.5 w-full bg-[#C69B26]/15 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-[#C69B26] to-amber-500 rounded-full transition-all duration-700" style={{ width: '82%' }} />
+            <div className="h-full bg-gradient-to-r from-[#C69B26] to-amber-500 rounded-full transition-all duration-700" style={{ width: `${progressPercent}%` }} />
           </div>
         </div>
       </div>
@@ -104,22 +112,22 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
           {/* 1. Grade Level Standing Card */}
           <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[#00271D]/60">My Grade Standing</p>
+              <p className="text-xs font-bold text-[#00271D]/60">My Section Standing</p>
               <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10">
                 <Award size={20} strokeWidth={2} />
               </div>
             </div>
             <div className="space-y-3">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100/80 text-amber-900 border border-amber-200 text-xs font-black">
-                Grade 10 — #2 out of Grades 7-10
+                Section {currentUser.classroomSection || 'BSIT-3A'}
               </span>
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[11px] text-[#00271D]/60 font-semibold">
-                  <span>Junior High Activity</span>
-                  <span>150 Reports</span>
+                  <span>My Submissions</span>
+                  <span>{totalReports} {totalReports === 1 ? 'Report' : 'Reports'}</span>
                 </div>
                 <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full" style={{ width: '75%' }} />
+                  <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full" style={{ width: `${Math.min(100, totalReports * 10)}%` }} />
                 </div>
               </div>
             </div>
@@ -135,7 +143,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             </div>
             <div>
               <div className="flex items-baseline gap-2.5">
-                <p className="text-3xl sm:text-4xl font-heading font-black text-[#00271D]">24</p>
+                <p className="text-3xl sm:text-4xl font-heading font-black text-[#00271D]">{reports.length}</p>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse" />
                   Live Volume
@@ -155,10 +163,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             </div>
             <div>
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-100/80 text-emerald-900 border border-emerald-200 text-xs font-black">
-                🍾 Plastic Bottles
+                <Recycle size={13} className="text-emerald-700" /> {reports.length > 0 ? (reports[0].category || 'Recyclables') : 'None Logged Yet'}
               </span>
               <p className="text-xs text-[#00271D]/60 mt-2.5 font-medium leading-relaxed">
-                Plastic Bottles account for campus recyclables.
+                {reports.length > 0 ? 'Top material category from active campus reports.' : 'Submit new waste reports to track campus material trends.'}
               </p>
             </div>
           </div>
@@ -219,7 +227,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
           <div className="divide-y divide-[#00271D]/5 flex-1">
             {personalReports.slice(0, 4).map(rep => (
               <div key={rep.id} className="flex items-center gap-3.5 px-6 py-4 hover:bg-[#00A77C]/5 transition-colors">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-lg border border-gray-200/60 shadow-xs">📋</span>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#00A77C]/10 text-[#00A77C]">
+                  <FileText size={18} />
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-bold text-[#00271D]">{rep.title}</p>
                   <p className="text-[11px] text-[#00271D]/50 font-medium mt-0.5">{rep.locationName} · {rep.timestamp}</p>
@@ -259,8 +269,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
           <div className="space-y-3 pt-3 border-t border-amber-100">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-[#00271D]/70">Status</span>
-              <span className="text-amber-700 bg-amber-100/80 border border-amber-200 px-3 py-0.5 rounded-full text-[10px] font-extrabold">
-                Locked (Rank #2)
+              <span className="text-emerald-800 bg-emerald-100/80 border border-emerald-200 px-3 py-0.5 rounded-full text-[10px] font-extrabold">
+                {currentUser.points === 0 ? 'Rank #1 (Tied)' : 'Rank #1'}
               </span>
             </div>
             <button

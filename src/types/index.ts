@@ -2,7 +2,7 @@ export type Role = 'STUDENT' | 'TEACHER' | 'MRF' | 'ADMIN';
 
 export type ReportStatus = 'PENDING' | 'DISPATCHED' | 'COLLECTED' | 'RESOLVED';
 
-export type WasteCategory = 'RECYCLABLE' | 'ORGANIC' | 'HAZARDOUS' | 'GENERAL';
+export type WasteCategory = 'RECYCLABLE' | 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'ORGANIC' | 'HAZARDOUS' | 'GENERAL';
 
 export interface User {
   id: string;
@@ -30,10 +30,16 @@ export interface Report {
   locationName: string;
   reporterId: string;
   reporterName: string;
+  reporterRole?: 'student' | 'teacher' | 'admin' | 'mrf';
   pointsAwarded: number;
   timestamp: string;
   imageUrl?: string;
   weightCollected?: number; // MRF logs kg weight upon collection
+  isVerified?: boolean;
+  assignedMrfId?: string;
+  assignedMrfName?: string;
+  reportType?: 'WASTE' | 'ASSET';
+  reporterRank?: number;
 }
 
 export interface BinStatus {

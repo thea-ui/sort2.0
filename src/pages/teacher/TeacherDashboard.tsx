@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { Report } from '../../types';
+import {
+  Recycle,
+  Armchair,
+  Monitor,
+  Zap,
+  Wrench,
+  FileText,
+} from 'lucide-react';
 
 // Sub-components matching StudentDashboard architecture
 import { TeacherOverviewTab } from './components/TeacherOverviewTab';
@@ -18,13 +26,13 @@ interface TeacherDashboardProps {
 const AVATAR_COLORS = ['bg-emerald-500', 'bg-violet-500', 'bg-sky-500', 'bg-amber-500', 'bg-rose-500'];
 const getAvatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 
-const PILLAR_META: Record<InfrastructurePillar, { emoji: string; label: string; desc: string; accent: string; iconBg: string; iconText: string; border: string }> = {
-  waste:       { emoji: '♻️', label: 'Waste / Bin',  desc: 'Litter issues, overflows',       accent: 'emerald', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', border: 'border-emerald-200' },
-  furniture:   { emoji: '🪑', label: 'Furniture',    desc: 'Desks, classroom chairs',         accent: 'amber',   iconBg: 'bg-amber-50',   iconText: 'text-amber-600',   border: 'border-amber-200'   },
-  electronics: { emoji: '💻', label: 'Electronics',  desc: 'Projectors, display screens',     accent: 'sky',     iconBg: 'bg-sky-50',     iconText: 'text-sky-600',     border: 'border-sky-200'     },
-  fixtures:    { emoji: '💡', label: 'Fixtures',     desc: 'AC fans, lights, switches',       accent: 'violet',  iconBg: 'bg-violet-50',  iconText: 'text-violet-600',  border: 'border-violet-200'  },
-  equipment:   { emoji: '🛠️', label: 'Equipment',    desc: 'Lab tool, janitorial asset',      accent: 'rose',    iconBg: 'bg-rose-50',    iconText: 'text-rose-600',    border: 'border-rose-200'    },
-  other:       { emoji: '⚙️', label: 'Other',        desc: 'General structural repair',       accent: 'zinc',    iconBg: 'bg-zinc-50',    iconText: 'text-zinc-600',    border: 'border-zinc-200'    },
+const PILLAR_META: Record<InfrastructurePillar, { icon: React.ComponentType<any>; label: string; desc: string; accent: string; iconBg: string; iconText: string; border: string }> = {
+  waste:       { icon: Recycle,  label: 'Waste / Bin',  desc: 'Litter issues, overflows',       accent: 'emerald', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', border: 'border-emerald-200' },
+  furniture:   { icon: Armchair, label: 'Furniture',    desc: 'Desks, classroom chairs',         accent: 'amber',   iconBg: 'bg-amber-50',   iconText: 'text-amber-600',   border: 'border-amber-200'   },
+  electronics: { icon: Monitor,  label: 'Electronics',  desc: 'Projectors, display screens',     accent: 'sky',     iconBg: 'bg-sky-50',     iconText: 'text-sky-600',     border: 'border-sky-200'     },
+  fixtures:    { icon: Zap,      label: 'Fixtures',     desc: 'AC fans, lights, switches',       accent: 'violet',  iconBg: 'bg-violet-50',  iconText: 'text-violet-600',  border: 'border-violet-200'  },
+  equipment:   { icon: Wrench,   label: 'Equipment',    desc: 'Lab tool, janitorial asset',      accent: 'rose',    iconBg: 'bg-rose-50',    iconText: 'text-rose-600',    border: 'border-rose-200'    },
+  other:       { icon: FileText, label: 'Other',        desc: 'General structural repair',       accent: 'zinc',    iconBg: 'bg-zinc-50',    iconText: 'text-zinc-600',    border: 'border-zinc-200'    },
 };
 
 const OBSERVATION_OPTIONS = [
@@ -224,9 +232,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     Dismissed: 'border-l-rose-400',
   };
 
-  const CAT_EMOJI: Record<string, string> = {
-    'Waste/Bin': '♻️', Furniture: '🪑', Electronics: '💻',
-    Fixtures: '💡', Equipment: '🛠️', Other: '⚙️',
+  const CAT_ICON: Record<string, React.ComponentType<any>> = {
+    'Waste/Bin': Recycle, Furniture: Armchair, Electronics: Monitor,
+    Fixtures: Zap, Equipment: Wrench, Other: FileText,
   };
 
   const timelineReports: Report[] = [
@@ -264,7 +272,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
           getDisplayStatus={getDisplayStatus}
           getDisplayCategory={getDisplayCategory}
           STATUS_BADGE={STATUS_BADGE}
-          CAT_EMOJI={CAT_EMOJI}
         />
       )}
 
@@ -344,7 +351,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
           getDisplayCategory={getDisplayCategory}
           STATUS_BADGE={STATUS_BADGE}
           STATUS_LEFT={STATUS_LEFT}
-          CAT_EMOJI={CAT_EMOJI}
         />
       )}
     </div>

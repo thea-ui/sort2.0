@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  MRF
+  ADMIN
+}
+
+enum ReportStatus {
+  PENDING
+  DISPATCHED
+  COLLECTED
+  RESOLVED
+}
+
+enum WasteCategory {
+  RECYCLABLE
+  ORGANIC
+  HAZARDOUS
+  GENERAL
+}
+
+enum Urgency {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ReportType {
+  WASTE
+  ASSET
+}
+
+enum Severity {
+  WARNING
+  STRIKE
+  SUSPENSION
+}
+
+enum EventType {
+  COLLECTION
+  EVENT
+  MAINTENANCE
+}
+
+enum SyncStatus {
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id               String         @id @default(uuid())
+  name             String
+  email            String         @unique
+  passwordHash     String         @map("password_hash")
+  employeeId       String         @unique @map("employee_id")
+  role             Role           @default(STUDENT)
+  points           Int            @default(0)
+  warningsCount    Int            @default(0) @map("warnings_count")
+  classroomSection String?        @map("classroom_section")
+  certificates     String[]       @default([]) @map("certificates")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  reports          Report[]       @relation("ReportedBy")
+  assignedReports  Report[]       @relation("AssignedToMRF")
+  offenses         Offense[]
+  pointHistories   PointHistory[]
+
+  @@map("users")
+}
+
+model Report {
+  id              String        @id @default(uuid())
+  title           String
+  description     String
+  status          ReportStatus  @default(PENDING)
+  urgency         Urgency       @default(MEDIUM)
+  category        WasteCategory @default(GENERAL)
+  lat             Float
+  lng             Float
+  locationName    String        @map("location_name")
+  reporterId      String        @map("reporter_id")
+  pointsAwarded   Int           @default(0) @map("points_awarded")
+  imageUrl        String?       @map("image_url")
+  weightCollected Float?        @map("weight_collected")
+  isVerified      Boolean       @default(false) @map("is_verified")
+  reportType      ReportType    @default(WASTE) @map("report_type")
+  assignedMrfId   String?       @map("assigned_mrf_id")
+  reporterRank    Int?          @map("reporter_rank")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  reporter        User          @relation("ReportedBy", fields: [reporterId], references: [id], onDelete: Cascade)
+  assignedMrf     User?         @relation("AssignedToMRF", fields: [assignedMrfId], references: [id], onDelete: SetNull)
+
+  @@index([reporterId])
+  @@index([status])
+  @@index([category])
+  @@map("reports")
+}
+
+model WasteBin {
+  id             String        @id @default(uuid())
+  name           String
+  locationName   String        @map("location_name")
+  fillLevel      Int           @default(0) @map("fill_level")
+  type           WasteCategory @default(GENERAL)
+  lat            Float
+  lng            Float
+  activeDispatch Boolean       @default(false) @map("active_dispatch")
+  lastEmptied    DateTime?     @map("last_emptied")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@map("waste_bins")
+}
+
+model Offense {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  description String
+  severity    Severity @default(WARNING)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("offenses")
+}
+
+model PointHistory {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("point_histories")
+}
+
+model Challenge {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  pointsAwarded Int      @map("points_awarded")
+  target        Int
+  progress      Int      @default(0)
+  completed     Boolean  @default(false)
+  iconName      String   @map("icon_name")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("challenges")
+}
+
+model SystemSetting {
+  id                       String   @id @default("default_setting")
+  pointsPerReport          Int      @default(50) @map("points_per_report")
+  pointsPerKgRecyclable    Int      @default(10) @map("points_per_kg_recyclable")
+  warningThreshold         Int      @default(3) @map("warning_threshold")
+  certificatePointThreshold Int      @default(500) @map("certificate_point_threshold")
+  quarterGateActive        Boolean  @default(false) @map("quarter_gate_active")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model CalendarEvent {
+  id          String    @id @default(uuid())
+  title       String
+  date        String
+  type        EventType @default(EVENT)
+  description String
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("calendar_events")
+}
+
+model SyncLog {
+  id            String     @id @default(uuid())
+  system        String
+  status        SyncStatus @default(SUCCESS)
+  recordsSynced Int        @default(0) @map("records_synced")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  @@map("sync_logs")
+}

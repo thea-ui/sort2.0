@@ -59,3 +59,22 @@ This configuration defines the strict operational rules and engineering guidelin
 ## 6. 🛠️ Tech Stack Awareness
 - **Frontend:** React 19 (TypeScript), Vite, TailwindCSS 4, Lucide React.
 - Always utilize the latest features available in these versions.
+
+## 7. 🗄️ Database & PostgreSQL Engineering Best Practices
+- **Schema & Naming Conventions:**
+  - Table names must be pluralized `snake_case` (e.g., `users`, `reports`, `waste_bins`, `offenses`, `point_histories`).
+  - Foreign key columns must use `singular_table_id` (e.g., `user_id`, `reporter_id`, `assigned_mrf_id`).
+  - Use database Enums for fixed categorical values (`Role`, `ReportStatus`, `WasteCategory`, `Severity`, `ReportType`).
+- **Primary Keys & Security:**
+  - Use non-sequential string identifiers (`UUID` or `CUID`) for primary keys to prevent enumeration security risks.
+  - **Password Security:** Never store plain text passwords. Always hash passwords using `bcrypt` / `argon2` with a minimum salt rounds factor of 10.
+- **Indexing & Queries:**
+  - Index frequently queried foreign keys, status flags, and filter fields (`email`, `status`, `reporter_id`, `created_at`).
+  - Avoid request waterfalls in API handlers; batch data fetching or use relational joins via ORM where applicable.
+- **Migrations & Seeding:**
+  - Never modify database schemas manually in production; always use version-controlled Prisma database migrations (`npx prisma migrate dev`).
+  - Maintain idempotent database seed scripts (`seed.ts`) to populate development/testing environments safely without creating duplicate key conflicts.
+- **Environment Isolation & Connection Pooling:**
+  - Store database connection strings in environment variables (`DATABASE_URL`). Never commit credentials to version control.
+  - Utilize connection pooling (`pgBouncer` or Prisma connection pooling) for high-concurrency production deployments.
+

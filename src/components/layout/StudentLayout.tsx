@@ -102,7 +102,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
             {/* Notifications */}
             <div className="relative">
               <button
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileDropdownOpen(false); }}
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-[#00271D] transition-colors relative cursor-pointer"
               >
                 <Bell size={16} />
@@ -112,6 +112,57 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                   </span>
                 )}
               </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-fade-in">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                    <h4 className="font-bold text-xs text-[#00271D] uppercase tracking-wider">My Notifications & Updates</h4>
+                    <span className="text-[10px] px-2 py-0.5 bg-[#00A77C]/10 text-[#00A77C] rounded-full font-bold border border-[#00A77C]/20">
+                      Live Feed
+                    </span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
+                    {reports.filter(r => r.reporterId === currentUser.id || r.reporterId === 'current').map(rep => {
+                      const isDispatched = rep.status === 'DISPATCHED';
+                      const isResolved = rep.status === 'COLLECTED' || rep.status === 'RESOLVED';
+
+                      return (
+                        <div
+                          key={rep.id}
+                          onClick={() => { setNotificationsOpen(false); setActiveTab('report-history'); }}
+                          className="p-3 hover:bg-gray-50 transition-colors cursor-pointer space-y-0.5"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className={`text-xs font-extrabold ${isResolved ? 'text-emerald-700' : isDispatched ? 'text-indigo-700' : 'text-amber-700'}`}>
+                              {isResolved ? '✓ MRF Completed Cleanup' : isDispatched ? '🚚 Admin Verified Report' : '⏳ Pending Admin Review'}
+                            </span>
+                            <span className="text-[9px] text-gray-400 font-medium">{rep.timestamp}</span>
+                          </div>
+                          <p className="text-[11px] text-gray-700 font-semibold">{rep.title}</p>
+                          <p className="text-[10px] text-gray-500">
+                            {isResolved
+                              ? `Cleanup finished! Awarded +${(rep.pointsAwarded && rep.pointsAwarded !== 50) ? rep.pointsAwarded : 15} pts.`
+                              : isDispatched
+                              ? `Admin confirmed valid report at ${rep.locationName}. Assigned to MRF.`
+                              : `Submitted report at ${rep.locationName}. Awaiting Admin verification.`}
+                          </p>
+                        </div>
+                      );
+                    })}
+                    {reports.filter(r => r.reporterId === currentUser.id || r.reporterId === 'current').length === 0 && (
+                      <p className="text-xs text-gray-400 text-center py-6">No notifications yet.</p>
+                    )}
+                  </div>
+                  <div className="p-2.5 bg-gray-50 border-t border-gray-100 text-center">
+                    <button
+                      onClick={() => { setNotificationsOpen(false); setActiveTab('report-history'); }}
+                      className="text-xs text-[#00A77C] font-bold hover:underline cursor-pointer"
+                    >
+                      View Full Activity History →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Profile */}

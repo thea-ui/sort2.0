@@ -3,8 +3,9 @@ import { useMockData } from '../../hooks/useMockData';
 import { Lock, ArrowRight, AlertCircle, Eye, EyeOff, ChevronDown } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
-  { role: 'Student', color: 'text-sky-600',    email: 'clara.g@campus.edu',  id: 'STU-2026-081' },
-  { role: 'Teacher', color: 'text-violet-600', email: 'm.thorne@campus.edu', id: 'TEA-2026-012' },
+  { role: 'Student 1', color: 'text-sky-600',    email: 'student1@sort.edu',  id: 'student123' },
+  { role: 'Student 2', color: 'text-sky-600',    email: 'student2@sort.edu',  id: 'student123' },
+  { role: 'Teacher',   color: 'text-violet-600', email: 'teacher1@sort.edu',  id: 'teacher123' },
 ];
 
 interface LoginCardProps {
@@ -27,7 +28,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
     setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !employeeId.trim()) {
       setError('Please fill in both fields to continue.');
@@ -35,15 +36,18 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
     }
     setLoading(true);
     setError(null);
-    setTimeout(() => {
-      const ok = login(employeeId, email);
+    try {
+      const ok = await login(employeeId, email);
       setLoading(false);
       if (ok) {
         onAuthenticated();
       } else {
-        setError('No account found. All credentials are pre-provisioned by the school administration.');
+        setError('No account found in database. All credentials are pre-provisioned by the school administration.');
       }
-    }, 900);
+    } catch {
+      setLoading(false);
+      setError('Authentication failed. Please verify your credentials.');
+    }
   };
 
   return (

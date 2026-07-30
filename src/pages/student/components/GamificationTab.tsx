@@ -6,13 +6,15 @@ import {
   Search,
   RotateCcw,
   Flame,
-  Lightbulb
+  Lightbulb,
+  Medal,
 } from 'lucide-react';
-import { User, Challenge } from '../../../types';
+import { User, Challenge, Report } from '../../../types';
 
 interface GamificationTabProps {
   currentUser: User;
   users: User[];
+  reports?: Report[];
   challenges: Challenge[];
   isPeriodOver: boolean;
   setIsPeriodOver: (v: boolean) => void;
@@ -26,6 +28,7 @@ interface GamificationTabProps {
 export const GamificationTab: React.FC<GamificationTabProps> = ({
   currentUser,
   users,
+  reports = [],
   challenges,
   isPeriodOver,
   setIsPeriodOver,
@@ -37,19 +40,29 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Compute leaderboard rankings
+  // Compute leaderboard rankings with actual report counts
   const leaderboardEntries = users
-    .filter(u => u.role === 'STUDENT' || u.role === 'TEACHER')
+    .filter(u => u.role === 'STUDENT')
+    .filter((u, index, self) => index === self.findIndex(t => t.email.toLowerCase() === u.email.toLowerCase()))
     .sort((a, b) => b.points - a.points)
-    .map((u, index) => ({
-      rank: index + 1,
-      studentId: u.id,
-      studentName: u.name,
-      gradeSection: u.classroomSection || (u.role === 'TEACHER' ? 'Faculty Staff' : 'Grade 10 - Newton'),
-      pointsBalance: u.points,
-      reportsCount: u.points >= 300 ? 20 : u.points >= 50 ? 5 : 1,
-      isCurrentUser: u.id === 'current' || u.email === currentUser.email
-    }));
+    .map((u, index) => {
+      const actualCount = reports.filter(r =>
+        r.reporterId === u.id ||
+        r.reporterName === u.name ||
+        (r.reporterId && u.email && r.reporterId.toLowerCase() === u.email.toLowerCase()) ||
+        (u.email.toLowerCase() === currentUser.email.toLowerCase() && (r.reporterId === 'current' || r.reporterId === currentUser.id))
+      ).length;
+
+      return {
+        rank: index + 1,
+        studentId: u.id,
+        studentName: u.name,
+        gradeSection: u.classroomSection || 'BSIT-3A',
+        pointsBalance: u.points,
+        reportsCount: actualCount,
+        isCurrentUser: u.email.toLowerCase() === currentUser.email.toLowerCase()
+      };
+    });
 
   const currentEntry = leaderboardEntries.find(e => e.isCurrentUser);
   const currentUserRank = currentEntry ? currentEntry.rank : 99;
@@ -97,32 +110,6 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         </button>
       </div>
 
-      {/* Simulator Quick Controls */}
-      <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl p-3.5 text-xs shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tournament State:</span>
-          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${isPeriodOver ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-[#00A77C]/10 text-[#00A77C] border-[#00A77C]/20'}`}>
-            {isPeriodOver ? 'Ended' : 'Active'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsPeriodOver(!isPeriodOver)}
-            className="px-3 py-1.5 text-[10px] font-bold rounded-lg border bg-gray-50 border-gray-200 text-[#00271D] hover:bg-gray-100 cursor-pointer select-none"
-          >
-            {isPeriodOver ? 'Resume Period' : 'End Period Now'}
-          </button>
-          <button
-            type="button"
-            onClick={() => deductPoints('current', -300)}
-            className="px-3 py-1.5 text-[10px] font-bold bg-[#00A77C]/10 text-[#00A77C] border border-[#00A77C]/20 rounded-lg cursor-pointer select-none"
-          >
-            +300 PTS
-          </button>
-        </div>
-      </div>
-
       {/* Claim success alert */}
       {claimedSuccess && (
         <div className="p-4 bg-[#00A77C]/20 border border-[#00A77C]/50 text-[#00A77C] rounded-2xl flex items-center gap-3 animate-fade-in text-xs shadow-xs">
@@ -148,13 +135,13 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
 
         <div className="flex flex-wrap gap-2 pt-0.5">
           <span className="px-3 py-1 bg-[#C69B26]/20 border border-[#C69B26]/40 text-[#C69B26] rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-            <span>🥇</span> <span>15 pts — 1st reporter</span>
+            <Medal size={12} className="text-[#C69B26]" /> <span>15 pts — 1st reporter</span>
           </span>
           <span className="px-3 py-1 bg-[#F9F3F0] border border-[#00271D]/15 text-[#00271D] rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-            <span>🥈</span> <span>10 pts — 2nd reporter</span>
+            <Medal size={12} className="text-slate-400" /> <span>10 pts — 2nd reporter</span>
           </span>
           <span className="px-3 py-1 bg-[#F9F3F0] border border-[#00271D]/15 text-[#00271D]/80 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-            <span>🥉</span> <span>5 pts — 3rd reporter</span>
+            <Medal size={12} className="text-amber-700" /> <span>5 pts — 3rd reporter</span>
           </span>
         </div>
       </div>

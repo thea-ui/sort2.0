@@ -20,7 +20,7 @@ export const LeaderboardCard: React.FC = () => {
   const { users } = useMockData();
 
   const leaderboard = [...users]
-    .filter((u) => u.role === 'STUDENT' || u.role === 'TEACHER')
+    .filter((u) => u.role === 'STUDENT')
     .sort((a, b) => b.points - a.points)
     .slice(0, 5);
 

@@ -10,7 +10,12 @@ import {
   ChevronRight,
   FileText,
   ArrowRight,
-  GraduationCap
+  GraduationCap,
+  Recycle,
+  Armchair,
+  Monitor,
+  Zap,
+  Wrench,
 } from 'lucide-react';
 import { User, Report } from '../../../types';
 
@@ -24,9 +29,14 @@ interface TeacherOverviewTabProps {
   getDisplayStatus: (status: string, title: string) => string;
   getDisplayCategory: (desc: string) => string;
   STATUS_BADGE: Record<string, string>;
-  CAT_EMOJI: Record<string, string>;
+  CAT_EMOJI?: Record<string, string>;
   setActiveTab: (tab: string) => void;
 }
+
+const CAT_ICON: Record<string, React.ComponentType<any>> = {
+  'Waste/Bin': Recycle, Furniture: Armchair, Electronics: Monitor,
+  Fixtures: Zap, Equipment: Wrench, Other: FileText,
+};
 
 export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
   currentUser,
@@ -138,7 +148,10 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
             <div>
               <p className="text-3xl font-heading font-extrabold text-[#00271D]">18m</p>
               <p className="text-xs font-bold text-[#00271D] mt-0.5">Average Response Time</p>
-              <p className="text-[11px] text-[#00271D]/50 font-medium">⚡ 4 minutes faster than avg</p>
+              <p className="text-[11px] text-[#00271D]/50 font-medium flex items-center gap-1">
+                <Zap size={11} className="text-[#00A77C]" />
+                <span>4 minutes faster than avg</span>
+              </p>
             </div>
             <div className="h-2 w-full bg-sky-100 rounded-full overflow-hidden">
               <div className="h-full bg-sky-500 rounded-full" style={{ width: '92%' }} />
@@ -148,66 +161,7 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
         </div>
       </div>
 
-      {/* ── Campus Analytics Breakdown ── */}
-      <div>
-        <h3 className="text-sm font-heading font-bold text-[#00271D] mb-3">Campus Operational Analytics</h3>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* Grade Level Distribution */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <div>
-              <h4 className="text-xs font-bold text-[#00271D] uppercase tracking-wider">Reports by Grade Level</h4>
-              <p className="text-[11px] text-[#00271D]/50 font-medium">Student reporting volume per department</p>
-            </div>
-            <div className="space-y-3">
-              {[
-                { label: 'Grade 7', pct: 28, count: 120, color: 'bg-[#00A77C]' },
-                { label: 'Grade 8', pct: 25, count: 108, color: 'bg-sky-500' },
-                { label: 'Grade 9', pct: 22, count: 95, color: 'bg-[#C69B26]' },
-                { label: 'Grade 10', pct: 25, count: 105, color: 'bg-purple-500' },
-              ].map((item, i) => (
-                <div key={i}>
-                  <div className="flex justify-between items-center text-xs font-bold mb-1">
-                    <span className="text-[#00271D]">{item.label}</span>
-                    <span className="text-[#00271D]/60">{item.pct}% ({item.count} reports)</span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.pct}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Reported Materials Breakdown */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <div>
-              <h4 className="text-xs font-bold text-[#00271D] uppercase tracking-wider">Most Reported Materials</h4>
-              <p className="text-[11px] text-[#00271D]/50 font-medium">Waste types captured across campus nodes</p>
-            </div>
-            <div className="space-y-3">
-              {[
-                { label: '🥤 Plastic Bottles', pct: 45, count: 210, color: 'bg-[#00A77C]' },
-                { label: '🥫 Aluminum Cans', pct: 30, count: 140, color: 'bg-sky-500' },
-                { label: '📦 Paper / Cardboard', pct: 15, count: 70, color: 'bg-[#C69B26]' },
-                { label: '🍾 Glass & Miscellaneous', pct: 10, count: 45, color: 'bg-purple-500' },
-              ].map((item, i) => (
-                <div key={i}>
-                  <div className="flex justify-between items-center text-xs font-bold mb-1">
-                    <span className="text-[#00271D]">{item.label}</span>
-                    <span className="text-[#00271D]/60">{item.pct}% ({item.count} items)</span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.pct}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </div>
 
       {/* ── Quick Actions Grid ── */}
       <div>
@@ -261,9 +215,14 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
             const dc = getDisplayCategory(rep.description);
             return (
               <div key={rep.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-[#00A77C]/5 transition-colors">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-base border border-gray-200/60 shadow-xs">
-                  {CAT_EMOJI[dc] || '📁'}
-                </span>
+                {(() => {
+                  const IconComp = CAT_ICON[dc] || FileText;
+                  return (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00A77C]/10 text-[#00A77C]">
+                      <IconComp size={16} />
+                    </div>
+                  );
+                })()}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-bold text-[#00271D]">{rep.title}</p>
                   <p className="text-[10px] text-[#00271D]/50 font-medium">{rep.locationName} · {rep.timestamp}</p>

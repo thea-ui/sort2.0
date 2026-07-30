@@ -4,7 +4,8 @@ import {
   Trash2,
   MapPin,
   Search,
-  Filter
+  Filter,
+  X
 } from 'lucide-react';
 import { Bin } from '../../../types';
 
@@ -171,7 +172,8 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
 
           {/* Map Top Badge */}
           <div className="absolute top-4 left-4 bg-white px-3 py-1.5 rounded-full text-[11px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1.5">
-            <span>📍 Campus Map</span>
+            <MapPin size={13} className="text-[#00A77C]" />
+            <span>Campus Map</span>
           </div>
 
           {/* Custom Pinned Debris marker if active */}
@@ -247,7 +249,7 @@ export const TeacherBinMapTab: React.FC<TeacherBinMapTabProps> = ({
                     onClick={() => setSelectedBinId(null)}
                     className="text-gray-400 hover:text-[#00271D] text-xs font-bold p-1 cursor-pointer"
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 </div>
 

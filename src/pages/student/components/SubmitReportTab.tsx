@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   AlertTriangle,
   Camera,
@@ -8,24 +8,35 @@ import {
   MapPin,
   MessageSquare,
   RefreshCw,
-  Scale,
   Search,
   Send,
-  Sparkles,
   Tag,
-  Trash2,
-  Trophy,
   X,
-  Flame,
   Video,
-  Upload
+  Upload,
+  Droplets,
+  Recycle,
+  Map as MapIcon,
+  PackageX,
+  Target,
+  Sparkles,
+  Info,
+  Clock,
+  Check,
+  Trash2,
+  Award,
+  ArrowRight,
+  FileText,
+  PlusCircle,
 } from 'lucide-react';
-import { User, Bin, SystemSettings, WasteCategory } from '../../../types';
+import { User, Bin, SystemSettings, WasteCategory, Report } from '../../../types';
 
 interface SubmitReportTabProps {
   currentUser: User;
   bins: Bin[];
+  reports?: Report[];
   settings: SystemSettings;
+  setActiveTab?: (tab: string) => void;
   createReport: (params: any) => void;
   reportTitle: string;
   setReportTitle: (v: string) => void;
@@ -60,27 +71,81 @@ interface SubmitReportTabProps {
   handleSubmit: (e: React.FormEvent) => void;
 }
 
-const DEFAULT_LOCATIONS = [
-  { name: 'Cafeteria – Block A', status: 'Available', isFull: false, bioFull: false, nonBioFull: false, lat: 14.6005, lng: 120.9835 },
-  { name: 'Library Entrance', status: 'Unavailable', isFull: true, bioFull: true, nonBioFull: false, lat: 14.5988, lng: 120.9868 },
-  { name: 'Gym Hallway', status: 'Available', isFull: false, bioFull: false, nonBioFull: false, lat: 14.6022, lng: 120.9830 },
-  { name: 'Engineering Bldg – 2F', status: 'Available', isFull: false, bioFull: false, nonBioFull: false, lat: 14.5995, lng: 120.9855 },
-  { name: 'Parking Lot B', status: 'Available', isFull: false, bioFull: false, nonBioFull: true, lat: 14.6010, lng: 120.9870 },
-  { name: 'Science Hall Cafeteria Side', status: 'Unavailable', isFull: true, bioFull: true, nonBioFull: true, lat: 14.6018, lng: 120.9860 },
-];
+// Station & Category Helpers
+type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
+export type BinReportStatusState = 'AVAILABLE' | 'REPORTED_FULL' | 'DISPATCHED' | 'NO_BIN';
 
-const RECYCLABLE_CATEGORIES = [
-  { id: 'plastic', label: 'Plastic Bottles', icon: '🍾', desc: 'PET bottles, beverage containers' },
-  { id: 'glass', label: 'Glass / Tanduay Bottles', icon: '🍶', desc: 'Glass bottles, jars' },
-  { id: 'aluminum', label: 'Aluminum Cans', icon: '🥫', desc: 'Soda cans, tin containers' },
-  { id: 'paper', label: 'Paper & Cardboard', icon: '📦', desc: 'Cardboard boxes, papers' },
-  { id: 'residual', label: 'Residual Waste', icon: '🗑️', desc: 'General non-recyclables' },
-];
+interface BinSlot {
+  bin: Bin | null;
+  type: BinCategory;
+  statusState: BinReportStatusState;
+  activeReport?: Report;
+}
+
+interface StationCluster {
+  locationName: string;
+  coordinates: { lat: number; lng: number };
+  slots: [BinSlot, BinSlot, BinSlot];
+}
+
+const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE'];
+
+const CAT_META: Record<BinCategory, { label: string; short: string; bg: string; border: string; text: string; Icon: React.FC<{ size?: number; className?: string }>; desc: string }> = {
+  BIODEGRADABLE:     { label: 'Biodegradable',     short: 'Bio', bg: 'bg-emerald-500', border: 'border-emerald-400', text: 'text-emerald-600', Icon: Droplets, desc: 'Food scraps, organic waste & plant leaves' },
+  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', short: 'Non', bg: 'bg-rose-500',    border: 'border-rose-400',    text: 'text-rose-600',    Icon: PackageX, desc: 'Wrappers, plastic films & residual waste' },
+  RECYCLABLE:        { label: 'Recyclable',         short: 'Rec', bg: 'bg-sky-500',     border: 'border-sky-400',     text: 'text-sky-600',     Icon: Recycle,  desc: 'PET bottles, aluminum cans, glass & cardboard' },
+};
+
+function getBinSlotDetails(bin: Bin | null, reports: Report[] = []): { statusState: BinReportStatusState; activeReport?: Report } {
+  if (!bin) return { statusState: 'NO_BIN' };
+
+  const activeReport = reports.find(r => 
+    r.locationName.toLowerCase() === bin.locationName.toLowerCase() &&
+    r.category === bin.type &&
+    (r.status === 'PENDING' || r.status === 'DISPATCHED')
+  );
+
+  if (activeReport?.status === 'DISPATCHED' || bin.activeDispatch) {
+    return { statusState: 'DISPATCHED', activeReport };
+  }
+
+  if (activeReport?.status === 'PENDING' || bin.fillLevel >= 85) {
+    return { statusState: 'REPORTED_FULL', activeReport };
+  }
+
+  return { statusState: 'AVAILABLE' };
+}
+
+function groupStations(bins: Bin[], reports: Report[] = []): StationCluster[] {
+  const map = new Map<string, { coords: { lat: number; lng: number }; byType: Map<BinCategory, Bin> }>();
+  for (const bin of bins) {
+    if (!map.has(bin.locationName)) map.set(bin.locationName, { coords: bin.coordinates, byType: new Map() });
+    const t = bin.type as BinCategory;
+    if (CATEGORY_ORDER.includes(t)) map.get(bin.locationName)!.byType.set(t, bin);
+  }
+
+  return Array.from(map.entries()).map(([locationName, data]) => ({
+    locationName,
+    coordinates: data.coords,
+    slots: CATEGORY_ORDER.map(type => {
+      const bin = data.byType.get(type) ?? null;
+      const details = getBinSlotDetails(bin, reports);
+      return {
+        type,
+        bin,
+        statusState: details.statusState,
+        activeReport: details.activeReport,
+      };
+    }) as [BinSlot, BinSlot, BinSlot],
+  }));
+}
 
 export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
   currentUser,
   bins,
+  reports = [],
   settings,
+  setActiveTab,
   reportTitle,
   setReportTitle,
   reportDesc,
@@ -108,11 +173,57 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
   setIsPinningMode,
   selectedMaterials,
   setSelectedMaterials,
-  sliderValue,
-  setSliderValue,
   handleSubmit
 }) => {
   const [searchLocation, setSearchLocation] = useState('');
+  const [activePopoverStation, setActivePopoverStation] = useState<string | null>(null);
+
+  const stations = useMemo(() => groupStations(bins, reports), [bins, reports]);
+  const filteredStations = useMemo(
+    () => stations.filter(s => s.locationName.toLowerCase().includes(searchLocation.toLowerCase())),
+    [stations, searchLocation]
+  );
+
+  // Active station selection
+  const activeStation = useMemo(
+    () => stations.find(s => s.locationName === locationName),
+    [stations, locationName]
+  );
+
+  // Select Category & Sync Title/Materials
+  const handleSelectCategoryAndBin = (selectedCat: WasteCategory, targetBinId?: string | null) => {
+    setCategory?.(selectedCat);
+    const catLabel = selectedCat === 'BIODEGRADABLE' ? 'Biodegradable' : selectedCat === 'NON_BIODEGRADABLE' ? 'Non-Biodegradable' : 'Recyclable';
+    setReportTitle(catLabel);
+    setSelectedMaterials([catLabel]);
+
+    if (targetBinId) {
+      setBinId(targetBinId);
+    } else if (activeStation) {
+      const slot = activeStation.slots.find(s => s.type === selectedCat);
+      if (slot?.bin) {
+        setBinId(slot.bin.id);
+      }
+    }
+  };
+
+  // Station Selection from Map Pin or Pill
+  const handleSelectStation = (station: StationCluster, specificBinId?: string | null, binType?: BinCategory) => {
+    setLocationName(station.locationName);
+    setGpsCoords(station.coordinates);
+    setIsScatteredDebris(false);
+
+    const targetType = binType || (category as BinCategory) || 'RECYCLABLE';
+    const slot = station.slots.find(s => s.type === targetType && s.bin !== null) || station.slots.find(s => s.bin !== null);
+    
+    if (specificBinId && binType) {
+      handleSelectCategoryAndBin(binType, specificBinId);
+    } else if (slot && slot.bin) {
+      handleSelectCategoryAndBin(slot.type, slot.bin.id);
+    } else {
+      setBinId(null);
+    }
+  };
 
   // Live Camera states
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -160,7 +271,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
       }
     } catch (err: any) {
       console.error('Camera access error:', err);
-      setCameraError('Camera access not supported or permission denied. You can use native file upload or device camera.');
+      setCameraError('Camera access not supported or permission denied. Please use file upload.');
     }
   };
 
@@ -193,55 +304,161 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
     };
   }, [cameraStream]);
 
-  const filteredLocations = DEFAULT_LOCATIONS.filter(loc =>
-    loc.name.toLowerCase().includes(searchLocation.toLowerCase())
-  );
+  // Check if current user already filed an active report for the selected bin
+  const isDuplicateActiveReport = useMemo(() => {
+    if (!locationName || !category) return false;
+    return reports.some(r =>
+      (r.reporterId === currentUser.id || r.reporterId === 'current') &&
+      r.locationName.toLowerCase() === locationName.toLowerCase() &&
+      r.category === category &&
+      (r.status === 'PENDING' || r.status === 'DISPATCHED')
+    );
+  }, [reports, currentUser, locationName, category]);
+
+  // FULL SUBMISSION SUCCESS INDICATOR VIEW
+  if (submitSuccess) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-12 pt-4">
+        <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-8 shadow-xl text-center space-y-6">
+          
+          {/* Animated Success Icon & Status Pill */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-20 w-20 rounded-full bg-[#00A77C]/15 flex items-center justify-center text-[#00A77C] ring-8 ring-[#00A77C]/10 shadow-inner">
+              <CheckCircle size={44} strokeWidth={2.5} className="animate-bounce" />
+            </div>
+            <div className="bg-[#C69B26]/15 border border-[#C69B26]/30 text-[#C69B26] px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5 shadow-sm">
+              <Award size={13} /> Pending Admin Verification
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-heading font-black text-[#00271D]">Report Successfully Submitted!</h2>
+            <p className="text-xs text-[#00271D]/70 font-medium mt-1 max-w-md mx-auto">
+              Your waste report is submitted and pending Admin verification. Once verified by Admin and MRF completes the cleanup, points will be awarded based on reporting order (1st: 15 pts, 2nd: 10 pts, 3rd: 5 pts).
+            </p>
+          </div>
+
+          {/* Submitted Summary Details Card */}
+          <div className="p-5 bg-gray-50/80 border border-gray-200 rounded-2xl text-left space-y-3">
+            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Report Details Summary</p>
+            
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-gray-400 font-medium block text-[10px]">Location</span>
+                <span className="font-bold text-[#00271D] flex items-center gap-1 mt-0.5">
+                  <MapPin size={12} className="text-[#00A77C]" /> {locationName || 'Campus Station'}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-gray-400 font-medium block text-[10px]">Waste Category</span>
+                <span className="font-bold text-[#00A77C] flex items-center gap-1 mt-0.5">
+                  <Tag size={12} /> {category}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-gray-400 font-medium block text-[10px]">Urgency</span>
+                <span className="font-bold text-[#00271D] flex items-center gap-1 mt-0.5">
+                  <AlertTriangle size={12} className={urgency === 'HIGH' ? 'text-rose-500' : 'text-[#00A77C]'} /> {urgency}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-gray-400 font-medium block text-[10px]">Status</span>
+                <span className="font-extrabold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md inline-block mt-0.5 text-[10px]">
+                  ⏳ FILED · PENDING ADMIN VERIFICATION
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab?.('report-history')}
+              className="flex-1 py-3.5 px-4 bg-[#00271D] hover:bg-[#00382a] text-white font-bold text-xs rounded-full shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+            >
+              <FileText size={15} />
+              <span>View My Report History</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (setCapturedImage) setCapturedImage(null);
+                setLocationName('');
+                setReportDesc('');
+              }}
+              className="flex-1 py-3.5 px-4 bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold text-xs rounded-full shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+            >
+              <PlusCircle size={15} />
+              <span>File Another Report</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
-
+    <div className="max-w-3xl mx-auto space-y-5 animate-fade-in pb-12">
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Top Banner Alert */}
-      <div className="bg-[#00A77C]/15 border border-[#00A77C]/30 rounded-2xl p-5 flex items-start sm:items-center gap-3.5 text-[#00271D] shadow-xs">
-        <div className="h-10 w-10 rounded-2xl bg-[#00A77C] text-white flex items-center justify-center shrink-0 shadow-xs">
-          <AlertTriangle className="text-white" size={20} />
+      <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center shrink-0">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <h2 className="font-heading font-bold text-sm text-[#00271D]">Report Campus Waste</h2>
+            <p className="text-xs text-[#00271D]/70 font-medium">
+              Snap photo → Tap map pin → Submit. Points awarded upon MRF resolution!
+            </p>
+          </div>
         </div>
-        <div className="flex-1">
-          <h3 className="font-heading font-bold text-sm text-[#00271D]">Report Campus Waste</h3>
-          <p className="text-xs text-[#00271D]/70 mt-0.5 font-medium">
-            Select recyclable type, pin location or pick a bin station, and submit photo evidence.
-          </p>
+        <div className="hidden sm:flex items-center gap-1 bg-[#C69B26]/10 border border-[#C69B26]/30 text-[#C69B26] px-3 py-1.5 rounded-full text-xs font-bold shrink-0">
+          <span>1st: 15pts · 2nd: 10pts · 3rd: 5pts</span>
         </div>
       </div>
 
-      {/* Submission Success Toast */}
-      {submitSuccess && (
-        <div className="p-4 bg-[#00A77C]/20 border border-[#00A77C]/40 text-[#00A77C] rounded-2xl flex items-center gap-3 animate-fade-in text-xs shadow-xs">
-          <CheckCircle size={20} className="shrink-0 text-[#00A77C]" />
+      {/* Duplicate Active Report Warning Banner */}
+      {isDuplicateActiveReport && (
+        <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl flex items-start gap-3 text-xs shadow-sm animate-fade-in">
+          <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold text-sm">Report Filed Successfully!</p>
-            <p className="text-[#00A77C] mt-0.5">
-              Awarded <span className="font-bold">{settings.pointsPerReport} points</span> after human verification review.
+            <p className="font-bold text-amber-950">You Have Already Reported This Trash Bin</p>
+            <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+              Per user policy, you can only submit <strong>1 report per specific trash bin</strong> until MRF staff complete the cleanup. Your existing report is registered and pending MRF action.
             </p>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {/* SINGLE COLUMN FORM */}
+      <form onSubmit={handleSubmit} className="space-y-5">
 
-        {/* Card 1: Photo Evidence */}
-        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-md transition-all">
-          <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2 mb-3.5">
-            <ImageIcon size={18} className="text-[#00A77C]" />
-            <span>Photo Evidence</span>
-            <span className="text-rose-500">*</span>
-          </h3>
+        {/* STEP 1: PHOTO EVIDENCE */}
+        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
+              <ImageIcon size={16} className="text-[#00A77C]" />
+              <span>1. Photo Evidence</span>
+              <span className="text-rose-500">*</span>
+            </h3>
+            {capturedImage && (
+              <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle size={10} /> Photo Attached
+              </span>
+            )}
+          </div>
 
-          <div className="bg-[#00271D] rounded-2xl overflow-hidden relative min-h-[260px] flex items-center justify-center border border-[#00271D] group">
-
+          <div className="bg-[#00271D] rounded-2xl overflow-hidden relative min-h-[220px] flex items-center justify-center border border-[#00271D] group">
             {isLiveCameraActive ? (
-              <div className="relative w-full h-64 sm:h-72 bg-black flex items-center justify-center">
+              <div className="relative w-full h-64 bg-black flex items-center justify-center">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -249,75 +466,70 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                   muted
                   className="w-full h-full object-cover"
                 />
-
-                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-center justify-between gap-2">
+                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={stopCamera}
-                    className="p-2.5 rounded-[6px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-600 backdrop-blur-sm cursor-pointer"
+                    className="p-2 rounded-xl bg-slate-800/80 text-slate-200 border border-slate-600 cursor-pointer"
                   >
-                    <X size={18} />
+                    <X size={16} />
                   </button>
-
                   <button
                     type="button"
                     onClick={snapPhoto}
-                    className="px-5 py-2.5 bg-[#00615F] hover:bg-[#004d4b] text-white font-bold text-xs rounded-[6px] shadow-lg flex items-center gap-2 cursor-pointer"
+                    className="px-4 py-2 bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold text-xs rounded-full shadow-lg flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Camera size={16} />
-                    <span>Capture Photo</span>
+                    <Camera size={14} />
+                    <span>Snap Photo</span>
                   </button>
-
                   <button
                     type="button"
                     onClick={toggleCameraFacing}
-                    className="p-2.5 rounded-[6px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-600 backdrop-blur-sm cursor-pointer"
+                    className="p-2 rounded-xl bg-slate-800/80 text-slate-200 border border-slate-600 cursor-pointer"
                   >
-                    <RefreshCw size={18} />
+                    <RefreshCw size={16} />
                   </button>
                 </div>
               </div>
             ) : isCapturing ? (
-              <div className="text-center space-y-2 py-10 animate-pulse">
-                <Camera className="mx-auto text-[#67D695]" size={32} />
-                <p className="text-xs font-bold text-white tracking-wide uppercase">Accessing Camera Preview...</p>
+              <div className="text-center space-y-2 py-8 animate-pulse">
+                <Camera className="mx-auto text-[#00A77C]" size={28} />
+                <p className="text-xs font-bold text-white tracking-wide uppercase">Opening Camera...</p>
               </div>
             ) : capturedImage ? (
-              <div className="relative w-full h-64 sm:h-72 flex items-center justify-center bg-black/90">
+              <div className="relative w-full h-64 flex items-center justify-center bg-black/90">
                 <img
                   src={capturedImage}
                   alt="Waste verification evidence"
                   className="max-h-full max-w-full object-contain"
                 />
-
-                <div className="absolute bottom-3 left-3 bg-[#012625]/90 border border-[#00615F] text-[#67D695] text-xs font-semibold px-3 py-1.5 rounded-[6px] flex items-center gap-1.5 shadow-md">
-                  <CheckCircle size={14} className="text-[#67D695]" />
-                  <span>Photo ready</span>
+                <div className="absolute bottom-2.5 left-2.5 bg-[#00271D]/90 border border-[#00A77C] text-[#00A77C] text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-md">
+                  <CheckCircle size={12} />
+                  <span>Evidence Ready</span>
                 </div>
-
                 {setCapturedImage && (
                   <button
                     type="button"
                     onClick={() => setCapturedImage(null)}
                     title="Remove Photo"
-                    className="absolute top-3 right-3 h-8 w-8 rounded-[6px] bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg cursor-pointer"
+                    className="absolute top-2.5 right-2.5 h-7 w-7 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg cursor-pointer transition-all"
                   >
-                    <X size={18} strokeWidth={2.5} />
+                    <X size={15} strokeWidth={2.5} />
                   </button>
                 )}
               </div>
             ) : (
-              <div className="text-center space-y-3 py-8 px-4 w-full">
-                <div className="h-12 w-12 rounded-[6px] bg-[#00615F]/20 text-[#67D695] flex items-center justify-center mx-auto border border-[#00615F]/40">
-                  <Camera size={22} />
+              <div className="text-center space-y-2.5 py-6 px-4 w-full">
+                <div className="h-10 w-10 rounded-xl bg-[#00A77C]/20 text-[#00A77C] flex items-center justify-center mx-auto border border-[#00A77C]/40">
+                  <Camera size={20} />
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-white">Upload or capture photo evidence</p>
-                  <p className="text-[11px] text-white/60 mt-0.5">Works on desktop webcams & mobile cameras (iOS & Android)</p>
+                  <p className="text-[10px] text-white/60 mt-0.5">Works on desktop webcams & mobile cameras</p>
                 </div>
 
                 {cameraError && (
-                  <p className="text-[11px] text-amber-300 font-medium bg-amber-950/40 border border-amber-800/60 p-2 rounded-[6px] max-w-md mx-auto">
+                  <p className="text-[10px] text-amber-300 font-medium bg-amber-950/40 border border-amber-800/60 p-2 rounded-lg max-w-md mx-auto">
                     {cameraError}
                   </p>
                 )}
@@ -326,15 +538,15 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                   <button
                     type="button"
                     onClick={() => startCamera()}
-                    className="py-2 px-4 bg-[#00615F] hover:bg-[#004d4b] text-white rounded-[6px] text-xs font-bold shadow-sm cursor-pointer transition-all flex items-center gap-1.5"
+                    className="py-1.5 px-3.5 bg-[#00A77C] hover:bg-[#008f6a] text-white rounded-full text-xs font-bold shadow-xs cursor-pointer transition-all flex items-center gap-1.5"
                   >
-                    <Video size={14} />
-                    <span>Live Device Camera</span>
+                    <Video size={13} />
+                    <span>Live Camera</span>
                   </button>
 
-                  <label className="py-2 px-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-[6px] text-xs font-bold shadow-sm cursor-pointer transition-all flex items-center gap-1.5">
-                    <Upload size={14} />
-                    <span>Device Gallery / Camera</span>
+                  <label className="py-1.5 px-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full text-xs font-bold shadow-xs cursor-pointer transition-all flex items-center gap-1.5">
+                    <Upload size={13} />
+                    <span>Gallery Upload</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -347,9 +559,9 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                   <button
                     type="button"
                     onClick={handleCapture}
-                    className="py-2 px-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white/70 rounded-[6px] text-[11px] font-medium cursor-pointer"
+                    className="py-1.5 px-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white/70 rounded-full text-[10px] font-medium cursor-pointer"
                   >
-                    <span>Mock Demo</span>
+                    <span>Demo Photo</span>
                   </button>
                 </div>
               </div>
@@ -357,81 +569,54 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Bin Location & Map with Side-by-Side Color-Coded Trash Cans */}
-        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-md transition-all space-y-4">
+        {/* STEP 2: LOCATION & BIN CATEGORY SELECTOR (RESPONSIVE MAP + AUTO-ADJUSTING POPOVER) */}
+        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2">
-              <MapPin size={18} className="text-[#00A77C]" />
-              <span>Bin Location</span>
-              <span className="text-rose-500">*</span>
-            </h3>
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center">
+                <MapPin size={15} />
+              </div>
+              <h3 className="text-sm font-heading font-bold text-[#00271D]">
+                2. Location & Waste Category
+                <span className="text-rose-500 ml-1">*</span>
+              </h3>
+            </div>
 
             <button
               type="button"
               onClick={() => setIsPinningMode(!isPinningMode)}
-              className={`px-4 py-2 text-xs font-bold rounded-full border transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold rounded-full border transition-all flex items-center gap-1.5 cursor-pointer w-fit ${
                 isPinningMode
-                  ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-sm'
-                  : 'bg-[#F9F3F0] border-[#00271D]/15 text-[#00271D] hover:bg-[#00271D]/10'
+                  ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-xs'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
               }`}
             >
-              <Compass size={14} className={isPinningMode ? 'animate-spin' : ''} />
-              <span>{isPinningMode ? 'Pinning Mode Active' : '📍 Pin Scattered Trash'}</span>
+              <Compass size={13} className={isPinningMode ? 'animate-spin' : ''} />
+              <span>{isPinningMode ? 'Pinning Active (Tap Map)' : 'Pin Scattered Waste'}</span>
             </button>
           </div>
 
+          {/* Search Input */}
           <div className="relative">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#00271D]/40 pointer-events-none" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search campus location..."
+              placeholder="Search campus location or building..."
               value={searchLocation}
               onChange={(e) => setSearchLocation(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-[#F9F3F0] border border-[#00271D]/15 rounded-xl text-xs text-[#00271D] font-medium outline-none focus:border-[#00A77C] transition-all"
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#00271D] font-medium outline-none focus:border-[#00A77C] focus:bg-white transition-all shadow-xs"
             />
           </div>
 
-          <div className="border border-[#00271D]/10 rounded-2xl overflow-hidden divide-y divide-[#00271D]/10 max-h-48 overflow-y-auto bg-white">
-            {filteredLocations.map((loc) => {
-              const isSelected = locationName === loc.name;
-              return (
-                <div
-                  key={loc.name}
-                  onClick={() => {
-                    setLocationName(loc.name);
-                    setBinId(null);
-                    setIsScatteredDebris(false);
-                    setGpsCoords({ lat: loc.lat, lng: loc.lng });
-                  }}
-                  className={`px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-[#00A77C]/15 font-semibold'
-                      : 'hover:bg-[#F9F3F0]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className={`h-2.5 w-2.5 rounded-full ${loc.isFull ? 'bg-rose-500' : 'bg-[#00A77C]'}`} />
-                    <span className={`text-xs ${isSelected ? 'text-[#00271D] font-bold' : 'text-[#00271D]/80 font-medium'}`}>
-                      {loc.name}
-                    </span>
-                  </div>
-                  <span className={`text-[11px] font-bold px-3 py-0.5 rounded-full border ${
-                    loc.isFull
-                      ? 'bg-rose-100 text-rose-700 border-rose-200'
-                      : 'bg-[#00A77C]/20 text-[#00A77C] border-[#00A77C]/40'
-                  }`}>
-                    {loc.status}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Interactive Campus Grid Map */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between items-center text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">
-              <span>Campus Map Grid View (Side-by-Side Dual Trash Can Stations)</span>
-              {locationName && <span className="text-[#00A77C] normal-case font-semibold truncate max-w-[200px]">Selected: {locationName}</span>}
+          {/* Generous & Responsive Campus Map Container */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <span>Interactive Campus Map (Tap Circular Trash Pin)</span>
+              {locationName && (
+                <span className="text-[#00A77C] normal-case font-bold truncate max-w-[240px]">
+                  Selected: {locationName}
+                </span>
+              )}
             </div>
 
             <div
@@ -440,15 +625,10 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                 const rect = e.currentTarget.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
                 const clickY = e.clientY - rect.top;
-
                 const pctX = clickX / rect.width;
                 const pctY = clickY / rect.height;
 
-                const minLat = 14.5980;
-                const maxLat = 14.6030;
-                const minLng = 120.9820;
-                const maxLng = 120.9880;
-
+                const minLat = 14.5980, maxLat = 14.6030, minLng = 120.9820, maxLng = 120.9880;
                 const lat = maxLat - pctY * (maxLat - minLat);
                 const lng = minLng + pctX * (maxLng - minLng);
 
@@ -456,102 +636,153 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                 setBinId(null);
                 setIsScatteredDebris(true);
                 setLocationName(`Scattered Debris at Grid [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
+                setActivePopoverStation(null);
               }}
-              className={`relative w-full h-[300px] rounded-2xl border bg-[#00271D] border-[#00271D] overflow-hidden shadow-inner flex items-center justify-center transition-all ${
+              className={`relative w-full h-[360px] sm:h-[420px] rounded-2xl border border-gray-200 bg-[#f8fafc] overflow-hidden shadow-inner flex items-center justify-center transition-all ${
                 isPinningMode ? 'cursor-crosshair ring-2 ring-[#00A77C]' : 'cursor-default'
               }`}
             >
-              <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+              {/* Grid Overlay */}
+              <svg className="absolute inset-0 w-full h-full opacity-60 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                  <pattern id="campus-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#00A77C" strokeWidth="0.5" />
+                  <pattern id="campus-grid-clean" width="28" height="28" patternUnits="userSpaceOnUse">
+                    <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
                   </pattern>
                 </defs>
-                <rect width="100%" height="100%" fill="url(#campus-grid)" />
-                <rect x="15%" y="10%" width="20%" height="15%" rx="6" fill="#00A77C" opacity="0.4" />
-                <text x="25%" y="19%" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle">Sports Gym</text>
+                <rect width="100%" height="100%" fill="url(#campus-grid-clean)" />
+                <rect x="15%" y="10%" width="20%" height="15%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
 
-                <rect x="65%" y="12%" width="22%" height="18%" rx="6" fill="#00A77C" opacity="0.4" />
-                <text x="76%" y="22%" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle">Science Hall</text>
+                <rect x="65%" y="12%" width="22%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
 
-                <circle cx="50%" cy="50%" r="35" fill="#00A77C" opacity="0.4" />
-                <text x="50%" y="51%" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle">Quad</text>
+                <circle cx="50%" cy="50%" r="35" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
 
-                <rect x="10%" y="70%" width="25%" height="18%" rx="6" fill="#00A77C" opacity="0.4" />
-                <text x="22%" y="81%" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
+                <rect x="10%" y="70%" width="25%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
 
-                <rect x="60%" y="72%" width="28%" height="18%" rx="6" fill="#00A77C" opacity="0.4" />
-                <text x="74%" y="83%" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle">Main Library</text>
+                <rect x="60%" y="72%" width="28%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
               </svg>
 
-              <div className="absolute top-2 left-2 bg-[#00271D]/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[8px] text-[#00A77C] font-bold uppercase border border-[#00A77C]">
-                📍 Side-by-Side Color-Coded Stations
+              <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
+                <MapIcon size={12} className="text-[#00A77C]" />
+                <span>Map Pins</span>
               </div>
 
-              {/* Side-by-Side Dual Trash Cans plot */}
-              {DEFAULT_LOCATIONS.map(loc => {
-                const minLat = 14.5980;
-                const maxLat = 14.6030;
-                const minLng = 120.9820;
-                const maxLng = 120.9880;
+              {/* Clean Circular Trash Can Icons with Smart Auto-Adjusting Popover */}
+              {filteredStations.map(station => {
+                const minLat = 14.5975, maxLat = 14.6035, minLng = 120.9815, maxLng = 120.9885;
+                const pctY = ((maxLat - station.coordinates.lat) / (maxLat - minLat)) * 100;
+                const pctX = ((station.coordinates.lng - minLng) / (maxLng - minLng)) * 100;
+                const isSel = locationName === station.locationName;
+                const isPopoverOpen = activePopoverStation === station.locationName;
+                const hasReportedFull = station.slots.some(s => s.statusState === 'REPORTED_FULL' || s.statusState === 'DISPATCHED');
 
-                const pctY = ((maxLat - loc.lat) / (maxLat - minLat)) * 100;
-                const pctX = ((loc.lng - minLng) / (maxLng - minLng)) * 100;
+                // Dynamic Popover Positioning Logic
+                const isNearTopEdge = pctY < 55;
+                const isNearLeftEdge = pctX < 25;
+                const isNearRightEdge = pctX > 75;
 
-                const isSelected = locationName === loc.name;
+                const verticalPosClass = isNearTopEdge ? 'top-12' : 'bottom-12';
+                const horizontalPosClass = isNearLeftEdge
+                  ? 'left-0 translate-x-0'
+                  : isNearRightEdge
+                  ? 'right-0 translate-x-0'
+                  : 'left-1/2 -translate-x-1/2';
 
                 return (
-                  <div
-                    key={loc.name}
-                    style={{ left: `${pctX}%`, top: `${pctY}%` }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLocationName(loc.name);
-                      setBinId(null);
-                      setIsScatteredDebris(false);
-                      setGpsCoords({ lat: loc.lat, lng: loc.lng });
-                    }}
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 z-20 group ${
-                      isSelected
-                        ? 'scale-125 z-40 ring-4 ring-[#00A77C] ring-offset-2 ring-offset-[#00271D] rounded-2xl shadow-[0_0_25px_rgba(0,167,124,0.9)] animate-pulse'
-                        : 'hover:scale-110'
-                    }`}
-                  >
-                    {/* Station Pair Box with Two Side-by-Side Trash Cans */}
-                    <div className={`flex items-center gap-1.5 bg-[#00271D]/90 backdrop-blur-md px-2 py-1.5 rounded-xl border shadow-xl ${
-                      isSelected ? 'border-[#00A77C] bg-[#00271D]' : 'border-[#00A77C]/40'
-                    }`}>
-                      {/* Left Trash Can: Biodegradable (Emerald Green or Rose if Full) */}
-                      <div className="flex flex-col items-center">
-                        <div className={`p-1 rounded-md flex items-center justify-center transition-colors ${
-                          loc.bioFull ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
-                        }`}>
-                          <Trash2 size={12} strokeWidth={2.5} />
-                        </div>
-                        <span className="text-[6px] font-black text-emerald-300 uppercase tracking-tighter mt-0.5">Bio</span>
-                      </div>
+                  <div key={station.locationName} style={{ left: `${pctX}%`, top: `${pctY}%` }} className="absolute">
+                    {/* Trash Circle Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectStation(station);
+                        setActivePopoverStation(isPopoverOpen ? null : station.locationName);
+                      }}
+                      className={`relative -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md border-2 ${
+                        isSel
+                          ? 'bg-[#00A77C] border-white text-white ring-4 ring-[#00A77C]/30 scale-110 z-30'
+                          : hasReportedFull
+                          ? 'bg-rose-500 border-white text-white ring-4 ring-rose-400/40 animate-pulse z-20'
+                          : 'bg-white border-[#00A77C] text-[#00A77C] hover:bg-emerald-50 hover:scale-105 z-10'
+                      }`}
+                      title={station.locationName}
+                    >
+                      <Trash2 size={18} strokeWidth={2.2} />
 
-                      {/* Right Trash Can: Non-Biodegradable / Recyclable (Sky Blue or Rose if Full) */}
-                      <div className="flex flex-col items-center">
-                        <div className={`p-1 rounded-md flex items-center justify-center transition-colors ${
-                          loc.nonBioFull ? 'bg-rose-500 text-white' : 'bg-sky-500 text-white'
-                        }`}>
-                          <Trash2 size={12} strokeWidth={2.5} />
-                        </div>
-                        <span className="text-[6px] font-black text-sky-300 uppercase tracking-tighter mt-0.5">Non-Bio</span>
-                      </div>
-                    </div>
+                      {/* Micro Reported Alert Badge */}
+                      {hasReportedFull && (
+                        <span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-rose-600 rounded-full border border-white flex items-center justify-center">
+                          <AlertTriangle size={8} className="text-white" />
+                        </span>
+                      )}
+                    </button>
 
-                    {/* Location Tooltip label on hover/select */}
-                    <div className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded bg-black/80 text-white text-[8px] font-bold pointer-events-none transition-opacity ${
-                      isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}>
-                      {loc.name}
-                    </div>
+                    {/* Auto-Adjusting Smart Popover Card */}
+                    {(isPopoverOpen || (isSel && activePopoverStation === station.locationName)) && (
+                      <div className={`absolute z-40 bg-white/95 backdrop-blur-md rounded-2xl p-2.5 shadow-xl border border-gray-200 w-56 text-left animate-fade-in ${verticalPosClass} ${horizontalPosClass}`}>
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1.5">
+                          <p className="text-[10px] font-extrabold text-[#00271D] truncate max-w-[150px]">
+                            {station.locationName}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setActivePopoverStation(null); }}
+                            className="text-gray-400 hover:text-gray-600 cursor-pointer p-0.5"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+
+                        {/* Category Quick Select Buttons inside Popover */}
+                        <div className="space-y-1">
+                          {station.slots.map(slot => {
+                            const meta = CAT_META[slot.type];
+                            const isReported = slot.statusState === 'REPORTED_FULL' || slot.statusState === 'DISPATCHED';
+                            const isThisSelected = binId === slot.bin?.id;
+                            const Icon = meta.Icon;
+
+                            return (
+                              <button
+                                key={slot.type}
+                                type="button"
+                                disabled={!slot.bin}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectStation(station, slot.bin?.id, slot.type);
+                                  setActivePopoverStation(null);
+                                }}
+                                className={`w-full p-2 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                                  isThisSelected
+                                    ? 'bg-[#00A77C]/15 border-[#00A77C] ring-1 ring-[#00A77C]/30 font-bold'
+                                    : 'bg-gray-50 border-gray-100 hover:bg-gray-100'
+                                } ${!slot.bin ? 'opacity-30 cursor-not-allowed' : ''}`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <div className={`h-5 w-5 rounded-lg text-white flex items-center justify-center shrink-0 ${isReported ? 'bg-rose-500' : meta.bg}`}>
+                                    <Icon size={11} />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-[#00271D] truncate">{meta.label}</span>
+                                </div>
+                                <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md shrink-0 ${
+                                  isReported ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                                }`}>
+                                  {isReported ? 'FULL' : 'READY'}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
+              {/* Custom Pin for Scattered Debris */}
               {isScatteredDebris && gpsCoords && (
                 <div
                   style={{ left: `${((gpsCoords.lng - 120.9820) / 0.0060) * 100}%`, top: `${((14.6030 - gpsCoords.lat) / 0.0050) * 100}%` }}
@@ -563,134 +794,199 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             </div>
 
             {isPinningMode && (
-              <p className="text-xs text-[#00A77C] font-semibold text-center mt-1.5 animate-pulse">
-                🎯 Pinning Mode active! Tap anywhere on grid map to mark scattered trash location.
+              <p className="text-xs text-[#00A77C] font-semibold text-center mt-1 animate-pulse flex items-center justify-center gap-1">
+                <Target size={13} />
+                <span>Tap anywhere on the map to pin scattered trash!</span>
               </p>
             )}
           </div>
-        </div>
 
-        {/* Card 3: Primary Recyclable Category Selection (Reporting-Focused) */}
-        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-md transition-all space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2">
-              <Tag size={18} className="text-[#00A77C]" />
-              <span>Primary Recyclable Category</span>
-              <span className="text-rose-500">*</span>
-            </h3>
-            <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-0.5 rounded-full w-fit">
-              Selection Only · Weight & Price at MRF
-            </span>
+          {/* Location Pills Bar */}
+          <div className="space-y-1.5 pt-1">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Campus Locations</span>
+            <div className="flex flex-wrap gap-1.5">
+              {filteredStations.map((station) => {
+                const isSel = locationName === station.locationName;
+                const hasReported = station.slots.some(s => s.statusState === 'REPORTED_FULL' || s.statusState === 'DISPATCHED');
+                return (
+                  <button
+                    key={station.locationName}
+                    type="button"
+                    onClick={() => {
+                      handleSelectStation(station);
+                      setActivePopoverStation(station.locationName);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isSel
+                        ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-xs'
+                        : 'bg-gray-50 border-gray-200 text-[#00271D]/80 hover:bg-emerald-50 hover:border-emerald-200'
+                    }`}
+                  >
+                    <span>{station.locationName}</span>
+                    {hasReported && (
+                      <span className={`h-2 w-2 rounded-full ${isSel ? 'bg-white' : 'bg-rose-500 animate-ping'}`} title="Has reported full bins" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            {RECYCLABLE_CATEGORIES.map(cat => {
-              const isSelected = reportTitle === cat.label || (selectedMaterials && selectedMaterials.includes(cat.label));
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    setReportTitle(cat.label);
-                    setSelectedMaterials?.([cat.label]);
-                  }}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between select-none ${
-                    isSelected
-                      ? 'bg-[#00A77C]/15 border-[#00A77C] text-[#00271D] font-bold ring-2 ring-[#00A77C]/40 shadow-sm'
-                      : 'bg-white border-[#00271D]/15 text-[#00271D]/70 hover:bg-[#F9F3F0] hover:border-[#00A77C]/50'
-                  }`}
-                >
-                  <div className="text-2xl mb-2">{cat.icon}</div>
+          {/* SINGLE UNIFIED WASTE CATEGORY SELECTOR */}
+          {activeStation && (
+            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-[#00271D] flex items-center gap-1.5">
+                  <Tag size={14} className="text-[#00A77C]" />
+                  <span>Select Waste Category at {activeStation.locationName}:</span>
+                </p>
+                <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2 py-0.5 rounded-full">
+                  1-Click Select
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {activeStation.slots.map(slot => {
+                  const meta = CAT_META[slot.type];
+                  const isSelectedCategory = category === slot.type;
+                  const isReported = slot.statusState === 'REPORTED_FULL' || slot.statusState === 'DISPATCHED';
+                  const Icon = meta.Icon;
+
+                  return (
+                    <button
+                      key={slot.type}
+                      type="button"
+                      disabled={!slot.bin}
+                      onClick={() => handleSelectCategoryAndBin(slot.type, slot.bin?.id)}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between select-none relative overflow-hidden ${
+                        isSelectedCategory
+                          ? 'bg-[#00A77C]/15 border-[#00A77C] text-[#00271D] font-bold ring-2 ring-[#00A77C]/40 shadow-xs'
+                          : 'bg-white border-gray-200 text-[#00271D]/70 hover:bg-gray-50 hover:border-[#00A77C]/40'
+                      } ${!slot.bin ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className={`p-2 rounded-xl text-white ${meta.bg}`}>
+                          <Icon size={18} />
+                        </div>
+
+                        {isReported ? (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-500 text-white animate-pulse flex items-center gap-0.5">
+                            <AlertTriangle size={9} /> Reported Full
+                          </span>
+                        ) : isSelectedCategory ? (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00A77C] text-white">
+                            Selected
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                            Ready
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <p className={`text-xs font-bold ${isSelectedCategory ? 'text-[#00A77C]' : 'text-[#00271D]'}`}>
+                          {meta.label}
+                        </p>
+                        <p className="text-[10px] text-[#00271D]/60 font-medium mt-0.5 leading-snug">
+                          {meta.desc}
+                        </p>
+
+                        <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between text-[10px]">
+                          <span className="font-semibold text-gray-500">Status:</span>
+                          {isReported ? (
+                            <span className="font-extrabold text-rose-600 flex items-center gap-1">
+                              <Clock size={10} /> Pending Pick Up
+                            </span>
+                          ) : (
+                            <span className="font-bold text-emerald-600 flex items-center gap-1">
+                              <Check size={10} /> Ready for Disposal
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Report Notice Banner */}
+              {activeStation.slots.some(s => s.type === category && (s.statusState === 'REPORTED_FULL' || s.statusState === 'DISPATCHED')) && (
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl flex items-start gap-2.5 text-xs mt-2">
+                  <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className={`text-xs font-bold ${isSelected ? 'text-[#00A77C]' : 'text-[#00271D]'}`}>
-                      {cat.label}
-                    </p>
-                    <p className="text-[10px] text-[#00271D]/50 font-normal mt-0.5 leading-snug">
-                      {cat.desc}
+                    <p className="font-bold text-amber-950">Notice: Category Already Reported Full</p>
+                    <p className="text-[11px] text-amber-800 mt-0.5">
+                      The <span className="font-bold">{category}</span> bin at <span className="font-bold">{locationName}</span> has already been reported full by a campus user. MRF staff have been dispatched for collection.
                     </p>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* STEP 3: URGENCY LEVEL (DEFAULTS TO NORMAL) */}
+        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
+              <AlertTriangle size={16} className="text-[#00A77C]" />
+              <span>3. Urgency Level</span>
+            </h3>
+            <span className="text-[10px] font-medium text-gray-400">Defaults to Normal</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 p-1 bg-gray-100/80 rounded-2xl">
+            {[
+              { level: 'LOW', label: 'Low', desc: 'Not full yet' },
+              { level: 'MEDIUM', label: 'Normal', desc: 'Needs pick up' },
+              { level: 'HIGH', label: 'Urgent', desc: 'Overflowing' },
+            ].map(item => {
+              const isSelected = urgency === item.level;
+              return (
+                <button
+                  key={item.level}
+                  type="button"
+                  onClick={() => setUrgency(item.level as any)}
+                  className={`py-2 px-2.5 rounded-xl text-center transition-all cursor-pointer select-none ${
+                    isSelected
+                      ? item.level === 'HIGH'
+                        ? 'bg-rose-500 text-white font-bold shadow-xs'
+                        : 'bg-[#00A77C] text-white font-bold shadow-xs'
+                      : 'text-gray-600 hover:text-[#00271D]'
+                  }`}
+                >
+                  <p className="text-xs font-bold leading-tight">{item.label}</p>
+                  <p className={`text-[9px] mt-0.5 opacity-80 ${isSelected ? 'text-white' : 'text-gray-400'}`}>{item.desc}</p>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Card 4: Urgency Level */}
-        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-md transition-all space-y-3.5">
-          <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2">
-            <AlertTriangle size={18} className="text-[#00A77C]" />
-            <span>Urgency Level</span>
+        {/* STEP 4: ADDITIONAL NOTES (OPTIONAL) */}
+        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-2">
+          <h3 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
+            <MessageSquare size={16} className="text-[#00A77C]" />
+            <span>4. Additional Notes</span>
+            <span className="text-gray-400 font-normal text-xs">(optional)</span>
           </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              { level: 'LOW', title: 'Low', desc: 'Not full yet, but reported' },
-              { level: 'MEDIUM', title: 'Normal', desc: 'Full, needs collection' },
-              { level: 'HIGH', title: 'Urgent', desc: 'Overflowing / hazard' },
-            ].map(item => {
-              const isSelected = urgency === item.level;
-              return (
-                <div
-                  key={item.level}
-                  onClick={() => setUrgency(item.level as any)}
-                  className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
-                    isSelected
-                      ? item.level === 'HIGH'
-                        ? 'bg-rose-50 border-rose-300'
-                        : 'bg-[#00A77C]/15 border-[#00A77C]'
-                      : 'bg-white border-[#00271D]/15 hover:bg-[#F9F3F0]'
-                  }`}
-                >
-                  <div className="pt-0.5 shrink-0">
-                    <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                      isSelected
-                        ? item.level === 'HIGH'
-                          ? 'border-rose-600 bg-rose-600'
-                          : 'border-[#00A77C] bg-[#00A77C]'
-                        : 'border-[#00271D]/30'
-                    }`}>
-                      {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className={`text-xs font-bold ${isSelected ? 'text-[#00271D]' : 'text-[#00271D]/80'}`}>{item.title}</h4>
-                    <p className="text-[11px] text-[#00271D]/60 mt-0.5 leading-snug">{item.desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <textarea
+            rows={2}
+            maxLength={300}
+            placeholder="e.g. 'Bin overflowing with plastic cups since morning'"
+            value={reportDesc}
+            onChange={e => setReportDesc(e.target.value)}
+            className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all resize-none"
+          />
         </div>
 
-        {/* Card 5: Additional Notes */}
-        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-md transition-all space-y-3">
-          <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2">
-            <MessageSquare size={18} className="text-[#00A77C]" />
-            <span>Additional Notes</span>
-            <span className="text-[#00271D]/50 font-normal text-xs">(optional)</span>
-          </h3>
-
-          <div className="space-y-1.5">
-            <textarea
-              rows={3}
-              maxLength={300}
-              placeholder="Describe what you see... e.g. 'Bin overflowing with plastic cups since morning'"
-              value={reportDesc}
-              onChange={e => setReportDesc(e.target.value)}
-              className="w-full rounded-2xl border border-[#00271D]/15 bg-[#F9F3F0] p-3.5 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all resize-none placeholder-[#00271D]/40"
-            />
-            <p className="text-[11px] text-[#00271D]/50 font-medium">
-              {reportDesc.length}/300 characters
-            </p>
-          </div>
-        </div>
-
-        {/* Submit Report Button & SLA Notice */}
+        {/* SUBMIT REPORT BUTTON */}
         <div className="space-y-2 pt-2">
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full py-4 bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold text-sm rounded-full shadow-md shadow-[#00A77C]/25 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-75"
+            disabled={isSubmitting || !capturedImage || !locationName || isDuplicateActiveReport}
+            className="w-full py-4 bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold text-sm rounded-full shadow-md shadow-[#00A77C]/25 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
@@ -700,13 +996,25 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             ) : (
               <>
                 <Send size={16} />
-                <span>Submit Report</span>
+                <span>{isDuplicateActiveReport ? 'Bin Already Reported' : 'Submit Report'}</span>
               </>
             )}
           </button>
 
-          <p className="text-center text-xs text-[#00271D]/60 font-medium">
-            Reports are reviewed by MRF staff within 30 minutes during office hours.
+          {isDuplicateActiveReport ? (
+            <p className="text-center text-[11px] text-amber-700 font-bold flex items-center justify-center gap-1">
+              <AlertTriangle size={12} />
+              <span>You have already reported this trashbin. Only 1 report per user per bin is allowed.</span>
+            </p>
+          ) : (!capturedImage || !locationName) ? (
+            <p className="text-center text-[11px] text-amber-700 font-medium flex items-center justify-center gap-1">
+              <Info size={12} />
+              <span>Please attach photo evidence and select a location to submit.</span>
+            </p>
+          ) : null}
+
+          <p className="text-center text-[11px] text-gray-500 font-medium">
+            Points are awarded upon MRF final cleanup (1st reporter = 15 pts, 2nd = 10 pts, 3rd = 5 pts).
           </p>
         </div>
 

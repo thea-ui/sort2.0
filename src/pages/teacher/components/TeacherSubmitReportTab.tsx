@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   CheckCircle,
   Camera,
@@ -17,7 +17,33 @@ import {
   Zap,
   Wrench,
   HelpCircle,
-  Package
+  Package,
+  X,
+  Upload,
+  Video,
+  Target,
+  FlaskConical,
+  Wine,
+  Soup,
+  Box,
+  Trash,
+  Monitor,
+  Laptop,
+  Speaker,
+  Printer,
+  Mic,
+  Wifi,
+  Cable,
+  Lightbulb,
+  Fan,
+  ToggleLeft,
+  Plug,
+  DoorOpen,
+  Blinds,
+  Droplets,
+  PaintBucket,
+  Hammer,
+  Bug,
 } from 'lucide-react';
 
 type InfrastructurePillar = 'waste' | 'furniture' | 'electronics' | 'fixtures' | 'equipment' | 'other';
@@ -56,7 +82,7 @@ interface TeacherSubmitReportTabProps {
   assignedLocationText: string;
   setAssignedLocationText: (txt: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
-  PILLAR_META: Record<InfrastructurePillar, { emoji: string; label: string; desc: string; accent: string; iconBg: string; iconText: string; border: string }>;
+  PILLAR_META: Record<InfrastructurePillar, { emoji?: string; icon?: React.ComponentType<any>; label: string; desc: string; accent: string; iconBg: string; iconText: string; border: string }>;
   OBSERVATION_OPTIONS: string[];
   STEPS: string[];
   isWasteCategory: boolean;
@@ -70,7 +96,7 @@ const CATEGORY_DETAILS: Record<InfrastructurePillar, {
   subtitle: string;
   icon: React.ComponentType<any>;
   itemsLabel: string;
-  items: { id: string; label: string; icon: string }[];
+  items: { id: string; label: string; icon: React.ComponentType<any> }[];
 }> = {
   furniture: {
     label: 'Furniture',
@@ -79,15 +105,15 @@ const CATEGORY_DETAILS: Record<InfrastructurePillar, {
     icon: Armchair,
     itemsLabel: 'Select Furniture *',
     items: [
-      { id: 'arm-chair-plastic', label: 'Arm Chair (Plastic)', icon: '🪑' },
-      { id: 'arm-chair-wooden', label: 'Arm Chair (Wooden)', icon: '🪑' },
-      { id: 'office-chair', label: 'Office Chair', icon: '🪑' },
-      { id: 'student-desk', label: 'Student Desk', icon: '🪑' },
-      { id: 'teachers-table', label: "Teacher's Table", icon: '🪑' },
-      { id: 'wooden-table', label: 'Wooden Table', icon: '🪑' },
-      { id: 'filing-cabinet', label: 'Filing Cabinet', icon: '🗄️' },
-      { id: 'bookshelf', label: 'Bookshelf', icon: '📚' },
-      { id: 'whiteboard-stand', label: 'Whiteboard Stand', icon: '📋' },
+      { id: 'arm-chair-plastic', label: 'Arm Chair (Plastic)', icon: Armchair },
+      { id: 'arm-chair-wooden', label: 'Arm Chair (Wooden)', icon: Armchair },
+      { id: 'office-chair', label: 'Office Chair', icon: Armchair },
+      { id: 'student-desk', label: 'Student Desk', icon: Armchair },
+      { id: 'teachers-table', label: "Teacher's Table", icon: Armchair },
+      { id: 'wooden-table', label: 'Wooden Table', icon: Armchair },
+      { id: 'filing-cabinet', label: 'Filing Cabinet', icon: Box },
+      { id: 'bookshelf', label: 'Bookshelf', icon: Box },
+      { id: 'whiteboard-stand', label: 'Whiteboard Stand', icon: FileText },
     ]
   },
   waste: {
@@ -97,11 +123,11 @@ const CATEGORY_DETAILS: Record<InfrastructurePillar, {
     icon: Trash2,
     itemsLabel: 'Select Primary Recyclable Category *',
     items: [
-      { id: 'plastic-bottles', label: 'Plastic Bottles', icon: '🍾' },
-      { id: 'glass-bottles', label: 'Glass / Tanduay Bottles', icon: '🍶' },
-      { id: 'aluminum-cans', label: 'Aluminum Cans', icon: '🥫' },
-      { id: 'paper-cardboard', label: 'Paper & Cardboard', icon: '📦' },
-      { id: 'residual-waste', label: 'Residual Waste', icon: '🗑️' },
+      { id: 'plastic-bottles', label: 'Plastic Bottles', icon: Trash },
+      { id: 'glass-bottles', label: 'Glass / Tanduay Bottles', icon: Wine },
+      { id: 'aluminum-cans', label: 'Aluminum Cans', icon: Trash },
+      { id: 'paper-cardboard', label: 'Paper & Cardboard', icon: Box },
+      { id: 'residual-waste', label: 'Residual Waste', icon: Trash2 },
     ]
   },
   electronics: {
@@ -111,15 +137,15 @@ const CATEGORY_DETAILS: Record<InfrastructurePillar, {
     icon: Tv,
     itemsLabel: 'Select Electronics *',
     items: [
-      { id: 'projector', label: 'Projector', icon: '📹' },
-      { id: 'display-monitor', label: 'Display Monitor / TV', icon: '🖥️' },
-      { id: 'desktop-pc', label: 'Desktop PC', icon: '🖥️' },
-      { id: 'laptop', label: 'Laptop', icon: '💻' },
-      { id: 'speaker-system', label: 'Speaker / Sound System', icon: '🔊' },
-      { id: 'printer-scanner', label: 'Printer / Scanner', icon: '🖨️' },
-      { id: 'microphone', label: 'Microphone', icon: '🎙️' },
-      { id: 'router-ap', label: 'Wi-Fi Router / Access Point', icon: '📡' },
-      { id: 'cable-adapter', label: 'Cable / Adapter', icon: '🔌' },
+      { id: 'projector', label: 'Projector', icon: Video },
+      { id: 'display-monitor', label: 'Display Monitor / TV', icon: Monitor },
+      { id: 'desktop-pc', label: 'Desktop PC', icon: Monitor },
+      { id: 'laptop', label: 'Laptop', icon: Laptop },
+      { id: 'speaker-system', label: 'Speaker / Sound System', icon: Speaker },
+      { id: 'printer-scanner', label: 'Printer / Scanner', icon: Printer },
+      { id: 'microphone', label: 'Microphone', icon: Mic },
+      { id: 'router-ap', label: 'Wi-Fi Router / Access Point', icon: Wifi },
+      { id: 'cable-adapter', label: 'Cable / Adapter', icon: Cable },
     ]
   },
   fixtures: {
@@ -129,15 +155,15 @@ const CATEGORY_DETAILS: Record<InfrastructurePillar, {
     icon: Zap,
     itemsLabel: 'Select Fixtures *',
     items: [
-      { id: 'ceiling-light', label: 'Ceiling Light / Bulb', icon: '💡' },
-      { id: 'ac-unit', label: 'Air Conditioner (AC)', icon: '❄️' },
-      { id: 'light-switch', label: 'Light Switch', icon: '🔘' },
-      { id: 'electrical-outlet', label: 'Electrical Socket / Outlet', icon: '🔌' },
-      { id: 'ceiling-fan', label: 'Ceiling Fan', icon: '🌀' },
-      { id: 'door-lock', label: 'Door Lock / Handle', icon: '🚪' },
-      { id: 'window-blinds', label: 'Window Blinds / Glass', icon: '🪟' },
-      { id: 'water-dispenser', label: 'Water Dispenser / Sink', icon: '🚰' },
-      { id: 'whiteboard-chalkboard', label: 'Whiteboard / Chalkboard', icon: '📋' },
+      { id: 'ceiling-light', label: 'Ceiling Light / Bulb', icon: Lightbulb },
+      { id: 'ac-unit', label: 'Air Conditioner (AC)', icon: Zap },
+      { id: 'light-switch', label: 'Light Switch', icon: ToggleLeft },
+      { id: 'electrical-outlet', label: 'Electrical Socket / Outlet', icon: Plug },
+      { id: 'ceiling-fan', label: 'Ceiling Fan', icon: Fan },
+      { id: 'door-lock', label: 'Door Lock / Handle', icon: DoorOpen },
+      { id: 'window-blinds', label: 'Window Blinds / Glass', icon: Blinds },
+      { id: 'water-dispenser', label: 'Water Dispenser / Sink', icon: Droplets },
+      { id: 'whiteboard-chalkboard', label: 'Whiteboard / Chalkboard', icon: FileText },
     ]
   },
   equipment: {
@@ -147,15 +173,15 @@ const CATEGORY_DETAILS: Record<InfrastructurePillar, {
     icon: Wrench,
     itemsLabel: 'Select Equipment *',
     items: [
-      { id: 'lab-tool', label: 'Lab Tool / Apparatus', icon: '🔬' },
-      { id: 'janitorial-cart', label: 'Janitorial Cart / Mop', icon: '🧹' },
-      { id: 'microscope', label: 'Science Microscope', icon: '🔬' },
-      { id: 'sports-gear', label: 'Gym / Sports Gear', icon: '⚽' },
-      { id: 'safety-equipment', label: 'Safety Equipment', icon: '🧯' },
-      { id: 'podium-lectern', label: 'Podium / Lectern', icon: '🗣️' },
-      { id: 'extension-cord', label: 'Extension Cord', icon: '🔌' },
-      { id: 'cleaning-supplies', label: 'Cleaning Supplies', icon: '🧴' },
-      { id: 'paper-shredder', label: 'Paper Shredder', icon: '📄' },
+      { id: 'lab-tool', label: 'Lab Tool / Apparatus', icon: FlaskConical },
+      { id: 'janitorial-cart', label: 'Janitorial Cart / Mop', icon: Wrench },
+      { id: 'microscope', label: 'Science Microscope', icon: FlaskConical },
+      { id: 'sports-gear', label: 'Gym / Sports Gear', icon: Target },
+      { id: 'safety-equipment', label: 'Safety Equipment', icon: AlertTriangle },
+      { id: 'podium-lectern', label: 'Podium / Lectern', icon: Mic },
+      { id: 'extension-cord', label: 'Extension Cord', icon: Cable },
+      { id: 'cleaning-supplies', label: 'Cleaning Supplies', icon: Droplets },
+      { id: 'paper-shredder', label: 'Paper Shredder', icon: Printer },
     ]
   },
   other: {
@@ -165,14 +191,14 @@ const CATEGORY_DETAILS: Record<InfrastructurePillar, {
     icon: HelpCircle,
     itemsLabel: 'Select Issue Type *',
     items: [
-      { id: 'wall-damage', label: 'Wall Damage / Paint', icon: '🧱' },
-      { id: 'floor-tile', label: 'Floor Tile / Carpet', icon: '🪵' },
-      { id: 'ceiling-leak', label: 'Ceiling Leak / Stain', icon: '💧' },
-      { id: 'plumbing-pipe', label: 'Plumbing / Pipe', icon: '🚰' },
-      { id: 'structural-issue', label: 'Structural Issue', icon: '🏗️' },
-      { id: 'safety-hazard', label: 'Safety Hazard', icon: '⚠️' },
-      { id: 'pest-issue', label: 'Pest Issue', icon: '🐜' },
-      { id: 'general-repair', label: 'General Repair', icon: '🔧' },
+      { id: 'wall-damage', label: 'Wall Damage / Paint', icon: PaintBucket },
+      { id: 'floor-tile', label: 'Floor Tile / Carpet', icon: Hammer },
+      { id: 'ceiling-leak', label: 'Ceiling Leak / Stain', icon: Droplets },
+      { id: 'plumbing-pipe', label: 'Plumbing / Pipe', icon: Droplets },
+      { id: 'structural-issue', label: 'Structural Issue', icon: Hammer },
+      { id: 'safety-hazard', label: 'Safety Hazard', icon: AlertTriangle },
+      { id: 'pest-issue', label: 'Pest Issue', icon: Bug },
+      { id: 'general-repair', label: 'General Repair', icon: Wrench },
     ]
   }
 };
@@ -359,7 +385,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
             {activeMeta && (
               <div className="flex items-center gap-3.5">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-inner">
-                  <activeMeta.icon size={24} />
+                  {React.createElement(CATEGORY_DETAILS[selectedCategory].icon, { size: 24 })}
                 </div>
                 <div>
                   <h2 className="text-xl font-heading font-black text-white tracking-tight">{activeMeta.title}</h2>
@@ -454,7 +480,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                 }`}
               >
                 <Compass size={14} className={isPinningMode ? 'animate-spin' : ''} />
-                <span>{isPinningMode ? 'Pinning Mode Active' : '📍 Pin Scattered Trash'}</span>
+                <span>{isPinningMode ? 'Pinning Mode Active' : 'Pin Scattered Trash'}</span>
               </button>
             </div>
 
@@ -552,9 +578,10 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                   <text x="74%" y="83%" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle">Main Library</text>
                 </svg>
 
-                <div className="absolute top-2 left-2 bg-[#00271D]/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[8px] text-[#00A77C] font-bold uppercase border border-[#00A77C]">
-                  📍 Side-by-Side Color-Coded Stations
-                </div>
+                <div className="absolute top-2 left-2 bg-[#00271D]/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[8px] text-[#00A77C] font-bold uppercase border border-[#00A77C] flex items-center gap-1">
+                <MapPin size={9} />
+                <span>Side-by-Side Color-Coded Stations</span>
+              </div>
 
                 {/* Plot Dual Trash Can Stations on Map */}
                 {GRID_LOCATIONS.map(loc => {
@@ -629,8 +656,9 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
               </div>
 
               {isPinningMode && (
-                <p className="text-xs text-[#00A77C] font-semibold text-center mt-1.5 animate-pulse">
-                  🎯 Pinning Mode active! Tap anywhere on grid map to mark scattered trash location.
+                <p className="text-xs text-[#00A77C] font-semibold text-center mt-1.5 animate-pulse flex items-center justify-center gap-1">
+                  <Target size={13} />
+                  <span>Pinning Mode active! Tap anywhere on grid map to mark scattered trash location.</span>
                 </p>
               )}
             </div>
@@ -660,7 +688,9 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                           : 'bg-white border-gray-200/80 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
-                      <span className="text-base">{item.icon}</span>
+                      <div className="p-1.5 rounded-lg bg-[#00A77C]/10 text-[#00A77C]">
+                        <activeMeta.icon size={15} />
+                      </div>
                       <span>{item.label}</span>
                     </button>
                   );

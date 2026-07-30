@@ -16,7 +16,7 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
   const [showHelper, setShowHelper] = useState(false);
 
-  const handleMRFSubmit = (e: React.FormEvent) => {
+  const handleMRFSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !employeeId) {
       setErrorMsg('All fields are required.');
@@ -24,15 +24,18 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
     }
     setLoading(true);
     setErrorMsg(null);
-    setTimeout(() => {
-      const success = login(employeeId, email);
+    try {
+      const success = await login(employeeId, email);
       setLoading(false);
       if (success) {
         onNavigate('dashboard');
       } else {
-        setErrorMsg('Authentication failed: Invalid logistics operator ID.');
+        setErrorMsg('Authentication failed: Invalid logistics operator credentials.');
       }
-    }, 1200);
+    } catch {
+      setLoading(false);
+      setErrorMsg('Authentication failed. Please verify logistics operator credentials.');
+    }
   };
 
   return (
@@ -138,8 +141,8 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
             {showHelper && (
               <div className="mt-3 bg-[#F9F3F0] border border-[#00271D]/10 rounded-xl p-3 text-[9px] text-[#00271D]/60 leading-normal space-y-1 text-center">
                 <span className="font-bold text-[#00A77C] block uppercase">Staff Key Access</span>
-                Email: <span className="text-[#00271D] select-all font-mono">mrf.operations@campus.edu</span><br />
-                ID: <span className="text-[#00271D] select-all font-mono">MRF-2026-001</span>
+                Email: <span className="text-[#00271D] select-all font-mono">mrf1@sort.edu</span><br />
+                Password / ID: <span className="text-[#00271D] select-all font-mono">mrf123</span> / <span className="text-[#00271D] select-all font-mono">MRF-2026-001</span>
               </div>
             )}
           </div>

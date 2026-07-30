@@ -2,7 +2,13 @@ import React from 'react';
 import {
   Clock,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  Recycle,
+  Armchair,
+  Monitor,
+  Zap,
+  Wrench,
+  FileText,
 } from 'lucide-react';
 import { Report } from '../../../types';
 
@@ -16,8 +22,13 @@ interface TeacherReportHistoryTabProps {
   getDisplayCategory: (desc: string) => string;
   STATUS_BADGE: Record<string, string>;
   STATUS_LEFT: Record<string, string>;
-  CAT_EMOJI: Record<string, string>;
+  CAT_EMOJI?: Record<string, string>;
 }
+
+const CAT_ICON: Record<string, React.ComponentType<any>> = {
+  'Waste/Bin': Recycle, Furniture: Armchair, Electronics: Monitor,
+  Fixtures: Zap, Equipment: Wrench, Other: FileText,
+};
 
 export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = ({
   timelineReports,
@@ -106,7 +117,14 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
                   key={rep.id}
                   className={`bg-white/90 backdrop-blur-md border border-white/80 border-l-4 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-start gap-4 ${STATUS_LEFT[ds]}`}
                 >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00271D]/5 text-xl">{CAT_EMOJI[dc] || '📁'}</span>
+                  {(() => {
+                    const IconComp = CAT_ICON[dc] || FileText;
+                    return (
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00271D]/5 text-[#00A77C]">
+                        <IconComp size={22} />
+                      </div>
+                    );
+                  })()}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-extrabold text-[#00271D]">{rep.title}</p>
                     <p className="mt-0.5 text-[10px] text-[#00271D]/60 leading-relaxed line-clamp-1 font-medium">{rep.description.replace(/\[.*?\]/g, '').trim()}</p>

@@ -16,7 +16,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
   const [showHelper, setShowHelper] = useState(false);
 
-  const handleAdminSubmit = (e: React.FormEvent) => {
+  const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !employeeId) {
       setErrorMsg('Required parameters missing.');
@@ -24,15 +24,18 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
     }
     setLoading(true);
     setErrorMsg(null);
-    setTimeout(() => {
-      const success = login(employeeId, email);
+    try {
+      const success = await login(employeeId, email);
       setLoading(false);
       if (success) {
         onNavigate('dashboard');
       } else {
         setErrorMsg('Security breach protection: Invalid admin credentials.');
       }
-    }, 1200);
+    } catch {
+      setLoading(false);
+      setErrorMsg('Authentication failed. Please verify administrative credentials.');
+    }
   };
 
   return (
@@ -138,8 +141,8 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
             {showHelper && (
               <div className="mt-3 bg-[#F9F3F0] border border-[#00271D]/10 rounded-xl p-3 text-[9px] text-[#00271D]/60 leading-normal space-y-1 text-center">
                 <span className="font-bold text-[#C69B26] block uppercase">Root Provision Key</span>
-                Email: <span className="text-[#00271D] select-all font-mono">admin.sort@campus.edu</span><br />
-                ID: <span className="text-[#00271D] select-all font-mono">ADM-2026-007</span>
+                Email: <span className="text-[#00271D] select-all font-mono">admin@sort.edu</span><br />
+                Password / ID: <span className="text-[#00271D] select-all font-mono">admin123</span> / <span className="text-[#00271D] select-all font-mono">ADM-2026-001</span>
               </div>
             )}
           </div>
