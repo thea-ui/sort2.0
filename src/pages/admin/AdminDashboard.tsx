@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { AdminReportsTab } from './components/AdminReportsTab';
+import { AdminImpactTab } from './components/AdminImpactTab';
+import { AdminLeaderboardTab } from './components/AdminLeaderboardTab';
+import { AdminCollectionsTab } from './components/AdminCollectionsTab';
+import { AdminBinMapTab } from './components/AdminBinMapTab';
+import { AdminSettingsTab } from './components/AdminSettingsTab';
+import { AdminCampusNewsTab } from './components/AdminCampusNewsTab';
+import { AdminUsersTab } from './components/AdminUsersTab';
+import { AdminAuditLogsTab } from './components/AdminAuditLogsTab';
+import { AdminSchoolYearTab } from './components/AdminSchoolYearTab';
+import { SETTINGS_SUBITEMS } from '../../components/layout/DashboardLayout';
+
 import {
   Settings,
   AlertOctagon,
@@ -17,80 +28,158 @@ import {
   Layers,
   FileText,
   Package,
-  RotateCcw,
 } from 'lucide-react';
 
-interface AdminDashboardProps {
+import { useRecycleMarket } from '../../hooks/useRecycleMarket';
+
+export interface AdminDashboardProps {
   activeTab: string;
+  setActiveTab?: (tab: string) => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setActiveTab }) => {
   const {
     users,
     reports,
+    bins,
     offenses,
     settings,
     syncLogs,
     updateSettings,
     resetDatabase,
     addOffense,
+    deductPoints,
     triggerSync,
     verifyReport,
+    verifyReportsBatch,
     dispatchReport,
     updateReportStatus
   } = useMockData();
 
+  const {
+    stocksRecord,
+    totalVendorSales,
+    rewardsReservedPhp,
+  } = useRecycleMarket();
+
   const [purgedAlert, setPurgedAlert] = useState(false);
+  const [adminToast, setAdminToast] = useState<string | null>(null);
+
+  const showAdminToast = (msg: string) => {
+    setAdminToast(msg);
+    setTimeout(() => setAdminToast(null), 4000);
+  };
 
   const handlePurgeDatabase = () => {
-    if (window.confirm('Wipe all test reports, student points, and history for testing?')) {
+    if (window.confirm('Wipe all test reports, student points, history, and reset recycle market inventory?')) {
       resetDatabase();
+      // Notify market subscribers to refresh after the purge round-trip completes
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('sort_market_updated'));
+      }, 600);
       setPurgedAlert(true);
       setTimeout(() => setPurgedAlert(false), 3000);
     }
   };
 
-  // Analytics local timeframe state
-  const [timeframe, setTimeframe] = useState<'Daily' | 'Weekly' | 'Monthly'>('Weekly');
+  // Dynamic calculations from real reports
+  const totalReportsCount = reports.length;
+  const collectedReports = reports.filter(r => r.status === 'COLLECTED' || r.status === 'RESOLVED');
+  const dispatchedReports = reports.filter(r => r.status === 'DISPATCHED');
+  // Total collected weight from market stocks (MRF-verified data)
+  const totalCollectedWeightKg = Object.values(stocksRecord).reduce((sum, stock) => sum + (stock?.accumulatedKg || 0), 0);
+  const resolutionRatePct = totalReportsCount > 0 ? Math.round((collectedReports.length / totalReportsCount) * 100) : 100;
 
-  // Operational Trend Data
-  const trendData = {
-    Daily: [
-      { label: '8 AM', count: 4 },
-      { label: '10 AM', count: 12 },
-      { label: '12 PM', count: 28, isPeak: true },
-      { label: '2 PM', count: 22 },
-      { label: '4 PM', count: 16 },
-      { label: '6 PM', count: 8 },
-    ],
-    Weekly: [
-      { label: 'Mon', count: 14 },
-      { label: 'Tue', count: 22 },
-      { label: 'Wed', count: 35 },
-      { label: 'Thu', count: 28 },
-      { label: 'Fri', count: 42, isPeak: true },
-      { label: 'Sat', count: 18 },
-      { label: 'Sun', count: 11 },
-    ],
-    Monthly: [
-      { label: 'Wk 1', count: 65 },
-      { label: 'Wk 2', count: 88 },
-      { label: 'Wk 3', count: 124, isPeak: true },
-      { label: 'Wk 4', count: 95 },
-    ],
-  };
+  // Compute reports today / this week dynamically
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const reportsToday = reports.filter(r => r.timestamp && r.timestamp.slice(0, 10) === todayStr).length;
 
-  const currentTrend = trendData[timeframe];
-  const maxCount = Math.max(...currentTrend.map(t => t.count));
-  const totalTrendReports = currentTrend.reduce((sum, item) => sum + item.count, 0);
+  // Reports this week (Monday to Sunday)
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartStr = weekStart.toISOString().slice(0, 10);
+  const reportsThisWeek = reports.filter(r => {
+    if (!r.timestamp) return false;
+    const rDate = r.timestamp.slice(0, 10);
+    return rDate >= weekStartStr && rDate <= todayStr;
+  }).length;
 
-  // Operational Materials Breakdown
-  const materialsBreakdown = [
-    { name: 'Plastic Bottles', pct: 45, count: 142, color: 'bg-emerald-500', barColor: '#10b981', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-    { name: 'Aluminum Cans', pct: 30, count: 95, color: 'bg-sky-500', barColor: '#0284c7', text: 'text-sky-700', bg: 'bg-sky-50', border: 'border-sky-200' },
-    { name: 'Paper & Cardboard', pct: 15, count: 47, color: 'bg-amber-500', barColor: '#f59e0b', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
-    { name: 'Glass Bottles', pct: 10, count: 32, color: 'bg-purple-500', barColor: '#a855f7', text: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200' },
-  ];
+  // Peak activity time - compute from actual report timestamps
+  const hourCounts: Record<number, number> = {};
+  reports.forEach(r => {
+    if (r.timestamp) {
+      try {
+        const h = new Date(r.timestamp).getHours();
+        hourCounts[h] = (hourCounts[h] || 0) + 1;
+      } catch { /* skip */ }
+    }
+  });
+  const peakHour = Object.entries(hourCounts).sort(([, a], [, b]) => b - a)[0];
+  const peakHourNum = peakHour ? parseInt(peakHour[0]) : 12;
+  const peakStart = peakHourNum > 12 ? `${peakHourNum - 12}:00 PM` : peakHourNum === 12 ? '12:00 PM' : `${peakHourNum}:00 AM`;
+  const peakEnd = peakHourNum + 1 > 12 ? `${peakHourNum + 1 - 12}:00 PM` : peakHourNum + 1 === 12 ? '12:00 PM' : `${peakHourNum + 1}:00 AM`;
+  const peakTimeStr = peakHour ? `${peakStart} – ${peakEnd}` : 'No data yet';
+  const peakDispatchTime = peakHour ? `${String(Math.min(peakHourNum + 2, 23)).padStart(2, '0')}:15` : '2:15 PM';
+
+  // Grade level distribution dynamically from reports — Students only, derived from EnrollPro-synced gradeLevel
+  const gradeColors = ['bg-emerald-500', 'bg-sky-500', 'bg-amber-500', 'bg-purple-500', 'bg-rose-500', 'bg-indigo-500', 'bg-teal-500', 'bg-pink-500'];
+  const gradeBgColors = ['bg-emerald-50/60', 'bg-sky-50/60', 'bg-amber-50/60', 'bg-purple-50/60', 'bg-rose-50/60', 'bg-indigo-50/60', 'bg-teal-50/60', 'bg-pink-50/60'];
+  const gradeTextColors = ['text-emerald-700', 'text-sky-700', 'text-amber-700', 'text-purple-700', 'text-rose-700', 'text-indigo-700', 'text-teal-700', 'text-pink-700'];
+  const gradeBorderColors = ['border-emerald-100', 'border-sky-100', 'border-amber-100', 'border-purple-100', 'border-rose-100', 'border-indigo-100', 'border-teal-100', 'border-pink-100'];
+
+  const gradeCountMap: Record<string, number> = {};
+  reports.forEach((r) => {
+    const u = users.find((usr) => usr.id === r.reporterId || usr.name.toLowerCase() === r.reporterName?.toLowerCase());
+    if (!u || u.role !== 'STUDENT') return;
+    const grade = (u as any)?.gradeLevel || 'Unknown';
+    gradeCountMap[grade] = (gradeCountMap[grade] || 0) + 1;
+  });
+
+  const gradeBreakdownList = Object.entries(gradeCountMap)
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+    .map(([grade, count], idx) => ({
+      grade,
+      count,
+      barBg: gradeColors[idx % gradeColors.length],
+      bg: gradeBgColors[idx % gradeBgColors.length],
+      text: gradeTextColors[idx % gradeTextColors.length],
+      border: gradeBorderColors[idx % gradeBorderColors.length],
+      pct: totalReportsCount > 0 ? Math.round((count / totalReportsCount) * 100) : 0,
+    }));
+
+  // Material distribution from market stock accumulatedKg (MRF-verified data)
+  const plasticCount = Math.round((stocksRecord['pet_plastic']?.accumulatedKg || 0) * 10) / 10;
+  const canCount = Math.round((stocksRecord['aluminum_cans']?.accumulatedKg || 0) * 10) / 10;
+  const paperCount = Math.round((stocksRecord['cardboard']?.accumulatedKg || 0) * 10) / 10;
+  const glassCount = Math.round((stocksRecord['glass']?.accumulatedKg || 0) * 10) / 10;
+
+  const totalMaterialReports = plasticCount + canCount + paperCount + glassCount;
+
+  const materialBreakdownList = [
+    { name: 'Plastic Bottles', count: plasticCount, Icon: Droplets, barBg: 'bg-emerald-500', bg: 'bg-emerald-50/60', text: 'text-emerald-700', border: 'border-emerald-100', iconColor: 'text-emerald-600' },
+    { name: 'Aluminum Cans', count: canCount, Icon: Layers, barBg: 'bg-sky-500', bg: 'bg-sky-50/60', text: 'text-sky-700', border: 'border-sky-100', iconColor: 'text-sky-600' },
+    { name: 'Paper / Cardboard', count: paperCount, Icon: FileText, barBg: 'bg-amber-500', bg: 'bg-amber-50/60', text: 'text-amber-700', border: 'border-amber-100', iconColor: 'text-amber-600' },
+    { name: 'Glass / Beverage Bottles', count: glassCount, Icon: Package, barBg: 'bg-purple-500', bg: 'bg-purple-50/60', text: 'text-purple-700', border: 'border-purple-100', iconColor: 'text-purple-600' },
+  ].map(item => ({
+    ...item,
+    pct: totalMaterialReports > 0 ? Math.round((item.count / totalMaterialReports) * 100) : 0,
+  }));
+
+  // Estimated economic value from market stocks
+  const petKg = stocksRecord['pet_plastic']?.accumulatedKg || 0;
+  const aluKg = stocksRecord['aluminum_cans']?.accumulatedKg || 0;
+  const paperKgVal = stocksRecord['cardboard']?.accumulatedKg || 0;
+  const glassKg = stocksRecord['glass']?.accumulatedKg || 0;
+
+  const totalEstimatedValuePhp = 
+    (petKg * (stocksRecord['pet_plastic']?.marketPricePerKg || 18)) +
+    (aluKg * (stocksRecord['aluminum_cans']?.marketPricePerKg || 45)) +
+    (paperKgVal * (stocksRecord['cardboard']?.marketPricePerKg || 12)) +
+    (glassKg * (stocksRecord['glass']?.marketPricePerKg || 15));
 
   // Settings forms local states
   const [ptsPerRep, setPtsPerRep] = useState(settings?.pointsPerReport?.toString() || '50');
@@ -102,7 +191,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
   // Warning Form States
   const [targetUserId, setTargetUserId] = useState('');
   const [warnDesc, setWarnDesc] = useState('');
-  const [severity, setSeverity] = useState<'WARNING' | 'STRIKE' | 'SUSPENSION'>('WARNING');
   const [warningSuccess, setWarningSuccess] = useState(false);
 
   // Sync state
@@ -124,7 +212,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
     e.preventDefault();
     if (!targetUserId || !warnDesc.trim()) return;
 
-    addOffense(targetUserId, warnDesc, severity);
+    addOffense(targetUserId, warnDesc);
     setWarningSuccess(true);
     setWarnDesc('');
     setTargetUserId('');
@@ -143,6 +231,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
   return (
     <div className="space-y-6">
 
+      {/* Toast Notification */}
+      {adminToast && (
+        <div className="fixed top-20 right-6 z-50 bg-[#00271D] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-[#00A77C]/40 flex items-center gap-3 animate-pulse">
+          <CheckCircle size={18} className="text-[#00A77C]" />
+          <span className="text-xs font-bold">{adminToast}</span>
+        </div>
+      )}
+
       {/* OVERVIEW / ANALYTICS DASHBOARD VIEW FOR ADMIN */}
       {(activeTab === 'overview' || activeTab === 'admin-analytics') && (
         <div className="space-y-6 animate-fade-in">
@@ -155,61 +251,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
               <h2 className="text-xl font-extrabold text-[#00271D] tracking-tight mt-1.5">Campus Operational Analytics</h2>
               <p className="text-xs text-[#00271D]/50 mt-0.5">Real-time reporting frequency, grade level distribution, and material breakdowns.</p>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handlePurgeDatabase}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-500/10 text-rose-700 border border-rose-300 text-xs font-black hover:bg-rose-500 hover:text-white transition-all cursor-pointer shadow-sm"
-                title="Flush all test reports, student points, and history"
-              >
-                <RotateCcw size={13} />
-                <span>Purge Test Data</span>
-              </button>
-              {purgedAlert && (
-                <span className="text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full animate-pulse">
-                  Purged!
-                </span>
-              )}
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-[#00271D] bg-white border border-[#00271D]/10 px-3 py-1.5 rounded-xl shadow-sm">
-                <BarChart2 size={13} className="text-[#00A77C]" /> Live Status Hub
-              </span>
-            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-[#00271D] bg-white border border-[#00271D]/10 px-3 py-1.5 rounded-xl shadow-sm">
+              <BarChart2 size={13} className="text-[#00A77C]" /> Live Status Hub
+            </span>
           </div>
 
           {/* Module 2: STUDENT REPORTING FREQUENCY (Summary Quick-Stat Cards) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <button
+              type="button"
+              onClick={() => setActiveTab?.('admin-reports')}
+              className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-emerald-300"
+            >
               <div className="flex items-center justify-between text-[#00A77C] mb-1">
-                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">Reports Today</span>
-                <div className="p-1.5 bg-[#00A77C]/10 rounded-lg text-[#00A77C]">
+                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider group-hover:text-[#00A77C] transition-colors">Reports Today</span>
+                <div className="p-1.5 bg-[#00A77C]/10 rounded-lg text-[#00A77C] group-hover:scale-105 transition-transform">
                   <BarChart2 size={15} />
                 </div>
               </div>
-              <p className="text-3xl font-black text-[#00271D]">24</p>
-              <p className="text-[11px] font-semibold text-[#00A77C]">+8% vs yesterday</p>
-            </div>
+              <p className="text-3xl font-black text-[#00271D]">{reportsToday}</p>
+              <p className="text-[11px] font-semibold text-[#00A77C]">Active verified incidents</p>
+            </button>
 
-            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <button
+              type="button"
+              onClick={() => setActiveTab?.('admin-reports')}
+              className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-sky-300"
+            >
               <div className="flex items-center justify-between text-sky-600 mb-1">
-                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">This Week</span>
-                <div className="p-1.5 bg-sky-50 rounded-lg text-sky-500">
+                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider group-hover:text-sky-600 transition-colors">This Week</span>
+                <div className="p-1.5 bg-sky-50 rounded-lg text-sky-500 group-hover:scale-105 transition-transform">
                   <CalendarDays size={15} />
                 </div>
               </div>
-              <p className="text-3xl font-black text-[#00271D]">142</p>
+              <p className="text-3xl font-black text-[#00271D]">{reportsThisWeek}</p>
               <p className="text-[11px] font-semibold text-sky-600">Active campus submissions</p>
-            </div>
+            </button>
 
-            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <button
+              type="button"
+              onClick={() => setActiveTab?.('admin-collections')}
+              className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-amber-300"
+            >
               <div className="flex items-center justify-between text-amber-600 mb-1">
-                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">Peak Activity Time</span>
-                <div className="p-1.5 bg-amber-50 rounded-lg text-amber-500">
+                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Peak Activity Time</span>
+                <div className="p-1.5 bg-amber-50 rounded-lg text-amber-500 group-hover:scale-105 transition-transform">
                   <Clock size={15} />
                 </div>
               </div>
-              <p className="text-xl font-black text-[#00271D] mt-1">12:00 PM – 2:00 PM</p>
+              <p className="text-xl font-black text-[#00271D] mt-1">{peakTimeStr}</p>
               <p className="text-[11px] font-semibold text-amber-600">Highest daily traffic window</p>
-            </div>
+              <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-xl">
+                <Clock size={11} className="text-amber-500 shrink-0" />
+                <span className="text-[10px] font-bold text-amber-700 leading-tight">Optimal MRF Staff Dispatch Window: <span className="text-amber-900">{peakDispatchTime}</span></span>
+              </div>
+            </button>
           </div>
 
           {/* 2-Column Grid: Grade Level Breakdown & Most Reported Materials */}
@@ -227,16 +323,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
               </div>
 
               <div className="space-y-3 pt-1">
-                {[
-                  { grade: 'Grade 7',  pct: 28, count: 120, barBg: 'bg-emerald-500', bg: 'bg-emerald-50/60', text: 'text-emerald-700', border: 'border-emerald-100' },
-                  { grade: 'Grade 8',  pct: 25, count: 108, barBg: 'bg-sky-500',     bg: 'bg-sky-50/60',     text: 'text-sky-700',     border: 'border-sky-100' },
-                  { grade: 'Grade 9',  pct: 22, count: 95,  barBg: 'bg-amber-500',   bg: 'bg-amber-50/60',   text: 'text-amber-700',   border: 'border-amber-100' },
-                  { grade: 'Grade 10', pct: 25, count: 105, barBg: 'bg-purple-500',  bg: 'bg-purple-50/60',  text: 'text-purple-700',  border: 'border-purple-100' },
-                ].map((item) => (
+                {gradeBreakdownList.map((item) => (
                   <div key={item.grade} className={`p-3 rounded-2xl border ${item.bg} ${item.border} space-y-1.5`}>
                     <div className="flex justify-between items-center text-xs font-bold text-gray-900">
                       <span>{item.grade}</span>
-                      <span className={item.text}>{item.pct}% · {item.count} reports</span>
+                      <span className={item.text}>{item.pct}% · {item.count} report{item.count === 1 ? '' : 's'}</span>
                     </div>
                     <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden">
                       <div className={`h-full ${item.barBg} transition-all duration-500`} style={{ width: `${item.pct}%` }} />
@@ -259,19 +350,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
               </div>
 
               <div className="space-y-3 pt-1">
-                {[
-                  { name: 'Plastic Bottles',  pct: 45, count: 210, Icon: Droplets,  barBg: 'bg-emerald-500', bg: 'bg-emerald-50/60', text: 'text-emerald-700', border: 'border-emerald-100', iconColor: 'text-emerald-600' },
-                  { name: 'Aluminum Cans',    pct: 30, count: 140, Icon: Layers,    barBg: 'bg-sky-500',     bg: 'bg-sky-50/60',     text: 'text-sky-700',     border: 'border-sky-100',     iconColor: 'text-sky-600'     },
-                  { name: 'Paper / Cardboard',pct: 15, count: 70,  Icon: FileText,  barBg: 'bg-amber-500',   bg: 'bg-amber-50/60',   text: 'text-amber-700',   border: 'border-amber-100',   iconColor: 'text-amber-600'   },
-                  { name: 'Glass / Others',   pct: 10, count: 45,  Icon: Package,   barBg: 'bg-purple-500',  bg: 'bg-purple-50/60',  text: 'text-purple-700',  border: 'border-purple-100',  iconColor: 'text-purple-600'  },
-                ].map((item) => (
+                {materialBreakdownList.map((item) => (
                   <div key={item.name} className={`p-3 rounded-2xl border ${item.bg} ${item.border} space-y-1.5`}>
                     <div className="flex justify-between items-center text-xs font-bold text-gray-900">
                       <span className="flex items-center gap-1.5">
                         <item.Icon size={13} className={item.iconColor} />
                         <span>{item.name}</span>
                       </span>
-                      <span className={item.text}>{item.pct}% · {item.count} reports</span>
+                      <span className={item.text}>{item.pct}% · {item.count} report{item.count === 1 ? '' : 's'}</span>
                     </div>
                     <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden">
                       <div className={`h-full ${item.barBg} transition-all duration-500`} style={{ width: `${item.pct}%` }} />
@@ -285,72 +371,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
         </div>
       )}
 
+      {/* OPERATIONAL ANALYTICS / IMPACT TAB */}
+      {activeTab === 'admin-impact' && <AdminImpactTab reports={reports} users={users} />}
+
+      {/* LEADERBOARD TAB */}
+      {activeTab === 'admin-leaderboard' && <AdminLeaderboardTab users={users} reports={reports} />}
+
       {/* 1. ALL REPORTS MANAGEMENT VIEW (MATCHES SCREENSHOT 714) */}
       {activeTab === 'admin-reports' && (
         <AdminReportsTab
           reports={reports}
           users={users}
+          settings={settings}
           verifyReport={verifyReport}
+          verifyReportsBatch={verifyReportsBatch}
           dispatchReport={dispatchReport}
           updateReportStatus={updateReportStatus}
           addOffense={addOffense}
+          deductPoints={deductPoints}
         />
       )}
 
-      {/* 2. LEADERBOARD / USER LIST VIEW */}
-      {activeTab === 'admin-users' && (
-        <div className="space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                Ecology Database
-              </span>
-              <h3 className="text-xl font-heading font-black text-[#00271D] tracking-tight mt-1.5">Active Accounts Management</h3>
-              <p className="text-xs text-[#00271D]/50 mt-0.5">Audit global points allocation and warning histories across all users.</p>
-            </div>
-          </div>
-
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-[#00271D]/8 text-[#00271D]/40 font-bold uppercase tracking-wider bg-[#00A77C]/5">
-                    <th className="py-3 px-4">Name</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Role</th>
-                    <th className="py-3 px-4">Badge ID</th>
-                    <th className="py-3 px-4 text-right">Warnings</th>
-                    <th className="py-3 px-4 text-right">Points</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#00271D]/5">
-                  {users.map(u => (
-                    <tr key={u.id} className="hover:bg-[#00A77C]/5 transition-colors">
-                      <td className="py-3 px-4 font-bold text-[#00271D]">{u.name}</td>
-                      <td className="py-3 px-4 text-[#00271D]/60 font-mono text-[11px]">{u.email}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${
-                          u.role === 'ADMIN'   ? 'bg-violet-50 border-violet-200 text-violet-700' :
-                          u.role === 'MRF'     ? 'bg-sky-50 border-sky-200 text-sky-700' :
-                          u.role === 'TEACHER' ? 'bg-purple-50 border-purple-200 text-purple-700' :
-                          'bg-[#00A77C]/10 border-[#00A77C]/20 text-[#00A77C]'
-                        }`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-[#00271D]/50 font-mono text-[11px]">{u.employeeId}</td>
-                      <td className="py-3 px-4 text-right">
-                        <span className={`font-bold text-xs ${ u.warningsCount > 0 ? 'text-rose-600' : 'text-[#00271D]/30' }`}>{u.warningsCount}</span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-black text-[#00A77C] text-xs">{u.points.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+      {/* COLLECTIONS MANAGEMENT TAB */}
+      {activeTab === 'admin-collections' && (
+        <AdminCollectionsTab
+          reports={reports}
+          users={users}
+          settings={settings}
+          dispatchReport={dispatchReport}
+          updateReportStatus={updateReportStatus}
+          addOffense={addOffense}
+          deductPoints={deductPoints}
+        />
       )}
+
+      {/* BIN MAP MANAGEMENT TAB */}
+      {activeTab === 'admin-bin-map' && <AdminBinMapTab bins={bins} reports={reports} />}
+
+      {/* CAMPUS NEWS TAB */}
+      {activeTab === 'admin-campus-news' && <AdminCampusNewsTab />}
+
+      {/* SCHOOL YEAR MANAGEMENT TAB */}
+      {activeTab === 'school-years' && <AdminSchoolYearTab showToast={showAdminToast} />}
+
+      {/* 2. LEADERBOARD / USER ACCOUNTS & ROLE MANAGEMENT */}
+      {activeTab === 'admin-users' && (
+        <AdminUsersTab
+          users={users}
+          addOffense={addOffense}
+          deductPoints={deductPoints}
+        />
+      )}
+
+      {activeTab === 'admin-audit-logs' && <AdminAuditLogsTab />}
 
       {/* 2. WARNINGS & OFFENSES */}
       {activeTab === 'admin-warnings' && (
@@ -413,22 +486,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Severity Level</label>
+                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Offense Level (Auto-determined)</label>
                   <div className="flex gap-2">
-                    {(['WARNING', 'STRIKE', 'SUSPENSION'] as const).map(sev => (
-                      <button
-                        key={sev}
-                        type="button"
-                        onClick={() => setSeverity(sev)}
-                        className={`flex-1 py-2 text-center rounded-xl border font-bold transition-all text-[9px] cursor-pointer ${
-                          severity === sev
-                            ? 'bg-rose-500 border-rose-500 text-white shadow-sm shadow-rose-200'
-                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {sev}
-                      </button>
-                    ))}
+                    {(['WARNING', 'DEDUCT', 'SUSPENSION'] as const).map((sev, i) => {
+                      const targetUser = users.find(u => u.id === targetUserId);
+                      const nextLevel = targetUser ? (targetUser.warningsCount ?? 0) + 1 : 1;
+                      const isActive = (i + 1) === nextLevel;
+                      return (
+                        <div
+                          key={sev}
+                          className={`flex-1 py-2 text-center rounded-xl border font-bold text-[9px] ${
+                            isActive
+                              ? 'bg-rose-500 border-rose-500 text-white shadow-sm shadow-rose-200'
+                              : 'bg-gray-50 border-gray-200 text-gray-400 opacity-50'
+                          }`}
+                        >
+                          {sev === 'WARNING' ? 'Warning' : sev === 'DEDUCT' ? 'Deduct' : 'Suspend'}
+                          {isActive && <span className="block text-[8px] font-normal mt-0.5">Next offense</span>}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -467,10 +544,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
                       </div>
                       <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase shrink-0 ${
                         off.severity === 'SUSPENSION' ? 'bg-rose-100 border border-rose-300 text-rose-700' :
-                        off.severity === 'STRIKE'     ? 'bg-amber-50 border border-amber-200 text-amber-700' :
+                        off.severity === 'DEDUCT'     ? 'bg-amber-50 border border-amber-200 text-amber-700' :
                         'bg-orange-50 border border-orange-200 text-orange-700'
                       }`}>
-                        {off.severity}
+                        {off.severity === 'WARNING' ? 'Warning' : off.severity === 'DEDUCT' ? 'Deduct' : 'Suspended'}
                       </span>
                     </div>
                   ))}
@@ -482,106 +559,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
         </div>
       )}
 
-      {/* 3. SYSTEM CONFIGS */}
-      {activeTab === 'admin-settings' && (
-        <div className="space-y-4 animate-fade-in">
-          <div>
-            <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-              System Configuration
-            </span>
-            <h3 className="text-xl font-heading font-black text-[#00271D] tracking-tight mt-1.5">Waste Rules & Parameters</h3>
-            <p className="text-xs text-[#00271D]/50 mt-0.5">Customize default points allocations and system threshold requirements.</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 max-w-4xl">
-
-            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm self-start">
-              <h4 className="text-sm font-heading font-bold text-[#00271D] mb-4 flex items-center gap-2">
-                <Settings size={15} className="text-[#00A77C]" />
-                Points & Thresholds
-              </h4>
-
-              {settingsSuccess && (
-                <div className="p-3 bg-[#00A77C]/10 border border-[#00A77C]/20 text-[#00A77C] rounded-xl text-xs flex gap-2 mb-4">
-                  <CheckCircle size={16} className="shrink-0 mt-0.5" />
-                  <span className="font-bold">Parameters saved successfully.</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSettingsSubmit} className="space-y-4 text-xs">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Points Awarded Per Incident Report</label>
-                  <input
-                    type="number"
-                    required
-                    value={ptsPerRep}
-                    onChange={e => setPtsPerRep(e.target.value)}
-                    className="w-full rounded-xl border border-[#00271D]/10 bg-[#F9F3F0] px-3.5 py-2.5 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-colors"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Points Multiplier Per Kg Recyclables</label>
-                  <input
-                    type="number"
-                    required
-                    value={ptsPerKg}
-                    onChange={e => setPtsPerKg(e.target.value)}
-                    className="w-full rounded-xl border border-[#00271D]/10 bg-[#F9F3F0] px-3.5 py-2.5 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-colors"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Warning Threshold Cap (triggers Admin Audit)</label>
-                  <input
-                    type="number"
-                    required
-                    value={warnLimit}
-                    onChange={e => setWarnLimit(e.target.value)}
-                    className="w-full rounded-xl border border-[#00271D]/10 bg-[#F9F3F0] px-3.5 py-2.5 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-colors"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Ambassador Certificate Tier Requirement</label>
-                  <input
-                    type="number"
-                    required
-                    value={certLimit}
-                    onChange={e => setCertLimit(e.target.value)}
-                    className="w-full rounded-xl border border-[#00271D]/10 bg-[#F9F3F0] px-3.5 py-2.5 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-colors"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-[#00A77C]/20 flex items-center justify-center cursor-pointer transition-colors"
-                >
-                  Save System Parameters
-                </button>
-              </form>
-            </div>
-
-            {/* Danger Zone */}
-            <div className="bg-white/90 backdrop-blur-md border border-rose-200/60 rounded-2xl p-5 shadow-sm self-start">
-              <h4 className="text-sm font-heading font-bold text-rose-600 mb-2 flex items-center gap-2">
-                <Trash2 size={15} />
-                Database Danger Zone
-              </h4>
-              <p className="text-xs text-[#00271D]/60 leading-relaxed mb-4">
-                Resetting will clear out all current mock waste entries, incident dispatches, points transaction histories, and sanctions on record, restoring defaults.
-              </p>
-              <button
-                type="button"
-                onClick={resetDatabase}
-                className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-200 cursor-pointer"
-              >
-                Flush Database & Seed Defaults
-              </button>
-            </div>
-
-          </div>
-        </div>
+      {/* 3. SYSTEM CONFIGS & SETTINGS TABS */}
+      {(activeTab === 'admin-settings' || SETTINGS_SUBITEMS.some(sub => sub.id === activeTab)) && (
+        <AdminSettingsTab
+          subTab={activeTab === 'admin-settings' ? 'academic-calendar' : activeTab}
+          settings={settings}
+          updateSettings={updateSettings}
+          resetDatabase={resetDatabase}
+        />
       )}
 
       {/* 4. SYNC LOGS VIEW */}

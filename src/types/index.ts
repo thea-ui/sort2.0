@@ -1,6 +1,6 @@
 export type Role = 'STUDENT' | 'TEACHER' | 'MRF' | 'ADMIN';
 
-export type ReportStatus = 'PENDING' | 'DISPATCHED' | 'COLLECTED' | 'RESOLVED';
+export type ReportStatus = 'PENDING' | 'DISPATCHED' | 'COLLECTED' | 'RESOLVED' | 'DISMISSED';
 
 export type WasteCategory = 'RECYCLABLE' | 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'ORGANIC' | 'HAZARDOUS' | 'GENERAL';
 
@@ -14,6 +14,8 @@ export interface User {
   warningsCount: number;
   certificatesEarned: string[]; // names of certificates earned
   classroomSection?: string; // used for teachers/students
+  accountStatus?: 'ACTIVE' | 'SUSPENDED';
+  suspendedUntil?: string;
 }
 
 export interface Report {
@@ -39,8 +41,15 @@ export interface Report {
   assignedMrfId?: string;
   assignedMrfName?: string;
   reportType?: 'WASTE' | 'ASSET';
-  reporterRank?: number;
+  reporterRank?: number | null;
+  pointsAwardedAt?: string | null;
+  completionNotes?: string;
+  collectedOutcome?: string;
+  isScatteredDebris?: boolean;
+  completedAt?: string;
 }
+
+export type BinStreamState = 'Available' | 'Unavailable' | 'No Bin';
 
 export interface BinStatus {
   id: string;
@@ -52,8 +61,11 @@ export interface BinStatus {
     lat: number;
     lng: number;
   };
+  x?: number;
+  y?: number;
   activeDispatch: boolean;
   lastEmptied?: string;
+  streamStatus?: BinStreamState;
 }
 
 export type Bin = BinStatus;
@@ -82,8 +94,9 @@ export interface Offense {
   userId: string;
   userName: string;
   description: string;
-  severity: 'WARNING' | 'STRIKE' | 'SUSPENSION';
+  severity: 'WARNING' | 'DEDUCT' | 'SUSPENSION';
   timestamp: string;
+  expiresAt?: string;
 }
 
 export interface SystemSettings {
@@ -92,6 +105,13 @@ export interface SystemSettings {
   warningThreshold: number;
   certificatePointThreshold: number;
   quarterGateActive: boolean;
+  maxUnverifiedReports: number;
+  dismissPointPenalty: number;
+  falseReportPointPenalty: number;
+  warningAutoDeductAmount: number;
+  suspensionDurationHours: number;
+  rewardsReservePercent: number;
+  defaultVendorName: string;
 }
 
 export interface CalendarEvent {
@@ -109,3 +129,53 @@ export interface SyncLog {
   status: 'SUCCESS' | 'FAILED';
   recordsSynced: number;
 }
+
+export interface CampusNewsArticle {
+  id: string;
+  tag: string;
+  tagType: 'MRF Update' | 'New Facility' | 'Achievement' | 'Event' | 'Program' | 'Research';
+  title: string;
+  description: string;
+  date: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  actorName: string;
+  actorRole: string;
+  actionType: 'AUTH' | 'DISMISSAL' | 'VERIFICATION' | 'DISPATCH' | 'SETTINGS';
+  details: string;
+}
+
+export type CategoryStreamType = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
+
+export interface StreamBinStatus {
+  type: CategoryStreamType;
+  status: BinStreamState;
+}
+
+export interface BinLocationItem {
+  id: string;
+  name: string;
+  code: string;
+  status: 'Available' | 'Unavailable';
+  x: number; // coordinate X (0 to 100)
+  y: number; // coordinate Y (0 to 100)
+  alert?: string;
+  streams: StreamBinStatus[];
+}
+
+export type NotificationType = 'REPORT_SUBMITTED' | 'REPORT_VERIFIED' | 'REPORT_DISPATCHED' | 'REPORT_COMPLETED' | 'REPORT_DISMISSED';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  reportId: string;
+  recipientId: string;
+  timestamp: string;
+}
+
+

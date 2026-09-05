@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
-import { Truck, ArrowLeft, KeyRound, AlertCircle, HelpCircle } from 'lucide-react';
+import { Truck, ArrowLeft, KeyRound, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { SortLogo } from '../../components/common/SortLogo';
 
 interface MRFLoginProps {
@@ -10,38 +10,36 @@ interface MRFLoginProps {
 export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
   const { login } = useMockData();
 
-  const [email, setEmail] = useState('');
-  const [employeeId, setEmployeeId] = useState('');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showHelper, setShowHelper] = useState(false);
 
   const handleMRFSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !employeeId) {
-      setErrorMsg('All fields are required.');
+    if (!identifier.trim() || !password.trim()) {
+      setErrorMsg('Employee ID and password are required.');
       return;
     }
     setLoading(true);
     setErrorMsg(null);
     try {
-      const success = await login(employeeId, email);
+      const success = await login(password, identifier);
       setLoading(false);
       if (success) {
         onNavigate('dashboard');
       } else {
-        setErrorMsg('Authentication failed: Invalid logistics operator credentials.');
+        setErrorMsg('Invalid Employee ID or password.');
       }
     } catch {
       setLoading(false);
-      setErrorMsg('Authentication failed. Please verify logistics operator credentials.');
+      setErrorMsg('Authentication failed.');
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: '#F9F3F0' }}>
-
-      {/* Organic backdrop waves */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
         <ellipse cx="15%" cy="20%" rx="38%" ry="30%" fill="#e0f2ec" opacity="0.55" />
         <ellipse cx="85%" cy="75%" rx="42%" ry="32%" fill="#d1f0e4" opacity="0.45" />
@@ -49,8 +47,6 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
       </svg>
 
       <div className="w-full max-w-sm z-10 space-y-4">
-
-        {/* Back Button */}
         <button
           onClick={() => onNavigate('landing')}
           className="flex items-center gap-1.5 text-[11px] font-bold text-[#00271D]/60 hover:text-[#00A77C] transition-colors uppercase tracking-wider"
@@ -59,10 +55,7 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
           <span>Back to Landing</span>
         </button>
 
-        {/* Card */}
         <div className="bg-white/90 backdrop-blur-xl border border-white/80 rounded-3xl p-6 shadow-xl shadow-[#00271D]/5">
-
-          {/* Header */}
           <div className="text-center space-y-2 mb-6">
             <div className="h-12 w-12 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg"
               style={{ background: 'linear-gradient(135deg, #00A77C, #00c491)' }}>
@@ -71,7 +64,7 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
             <SortLogo size={32} />
             <div>
               <h2 className="text-base font-black tracking-tight text-[#00271D] mt-1">MRF Terminal</h2>
-              <p className="text-[11px] text-[#00271D]/50 font-semibold">Logistics &amp; Dispatch Gate</p>
+              <p className="text-[11px] text-[#00271D]/50 font-semibold">Use your Employee ID from EnrollPro</p>
             </div>
           </div>
 
@@ -84,27 +77,33 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
 
           <form onSubmit={handleMRFSubmit} className="space-y-4 text-xs">
             <div className="space-y-1.5">
-              <label className="font-bold text-[#00271D]/50 uppercase tracking-widest text-[9px]">Operator Email</label>
+              <label className="font-bold text-[#00271D]/50 uppercase tracking-widest text-[9px]">Employee ID</label>
               <input
-                type="email"
+                type="text"
                 required
-                placeholder="mrf.staff@campus.edu"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+                placeholder="e.g. 1234503"
+                value={identifier}
+                onChange={e => setIdentifier(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="font-bold text-[#00271D]/50 uppercase tracking-widest text-[9px]">Logistics Badge ID</label>
-              <input
-                type="text"
-                required
-                placeholder="MRF-XXXX-XXX"
-                value={employeeId}
-                onChange={e => setEmployeeId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all"
-              />
+              <label className="font-bold text-[#00271D]/50 uppercase tracking-widest text-[9px]">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all"
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -116,37 +115,20 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
               {loading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>Syncing Operators...</span>
+                  <span>Verifying...</span>
                 </>
               ) : (
                 <>
                   <KeyRound size={12} />
-                  <span>Access Dispatch Terminal</span>
+                  <span>Sign In</span>
                 </>
               )}
             </button>
           </form>
+        </div>
 
-          {/* Credentials helper */}
-          <div className="mt-5 pt-3.5 border-t border-[#00271D]/8">
-            <button
-              type="button"
-              onClick={() => setShowHelper(!showHelper)}
-              className="w-full flex items-center justify-center gap-1.5 text-[9px] text-[#00271D]/40 hover:text-[#00A77C] transition-colors font-bold uppercase tracking-wider"
-            >
-              <HelpCircle size={10} />
-              {showHelper ? 'Hide Key' : 'Reveal Staff Credentials'}
-            </button>
-
-            {showHelper && (
-              <div className="mt-3 bg-[#F9F3F0] border border-[#00271D]/10 rounded-xl p-3 text-[9px] text-[#00271D]/60 leading-normal space-y-1 text-center">
-                <span className="font-bold text-[#00A77C] block uppercase">Staff Key Access</span>
-                Email: <span className="text-[#00271D] select-all font-mono">mrf1@sort.edu</span><br />
-                Password / ID: <span className="text-[#00271D] select-all font-mono">mrf123</span> / <span className="text-[#00271D] select-all font-mono">MRF-2026-001</span>
-              </div>
-            )}
-          </div>
-
+        <div className="text-center text-[9px] text-[#00271D]/30 font-semibold tracking-wider uppercase">
+          S.O.R.T. MRF Portal
         </div>
       </div>
     </div>

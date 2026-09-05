@@ -9,6 +9,7 @@ import { LeaderboardCard } from '../components/landing/LeaderboardCard';
 import { LoginCard } from '../components/landing/LoginCard';
 import { RecentActivityFeed } from '../components/landing/RecentActivityFeed';
 import { BinStatusWidget } from '../components/landing/BinStatusWidget';
+import { HowItWorksCard } from '../components/landing/HowItWorksCard';
 
 interface PublicLandingProps {
   onNavigate: (route: string) => void;
@@ -38,7 +39,7 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({ onNavigate }) => {
               <RecentActivityFeed />
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <CampaignsFeed />
-                <BinStatusWidget />
+                <HowItWorksCard />
               </div>
               <LeaderboardCard />
             </div>

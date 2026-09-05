@@ -1,4 +1,5 @@
 import React from 'react';
+import { CampusNewsWidget } from '../../../components/common/CampusNewsWidget';
 import {
   Trash2,
   Layers,
@@ -18,6 +19,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { User, Report } from '../../../types';
+import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 
 interface TeacherOverviewTabProps {
   currentUser: User;
@@ -96,9 +98,13 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
           {/* Waste Reports */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('report-history')}
+            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3 cursor-pointer group hover:border-emerald-300"
+          >
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-xs">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-xs group-hover:scale-105 transition-transform">
                 <Trash2 size={20} strokeWidth={2} />
               </div>
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-0.5 rounded-full border border-emerald-200">
@@ -107,18 +113,22 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
             </div>
             <div>
               <p className="text-3xl font-heading font-extrabold text-[#00271D]">{myWasteReportsCount}</p>
-              <p className="text-xs font-bold text-[#00271D] mt-0.5">Waste & Litter Logs</p>
+              <p className="text-xs font-bold text-[#00271D] mt-0.5 group-hover:text-emerald-700 transition-colors">Waste & Litter Logs</p>
               <p className="text-[11px] text-[#00271D]/50 font-medium">{myWasteResolved} resolved by MRF</p>
             </div>
             <div className="h-2 w-full bg-emerald-100 rounded-full overflow-hidden">
               <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${myWasteReportsCount > 0 ? (myWasteResolved / myWasteReportsCount) * 100 : 0}%` }} />
             </div>
-          </div>
+          </button>
 
           {/* Asset Reports */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('report-history')}
+            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3 cursor-pointer group hover:border-amber-300"
+          >
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 shadow-xs">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 shadow-xs group-hover:scale-105 transition-transform">
                 <Layers size={20} strokeWidth={2} />
               </div>
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 bg-amber-50 px-3 py-0.5 rounded-full border border-amber-200">
@@ -127,18 +137,22 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
             </div>
             <div>
               <p className="text-3xl font-heading font-extrabold text-[#00271D]">{myAssetReportsCount}</p>
-              <p className="text-xs font-bold text-[#00271D] mt-0.5">Asset & Facility Logs</p>
+              <p className="text-xs font-bold text-[#00271D] mt-0.5 group-hover:text-amber-700 transition-colors">Asset & Facility Logs</p>
               <p className="text-[11px] text-[#00271D]/50 font-medium">{myAssetResolved} resolved by MRF</p>
             </div>
             <div className="h-2 w-full bg-amber-100 rounded-full overflow-hidden">
               <div className="h-full bg-amber-500 rounded-full transition-all duration-700" style={{ width: `${myAssetReportsCount > 0 ? (myAssetResolved / myAssetReportsCount) * 100 : 0}%` }} />
             </div>
-          </div>
+          </button>
 
           {/* MRF Response Speed */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('bin-map')}
+            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3 cursor-pointer group hover:border-sky-300"
+          >
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 border border-sky-200 shadow-xs">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 border border-sky-200 shadow-xs group-hover:scale-105 transition-transform">
                 <Activity size={20} strokeWidth={2} />
               </div>
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-700 bg-sky-50 px-3 py-0.5 rounded-full border border-sky-200">
@@ -147,7 +161,7 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
             </div>
             <div>
               <p className="text-3xl font-heading font-extrabold text-[#00271D]">18m</p>
-              <p className="text-xs font-bold text-[#00271D] mt-0.5">Average Response Time</p>
+              <p className="text-xs font-bold text-[#00271D] mt-0.5 group-hover:text-sky-700 transition-colors">Average Response Time</p>
               <p className="text-[11px] text-[#00271D]/50 font-medium flex items-center gap-1">
                 <Zap size={11} className="text-[#00A77C]" />
                 <span>4 minutes faster than avg</span>
@@ -156,7 +170,7 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
             <div className="h-2 w-full bg-sky-100 rounded-full overflow-hidden">
               <div className="h-full bg-sky-500 rounded-full" style={{ width: '92%' }} />
             </div>
-          </div>
+          </button>
 
         </div>
       </div>
@@ -214,23 +228,28 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
             const ds = getDisplayStatus(rep.status, rep.title);
             const dc = getDisplayCategory(rep.description);
             return (
-              <div key={rep.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-[#00A77C]/5 transition-colors">
+              <button
+                key={rep.id}
+                type="button"
+                onClick={() => setActiveTab('report-history')}
+                className="w-full text-left flex items-center gap-3 px-6 py-3.5 hover:bg-[#00A77C]/5 transition-colors cursor-pointer group"
+              >
                 {(() => {
                   const IconComp = CAT_ICON[dc] || FileText;
                   return (
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00A77C]/10 text-[#00A77C]">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00A77C]/10 text-[#00A77C] group-hover:bg-[#00A77C] group-hover:text-white transition-colors">
                       <IconComp size={16} />
                     </div>
                   );
                 })()}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-[#00271D]">{rep.title}</p>
-                  <p className="text-[10px] text-[#00271D]/50 font-medium">{rep.locationName} · {rep.timestamp}</p>
+                  <p className="truncate text-xs font-bold text-[#00271D] group-hover:text-[#00A77C] transition-colors">{cleanReportTitle(rep.title)}</p>
+                  <p className="text-[10px] text-[#00271D]/50 font-medium">{cleanLocationName(rep.locationName)} · {rep.timestamp}</p>
                 </div>
                 <span className={`shrink-0 rounded-full px-3 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${STATUS_BADGE[ds]}`}>
                   {ds}
                 </span>
-              </div>
+              </button>
             );
           })}
           {personalReports.length === 0 && (
@@ -240,6 +259,9 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
           )}
         </div>
       </div>
+
+      {/* Campus News */}
+      <CampusNewsWidget />
 
     </div>
   );

@@ -2,6 +2,8 @@ import React from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { AlertTriangle, CheckCircle, Clock, MapPin } from 'lucide-react';
 
+import { isReportDoneAndExpired } from '../../utils/reportUtils';
+
 const STATUS_CONFIG = {
   PENDING:    { icon: Clock,        bg: 'bg-amber-50',   text: 'text-amber-600',   border: 'border-amber-100',   badge: 'bg-amber-50 text-amber-700',   label: 'Pending' },
   DISPATCHED: { icon: MapPin,       bg: 'bg-violet-50',  text: 'text-violet-600',  border: 'border-violet-100',  badge: 'bg-violet-50 text-violet-700',  label: 'Dispatched' },
@@ -17,7 +19,7 @@ const URGENCY_CONFIG = {
 
 export const RecentActivityFeed: React.FC = () => {
   const { reports } = useMockData();
-  const recent = [...reports].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 4);
+  const recent = [...reports].filter(r => !isReportDoneAndExpired(r)).sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 4);
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

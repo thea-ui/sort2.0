@@ -6,6 +6,7 @@ import {
   Search,
   Eye,
   CheckCircle2,
+  Check,
   AlertOctagon,
   ChevronDown,
   ChevronUp,
@@ -15,24 +16,39 @@ import {
   Package,
   Recycle,
   Armchair,
+  Target,
+  User,
+  Award,
+  AlertTriangle,
+  Map as MapIcon,
+  Clock,
+  Navigation,
 } from 'lucide-react';
 import { Report, User as UserType, ReportStatus } from '../../../types';
+import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 
 interface AdminReportsTabProps {
   reports: Report[];
   users: UserType[];
+  settings?: { dismissPointPenalty?: number; falseReportPointPenalty?: number } | null;
   verifyReport: (reportId: string) => void;
+  verifyReportsBatch?: (reportIds: string[]) => Promise<void>;
   dispatchReport: (reportId: string, mrfId: string, mrfName: string) => void;
-  updateReportStatus: (reportId: string, status: ReportStatus, weightCollected?: number) => void;
-  addOffense: (userId: string, description: string, severity: 'WARNING' | 'STRIKE' | 'SUSPENSION') => void;
+  updateReportStatus: (reportId: string, status: ReportStatus, weightCollected?: number, completionNotes?: string, collectedOutcome?: string, skipPoints?: boolean) => void;
+  addOffense: (userId: string, description: string, severity?: 'WARNING' | 'DEDUCT' | 'SUSPENSION', reportId?: string) => void;
+  deductPoints: (userId: string, amount: number, reason?: string) => void;
 }
 
 export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
   reports,
   users,
+  settings,
   verifyReport,
+  verifyReportsBatch,
   dispatchReport,
   addOffense,
+  deductPoints,
+  updateReportStatus,
 }) => {
   // Navigation & Filter States
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'WASTE' | 'ASSET'>('ALL');
@@ -48,60 +64,162 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
   const [eyeModalReport, setEyeModalReport] = useState<Report | null>(null);
   const [dispatchModalReport, setDispatchModalReport] = useState<Report | null>(null);
   const [selectedMrfId, setSelectedMrfId] = useState<string>('');
+  const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
 
   // Toast / Notification Feedback
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [rejectConfirmReport, setRejectConfirmReport] = useState<Report | null>(null);
 
   const showNotification = (msg: string) => {
     setFeedbackMsg(msg);
-    setTimeout(() => setFeedbackMsg(null), 3500);
+    setTimeout(() => setFeedbackMsg(null), 5000);
   };
 
-  // Filter Reports
-  const filteredReports = reports.filter(r => {
-    // Waste vs Asset filter
-    const isAsset = r.reportType === 'ASSET' ||
-      r.description.toUpperCase().includes('[PILLAR: FURNITURE]') ||
-      r.description.toUpperCase().includes('[PILLAR: ELECTRONICS]') ||
-      r.description.toUpperCase().includes('[PILLAR: FIXTURES]') ||
-      r.description.toUpperCase().includes('[PILLAR: EQUIPMENT]') ||
-      r.description.toUpperCase().includes('[PILLAR: OTHER]');
+  const getTimeMs = (r: Report) => {
+    if (r.timestamp) {
+      let ts = r.timestamp.trim();
+      if (ts.includes(' ')) {
+        ts = ts.replace(' ', 'T');
+      }
+      if (!ts.endsWith('Z') && !ts.includes('+') && !ts.slice(10).includes('-')) {
+        ts += 'Z';
+      }
+      const val = new Date(ts).getTime();
+      if (!isNaN(val) && val > 0) return val;
+    }
+    if (r.id && r.id.startsWith('rep-')) {
+      const num = parseInt(r.id.replace('rep-', ''), 10);
+      if (!isNaN(num)) return num;
+    }
+    return 0;
+  };
 
-    if (activeFilter === 'WASTE' && isAsset) return false;
-    if (activeFilter === 'ASSET' && !isAsset) return false;
+  const toggleSelectReport = (reportId: string) => {
+    setSelectedReportIds(prev =>
+      prev.includes(reportId) ? prev.filter(id => id !== reportId) : [...prev, reportId]
+    );
+  };
 
-    // Search query filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchTitle = r.title.toLowerCase().includes(q);
-      const matchLoc = r.locationName.toLowerCase().includes(q);
-      const matchReporter = r.reporterName.toLowerCase().includes(q);
-      const matchDesc = r.description.toLowerCase().includes(q);
-      if (!matchTitle && !matchLoc && !matchReporter && !matchDesc) return false;
+  const toggleSelectAll = () => {
+    if (selectedReportIds.length === filteredReports.length && filteredReports.length > 0) {
+      setSelectedReportIds([]);
+    } else {
+      setSelectedReportIds(filteredReports.map(r => r.id));
+    }
+  };
+
+  const handleVerifyGroup = async (groupReports: Report[]) => {
+    const unverified = groupReports.filter(r => !r.isVerified);
+    if (unverified.length === 0) {
+      showNotification("All reports in this bin stream are already verified!");
+      return;
     }
 
-    // Status filter
-    if (statusFilter === 'UNVERIFIED' && r.isVerified) return false;
-    if (statusFilter === 'VERIFIED' && (!r.isVerified || r.status === 'DISPATCHED' || r.status === 'COLLECTED' || r.status === 'RESOLVED')) return false;
-    if (statusFilter === 'DISPATCHED' && r.status !== 'DISPATCHED') return false;
-    if (statusFilter === 'DONE' && r.status !== 'COLLECTED' && r.status !== 'RESOLVED') return false;
+    const unverifiedIds = unverified.map(r => r.id);
+    const locName = groupReports[0]?.locationName || 'Location';
+    const catName = groupReports[0]?.category || 'GENERAL';
 
-    return true;
-  });
+    if (verifyReportsBatch) {
+      try {
+        await verifyReportsBatch(unverifiedIds);
+        showNotification(`Verified ${unverified.length} report(s) for ${catName} at "${locName}"! Points distributed by server.`);
+      } catch (err) {
+        showNotification(`Verification failed. Please try again.`);
+        console.warn('Batch verify error:', err);
+      }
+    } else {
+      // Fallback: verify each report individually
+      unverified.forEach(rep => verifyReport(rep.id));
+      showNotification(`Verified ${unverified.length} report(s) for ${catName} at "${locName}"!`);
+    }
+  };
 
-  // Group Reports by Location Name
+  const handleVerifySelected = async () => {
+    const targetReports = reports.filter(r => selectedReportIds.includes(r.id) && !r.isVerified);
+    if (targetReports.length === 0) {
+      showNotification("No unverified reports are currently selected.");
+      return;
+    }
+
+    const targetIds = targetReports.map(r => r.id);
+
+    if (verifyReportsBatch) {
+      try {
+        await verifyReportsBatch(targetIds);
+        showNotification(`Verified ${targetReports.length} selected report(s)! Points distributed by server.`);
+      } catch (err) {
+        showNotification(`Verification failed. Please try again.`);
+        console.warn('Batch verify error:', err);
+      }
+    } else {
+      // Fallback: verify each report individually
+      targetReports.forEach(r => verifyReport(r.id));
+      showNotification(`Verified ${targetReports.length} selected report(s)!`);
+    }
+  };
+
+  // Filter & Sort Reports by Time (Newest First)
+  const filteredReports = reports
+    .filter(r => {
+      // Waste vs Asset filter
+      const isAsset = r.reportType === 'ASSET' ||
+        r.description.toUpperCase().includes('[PILLAR: FURNITURE]') ||
+        r.description.toUpperCase().includes('[PILLAR: ELECTRONICS]') ||
+        r.description.toUpperCase().includes('[PILLAR: FIXTURES]') ||
+        r.description.toUpperCase().includes('[PILLAR: EQUIPMENT]') ||
+        r.description.toUpperCase().includes('[PILLAR: OTHER]');
+
+      if (activeFilter === 'WASTE' && isAsset) return false;
+      if (activeFilter === 'ASSET' && !isAsset) return false;
+
+      // Search query filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchTitle = r.title.toLowerCase().includes(q);
+        const matchLoc = r.locationName.toLowerCase().includes(q);
+        const matchReporter = r.reporterName.toLowerCase().includes(q);
+        const matchDesc = r.description.toLowerCase().includes(q);
+        if (!matchTitle && !matchLoc && !matchReporter && !matchDesc) return false;
+      }
+
+      // Status filter
+      if (statusFilter === 'UNVERIFIED' && r.isVerified) return false;
+      if (statusFilter === 'VERIFIED' && (!r.isVerified || r.status === 'DISPATCHED' || r.status === 'COLLECTED' || r.status === 'RESOLVED')) return false;
+      if (statusFilter === 'DISPATCHED' && r.status !== 'DISPATCHED') return false;
+      if (statusFilter === 'DISMISSED' && r.status !== 'DISMISSED') return false;
+      if (statusFilter === 'DONE' && r.status !== 'COLLECTED' && r.status !== 'RESOLVED') return false;
+
+      return true;
+    })
+    .sort((a, b) => getTimeMs(b) - getTimeMs(a)); // Newest / most recent first
+
+  // Group Reports by Location + Category (Bin Stream Level)
+  // Each unique location+category combination is a separate bin stream group
   const groupedMap: Record<string, Report[]> = {};
   filteredReports.forEach(r => {
-    const locKey = r.locationName || 'General Campus Location';
+    const locKey = `${r.locationName || 'General Campus Location'}__${r.category || 'GENERAL'}`;
     if (!groupedMap[locKey]) groupedMap[locKey] = [];
     groupedMap[locKey].push(r);
   });
 
-  const locationGroups = Object.keys(groupedMap).map((locKey, index) => ({
-    id: `group-${index}`,
-    locationName: locKey,
-    reports: groupedMap[locKey],
-  }));
+  const locationGroups = Object.keys(groupedMap)
+    .map((locKey, index) => {
+      const [locName, cat] = locKey.split('__');
+      const groupReports = groupedMap[locKey].sort((a, b) => getTimeMs(b) - getTimeMs(a));
+      const latestTime = groupReports[0] ? getTimeMs(groupReports[0]) : 0;
+      const activeCount = groupReports.filter(r => r.status === 'PENDING' || r.status === 'DISPATCHED').length;
+      const completedCount = groupReports.filter(r => r.status === 'COLLECTED' || r.status === 'RESOLVED').length;
+      return {
+        id: `group-${index}`,
+        locationName: locName,
+        category: cat,
+        reports: groupReports,
+        latestTime,
+        activeCount,
+        completedCount,
+      };
+    })
+    .sort((gA, gB) => gB.latestTime - gA.latestTime);
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
@@ -109,7 +227,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
 
   const handleVerify = (report: Report) => {
     verifyReport(report.id);
-    showNotification(`Report at "${report.locationName}" has been verified! Notification sent to ${report.reporterName}.`);
+    showNotification(`Report at "${report.locationName}" (${report.category}) verified! Points awarded to ${report.reporterName} based on rank.`);
   };
 
   const handleDispatchSubmit = (e: React.FormEvent) => {
@@ -126,14 +244,37 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
   };
 
   const handleRejectReport = (report: Report) => {
+    setRejectConfirmReport(report);
+  };
+
+  const confirmRejectReport = async () => {
+    if (!rejectConfirmReport) return;
+    const report = rejectConfirmReport;
+    const dismissPenalty = settings?.dismissPointPenalty ?? 10;
+
+    // Auto-determine offense level based on reporter's existing warningsCount
+    const reporter = users.find(u => u.id === report.reporterId);
+    const level = (reporter?.warningsCount ?? 0) + 1;
+    const autoSeverity: 'WARNING' | 'DEDUCT' | 'SUSPENSION' =
+      level === 1 ? 'WARNING' : level === 2 ? 'DEDUCT' : 'SUSPENSION';
+
     if (report.reporterId) {
-      addOffense(
+      await addOffense(
         report.reporterId,
-        `False or improper report submitted: "${report.title}" at ${report.locationName}`,
-        'WARNING'
+        `False or improper report: "${report.title}" at ${report.locationName}`,
+        autoSeverity,
+        report.id
       );
+      if (autoSeverity === 'DEDUCT') {
+        await deductPoints(report.reporterId, dismissPenalty, `Marked fake: ${report.title}`);
+      }
     }
-    showNotification(`Report marked as invalid/fake. Warning logged for ${report.reporterName}.`);
+    if (updateReportStatus) {
+      await updateReportStatus(report.id, 'DISMISSED' as any, undefined, 'Marked as fake/dismissed by admin', undefined, true);
+    }
+    const sevLabel = autoSeverity === 'WARNING' ? 'Warning' : autoSeverity === 'DEDUCT' ? `${dismissPenalty} pts deducted` : 'Account suspended';
+    showNotification(`Report dismissed. ${sevLabel} for ${report.reporterName}.`);
+    setRejectConfirmReport(null);
     if (eyeModalReport?.id === report.id) setEyeModalReport(null);
   };
 
@@ -142,9 +283,14 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
 
       {/* Toast Notification Banner */}
       {feedbackMsg && (
-        <div className="fixed top-20 right-6 z-50 bg-[#00271D] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-[#00A77C]/40 flex items-center gap-3 animate-pulse">
-          <CheckCircle2 size={18} className="text-[#00A77C]" />
-          <span className="text-xs font-bold">{feedbackMsg}</span>
+        <div className="fixed top-20 right-6 z-[9999] bg-[#00271D] text-white px-5 py-4 rounded-2xl shadow-2xl border-2 border-[#00A77C] flex items-center gap-3 animate-fade-in max-w-sm">
+          <div className="h-8 w-8 rounded-xl bg-[#00A77C]/20 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={18} className="text-[#00A77C]" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#00A77C]">Dispatched Successfully</span>
+            <span className="text-xs font-bold text-white mt-0.5">{feedbackMsg}</span>
+          </div>
         </div>
       )}
 
@@ -234,14 +380,47 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
           <option value="UNVERIFIED">Unverified</option>
           <option value="VERIFIED">Verified</option>
           <option value="DISPATCHED">Dispatched</option>
+          <option value="DISMISSED">Dismissed</option>
           <option value="DONE">Done / Completed</option>
         </select>
       </div>
 
-      {/* Select All Sub-bar */}
-      <div className="flex items-center gap-2 px-2 text-xs font-semibold text-[#00271D]/60">
-        <input type="checkbox" id="selectAll" className="rounded text-[#00A77C] focus:ring-[#00A77C]" />
-        <label htmlFor="selectAll" className="cursor-pointer">Select All ({filteredReports.length})</label>
+      {/* Select All Sub-bar & Bulk Action Controls */}
+      <div className="bg-white/90 border border-[#00271D]/10 rounded-2xl p-3 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 font-semibold text-[#00271D]">
+          <input
+            type="checkbox"
+            id="selectAll"
+            checked={selectedReportIds.length === filteredReports.length && filteredReports.length > 0}
+            onChange={toggleSelectAll}
+            className="rounded text-[#00A77C] focus:ring-[#00A77C] cursor-pointer"
+          />
+          <label htmlFor="selectAll" className="cursor-pointer font-bold">
+            Select All ({filteredReports.length})
+          </label>
+          {selectedReportIds.length > 0 && (
+            <span className="text-[11px] font-bold text-[#00A77C] bg-[#00A77C]/15 px-2.5 py-0.5 rounded-full ml-1 border border-[#00A77C]/30">
+              {selectedReportIds.length} Selected
+            </span>
+          )}
+        </div>
+
+        {selectedReportIds.length > 0 && (
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              onClick={handleVerifySelected}
+              className="px-4 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold shadow-md shadow-[#00A77C]/20 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <CheckCircle2 size={14} /> Verify Selected ({selectedReportIds.filter(id => !reports.find(r => r.id === id)?.isVerified).length})
+            </button>
+            <button
+              onClick={() => setSelectedReportIds([])}
+              className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-600 transition-colors cursor-pointer"
+            >
+              Deselect All
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Grouped Location Containers (Matches Screenshot 714 Card Layout) */}
@@ -256,8 +435,21 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
           locationGroups.map(group => {
             const isExpanded = expandedGroups[group.id] !== false; // default open
             const firstReport = group.reports[0];
+            const unverifiedInGroup = group.reports.filter(r => !r.isVerified && r.status !== 'DISMISSED');
             const isGroupDispatched = group.reports.length > 0 && group.reports.every(r => r.status === 'DISPATCHED' || r.status === 'COLLECTED' || r.status === 'RESOLVED');
             const assignedMrfName = group.reports.find(r => r.assignedMrfName)?.assignedMrfName;
+
+            // Category styling for bin stream header
+            const catLabel = group.category === 'RECYCLABLE' ? 'Recyclable'
+              : group.category === 'BIODEGRADABLE' ? 'Biodegradable'
+              : group.category === 'HAZARDOUS' ? 'Hazardous'
+              : 'Non-Biodegradable';
+            const catStyle = group.category === 'RECYCLABLE' ? 'bg-sky-100 text-sky-700 border-sky-200'
+              : group.category === 'BIODEGRADABLE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+              : group.category === 'HAZARDOUS' ? 'bg-rose-100 text-rose-700 border-rose-200'
+              : 'bg-amber-100 text-amber-700 border-amber-200';
+
+            const isFull = group.activeCount >= 3;
 
             return (
               <div
@@ -272,15 +464,31 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                     </div>
                     <div>
                       <h3 className="text-sm font-heading font-black text-[#00271D]">
-                        {group.locationName}
+                        {cleanLocationName(group.locationName)}
                       </h3>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#00271D]/50 mt-0.5">
-                        {group.reports.length} REPORT · {group.reports.filter(r => r.status === 'PENDING').length} ACTIVE
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${catStyle}`}>
+                          {catLabel}
+                        </span>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#00271D]/50">
+                          {group.activeCount}/{group.reports.length} Reports — {isFull ? 'FULL' : 'AVAILABLE'}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Render "Verify All" button FIRST before "Dispatch Collector" if unverified reports exist */}
+                    {unverifiedInGroup.length > 0 && (
+                      <button
+                        onClick={() => handleVerifyGroup(group.reports)}
+                        className="px-4 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold shadow-md shadow-[#00A77C]/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="Verify all unverified reports in this location and award points by submission order"
+                      >
+                        <CheckCircle2 size={13} /> Verify All ({unverifiedInGroup.length})
+                      </button>
+                    )}
+
                     {isGroupDispatched ? (
                       <button
                         disabled
@@ -308,192 +516,473 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                 </div>
 
                 {/* Group Nested Reports List */}
-                {isExpanded && (
-                  <div className="divide-y divide-gray-200/60 pt-2 space-y-2">
-                    {group.reports.map(rep => {
-                      const repIsAsset = rep.reportType === 'ASSET' ||
-                        rep.description.toUpperCase().includes('[PILLAR: FURNITURE]') ||
-                        rep.description.toUpperCase().includes('[PILLAR: ELECTRONICS]') ||
-                        rep.description.toUpperCase().includes('[PILLAR: FIXTURES]') ||
-                        rep.description.toUpperCase().includes('[PILLAR: EQUIPMENT]') ||
-                        rep.description.toUpperCase().includes('[PILLAR: OTHER]');
+                {isExpanded && (() => {
+                  const activeReports = group.reports.filter(r => r.status !== 'COLLECTED' && r.status !== 'RESOLVED' && r.status !== 'DISMISSED');
+                  const completedReports = group.reports.filter(r => r.status === 'COLLECTED' || r.status === 'RESOLVED' || r.status === 'DISMISSED');
+                  const hasBoth = activeReports.length > 0 && completedReports.length > 0;
 
-                      const badgeType = repIsAsset ? 'ASSET' : 'WASTE';
-                      const badgeBg = repIsAsset ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200';
+                  return (
+                    <div className="pt-2 space-y-2">
+                      {/* Active / New Reports */}
+                      {activeReports.length > 0 && (
+                        <div className="divide-y divide-gray-200/60 space-y-2">
+                          {activeReports.map(rep => {
+                            const repIsAsset = rep.reportType === 'ASSET' ||
+                              rep.description.toUpperCase().includes('[PILLAR: FURNITURE]') ||
+                              rep.description.toUpperCase().includes('[PILLAR: ELECTRONICS]') ||
+                              rep.description.toUpperCase().includes('[PILLAR: FIXTURES]') ||
+                              rep.description.toUpperCase().includes('[PILLAR: EQUIPMENT]') ||
+                              rep.description.toUpperCase().includes('[PILLAR: OTHER]');
 
-                      return (
-                        <div
-                          key={rep.id}
-                          className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:border-[#00A77C]/40 transition-colors"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <input type="checkbox" className="rounded text-[#00A77C] focus:ring-[#00A77C] shrink-0" />
-                            <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border ${badgeBg} shrink-0`}>
-                              {badgeType}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-[#00271D] truncate">{rep.title}</p>
-                              <p className="text-[11px] text-[#00271D]/60 font-medium mt-0.5 flex items-center gap-1 truncate">
-                                <span>{rep.reporterName}</span>
-                                <span className="text-[9px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-1.5 py-0.2 rounded-full uppercase">
-                                  {rep.reporterRole || 'student'}
-                                </span>
-                                <span>· {rep.timestamp}</span>
-                              </p>
-                            </div>
-                          </div>
+                            const badgeType = repIsAsset ? 'ASSET' : 'WASTE';
+                            const badgeBg = repIsAsset ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200';
 
-                          <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                            {/* Verification / Status Badge */}
-                            {!rep.isVerified && rep.status === 'PENDING' ? (
-                              <span className="px-3 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black uppercase tracking-wider">
-                                Unverified
-                              </span>
-                            ) : rep.isVerified && rep.status === 'PENDING' ? (
-                              <span className="px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                                <CheckCircle2 size={11} /> Verified
-                              </span>
-                            ) : rep.status === 'DISPATCHED' ? (
-                              <span className="px-3 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-black uppercase tracking-wider">
-                                Dispatched ({rep.assignedMrfName || 'MRF'})
-                              </span>
-                            ) : (
-                              <span className="px-3 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-black uppercase tracking-wider">
-                                Done / Completed
-                              </span>
-                            )}
+                            return (
+                              <div
+                                key={rep.id}
+                                className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:border-[#00A77C]/40 transition-colors"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedReportIds.includes(rep.id)}
+                                    onChange={() => toggleSelectReport(rep.id)}
+                                    className="rounded text-[#00A77C] focus:ring-[#00A77C] shrink-0 cursor-pointer"
+                                  />
+                                  <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border ${badgeBg} shrink-0`}>
+                                    {badgeType}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-[#00271D] truncate">{cleanReportTitle(rep.title)}</p>
+                                    <p className="text-[11px] text-[#00271D]/60 font-medium mt-0.5 flex items-center gap-1 truncate">
+                                      <span>{rep.reporterName}</span>
+                                      <span className="text-[9px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-1.5 py-0.2 rounded-full uppercase">
+                                        {rep.reporterRole || 'student'}
+                                      </span>
+                                      <span>· {rep.timestamp}</span>
+                                    </p>
+                                  </div>
+                                </div>
 
-                            {/* Eye Icon Button */}
-                            <button
-                              onClick={() => setEyeModalReport(rep)}
-                              className="p-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-200 transition-colors cursor-pointer"
-                              title="Inspect details & verify"
-                            >
-                              <Eye size={16} />
-                            </button>
-                          </div>
+                                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                                  {!rep.isVerified && rep.status === 'PENDING' ? (
+                                    <span className="px-3 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black uppercase tracking-wider">
+                                      Unverified
+                                    </span>
+                                  ) : rep.isVerified && rep.status === 'PENDING' ? (
+                                    <span className="px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                                      <CheckCircle2 size={11} /> Verified
+                                    </span>
+                                  ) : (
+                                    <span className="px-3 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-black uppercase tracking-wider">
+                                      Dispatched ({rep.assignedMrfName || 'MRF'})
+                                    </span>
+                                  )}
+
+                                  <button
+                                    onClick={() => setEyeModalReport(rep)}
+                                    className="p-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-200 transition-colors cursor-pointer"
+                                    title="Inspect details & verify"
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      )}
+
+                      {/* Divider between active and completed reports */}
+                      {hasBoth && (
+                        <div className="flex items-center gap-3 py-1">
+                          <div className="flex-1 border-t border-dashed border-[#00271D]/15" />
+                          <span className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider whitespace-nowrap">Previous Reports</span>
+                          <div className="flex-1 border-t border-dashed border-[#00271D]/15" />
+                        </div>
+                      )}
+
+                      {/* Completed / Dismissed Reports (Muted) */}
+                      {completedReports.length > 0 && (
+                        <div className="divide-y divide-gray-200/60 space-y-2 opacity-60">
+                          {completedReports.map(rep => {
+                            const repIsAsset = rep.reportType === 'ASSET' ||
+                              rep.description.toUpperCase().includes('[PILLAR: FURNITURE]') ||
+                              rep.description.toUpperCase().includes('[PILLAR: ELECTRONICS]') ||
+                              rep.description.toUpperCase().includes('[PILLAR: FIXTURES]') ||
+                              rep.description.toUpperCase().includes('[PILLAR: EQUIPMENT]') ||
+                              rep.description.toUpperCase().includes('[PILLAR: OTHER]');
+
+                            const badgeType = repIsAsset ? 'ASSET' : 'WASTE';
+                            const badgeBg = repIsAsset ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200';
+
+                            return (
+                              <div
+                                key={rep.id}
+                                className="bg-gray-50/80 border border-gray-200/60 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedReportIds.includes(rep.id)}
+                                    onChange={() => toggleSelectReport(rep.id)}
+                                    className="rounded text-[#00A77C] focus:ring-[#00A77C] shrink-0 cursor-pointer"
+                                  />
+                                  <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border ${badgeBg} shrink-0`}>
+                                    {badgeType}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-gray-500 truncate">{cleanReportTitle(rep.title)}</p>
+                                    <p className="text-[11px] text-gray-400 font-medium mt-0.5 flex items-center gap-1 truncate">
+                                      <span>{rep.reporterName}</span>
+                                      <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.2 rounded-full uppercase">
+                                        {rep.reporterRole || 'student'}
+                                      </span>
+                                      <span>· {rep.timestamp}</span>
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                                  {rep.status === 'DISMISSED' ? (
+                                    <span className="px-3 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                                      <AlertOctagon size={11} /> Dismissed
+                                    </span>
+                                  ) : (
+                                    <span className="px-3 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-black uppercase tracking-wider">
+                                      Done / Completed
+                                    </span>
+                                  )}
+
+                                  <button
+                                    onClick={() => setEyeModalReport(rep)}
+                                    className="p-2 rounded-lg bg-gray-50 text-gray-400 hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer"
+                                    title="Inspect details"
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })
         )}
       </div>
 
-      {/* ── EYE MODAL (Report Preview & Verification) ── */}
-      {eyeModalReport && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white border border-gray-200 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 relative overflow-hidden">
-            <button
-              onClick={() => setEyeModalReport(null)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-            >
-              <X size={18} />
-            </button>
+      {/* ── EYE MODAL (Report Inspection & Campus Mini-Map Preview) ── */}
+      {eyeModalReport && (() => {
+        const minLat = 14.5975, maxLat = 14.6035, minLng = 120.9815, maxLng = 120.9885;
+        const lat = eyeModalReport.coordinates?.lat || 14.6000;
+        const lng = eyeModalReport.coordinates?.lng || 120.9850;
+        const pctY = Math.max(8, Math.min(92, ((maxLat - lat) / (maxLat - minLat)) * 100));
+        const pctX = Math.max(8, Math.min(92, ((lng - minLng) / (maxLng - minLng)) * 100));
 
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
-              <div className="h-10 w-10 rounded-2xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center font-bold">
-                <Eye size={20} />
-              </div>
-              <div>
-                <h3 className="text-base font-heading font-black text-[#00271D]">Report Audit Inspection</h3>
-                <p className="text-[11px] text-gray-500 font-medium">Verify authenticity before dispatching MRF staff</p>
-              </div>
-            </div>
+        const isScattered = eyeModalReport.isScatteredDebris === true ||
+          (
+            (eyeModalReport.title.toLowerCase().includes('scattered debris') ||
+             eyeModalReport.locationName.toLowerCase().includes('scattered debris') ||
+             eyeModalReport.description.toLowerCase().includes('[scattered debris pin]')) &&
+            !eyeModalReport.description.toLowerCase().includes('[associated bin id') &&
+            !eyeModalReport.description.toLowerCase().includes('[location:')
+          );
 
-            {/* Reporter details */}
-            <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200/80 flex items-center justify-between text-xs">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Reporter Account</p>
-                <p className="font-bold text-[#00271D] mt-0.5">{eyeModalReport.reporterName}</p>
-              </div>
-              <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black uppercase border border-emerald-200">
-                {eyeModalReport.reporterRole || 'student'}
-              </span>
-            </div>
+        const isFacultyReporter = (
+          eyeModalReport.reporterRole === 'teacher' ||
+          eyeModalReport.reporterRole === 'admin' ||
+          eyeModalReport.reporterRole === 'mrf'
+        );
 
-            {/* Conditional Content: Bin Photo for Waste vs Location Name ONLY for Assets */}
-            {eyeModalReport.reportType === 'ASSET' ||
-            eyeModalReport.description.toUpperCase().includes('[PILLAR: FURNITURE]') ||
-            eyeModalReport.description.toUpperCase().includes('[PILLAR: ELECTRONICS]') ||
-            eyeModalReport.description.toUpperCase().includes('[PILLAR: FIXTURES]') ||
-            eyeModalReport.description.toUpperCase().includes('[PILLAR: EQUIPMENT]') ||
-            eyeModalReport.description.toUpperCase().includes('[PILLAR: OTHER]') ? (
+        const formatTimestamp = (ts: string) => {
+          if (!ts) return 'Just now';
+          try {
+            const dateObj = new Date(ts);
+            if (isNaN(dateObj.getTime())) return ts.substring(0, 16).replace('T', ' ');
+            return dateObj.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }) + ' · ' + dateObj.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            });
+          } catch {
+            return ts.substring(0, 16).replace('T', ' ');
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
+            <div className="bg-white border border-gray-200 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 relative my-auto max-h-[85vh] overflow-y-auto">
               
-              /* ASSET REPORT: Displays Location Name ONLY (No picture required) */
-              <div className="space-y-3">
-                <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 space-y-1">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 flex items-center gap-1">
-                    <MapPin size={12} /> Asset Incident Location
-                  </p>
-                  <p className="text-base font-heading font-black text-[#00271D]">
-                    {eyeModalReport.locationName}
-                  </p>
+              {/* Close Button */}
+              <button
+                onClick={() => setEyeModalReport(null)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer z-20"
+              >
+                <X size={18} />
+              </button>
+
+              {/* Modal Header */}
+              <div className="flex items-start gap-3 border-b border-gray-100 pb-3 pr-8">
+                <div className="h-11 w-11 rounded-2xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center font-bold shrink-0">
+                  <Eye size={22} />
                 </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-700">
-                  <p className="font-bold text-gray-900 mb-1">Asset Notes:</p>
-                  <p>{eyeModalReport.description}</p>
+                <div>
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00271D] text-white">
+                      ID: {eyeModalReport.id}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                      eyeModalReport.isVerified
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-amber-100 text-amber-900 border border-amber-200'
+                    }`}>
+                      {eyeModalReport.isVerified ? '✓ Verified' : '⏳ Pending Verification'}
+                    </span>
+                    {isScattered && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-0.5">
+                        <MapPin size={9} /> Scattered Debris
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-base font-heading font-black text-[#00271D] leading-snug">
+                    {cleanReportTitle(eyeModalReport.title)}
+                  </h3>
                 </div>
               </div>
 
-            ) : (
-
-              /* WASTE REPORT: Displays Student / Teacher Bin Photo & Location */
-              <div className="space-y-3">
-                <div className="rounded-2xl overflow-hidden border border-gray-200 h-48 bg-gray-100 relative shadow-inner">
-                  {eyeModalReport.imageUrl ? (
-                    <img src={eyeModalReport.imageUrl} alt="Waste report" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 p-4 text-center space-y-1">
-                      <Package size={32} />
-                      <p className="text-xs font-semibold">Standard Container Location Image Attached</p>
-                    </div>
+              {/* Prominent High-Visibility Campus Location Banner */}
+              <div className="bg-[#00A77C]/10 border border-[#00A77C]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
+                <div>
+                  <span className="text-[10px] font-black text-[#00A77C] uppercase tracking-wider block">Target Campus Location</span>
+                  <h4 className="text-lg font-heading font-black text-[#00271D] leading-tight mt-0.5">{cleanLocationName(eyeModalReport.locationName)}</h4>
+                  {isScattered && (
+                    <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono font-bold text-gray-700 bg-white/90 border border-[#00A77C]/30 px-2.5 py-0.5 rounded-md">
+                      <Navigation size={10} className="text-[#00A77C]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                    </span>
                   )}
-                  <span className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg font-mono">
-                    GPS: {eyeModalReport.coordinates.lat.toFixed(4)}, {eyeModalReport.coordinates.lng.toFixed(4)}
-                  </span>
                 </div>
-
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-700">
-                  <p className="font-bold text-gray-900 mb-1">Bin Location: {eyeModalReport.locationName}</p>
-                  <p>{eyeModalReport.description}</p>
+                <div className="h-10 w-10 rounded-xl bg-[#00A77C] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <MapPin size={22} />
                 </div>
               </div>
-            )}
 
-            {/* Modal Verification Actions */}
-            <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
-              {!eyeModalReport.isVerified ? (
-                <>
-                  <button
-                    onClick={() => {
-                      handleVerify(eyeModalReport);
-                      setEyeModalReport(null);
-                    }}
-                    className="flex-1 py-3 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold shadow-md shadow-[#00A77C]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <CheckCircle2 size={15} /> Confirm & Verify Report
-                  </button>
+              {/* Reporter Details Card */}
+              {(() => {
+                const isFaculty = eyeModalReport.reporterRole === 'teacher' || eyeModalReport.reporterRole === 'admin' || eyeModalReport.reporterRole === 'mrf';
+                return (
+                  <div className={`bg-[#F9F3F0] p-3.5 rounded-2xl border border-[#00271D]/10 grid grid-cols-1 gap-3 text-xs ${isFaculty ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+                    <div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Reporter Account</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="font-extrabold text-[#00271D] flex items-center gap-1.5 text-sm">
+                          <User size={15} className="text-[#00A77C]" /> {eyeModalReport.reporterName}
+                        </span>
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black uppercase border border-emerald-200">
+                          {eyeModalReport.reporterRole || 'Student'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Date & Time Submitted</span>
+                      <span className="font-bold text-[#00271D] flex items-center gap-1.5 mt-1 text-xs">
+                        <Clock size={14} className="text-[#00A77C]" />
+                        {formatTimestamp(eyeModalReport.timestamp)}
+                      </span>
+                    </div>
+                    {!isFaculty && (
+                      <div>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Points Earned</span>
+                        <span className={`font-extrabold flex items-center gap-1.5 mt-1 text-sm ${eyeModalReport.pointsAwardedAt ? (eyeModalReport.pointsAwarded > 0 ? 'text-[#00A77C]' : 'text-gray-500') : 'text-gray-400'}`}>
+                          <Award size={14} className={eyeModalReport.pointsAwardedAt && eyeModalReport.pointsAwarded > 0 ? 'text-[#C69B26]' : 'text-gray-300'} />
+                          {eyeModalReport.pointsAwardedAt
+                            ? (eyeModalReport.pointsAwarded > 0 ? `+${eyeModalReport.pointsAwarded} pts` : 'No points awarded')
+                            : 'Pending verification'}
+                          {eyeModalReport.reporterRank != null && (
+                            <span className="text-[9px] font-bold text-[#C69B26] bg-[#C69B26]/10 px-1.5 py-0.5 rounded-full">
+                              Rank #{eyeModalReport.reporterRank}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
-                  <button
-                    onClick={() => handleRejectReport(eyeModalReport)}
-                    className="py-3 px-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <AlertOctagon size={15} /> Mark Fake / Warning
-                  </button>
-                </>
-              ) : (
-                <div className="w-full py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold text-center flex items-center justify-center gap-1.5">
-                  <CheckCircle2 size={16} /> Report Verified by Admin
+              {/* Interactive Mini-Map Preview Card (Rendered ONLY when Scattered Trash is reported) */}
+              {isScattered && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#00271D]">
+                    <span className="flex items-center gap-1">
+                      <MapIcon size={14} className="text-[#00A77C]" />
+                      <span>Scattered Debris Pinned Location Map:</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-gray-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                      <Navigation size={11} className="text-[#00A77C]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                    </span>
+                  </div>
+
+                  <div className="relative w-full h-[220px] rounded-2xl border border-gray-200 bg-[#f8fafc] overflow-hidden shadow-inner flex items-center justify-center">
+                    {/* SVG Grid Canvas Overlay */}
+                    <svg className="absolute inset-0 w-full h-full opacity-60 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <pattern id="light-grid-inspection" width="24" height="24" patternUnits="userSpaceOnUse">
+                          <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#CBD5E1" strokeWidth="1" />
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#light-grid-inspection)" />
+                      <rect x="15%" y="10%" width="20%" height="15%" rx="6" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
+
+                      <rect x="65%" y="12%" width="22%" height="18%" rx="6" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
+
+                      <circle cx="50%" cy="50%" r="28" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
+
+                      <rect x="10%" y="70%" width="25%" height="18%" rx="6" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
+
+                      <rect x="60%" y="72%" width="28%" height="18%" rx="6" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
+                    </svg>
+
+                    {/* Pinned Location Marker */}
+                    <div style={{ left: `${pctX}%`, top: `${pctY}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+                      <div className="flex flex-col items-center animate-bounce">
+                        <span className="bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg border border-white whitespace-nowrap mb-0.5 flex items-center gap-1">
+                          <MapPin size={9} /> Pinned Debris Location
+                        </span>
+                        <div className="h-9 w-9 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-xl border-2 border-white ring-4 ring-rose-400/40">
+                          <Target size={18} className="stroke-[2.5]" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Scattered Debris Banner Overlay */}
+                    <div className="absolute top-2 left-2 right-2 bg-rose-500/90 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10px] font-bold border border-rose-400 shadow-md flex items-center justify-between z-30">
+                      <span className="flex items-center gap-1">
+                        <AlertTriangle size={12} /> Scattered Debris Report (No Trash Cans)
+                      </span>
+                      <span className="font-mono text-[9px] bg-black/30 px-2 py-0.5 rounded-md font-bold">
+                        Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Photo Evidence & Report Description Card */}
+              <div className="space-y-2">
+                {eyeModalReport.imageUrl && (
+                  <div className="rounded-2xl overflow-hidden border border-gray-200 h-44 bg-gray-100 relative shadow-inner">
+                    <img src={eyeModalReport.imageUrl} alt="Waste report evidence" className="w-full h-full object-cover" />
+                    <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg font-mono">
+                      Photo Evidence Attached
+                    </span>
+                  </div>
+                )}
+
+                <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 text-xs text-gray-800 space-y-1">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Report Notes & Description:</span>
+                  <p className="font-medium leading-relaxed italic text-gray-700">"{eyeModalReport.description}"</p>
+                </div>
+              </div>
+
+              {/* MRF Staff Collection Summary (if collected) */}
+              {(eyeModalReport.status === 'COLLECTED' || eyeModalReport.status === 'RESOLVED') && (
+                <div className="p-4 rounded-2xl bg-indigo-50/90 border border-indigo-200 text-indigo-950 space-y-2 text-xs">
+                  <div className="flex items-center justify-between font-extrabold text-indigo-900">
+                    <span className="flex items-center gap-1.5 uppercase text-[10px] tracking-wider">
+                      <Package size={14} className="text-indigo-600" /> MRF Collection Report
+                    </span>
+                    <span className="text-[10px] bg-indigo-100 px-2.5 py-0.5 rounded-full text-indigo-800 font-bold">
+                      Collected by: {eyeModalReport.assignedMrfName || 'MRF Staff'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {eyeModalReport.weightCollected !== undefined && eyeModalReport.weightCollected !== null && (
+                      <div className="bg-white p-2.5 rounded-xl border border-indigo-100">
+                        <span className="text-[10px] text-gray-400 block uppercase font-bold">Payload Weight</span>
+                        <span className="font-black text-[#00A77C] text-sm">{eyeModalReport.weightCollected} kg</span>
+                      </div>
+                    )}
+                    {eyeModalReport.collectedOutcome && (
+                      <div className="bg-white p-2.5 rounded-xl border border-indigo-100">
+                        <span className="text-[10px] text-gray-400 block uppercase font-bold">Outcome</span>
+                        <span className="font-extrabold text-indigo-900 text-xs">{eyeModalReport.collectedOutcome}</span>
+                      </div>
+                    )}
+                  </div>
+                  {eyeModalReport.completionNotes && (
+                    <div className="bg-white p-2.5 rounded-xl border border-indigo-100 text-[11px] text-slate-700">
+                      <span className="font-bold text-slate-900 block mb-0.5">Collector Staff Notes:</span>
+                      <p className="italic">"{eyeModalReport.completionNotes}"</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Modal Verification Actions */}
+              <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row gap-3 z-10">
+                {eyeModalReport.status === 'DISMISSED' ? (
+                  <div className="w-full py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold text-center flex items-center justify-center gap-1.5">
+                    <AlertOctagon size={16} /> Report Dismissed by Admin
+                  </div>
+                ) : !eyeModalReport.isVerified ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        handleVerify(eyeModalReport);
+                        setEyeModalReport(null);
+                      }}
+                      className="flex-1 py-3 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold shadow-md shadow-[#00A77C]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 size={15} /> Confirm & Verify Report
+                    </button>
+
+                    <button
+                      onClick={() => handleRejectReport(eyeModalReport)}
+                      className="py-3 px-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <AlertOctagon size={15} /> Mark Fake / Warning
+                    </button>
+                  </>
+                ) : eyeModalReport.status === 'PENDING' ? (
+                  <div className="w-full space-y-2">
+                    <div className="w-full py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold text-center flex items-center justify-center gap-1.5">
+                          <CheckCircle2 size={16} /> {isFacultyReporter ? 'Verified by Admin' : 'Verified by Admin · Points Awarded to Reporter'}
+                    </div>
+                    <button
+                      onClick={() => {
+                        const rep = eyeModalReport;
+                        setEyeModalReport(null);
+                        setDispatchModalReport(rep);
+                      }}
+                      className="w-full py-3 rounded-xl bg-[#1D61E8] hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Send size={15} /> Dispatch Collector Staff
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold text-center flex items-center justify-center gap-1.5">
+                    <CheckCircle2 size={16} /> Report Verified & Handled ({eyeModalReport.status})
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── DISPATCH MODAL (Pick MRF Staff) ── */}
       {dispatchModalReport && (
@@ -522,9 +1011,14 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                 <input
                   type="text"
                   readOnly
-                  value={dispatchModalReport.locationName}
+                  value={cleanLocationName(dispatchModalReport.locationName)}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs text-[#00271D] font-bold outline-none"
                 />
+                {(dispatchModalReport.isScatteredDebris || dispatchModalReport.locationName.toLowerCase().includes('scattered')) && dispatchModalReport.coordinates && (
+                  <p className="text-[10px] text-gray-500 font-mono mt-1 flex items-center gap-1">
+                    <Navigation size={10} className="text-[#00A77C]" /> Grid [{dispatchModalReport.coordinates.lat.toFixed(4)}, {dispatchModalReport.coordinates.lng.toFixed(4)}]
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -556,6 +1050,106 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Confirmation Modal */}
+      {rejectConfirmReport && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-white/80 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-scale-up">
+            {/* Header Banner */}
+            <div className="bg-gradient-to-br from-rose-500 to-orange-500 px-7 py-6 text-white relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/20" />
+                <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-white/15" />
+              </div>
+              <div className="relative z-10 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 border border-white/30">
+                  <AlertOctagon size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-heading font-black tracking-tight">Report Dismissal</h3>
+                  <p className="text-[11px] text-white/70 font-medium mt-0.5">Offense auto-determined by reporter history</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-7 py-6 space-y-5">
+              {/* Reporter Info Card */}
+              <div className="bg-[#F9F3F0] rounded-2xl p-4 border border-[#00271D]/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Reporter</span>
+                  <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-[9px] font-black uppercase border border-rose-200">False Report</span>
+                </div>
+                <p className="text-sm font-extrabold text-[#00271D]">{rejectConfirmReport.reporterName}</p>
+                <div className="flex items-start gap-2 pt-1">
+                  <p className="text-[11px] text-[#00271D]/50 font-medium leading-relaxed line-clamp-2">
+                    "{rejectConfirmReport.title}" at {rejectConfirmReport.locationName}
+                  </p>
+                </div>
+              </div>
+
+              {/* Auto-determined Offense Level */}
+              {(() => {
+                const reporter = users.find(u => u.id === rejectConfirmReport.reporterId);
+                const level = (reporter?.warningsCount ?? 0) + 1;
+                const autoSeverity: 'WARNING' | 'DEDUCT' | 'SUSPENSION' =
+                  level === 1 ? 'WARNING' : level === 2 ? 'DEDUCT' : 'SUSPENSION';
+                const levelConfig = {
+                  WARNING: { label: '1st Offense — Warning', desc: 'Logged to record only', icon: '⚠️', color: 'amber' },
+                  DEDUCT: { label: '2nd Offense — Deduct Points', desc: `${settings?.dismissPointPenalty ?? 10} pts will be deducted`, icon: '💰', color: 'orange' },
+                  SUSPENSION: { label: '3rd+ Offense — Account Suspension', desc: '1 day account ban', icon: '🚫', color: 'rose' },
+                };
+                const cfg = levelConfig[autoSeverity];
+                return (
+                  <div className="space-y-2.5">
+                    <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider block">Offense Level (Auto)</label>
+                    <div className={`py-3.5 px-4 rounded-2xl border-2 text-center ${
+                      cfg.color === 'amber' ? 'border-amber-400 bg-amber-50' :
+                      cfg.color === 'orange' ? 'border-orange-400 bg-orange-50' :
+                      'border-rose-400 bg-rose-50'
+                    }`}>
+                      <div className="text-xl mb-1.5">{cfg.icon}</div>
+                      <p className="text-[11px] font-extrabold text-[#00271D]">{cfg.label}</p>
+                      <p className="text-[9px] font-bold text-[#00271D]/60 mt-0.5">{cfg.desc}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Action Buttons */}
+              {(() => {
+                const reporter = users.find(u => u.id === rejectConfirmReport.reporterId);
+                const level = (reporter?.warningsCount ?? 0) + 1;
+                const autoSeverity: 'WARNING' | 'DEDUCT' | 'SUSPENSION' =
+                  level === 1 ? 'WARNING' : level === 2 ? 'DEDUCT' : 'SUSPENSION';
+                return (
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      onClick={() => setRejectConfirmReport(null)}
+                      className="flex-1 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmRejectReport}
+                      className={`flex-1 py-3 rounded-xl text-white text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        autoSeverity === 'WARNING'
+                          ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
+                          : autoSeverity === 'DEDUCT'
+                            ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/20'
+                            : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                      }`}
+                    >
+                      <CheckCircle2 size={14} />
+                      Confirm {autoSeverity === 'WARNING' ? 'Warning' : autoSeverity === 'DEDUCT' ? `(-${settings?.dismissPointPenalty ?? 10} pts)` : '(1 Day Suspension)'}
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </div>
       )}

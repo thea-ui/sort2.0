@@ -38,7 +38,7 @@ export const LandingFooter: React.FC = () => {
         {/* Bottom bar */}
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-gray-200 pt-6 sm:flex-row">
           <p className="text-[10px] text-gray-400">
-            © 2026 S.O.R.T Campus Platform. All rights reserved.
+            © {new Date().getFullYear()} S.O.R.T Campus Platform. All rights reserved.
           </p>
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />

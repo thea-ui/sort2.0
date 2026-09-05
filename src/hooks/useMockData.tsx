@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Report, BinStatus, Challenge, PointHistory, Offense, SystemSettings, CalendarEvent, SyncLog, Role, ReportStatus } from '../types';
-import { apiService } from '../services/api';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { User, Report, BinStatus, Challenge, PointHistory, Offense, SystemSettings, CalendarEvent, SyncLog, Role, ReportStatus, AppNotification } from '../types';
+import { apiService, storeRefreshToken, clearRefreshToken } from '../services/api';
+import { getStoredLocations, saveLocations, locationsToBins } from '../services/locationStore';
+
 
 interface MockDataContextType {
   currentUser: User;
@@ -13,6 +15,7 @@ interface MockDataContextType {
   settings: SystemSettings;
   calendarEvents: CalendarEvent[];
   syncLogs: SyncLog[];
+  notifications: AppNotification[];
   isAuthenticated: boolean;
   
   // Actions
@@ -20,18 +23,22 @@ interface MockDataContextType {
   logout: () => void;
   changeRole: (newRole: Role) => void;
   verifyReport: (reportId: string) => void;
+  verifyReportsBatch: (reportIds: string[]) => Promise<void>;
   dispatchReport: (reportId: string, mrfId: string, mrfName: string) => void;
   createReport: (reportData: Omit<Report, 'id' | 'status' | 'reporterId' | 'reporterName' | 'pointsAwarded' | 'timestamp'>) => Report;
-  updateReportStatus: (reportId: string, status: ReportStatus, weightCollected?: number) => void;
+  updateReportStatus: (reportId: string, status: ReportStatus, weightCollected?: number, completionNotes?: string, collectedOutcome?: string) => void;
   updateBinLevel: (binId: string, fillLevel: number) => void;
   toggleBinDispatch: (binId: string) => void;
+  setBinsState: React.Dispatch<React.SetStateAction<BinStatus[]>>;
   triggerSync: (system: string) => void;
   completeChallenge: (challengeId: string) => void;
   updateSettings: (newSettings: Partial<SystemSettings>) => void;
   resetDatabase: () => void;
-  addOffense: (userId: string, description: string, severity: 'WARNING' | 'STRIKE' | 'SUSPENSION') => void;
+  addOffense: (userId: string, description: string, severity?: 'WARNING' | 'DEDUCT' | 'SUSPENSION') => void;
   deductPoints: (userId: string, amount: number) => void;
   claimCertificate: (certName: string) => void;
+  dismissNotification: (notificationId: string) => void;
+  clearNotificationsForUser: () => void;
 }
 
 const MockDataContext = createContext<MockDataContextType | undefined>(undefined);
@@ -43,40 +50,18 @@ const DEFAULT_SETTINGS: SystemSettings = {
   warningThreshold: 3,
   certificatePointThreshold: 500,
   quarterGateActive: true,
+  maxUnverifiedReports: 3,
+  dismissPointPenalty: 10,
+  falseReportPointPenalty: 50,
+  warningAutoDeductAmount: 10,
+  suspensionDurationHours: 24,
+  rewardsReservePercent: 20,
+  defaultVendorName: 'GreenCycle Recycling Vendor',
 };
 
-const DEFAULT_USERS: User[] = [
-  { id: '1', name: 'Alex Rivera', email: 'student1@sort.edu', employeeId: 'STU-2026-001', role: 'STUDENT', points: 0, warningsCount: 0, classroomSection: 'BSIT-3A', certificatesEarned: [] },
-  { id: '2', name: 'Beatriz Santos', email: 'student2@sort.edu', employeeId: 'STU-2026-002', role: 'STUDENT', points: 0, warningsCount: 0, classroomSection: 'BSIT-3B', certificatesEarned: [] },
-  { id: '3', name: 'Carlos Mendoza', email: 'student3@sort.edu', employeeId: 'STU-2026-003', role: 'STUDENT', points: 0, warningsCount: 0, classroomSection: 'BSIT-3A', certificatesEarned: [] },
-  { id: '4', name: 'Prof. Eleanor Vance', email: 'teacher1@sort.edu', employeeId: 'TCH-2026-001', role: 'TEACHER', points: 500, warningsCount: 0, classroomSection: 'BSIT-3A', certificatesEarned: ['Green Educator Award', 'Sustainability Advisor'] },
-  { id: '5', name: 'System Administrator', email: 'admin@sort.edu', employeeId: 'ADM-2026-001', role: 'ADMIN', points: 1000, warningsCount: 0, certificatesEarned: ['System Master Admin'] },
-  { id: '6', name: 'Marcus Vance', email: 'mrf1@sort.edu', employeeId: 'MRF-2026-001', role: 'MRF', points: 450, warningsCount: 0, certificatesEarned: ['MRF Logistics Specialist'] },
-  { id: '7', name: 'Sarah Connor', email: 'mrf2@sort.edu', employeeId: 'MRF-2026-002', role: 'MRF', points: 420, warningsCount: 0, certificatesEarned: ['MRF Dispatch Operator'] }
-];
+const DEFAULT_USERS: User[] = [];
 
-const DEFAULT_BINS: BinStatus[] = [
-  // ── Station 1: Main Courtyard (Quad) ──
-  { id: 'bin-1a', name: 'Bio Bin – Quad', locationName: 'Main Courtyard (Quad)', fillLevel: 72, type: 'BIODEGRADABLE', coordinates: { lat: 14.5995, lng: 120.9842 }, activeDispatch: false, lastEmptied: '2026-07-18 08:00' },
-  { id: 'bin-1b', name: 'Non-Bio Bin – Quad', locationName: 'Main Courtyard (Quad)', fillLevel: 85, type: 'NON_BIODEGRADABLE', coordinates: { lat: 14.5995, lng: 120.9842 }, activeDispatch: false, lastEmptied: '2026-07-18 08:00' },
-  { id: 'bin-1c', name: 'Recycle Bin – Quad', locationName: 'Main Courtyard (Quad)', fillLevel: 40, type: 'RECYCLABLE', coordinates: { lat: 14.5995, lng: 120.9842 }, activeDispatch: false, lastEmptied: '2026-07-18 08:00' },
-  // ── Station 2: Science Hall Cafeteria Side ──
-  { id: 'bin-2a', name: 'Bio Bin – Science Hall', locationName: 'Science Hall Cafeteria Side', fillLevel: 92, type: 'BIODEGRADABLE', coordinates: { lat: 14.6012, lng: 120.9856 }, activeDispatch: true, lastEmptied: '2026-07-17 14:15' },
-  { id: 'bin-2b', name: 'Non-Bio Bin – Science Hall', locationName: 'Science Hall Cafeteria Side', fillLevel: 60, type: 'NON_BIODEGRADABLE', coordinates: { lat: 14.6012, lng: 120.9856 }, activeDispatch: false, lastEmptied: '2026-07-17 14:15' },
-  { id: 'bin-2c', name: 'Recycle Bin – Science Hall', locationName: 'Science Hall Cafeteria Side', fillLevel: 30, type: 'RECYCLABLE', coordinates: { lat: 14.6012, lng: 120.9856 }, activeDispatch: false, lastEmptied: '2026-07-17 14:15' },
-  // ── Station 3: Chemistry Building Entrance ──
-  { id: 'bin-3a', name: 'Bio Bin – Chem Bldg', locationName: 'Chemistry Building Entrance', fillLevel: 15, type: 'BIODEGRADABLE', coordinates: { lat: 14.5982, lng: 120.9830 }, activeDispatch: false, lastEmptied: '2026-07-16 11:00' },
-  { id: 'bin-3b', name: 'Non-Bio Bin – Chem Bldg', locationName: 'Chemistry Building Entrance', fillLevel: 20, type: 'NON_BIODEGRADABLE', coordinates: { lat: 14.5982, lng: 120.9830 }, activeDispatch: false, lastEmptied: '2026-07-16 11:00' },
-  { id: 'bin-3c', name: 'Recycle Bin – Chem Bldg', locationName: 'Chemistry Building Entrance', fillLevel: 10, type: 'RECYCLABLE', coordinates: { lat: 14.5982, lng: 120.9830 }, activeDispatch: false, lastEmptied: '2026-07-16 11:00' },
-  // ── Station 4: Main Library Lobby ──
-  { id: 'bin-4a', name: 'Bio Bin – Library', locationName: 'Main Library Lobby Entrance', fillLevel: 45, type: 'BIODEGRADABLE', coordinates: { lat: 14.6001, lng: 120.9870 }, activeDispatch: false, lastEmptied: '2026-07-18 07:45' },
-  { id: 'bin-4b', name: 'Non-Bio Bin – Library', locationName: 'Main Library Lobby Entrance', fillLevel: 88, type: 'NON_BIODEGRADABLE', coordinates: { lat: 14.6001, lng: 120.9870 }, activeDispatch: false, lastEmptied: '2026-07-18 07:45' },
-  { id: 'bin-4c', name: 'Recycle Bin – Library', locationName: 'Main Library Lobby Entrance', fillLevel: 55, type: 'RECYCLABLE', coordinates: { lat: 14.6001, lng: 120.9870 }, activeDispatch: false, lastEmptied: '2026-07-18 07:45' },
-  // ── Station 5: Sports Complex Entrance ──
-  { id: 'bin-5a', name: 'Bio Bin – Sports Complex', locationName: 'Sports Complex Entrance B', fillLevel: 60, type: 'BIODEGRADABLE', coordinates: { lat: 14.6025, lng: 120.9821 }, activeDispatch: false, lastEmptied: '2026-07-15 16:30' },
-  { id: 'bin-5b', name: 'Non-Bio Bin – Sports Complex', locationName: 'Sports Complex Entrance B', fillLevel: 35, type: 'NON_BIODEGRADABLE', coordinates: { lat: 14.6025, lng: 120.9821 }, activeDispatch: false, lastEmptied: '2026-07-15 16:30' },
-  { id: 'bin-5c', name: 'Recycle Bin – Sports Complex', locationName: 'Sports Complex Entrance B', fillLevel: 90, type: 'RECYCLABLE', coordinates: { lat: 14.6025, lng: 120.9821 }, activeDispatch: true, lastEmptied: '2026-07-15 16:30' },
-];
+const DEFAULT_BINS: BinStatus[] = [];
 
 
 const DEFAULT_CHALLENGES: Challenge[] = [
@@ -87,11 +72,7 @@ const DEFAULT_CHALLENGES: Challenge[] = [
 
 const DEFAULT_REPORTS: Report[] = [];
 
-const DEFAULT_CALENDAR: CalendarEvent[] = [
-  { id: 'ev-1', title: 'Weekly Recyclables Dispatch', date: '2026-07-19', type: 'COLLECTION', description: 'Mass collections for plastic, cardboard and paper containers in academic buildings.' },
-  { id: 'ev-2', title: 'Chemistry Lab Waste Audit', date: '2026-07-22', type: 'MAINTENANCE', description: 'MRF hazardous dispatch teams check all warning sensors and empty liquid storage containers.' },
-  { id: 'ev-3', title: 'Campus Eco Clean-Up Drive', date: '2026-07-25', type: 'EVENT', description: 'Student volunteers and teachers gather to earn double rewards points by auditing student plazas.' }
-];
+const DEFAULT_CALENDAR: CalendarEvent[] = [];
 
 const DEFAULT_HISTORY: PointHistory[] = [];
 
@@ -100,29 +81,23 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [bins, setBins] = useState<BinStatus[]>([]);
+
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
   const [offenses, setOffenses] = useState<Offense[]>([]);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [pointRules, setPointRules] = useState<{ rank: number; pointsAwarded: number }[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('sort_auth') === 'true';
+    return sessionStorage.getItem('sort_auth') === 'true';
   });
+
+  const skipStorageKeysRef = useRef(new Set<string>());
 
   // Load database from localStorage or initialize with defaults
   useEffect(() => {
-    // Invalidate stale localStorage cache to clear duplicate entries & reset challenge progress
-    const cacheVersion = localStorage.getItem('sort_v10_fresh_wipe');
-    if (cacheVersion !== 'true') {
-      localStorage.removeItem('sort_users');
-      localStorage.removeItem('sort_reports');
-      localStorage.removeItem('sort_point_history');
-      localStorage.removeItem('sort_challenges');
-      localStorage.removeItem('sort_bins');
-      localStorage.setItem('sort_v10_fresh_wipe', 'true');
-    }
-
     function loadFromStorage<T>(key: string, defaultValue: T): T {
       const stored = localStorage.getItem(key);
       return stored ? JSON.parse(stored) : defaultValue;
@@ -136,13 +111,40 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       index === self.findIndex((t: User) => t.email.toLowerCase() === u.email.toLowerCase())
     );
 
-    if (loadedUsers.length < 3) {
-      loadedUsers = DEFAULT_USERS;
-      localStorage.setItem('sort_users', JSON.stringify(DEFAULT_USERS));
-    }
+    // Always try to fetch users from API first
+    apiService.getUsers().then((serverUsers) => {
+      if (serverUsers && Array.isArray(serverUsers) && serverUsers.length > 0) {
+        const formatted = serverUsers.map((u: any) => ({
+          ...u,
+            certificatesEarned: u.certificatesEarned || (u as any).certificates || [],
+          }));
+          setUsers(formatted);
+          localStorage.setItem('sort_users', JSON.stringify(formatted));
+      } else if (loadedUsers.length > 0) {
+        setUsers(loadedUsers);
+      } else {
+        setUsers([]);
+      }
+    }).catch(() => {
+      // API offline, use localStorage fallback
+      setUsers(loadedUsers);
+    });
 
-    const loadedReports = loadFromStorage('sort_reports', DEFAULT_REPORTS);
-    const loadedBins = loadFromStorage('sort_bins', DEFAULT_BINS);
+    const rawReports = loadFromStorage('sort_reports', DEFAULT_REPORTS);
+    const loadedReports: Report[] = (rawReports || []).map((r: Report) => {
+      let title = r.title;
+      let locationName = r.locationName;
+      if (title && (title.includes('Grid [') || title.toLowerCase().includes('scattered debris at grid'))) {
+        title = 'Scattered Debris';
+      }
+      if (locationName && (locationName.includes('Grid [') || locationName.toLowerCase().includes('scattered debris at grid'))) {
+        locationName = 'Scattered Debris';
+      }
+      return { ...r, title, locationName };
+    });
+    const storedLocations = getStoredLocations();
+    const loadedBins = storedLocations.length > 0 ? locationsToBins(storedLocations) : loadFromStorage('sort_bins', DEFAULT_BINS);
+
     let loadedChallenges = loadFromStorage('sort_challenges', DEFAULT_CHALLENGES);
 
     // Force challenges to 0 progress for testing
@@ -154,6 +156,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const loadedOffenses = loadFromStorage('sort_offenses', [] as Offense[]);
     const loadedCalendar = loadFromStorage('sort_calendar', DEFAULT_CALENDAR);
     const loadedSyncLogs = loadFromStorage('sort_sync_logs', [] as SyncLog[]);
+    const loadedNotifications = loadFromStorage('sort_notifications', [] as AppNotification[]);
 
     setSettings(loadedSettings);
     setUsers(loadedUsers);
@@ -164,19 +167,20 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setOffenses(loadedOffenses);
     setCalendarEvents(loadedCalendar);
     setSyncLogs(loadedSyncLogs);
+    setNotifications(loadedNotifications);
 
-    // Set current user based on tab-specific sessionStorage role if available
-    const savedTabRole = sessionStorage.getItem('sort_tab_role') as Role | null;
-    const initialUser = savedTabRole
-      ? loadedUsers.find((u: User) => u.role === savedTabRole) || loadedUsers[0]
-      : loadedUsers.find((u: User) => u.email === 'student1@sort.edu') || loadedUsers[0];
-
-    setCurrentUser(initialUser);
+    // If a token exists, do NOT set currentUser here — let the /auth/me
+    // call in the next useEffect be the single source of truth so we never
+    // flash the wrong user on reload.
+    const token = sessionStorage.getItem('sortv2_token');
+    if (!token) {
+      setCurrentUser(loadedUsers[0] || null);
+    }
   }, []);
 
   // Check backend session on mount if token exists
   useEffect(() => {
-    const token = localStorage.getItem('sortv2_token');
+    const token = sessionStorage.getItem('sortv2_token');
     if (token) {
       apiService.getCurrentUser()
         .then(({ user }) => {
@@ -187,34 +191,97 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             };
             setCurrentUser(loggedUser);
             setIsAuthenticated(true);
-            localStorage.setItem('sort_auth', 'true');
+            sessionStorage.setItem('sort_auth', 'true');
           }
         })
-        .catch(() => {
-          // Token expired or invalid
+        .catch(async () => {
+          // Access token expired — try refresh token before giving up
+          const refreshed = await apiService.refreshAccessToken();
+          if (refreshed && refreshed.user) {
+            const loggedUser: User = {
+              ...refreshed.user,
+              certificatesEarned: refreshed.user.certificatesEarned || (refreshed.user as any).certificates || [],
+            };
+            setCurrentUser(loggedUser);
+            setIsAuthenticated(true);
+            sessionStorage.setItem('sort_auth', 'true');
+          } else {
+            // Both access and refresh tokens invalid — clear session
+            const userId = sessionStorage.getItem('sortv2_user_id');
+            if (userId) clearRefreshToken(userId);
+            sessionStorage.removeItem('sortv2_token');
+            sessionStorage.removeItem('sortv2_user_id');
+            sessionStorage.removeItem('sort_auth');
+            sessionStorage.removeItem('sort_tab_role');
+            setIsAuthenticated(false);
+            const fallbackUsers = JSON.parse(localStorage.getItem('sort_users') || '[]') as User[];
+            setCurrentUser(fallbackUsers[0] || null);
+          }
         });
     }
   }, []);
 
-  // Real-Time Cross-Browser & Multi-Account API Polling (Chrome <-> Brave sync)
+  // Auto-refresh access token before it expires (every 14 minutes)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes (token expires at 15)
+
+    const intervalId = setInterval(async () => {
+      const refreshed = await apiService.refreshAccessToken();
+      if (!refreshed) {
+        // Refresh failed — session is dead, log out silently
+        const userId = sessionStorage.getItem('sortv2_user_id');
+        if (userId) clearRefreshToken(userId);
+        sessionStorage.removeItem('sortv2_token');
+        sessionStorage.removeItem('sortv2_user_id');
+        sessionStorage.removeItem('sort_auth');
+        setIsAuthenticated(false);
+      }
+    }, REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated]);
+
+// Real-Time Cross-Browser & Multi-Account API Polling (Chrome <-> Brave sync)
   useEffect(() => {
     const syncBackendData = async () => {
       try {
         const serverReports = await apiService.getReports();
         if (serverReports && Array.isArray(serverReports)) {
           setReports(prev => {
-            if (serverReports.length === 0) return [];
-            
+            if (serverReports.length === 0) return prev;
+
             // Server reports are authoritative
             const result = [...serverReports];
 
-            // Retain any pending local optimistic reports not yet returned by backend
+            // Preserve local optimistic dispatches when server state lags behind
+            // (avoids UI flicker when backend PATCH /reports/:id/status is slow or fails silently)
+            result.forEach((sr, idx) => {
+              const localMatch = prev.find(pr =>
+                pr.id === sr.id ||
+                (pr.locationName.toLowerCase() === sr.locationName.toLowerCase() &&
+                 pr.category === sr.category &&
+                 pr.reporterId === sr.reporterId)
+              );
+              if (localMatch && localMatch.status === 'DISPATCHED' && sr.status !== 'DISPATCHED') {
+                result[idx] = {
+                  ...sr,
+                  status: 'DISPATCHED',
+                  isVerified: true,
+                  assignedMrfId: localMatch.assignedMrfId ?? sr.assignedMrfId,
+                  assignedMrfName: localMatch.assignedMrfName ?? sr.assignedMrfName,
+                };
+              }
+            });
+
+// Retain any pending local optimistic reports not yet returned by backend
             prev.forEach(pr => {
               const matchesServer = result.some(sr =>
                 sr.id === pr.id ||
                 (sr.locationName.toLowerCase() === pr.locationName.toLowerCase() &&
                  sr.category === pr.category &&
-                 sr.reporterId === pr.reporterId)
+                 pr.reporterId === sr.reporterId)
               );
               if (!matchesServer) {
                 result.unshift(pr);
@@ -223,6 +290,16 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             return result;
           });
+        }
+
+        // Sync users from backend (overrides localStorage mock data)
+        const serverUsers = await apiService.getUsers();
+        if (serverUsers && Array.isArray(serverUsers) && serverUsers.length > 0) {
+          setUsers(serverUsers.map((u: any) => ({
+            ...u,
+            certificatesEarned: u.certificatesEarned || u.certificates || [],
+          })));
+          localStorage.setItem('sort_users', JSON.stringify(serverUsers));
         }
       } catch {
         // Express server offline fallback to local storage
@@ -239,9 +316,14 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.newValue) return;
       try {
+        if (e.key) skipStorageKeysRef.current.add(e.key);
         if (e.key === 'sort_reports') setReports(JSON.parse(e.newValue));
         if (e.key === 'sort_users') setUsers(JSON.parse(e.newValue));
         if (e.key === 'sort_bins') setBins(JSON.parse(e.newValue));
+        if (e.key === 'sort_locations') {
+          skipStorageKeysRef.current.add('sort_bins');
+          setBins(locationsToBins(JSON.parse(e.newValue)));
+        }
         if (e.key === 'sort_point_history') setPointHistory(JSON.parse(e.newValue));
         if (e.key === 'sort_challenges') setChallenges(JSON.parse(e.newValue));
       } catch (err) {
@@ -249,9 +331,23 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     };
 
+    const handleLocationUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setBins(locationsToBins(customEvent.detail));
+      } else {
+        setBins(locationsToBins(getStoredLocations()));
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('sort_locations_updated', handleLocationUpdate);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sort_locations_updated', handleLocationUpdate);
+    };
   }, []);
+
 
   // Save to localStorage when state changes
   useEffect(() => {
@@ -259,21 +355,78 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [settings]);
 
   useEffect(() => {
-    if (users.length > 0) {
+    if (skipStorageKeysRef.current.has('sort_users')) {
+      skipStorageKeysRef.current.delete('sort_users');
+    } else if (users.length > 0) {
       localStorage.setItem('sort_users', JSON.stringify(users));
     }
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem('sort_reports', JSON.stringify(reports));
+    if (skipStorageKeysRef.current.has('sort_reports')) {
+      skipStorageKeysRef.current.delete('sort_reports');
+    } else {
+      localStorage.setItem('sort_reports', JSON.stringify(reports));
+    }
+
+    // Synchronize location bin statuses with active (PENDING or DISPATCHED) reports
+    const currentLocations = getStoredLocations();
+    let hasChanges = false;
+
+    const updatedLocations = currentLocations.map((loc) => {
+      let locChanged = false;
+      const updatedStreams = loc.streams.map((st) => {
+        const matchingReports = reports.filter(
+          (r) =>
+            r.locationName.trim().toLowerCase() === loc.name.trim().toLowerCase() &&
+            r.category === st.type &&
+            (r.status === 'PENDING' || r.status === 'DISPATCHED')
+        );
+
+        const unverifiedPending = matchingReports.filter(r => !r.isVerified && r.status === 'PENDING');
+        const isVerifiedOrDispatched = matchingReports.some(r => r.isVerified || r.status === 'DISPATCHED');
+        const shouldBeUnavailable = isVerifiedOrDispatched || unverifiedPending.length >= 3;
+        const isCurrentlyUnavailable = st.status === 'Unavailable';
+
+        if (shouldBeUnavailable !== isCurrentlyUnavailable) {
+          locChanged = true;
+          hasChanges = true;
+          return { ...st, status: shouldBeUnavailable ? ('Unavailable' as const) : ('Available' as const) };
+        }
+        return st;
+      });
+
+      if (locChanged) {
+        const anyUnavailable = updatedStreams.some((s) => s.status === 'Unavailable');
+        return {
+          ...loc,
+          status: anyUnavailable ? ('Unavailable' as const) : ('Available' as const),
+          streams: updatedStreams,
+        };
+      }
+      return loc;
+    });
+
+    if (hasChanges) {
+      saveLocations(updatedLocations);
+      setBins(locationsToBins(updatedLocations));
+    }
   }, [reports]);
 
   useEffect(() => {
-    if (bins.length > 0) localStorage.setItem('sort_bins', JSON.stringify(bins));
+    if (skipStorageKeysRef.current.has('sort_bins')) {
+      skipStorageKeysRef.current.delete('sort_bins');
+    } else if (bins.length > 0) {
+      localStorage.setItem('sort_bins', JSON.stringify(bins));
+    }
   }, [bins]);
 
   useEffect(() => {
-    if (challenges.length > 0) localStorage.setItem('sort_challenges', JSON.stringify(challenges));
+    if (skipStorageKeysRef.current.has('sort_challenges')) {
+      skipStorageKeysRef.current.delete('sort_challenges');
+    } else if (challenges.length > 0) {
+      localStorage.setItem('sort_challenges', JSON.stringify(challenges));
+    }
   }, [challenges]);
 
   useEffect(() => {
@@ -292,47 +445,78 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (syncLogs.length > 0) localStorage.setItem('sort_sync_logs', JSON.stringify(syncLogs));
   }, [syncLogs]);
 
+  useEffect(() => {
+    localStorage.setItem('sort_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  // Fetch tiered point rules from Admin Settings/Database
+  useEffect(() => {
+    apiService.getPointRules().then((rules) => {
+      if (rules && Array.isArray(rules) && rules.length > 0) {
+        setPointRules(rules.map(r => ({ rank: r.rank, pointsAwarded: r.pointsAwarded })));
+      } else {
+        // Fallback defaults if DB is empty
+        setPointRules([
+          { rank: 1, pointsAwarded: 15 },
+          { rank: 2, pointsAwarded: 10 },
+          { rank: 3, pointsAwarded: 5 },
+        ]);
+      }
+    }).catch(() => {
+      setPointRules([
+        { rank: 1, pointsAwarded: 15 },
+        { rank: 2, pointsAwarded: 10 },
+        { rank: 3, pointsAwarded: 5 },
+      ]);
+    });
+  }, []);
+
   // Actions
-  const login = async (employeeId: string, email: string): Promise<boolean> => {
+  const login = async (password: string, identifier: string): Promise<boolean> => {
     try {
-      // 1. Authenticate against real PostgreSQL Express API
-      const res = await apiService.login(email, employeeId);
+      // 1. Authenticate against real PostgreSQL Express API (EnrollPro-synced accounts only)
+      const res = await apiService.login(identifier, password);
       if (res && res.token && res.user) {
-        localStorage.setItem('sortv2_token', res.token);
+        sessionStorage.setItem('sortv2_token', res.token);
+        sessionStorage.setItem('sortv2_user_id', res.user.id);
+        if (res.refreshToken) {
+          storeRefreshToken(res.user.id, res.refreshToken);
+        }
         const loggedUser: User = {
           ...res.user,
           certificatesEarned: res.user.certificatesEarned || (res.user as any).certificates || [],
         };
-        
+
         setCurrentUser(loggedUser);
         setUsers(prev => prev.map(u => u.email.toLowerCase() === loggedUser.email.toLowerCase() ? loggedUser : u));
         setIsAuthenticated(true);
-        localStorage.setItem('sort_auth', 'true');
+        sessionStorage.setItem('sort_auth', 'true');
         return true;
       }
     } catch (err) {
       console.warn('Backend API authentication notice:', err);
     }
 
-    // 2. Fallback to local user match if server offline
-    const matchedUser = users.find(u => 
-      (u.employeeId.toLowerCase() === employeeId.trim().toLowerCase() || employeeId.trim().length > 0) && 
-      u.email.toLowerCase() === email.trim().toLowerCase()
-    );
-    
-    if (matchedUser) {
-      setCurrentUser(matchedUser);
-      setIsAuthenticated(true);
-      localStorage.setItem('sort_auth', 'true');
-      return true;
-    }
+    // No local fallback — all accounts must be EnrollPro-synced.
+    // If backend is offline, login fails.
     return false;
   };
 
   const logout = () => {
-    localStorage.removeItem('sortv2_token');
+    const userId = sessionStorage.getItem('sortv2_user_id');
+    const refreshToken = userId ? localStorage.getItem(`sortv2_refresh_${userId}`) : null;
+
+    // Invalidate server-side session (fire-and-forget)
+    if (refreshToken) {
+      apiService.logout(refreshToken).catch(() => {});
+    }
+
+    // Clear all client-side session data
+    if (userId) clearRefreshToken(userId);
+    sessionStorage.removeItem('sortv2_token');
+    sessionStorage.removeItem('sortv2_user_id');
     setIsAuthenticated(false);
-    localStorage.setItem('sort_auth', 'false');
+    sessionStorage.setItem('sort_auth', 'false');
   };
 
   const changeRole = (newRole: Role) => {
@@ -341,6 +525,28 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (targetUser) {
       setCurrentUser(targetUser);
     }
+  };
+
+  const addNotification = (type: AppNotification['type'], title: string, message: string, reportId: string, recipientId: string) => {
+    const notif: AppNotification = {
+      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type,
+      title,
+      message,
+      reportId,
+      recipientId,
+      timestamp: new Date().toISOString(),
+    };
+    setNotifications(prev => [notif, ...prev]);
+  };
+
+  const dismissNotification = (notificationId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+  };
+
+  const clearNotificationsForUser = () => {
+    if (!currentUser) return;
+    setNotifications(prev => prev.filter(n => n.recipientId !== currentUser.id));
   };
 
   const createReport = (reportData: Omit<Report, 'id' | 'status' | 'reporterId' | 'reporterName' | 'pointsAwarded' | 'timestamp'>) => {
@@ -358,6 +564,28 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       throw new Error(`You have already submitted an active report for ${reportData.locationName} (${reportData.category}). You can only report a specific trashbin once until MRF resolves it.`);
     }
 
+    // Check if bin is currently pending pick up or reached 3-report unverified limit
+    const unverifiedReports = reports.filter(r =>
+      r.locationName.toLowerCase() === reportData.locationName.toLowerCase() &&
+      r.category === reportData.category &&
+      !r.isVerified &&
+      r.status === 'PENDING'
+    );
+
+    if (unverifiedReports.length >= 3) {
+      throw new Error(`This trash bin at ${reportData.locationName} (${reportData.category}) has reached the 3-report limit waiting for Admin verification and is currently unavailable.`);
+    }
+
+    const isDispatchedBin = reports.some(r =>
+      r.locationName.toLowerCase() === reportData.locationName.toLowerCase() &&
+      r.category === reportData.category &&
+      r.status === 'DISPATCHED'
+    );
+
+    if (isDispatchedBin) {
+      throw new Error(`This trash bin at ${reportData.locationName} (${reportData.category}) is pending pick up (MRF Collector Dispatched) and is currently unavailable.`);
+    }
+
     // Determine current report position rank for this trashbin
     const clusterReports = reports.filter(r =>
       r.locationName.toLowerCase() === reportData.locationName.toLowerCase() &&
@@ -372,12 +600,18 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       status: 'PENDING',
       reporterId: currentUserId,
       reporterName: currentUser?.name || 'Alex Mercer',
+      reporterRole: currentUser?.role?.toLowerCase() as Report['reporterRole'] || 'student',
       pointsAwarded: 0, // Points deferred until MRF resolution
       reporterRank: calculatedRank,
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      timestamp: new Date().toISOString(),
     };
 
     setReports(prev => [newReport, ...prev]);
+
+    // Notify admin/MRF about new report
+    addNotification('REPORT_SUBMITTED', 'New Report Submitted', `${currentUser?.name || 'Someone'} reported ${reportData.title} at ${reportData.locationName}`, newReport.id, 'admin');
+    // Notify the reporter
+    addNotification('REPORT_SUBMITTED', 'Report Submitted', `Your report "${reportData.title}" at ${reportData.locationName} is pending admin review.`, newReport.id, currentUserId);
 
     // Persist new report to PostgreSQL Express API
     apiService.createReport({
@@ -388,7 +622,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       locationName: newReport.locationName,
       coordinates: newReport.coordinates,
       reporterId: currentUserId,
+      reporterEmail: currentUser?.email,
       imageUrl: newReport.imageUrl,
+      reportType: (reportData as any).reportType || 'WASTE',
     }).then(serverRes => {
       if (serverRes && serverRes.id) {
         setReports(prev => prev.map(r => r.id === newReport.id ? { ...r, id: serverRes.id } : r));
@@ -414,12 +650,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return c;
     }));
 
-    // If report points out a specific bin, update its fill level as a simulation of overflow
-    const matchedBin = bins.find(b => b.locationName === reportData.locationName);
-    if (matchedBin) {
-      updateBinLevel(matchedBin.id, 95); // set to near overflow
-    }
-
     return newReport;
   };
 
@@ -443,94 +673,93 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     ]);
   };
 
-  const updateReportStatus = (reportId: string, status: ReportStatus, weightCollected?: number) => {
-    // Locate target report to determine location & category
+  const updateReportStatus = (
+    reportId: string,
+    status: ReportStatus,
+    weightCollected?: number,
+    completionNotes?: string,
+    collectedOutcome?: string,
+    skipPoints?: boolean
+  ) => {
     const targetReport = reports.find(r => r.id === reportId);
+    if (!targetReport) return;
 
+    // Optimistically update local report state (no point calculations client-side)
     setReports(prev => {
-      if (!targetReport) return prev;
+      if (status === 'COLLECTED' || status === 'RESOLVED') {
+        // Mark the entire cluster as resolved
+        const clusterIds = new Set(
+          prev
+            .filter(r =>
+              r.locationName.toLowerCase() === targetReport.locationName.toLowerCase() &&
+              r.category === targetReport.category &&
+              r.status !== 'DISMISSED' &&
+              r.status !== 'COLLECTED' &&
+              r.status !== 'RESOLVED'
+            )
+            .map(r => r.id)
+        );
+        clusterIds.add(reportId);
 
-      const isFinal = status === 'COLLECTED' || status === 'RESOLVED';
-      
-      // If marking as final done, resolve all related reports for that bin/location & category
-      if (isFinal) {
-        // Find all reports in cluster sorted by creation time
-        const cluster = prev.filter(r => 
-          r.locationName.toLowerCase() === targetReport.locationName.toLowerCase() &&
-          r.category === targetReport.category
-        ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-        const rankPointsMap = [15, 10, 5]; // 1st = 15, 2nd = 10, 3rd = 5
-
-        const updatedClusterIds = new Set(cluster.map(c => c.id));
-
-        const updatedReports = prev.map(r => {
-          if (updatedClusterIds.has(r.id)) {
-            const rankIndex = cluster.findIndex(c => c.id === r.id);
-            const rank = rankIndex + 1;
-            const pts = rankIndex < 3 ? rankPointsMap[rankIndex] : 0;
-
-            // Only award points if not awarded previously
-            if (r.pointsAwarded === 0 && pts > 0) {
-              // Award points to user
-              setUsers(usersPrev => usersPrev.map(u => {
-                if (u.id === r.reporterId || (r.reporterId === 'current' && (u.id === 'current' || u.id === currentUser?.id))) {
-                  return { ...u, points: u.points + pts };
-                }
-                return u;
-              }));
-
-              // Record point history
-              const rankLabel = rank === 1 ? '1st' : rank === 2 ? '2nd' : '3rd';
-              setPointHistory(historyPrev => [
-                {
-                  id: `h-rank-${Date.now()}-${r.id}`,
-                  userId: r.reporterId,
-                  amount: pts,
-                  reason: `MRF Resolution: ${rankLabel} Reporter bonus (+${pts} pts) for ${r.locationName}`,
-                  timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16)
-                },
-                ...historyPrev
-              ]);
-            }
-
+        return prev.map(r => {
+          if (clusterIds.has(r.id)) {
             return {
               ...r,
               status,
               weightCollected: weightCollected ?? r.weightCollected,
-              pointsAwarded: r.pointsAwarded > 0 ? r.pointsAwarded : pts,
-              reporterRank: rank
+              completionNotes: completionNotes ?? r.completionNotes,
+              collectedOutcome: collectedOutcome ?? r.collectedOutcome,
+              completedAt: r.completedAt || new Date().toISOString(),
             };
           }
           return r;
         });
-
-        return updatedReports;
       }
 
-      // Non-final status update (e.g. DISPATCHED)
-      return prev.map(r => r.id === reportId ? { ...r, status, weightCollected: weightCollected ?? r.weightCollected } : r);
+      // Non-final status update (e.g. DISPATCHED, DISMISSED)
+      return prev.map(r => r.id === reportId ? {
+        ...r,
+        status,
+        isVerified: status === 'DISMISSED' ? false : r.isVerified,
+        weightCollected: weightCollected ?? r.weightCollected,
+        completionNotes: completionNotes ?? r.completionNotes,
+        collectedOutcome: collectedOutcome ?? r.collectedOutcome,
+      } : r);
     });
 
+    // Generate notifications based on status change
+    if (status === 'COLLECTED' || status === 'RESOLVED') {
+      addNotification('REPORT_COMPLETED', 'Cleanup Completed!', `MRF has completed cleanup at ${targetReport.locationName}.`, reportId, targetReport.reporterId);
+    } else if (status === 'DISMISSED') {
+      addNotification('REPORT_DISMISSED', 'Report Dismissed', `Your report at ${targetReport.locationName} was dismissed by admin.`, reportId, targetReport.reporterId);
+    }
+
     // Persist status update to PostgreSQL Express backend
+    // Server is the single source of truth for points
     apiService.updateReportStatus(reportId, {
       status,
       weightCollected,
-      isVerified: true
+      isVerified: !skipPoints,
+      skipPoints,
     }).then(async () => {
-      // If status is RESOLVED or COLLECTED, fetch updated user points from backend
-      if (status === 'COLLECTED' || status === 'RESOLVED') {
-        try {
-          const serverUsers = await apiService.getUsers();
-          if (serverUsers && Array.isArray(serverUsers)) {
-            setUsers(prev => prev.map(u => {
-              const matched = serverUsers.find(su => su.id === u.id || su.email.toLowerCase() === u.email.toLowerCase());
-              return matched ? { ...u, points: matched.points } : u;
-            }));
-          }
-        } catch (err) {
-          console.warn('Sync updated user points notice:', err);
+      // Full refresh: the server may have awarded points to the entire stream.
+      // A full refresh guarantees authoritative data for all reports and users.
+      try {
+        const [serverReports, serverUsers] = await Promise.all([
+          apiService.getReports(),
+          apiService.getUsers(),
+        ]);
+        if (serverReports && Array.isArray(serverReports)) {
+          setReports(serverReports);
         }
+        if (serverUsers && Array.isArray(serverUsers)) {
+          setUsers(serverUsers.map((u: any) => ({
+            ...u,
+            certificatesEarned: u.certificatesEarned || u.certificates || [],
+          })));
+        }
+      } catch (err) {
+        console.warn('Sync after status update notice:', err);
       }
     }).catch(err => {
       console.warn('PostgreSQL updateReportStatus error:', err);
@@ -581,28 +810,103 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setSettings(prev => prev ? { ...prev, ...newSettings } : null);
   };
 
-  const addOffense = (userId: string, description: string, severity: 'WARNING' | 'STRIKE' | 'SUSPENSION') => {
+  const addOffense = async (userId: string, description: string, severity?: 'WARNING' | 'DEDUCT' | 'SUSPENSION', reportId?: string) => {
+    // Auto-determine severity based on user's offense level if not provided
+    const user = users.find(u => u.id === userId);
+    const level = (user?.warningsCount ?? 0) + 1;
+    const autoSeverity: 'WARNING' | 'DEDUCT' | 'SUSPENSION' =
+      level === 1 ? 'WARNING' : level === 2 ? 'DEDUCT' : 'SUSPENSION';
+    const effectiveSeverity = severity || autoSeverity;
+
+    // Call backend API
+    try {
+      const token = sessionStorage.getItem('sortv2_token');
+      if (token) {
+        const res = await fetch(`http://localhost:5000/api/users/${userId}/warn`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ description, severity: effectiveSeverity, reportId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Update local state from backend response
+          setUsers(prev => prev.map(u => {
+            if (u.id === userId) {
+              const updated: any = { ...u, warningsCount: data.warningsCount || u.warningsCount + 1 };
+              if (data.pointsDeducted > 0) updated.points = Math.max(0, u.points - data.pointsDeducted);
+              if (effectiveSeverity === 'SUSPENSION') {
+                updated.accountStatus = 'SUSPENDED';
+                updated.suspendedUntil = data.offense?.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+              }
+              return updated;
+            }
+            return u;
+          }));
+          const newOffense: Offense = {
+            id: data.offense?.id || `off-${Date.now()}`,
+            userId,
+            userName: users.find(u => u.id === userId)?.name || 'Unknown User',
+            description,
+            severity: effectiveSeverity,
+            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+            expiresAt: data.offense?.expiresAt,
+          };
+          setOffenses(prev => [newOffense, ...prev]);
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend warn API failed:', err);
+    }
+
+    // Fallback: local only
+    const expiresAt = effectiveSeverity === 'SUSPENSION' ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : undefined;
     const newOffense: Offense = {
       id: `off-${Date.now()}`,
       userId,
       userName: users.find(u => u.id === userId)?.name || 'Unknown User',
       description,
-      severity,
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16)
+      severity: effectiveSeverity,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      expiresAt,
     };
     setOffenses(prev => [newOffense, ...prev]);
-
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
-        return { ...u, warningsCount: u.warningsCount + (severity === 'WARNING' || severity === 'STRIKE' ? 1 : 0) };
+        const updated: any = { ...u, warningsCount: u.warningsCount + 1 };
+        if (effectiveSeverity === 'SUSPENSION') {
+          updated.accountStatus = 'SUSPENDED';
+          updated.suspendedUntil = expiresAt;
+        }
+        return updated;
       }
       return u;
     }));
   };
 
-  const deductPoints = (userId: string, amount: number) => {
+  const deductPoints = async (userId: string, amount: number, reason?: string) => {
+    // Call backend API
+    try {
+      const token = sessionStorage.getItem('sortv2_token');
+      if (token) {
+        const res = await fetch(`http://localhost:5000/api/users/${userId}/deduct-points`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ amount, reason }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, points: data.points ?? Math.max(0, u.points - amount) } : u));
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend deduct API failed:', err);
+    }
+
+    // Fallback: local only
     setUsers(prev => prev.map(u => {
-      if (u.id === userId || (userId === 'current' && u.id === 'current')) {
+      if (u.id === userId) {
         return { ...u, points: Math.max(0, u.points - amount) };
       }
       return u;
@@ -632,6 +936,11 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.removeItem('sort_offenses');
     localStorage.removeItem('sort_calendar');
     localStorage.removeItem('sort_sync_logs');
+    localStorage.removeItem('sort_notifications');
+    // Reset recycle market local cache so stale inventory does not reappear after a purge
+    localStorage.removeItem('sort_market_stocks');
+    localStorage.removeItem('sort_market_sales');
+    localStorage.removeItem('sort_market_version');
 
     // Ensure all student points and warnings are zeroed out
     const cleanUsers = DEFAULT_USERS.map(u => ({
@@ -650,46 +959,161 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setOffenses([]);
     setCalendarEvents(DEFAULT_CALENDAR);
     setSyncLogs([]);
-    
-    // Call Express API to purge backend database tables
+    setNotifications([]);
+
+    // Call Express API to purge backend database tables (also resets recycle market inventory)
     apiService.purgeDatabase().catch(err => {
       console.warn('Backend purge API notice:', err);
     });
   };
 
   if (!currentUser || !settings) {
-    // Prevent rendering until local storage is read and initialized
+    // Prevent rendering until local storage is read and initialized.
+    // Provide a manual escape hatch in case loading hangs (clear session + retry).
+    const handleRecovery = () => {
+        sessionStorage.removeItem('sort_auth');
+        sessionStorage.removeItem('sortv2_token');
+        sessionStorage.removeItem('sort_tab_role');
+        localStorage.removeItem('sort_users');
+        localStorage.removeItem('sort_reports');
+        localStorage.removeItem('sort_settings');
+        window.location.reload();
+      };
+
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-emerald-400">
         <div className="flex flex-col items-center space-y-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
           <p className="text-lg font-semibold tracking-wider animate-pulse">Initializing S.O.R.T. Database...</p>
+          <button
+            type="button"
+            onClick={handleRecovery}
+            className="mt-6 px-4 py-2 rounded-xl border border-emerald-500/40 text-emerald-300 text-xs font-bold hover:bg-emerald-500/10 transition-colors"
+          >
+            Stuck? Reset session & retry
+          </button>
         </div>
       </div>
     );
   }
 
   const verifyReport = (reportId: string) => {
-    setReports(prev => prev.map(r => r.id === reportId ? { ...r, isVerified: true, status: 'DISPATCHED' } : r));
-    apiService.updateReportStatus(reportId, { isVerified: true, status: 'DISPATCHED' }).catch(() => {});
+    const targetReport = reports.find(r => r.id === reportId);
+    if (!targetReport) return;
+
+    // Optimistically mark as verified locally (no point calculations client-side)
+    setReports(prev => prev.map(r => {
+      if (r.id === reportId || (
+        r.locationName.toLowerCase() === targetReport.locationName.toLowerCase() &&
+        r.category === targetReport.category &&
+        r.status !== 'DISMISSED' &&
+        r.status !== 'COLLECTED' &&
+        r.status !== 'RESOLVED'
+      )) {
+        return { ...r, isVerified: true };
+      }
+      return r;
+    }));
+
+    // Send verification to server — server is the single source of truth for points
+    apiService.updateReportStatus(reportId, { isVerified: true }).then(async () => {
+      // Full refresh: the server may have awarded points to the entire stream,
+      // not just this one report. A full refresh guarantees authoritative data.
+      try {
+        const [serverReports, serverUsers] = await Promise.all([
+          apiService.getReports(),
+          apiService.getUsers(),
+        ]);
+        if (serverReports && Array.isArray(serverReports)) {
+          setReports(serverReports);
+        }
+        if (serverUsers && Array.isArray(serverUsers)) {
+          setUsers(serverUsers.map((u: any) => ({
+            ...u,
+            certificatesEarned: u.certificatesEarned || u.certificates || [],
+          })));
+        }
+      } catch (err) {
+        console.warn('Sync after verify error:', err);
+      }
+    }).catch(() => {});
   };
 
   const dispatchReport = (reportId: string, mrfId: string, mrfName: string) => {
     const target = reports.find(r => r.id === reportId);
+    // Skip dismissed reports
+    if (target?.status === 'DISMISSED') return;
+
+    // Optimistically update local state
     setReports(prev => prev.map(r => {
       const isMatch = r.id === reportId || (target && r.locationName.toLowerCase() === target.locationName.toLowerCase() && r.category === target.category);
       if (isMatch) {
-        apiService.updateReportStatus(r.id, { isVerified: true, status: 'DISPATCHED', assignedMrfId: mrfId }).catch(() => {});
+        // Notify reporter about dispatch
+        addNotification('REPORT_DISPATCHED', 'MRF Collector Dispatched', `MRF staff ${mrfName} has been assigned to collect waste at ${r.locationName}.`, r.id, r.reporterId);
         return {
           ...r,
           isVerified: true,
-          status: 'DISPATCHED',
+          status: 'DISPATCHED' as ReportStatus,
           assignedMrfId: mrfId,
           assignedMrfName: mrfName
         };
       }
       return r;
     }));
+
+    // Send dispatch update to server (skipPoints since dispatch is not a verification action)
+    apiService.updateReportStatus(reportId, {
+      isVerified: true,
+      status: 'DISPATCHED',
+      assignedMrfId: mrfId,
+      assignedMrfName: mrfName,
+      skipPoints: true
+    }).then(async () => {
+      // Full refresh to get authoritative server state
+      try {
+        const serverReports = await apiService.getReports();
+        if (serverReports && Array.isArray(serverReports)) {
+          setReports(serverReports);
+        }
+      } catch (err) {
+        console.warn('Sync after dispatch:', err);
+      }
+    }).catch((err) => {
+      console.warn('Backend dispatch update failed (local state still applied):', err);
+    });
+  };
+
+  const verifyReportsBatch = async (reportIds: string[]): Promise<void> => {
+    // Optimistically mark all as verified locally
+    setReports(prev => prev.map(r => {
+      if (reportIds.includes(r.id)) {
+        return { ...r, isVerified: true };
+      }
+      return r;
+    }));
+
+    try {
+      await apiService.verifyReportsBatch(reportIds);
+
+      // Full refresh: the server awards points to the entire stream per group,
+      // not just the selected reports. A full refresh guarantees authoritative data.
+      const [serverReports, serverUsers] = await Promise.all([
+        apiService.getReports(),
+        apiService.getUsers(),
+      ]);
+      if (serverReports && Array.isArray(serverReports)) {
+        setReports(serverReports);
+      }
+      if (serverUsers && Array.isArray(serverUsers)) {
+        setUsers(serverUsers.map((u: any) => ({
+          ...u,
+          certificatesEarned: u.certificatesEarned || u.certificates || [],
+        })));
+      }
+    } catch (err) {
+      console.warn('Batch verify error:', err);
+      throw err;
+    }
   };
 
   return (
@@ -704,23 +1128,28 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       settings,
       calendarEvents,
       syncLogs,
+      notifications,
       isAuthenticated,
       login,
       logout,
       changeRole,
       verifyReport,
+      verifyReportsBatch,
       dispatchReport,
       createReport,
       updateReportStatus,
       updateBinLevel,
       toggleBinDispatch,
+      setBinsState: setBins,
       triggerSync,
       completeChallenge,
       updateSettings,
       resetDatabase,
       addOffense,
       deductPoints,
-      claimCertificate
+      claimCertificate,
+      dismissNotification,
+      clearNotificationsForUser
     }}>
       {children}
     </MockDataContext.Provider>

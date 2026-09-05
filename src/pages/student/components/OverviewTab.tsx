@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Flame,
   Trophy,
@@ -18,20 +18,29 @@ import {
   FileText,
   TrendingUp
 } from 'lucide-react';
-import { User, Report } from '../../../types';
+import { User, Report, Offense } from '../../../types';
+import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
+import { apiService } from '../../../services/api';
 
 interface OverviewTabProps {
   currentUser: User;
   reports: Report[];
+  offenses?: Offense[];
   setActiveTab?: (tab: string) => void;
 }
 
-export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, setActiveTab }) => {
+export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, offenses = [], setActiveTab }) => {
+  const [campusNews, setCampusNews] = useState<any[]>([]);
+
+  useEffect(() => {
+    apiService.getCampusNews().then(data => {
+      if (Array.isArray(data)) setCampusNews(data.filter((n: any) => n.isPublished));
+    }).catch(() => {});
+  }, []);
+
   const personalReports = reports.filter(r =>
     r.reporterId === currentUser.id ||
-    r.reporterId === 'current' ||
-    r.reporterName === currentUser.name ||
-    (r.reporterId && currentUser.email && r.reporterId.toLowerCase() === currentUser.email.toLowerCase())
+    r.reporterName?.toLowerCase() === currentUser.name?.toLowerCase()
   );
   const totalReports = personalReports.length;
   const progressPercent = Math.min(100, Math.round((currentUser.points / 500) * 100));
@@ -101,6 +110,48 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
         </div>
       </div>
 
+      {/* Warnings / Offenses */}
+      {offenses.length > 0 && (
+        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle size={16} className="text-amber-500" />
+            <h3 className="text-sm font-bold text-amber-800">Offenses ({offenses.length})</h3>
+          </div>
+          <div className="space-y-2">
+            {offenses.slice(0, 3).map((offense) => {
+              const isExpiredSuspension = offense.severity === 'SUSPENSION' && offense.expiresAt && new Date(offense.expiresAt) <= new Date();
+              return (
+                <div key={offense.id} className="flex items-start gap-3 p-3 bg-white rounded-xl border border-amber-100">
+                  <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${
+                    offense.severity === 'SUSPENSION' ? 'bg-red-100 text-red-600' :
+                    offense.severity === 'DEDUCT' ? 'bg-orange-100 text-orange-600' :
+                    'bg-amber-100 text-amber-600'
+                  }`}>
+                    <AlertTriangle size={13} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-gray-800">{offense.description}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      {offense.severity === 'WARNING' ? 'Warning' : offense.severity === 'DEDUCT' ? 'Points Deducted' : 'Account Suspension'}
+                      {offense.severity === 'SUSPENSION' && offense.expiresAt && !isExpiredSuspension && (
+                        <span className="text-red-500 font-bold"> · Until {new Date(offense.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      )}
+                      {offense.severity === 'SUSPENSION' && isExpiredSuspension && (
+                        <span className="text-gray-400 italic"> · Expired</span>
+                      )}
+                      {' · '}{offense.timestamp}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            {offenses.length > 3 && (
+              <p className="text-[10px] text-amber-600 font-bold text-center">+{offenses.length - 3} more offenses</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Campus Operational Overview ── */}
       <div>
         <div className="flex items-center gap-2 mb-4">
@@ -110,16 +161,20 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
 
           {/* 1. Grade Level Standing Card */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab?.('report-history')}
+            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-amber-300"
+          >
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[#00271D]/60">My Section Standing</p>
-              <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10">
+              <p className="text-xs font-bold text-[#00271D]/60 group-hover:text-amber-700 transition-colors">My Section Standing</p>
+              <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10 group-hover:scale-105 transition-transform">
                 <Award size={20} strokeWidth={2} />
               </div>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 w-full">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100/80 text-amber-900 border border-amber-200 text-xs font-black">
-                Section {currentUser.classroomSection || 'BSIT-3A'}
+                Section {(currentUser as any).gradeLevel ? `${(currentUser as any).gradeLevel} — ${(currentUser as any).sectionName}` : currentUser.classroomSection || 'N/A'}
               </span>
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[11px] text-[#00271D]/60 font-semibold">
@@ -131,13 +186,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
                 </div>
               </div>
             </div>
-          </div>
+          </button>
 
           {/* 2. Today's Campus Activity Card */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab?.('bin-map')}
+            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-sky-300"
+          >
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[#00271D]/60">Today's Campus Reports</p>
-              <div className="h-10 w-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/10">
+              <p className="text-xs font-bold text-[#00271D]/60 group-hover:text-sky-700 transition-colors">Today's Campus Reports</p>
+              <div className="h-10 w-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/10 group-hover:scale-105 transition-transform">
                 <FileText size={20} strokeWidth={2} />
               </div>
             </div>
@@ -151,13 +210,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
               </div>
               <p className="text-xs text-[#00271D]/60 mt-1.5 font-medium">Reports submitted across campus today</p>
             </div>
-          </div>
+          </button>
 
           {/* 3. Top Recyclable Material Card */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab?.('submit-report')}
+            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-emerald-300"
+          >
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[#00271D]/60">Most Reported Material</p>
-              <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10">
+              <p className="text-xs font-bold text-[#00271D]/60 group-hover:text-emerald-700 transition-colors">Most Reported Material</p>
+              <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10 group-hover:scale-105 transition-transform">
                 <Recycle size={20} strokeWidth={2} />
               </div>
             </div>
@@ -169,7 +232,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
                 {reports.length > 0 ? 'Top material category from active campus reports.' : 'Submit new waste reports to track campus material trends.'}
               </p>
             </div>
-          </div>
+          </button>
 
         </div>
       </div>
@@ -226,20 +289,25 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
           </div>
           <div className="divide-y divide-[#00271D]/5 flex-1">
             {personalReports.slice(0, 4).map(rep => (
-              <div key={rep.id} className="flex items-center gap-3.5 px-6 py-4 hover:bg-[#00A77C]/5 transition-colors">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#00A77C]/10 text-[#00A77C]">
+              <button
+                key={rep.id}
+                type="button"
+                onClick={() => setActiveTab?.('report-history')}
+                className="w-full text-left flex items-center gap-3.5 px-6 py-4 hover:bg-[#00A77C]/5 transition-colors cursor-pointer group"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#00A77C]/10 text-[#00A77C] group-hover:bg-[#00A77C] group-hover:text-white transition-colors">
                   <FileText size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-[#00271D]">{rep.title}</p>
-                  <p className="text-[11px] text-[#00271D]/50 font-medium mt-0.5">{rep.locationName} · {rep.timestamp}</p>
+                  <p className="truncate text-xs font-bold text-[#00271D] group-hover:text-[#00A77C] transition-colors">{cleanReportTitle(rep.title)}</p>
+                  <p className="text-[11px] text-[#00271D]/50 font-medium mt-0.5">{cleanLocationName(rep.locationName)} · {rep.timestamp}</p>
                 </div>
                 <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border ${
                   rep.status === 'RESOLVED' ? 'bg-[#00A77C]/15 text-[#00A77C] border-[#00A77C]/30' :
                   rep.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                   'bg-gray-100 text-gray-600 border-gray-200'
                 }`}>{rep.status}</span>
-              </div>
+              </button>
             ))}
             {personalReports.length === 0 && (
               <div className="px-6 py-12 text-center">
@@ -251,37 +319,40 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
         </div>
 
         {/* Compact Claim Certificate / Status Card (2 cols) */}
-        <div className="lg:col-span-2 bg-gradient-to-br from-white/95 via-white/90 to-amber-50/50 border border-amber-200/80 rounded-3xl shadow-sm p-6 sm:p-7 flex flex-col justify-between space-y-5">
+        <button
+          type="button"
+          onClick={() => setActiveTab?.('gamification')}
+          className="lg:col-span-2 bg-gradient-to-br from-white/95 via-white/90 to-amber-50/50 border border-amber-200/80 rounded-3xl shadow-sm p-6 sm:p-7 flex flex-col justify-between space-y-5 text-left cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+        >
           <div>
             <div className="flex items-center justify-between mb-3.5">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C69B26]/15 text-[#C69B26] border border-[#C69B26]/30 text-[10px] font-black uppercase tracking-wider">
                 <Trophy size={12} />
                 Quarterly Certificate Track
               </span>
-              <Award size={22} className="text-[#C69B26]" />
+              <Award size={22} className="text-[#C69B26] group-hover:scale-110 transition-transform" />
             </div>
-            <h4 className="text-lg font-heading font-black text-[#00271D]">Top Eco-Champion Certificate</h4>
+            <h4 className="text-lg font-heading font-black text-[#00271D] group-hover:text-amber-700 transition-colors">Top Eco-Champion Certificate</h4>
             <p className="text-xs text-[#00271D]/60 mt-1.5 font-medium leading-relaxed">
               Awarded to the #1 ranked student reporter each quarter. Keep logging active reports to claim your official school recognition!
             </p>
           </div>
 
-          <div className="space-y-3 pt-3 border-t border-amber-100">
+          <div className="space-y-3 pt-3 border-t border-amber-100 w-full">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-[#00271D]/70">Status</span>
               <span className="text-emerald-800 bg-emerald-100/80 border border-emerald-200 px-3 py-0.5 rounded-full text-[10px] font-extrabold">
                 {currentUser.points === 0 ? 'Rank #1 (Tied)' : 'Rank #1'}
               </span>
             </div>
-            <button
-              onClick={() => setActiveTab?.('gamification')}
-              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-500/20 hover:from-amber-500 hover:to-orange-600 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            <div
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-500/20 group-hover:from-amber-500 group-hover:to-orange-600 transition-all flex items-center justify-center gap-2"
             >
               <span>View Leaderboard Standing</span>
               <ArrowRight size={14} />
-            </button>
+            </div>
           </div>
-        </div>
+        </button>
 
       </div>
 
@@ -291,30 +362,30 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
           <Newspaper size={18} className="text-[#00A77C]" />
           <h3 className="text-base font-heading font-bold text-[#00271D]">Campus News & Updates</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[
-            { tag: 'MRF UPDATE', tagColor: 'bg-[#00A77C]/15 text-[#00A77C] border-[#00A77C]/30', date: 'Feb 24, 2026', Icon: Radio, iconBg: 'bg-[#00A77C]', title: 'Extended Collection Hours Campus-Wide', body: 'Starting March 1, MRF collection trucks will operate from 6 AM to 8 PM on weekdays.' },
-            { tag: 'NEW FACILITY', tagColor: 'bg-sky-100 text-sky-800 border-sky-200', date: 'Feb 20, 2026', Icon: Recycle, iconBg: 'bg-sky-500', title: '5 New Segregation Stations Installed', body: 'Color-coded recycling stations are now live near Science Hall, the Gym, and Admin Building.' },
-            { tag: 'ACHIEVEMENT', tagColor: 'bg-[#C69B26]/15 text-[#C69B26] border-[#C69B26]/30', date: 'Feb 18, 2026', Icon: TrendingUp, iconBg: 'bg-[#C69B26]', title: 'Campus Hits 2,000+ Reports This Semester', body: 'Thanks to student participation, our campus filed over 2,000 waste reports this semester.' },
-          ].map((item, i) => {
-            const Icon = item.Icon;
-            return (
-              <div key={i} className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col justify-between space-y-4">
+        {campusNews.length === 0 ? (
+          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-8 shadow-sm text-center">
+            <Newspaper size={28} className="text-[#00271D]/20 mx-auto mb-3" />
+            <p className="text-sm text-[#00271D]/40 font-medium">No campus news yet. Check back later!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {campusNews.map((item: any) => (
+              <div key={item.id} className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col justify-between space-y-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className={`px-3 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${item.tagColor}`}>{item.tag}</span>
-                    <span className="text-[10px] text-[#00271D]/50 font-medium">{item.date}</span>
+                    <span className="text-[10px] text-[#00271D]/50 font-medium">{new Date(item.createdAt).toLocaleDateString()}</span>
                   </div>
-                  <div className={`h-10 w-10 rounded-2xl ${item.iconBg} text-white flex items-center justify-center shadow-sm`}>
-                    <Icon size={18} strokeWidth={2} />
+                  <div className={`h-10 w-10 rounded-2xl ${item.iconColor} text-white flex items-center justify-center shadow-sm`}>
+                    <Newspaper size={18} strokeWidth={2} />
                   </div>
                   <h4 className="text-xs font-bold text-[#00271D] leading-snug">{item.title}</h4>
                   <p className="text-[11px] text-[#00271D]/60 font-medium leading-relaxed">{item.body}</p>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
     </div>

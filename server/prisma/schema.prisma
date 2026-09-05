@@ -14,18 +14,24 @@ enum Role {
   ADMIN
 }
 
+enum SyncSource {
+  LOCAL
+  ENROLLPRO
+}
+
 enum ReportStatus {
   PENDING
   DISPATCHED
   COLLECTED
   RESOLVED
+  DISMISSED
 }
 
 enum WasteCategory {
   RECYCLABLE
-  ORGANIC
+  BIODEGRADABLE
+  NON_BIODEGRADABLE
   HAZARDOUS
-  GENERAL
 }
 
 enum Urgency {
@@ -41,8 +47,13 @@ enum ReportType {
 
 enum Severity {
   WARNING
-  STRIKE
+  DEDUCT
   SUSPENSION
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
 }
 
 enum EventType {
@@ -56,25 +67,66 @@ enum SyncStatus {
   FAILED
 }
 
+model SchoolYear {
+  id            String    @id @default(uuid())
+  enrollproId   Int?      @unique @map("enrollpro_id")
+  label         String    // "2026-2027"
+  startDate     DateTime  @map("start_date")
+  endDate       DateTime  @map("end_date")
+  isActive      Boolean   @default(true) @map("is_active")
+  isArchived    Boolean   @default(false) @map("is_archived")
+  archivedAt    DateTime? @map("archived_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  reports              Report[]
+  pointHistories       PointHistory[]
+  offenses             Offense[]
+  saleTransactions     RecycleSaleTransaction[]
+  inventoryTransactions MrfInventoryTransaction[]
+  auditLogs            AuditLog[]
+  marketStockSnapshots MarketStockSnapshot[]
+  pointSnapshots       UserPointSnapshot[]
+
+  @@map("school_years")
+}
+
 model User {
-  id               String         @id @default(uuid())
+  id               String   @id @default(uuid())
   name             String
-  email            String         @unique
-  passwordHash     String         @map("password_hash")
-  employeeId       String         @unique @map("employee_id")
-  role             Role           @default(STUDENT)
-  points           Int            @default(0)
-  warningsCount    Int            @default(0) @map("warnings_count")
-  classroomSection String?        @map("classroom_section")
-  certificates     String[]       @default([]) @map("certificates")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  email            String   @unique
+  passwordHash     String   @map("password_hash")
+  employeeId       String   @unique @map("employee_id")
+  role             Role     @default(STUDENT)
+  points           Int          @default(0)
+  warningsCount    Int          @default(0) @map("warnings_count")
+  accountStatus    AccountStatus @default(ACTIVE) @map("account_status")
+  suspendedUntil   DateTime?    @map("suspended_until")
+  classroomSection String?  @map("classroom_section")
+  certificates     String[] @default([]) @map("certificates")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  reports          Report[]       @relation("ReportedBy")
-  assignedReports  Report[]       @relation("AssignedToMRF")
-  offenses         Offense[]
-  pointHistories   PointHistory[]
+  // EnrollPro sync fields
+  syncSource            SyncSource @default(LOCAL) @map("sync_source")
+  enrollproId           String?    @unique @map("enrollpro_id")
+  enrollproLrn          String?    @unique @map("enrollpro_lrn")
+  gradeLevel            String?    @map("grade_level")
+  sectionName           String?    @map("section_name")
+  academicProgram       String?    @map("academic_program")
+  schoolYearId          Int?       @map("school_year_id")
+  schoolYearLabel       String?    @map("school_year_label")
+  isTemporarilyEnrolled Boolean?   @default(false) @map("is_temporarily_enrolled")
+  enrollmentStatus      String?    @map("enrollment_status")
 
+  reports         Report[]       @relation("ReportedBy")
+  assignedReports Report[]       @relation("AssignedToMRF")
+  offenses        Offense[]
+  pointHistories  PointHistory[]
+  pointSnapshots  UserPointSnapshot[]
+  sessions        UserSession[]
+
+  @@index([enrollproId])
+  @@index([syncSource])
   @@map("users")
 }
 
@@ -84,27 +136,33 @@ model Report {
   description     String
   status          ReportStatus  @default(PENDING)
   urgency         Urgency       @default(MEDIUM)
-  category        WasteCategory @default(GENERAL)
+  category        WasteCategory @default(NON_BIODEGRADABLE)
   lat             Float
   lng             Float
   locationName    String        @map("location_name")
   reporterId      String        @map("reporter_id")
   pointsAwarded   Int           @default(0) @map("points_awarded")
-  imageUrl        String?       @map("image_url")
+  pointsAwardedAt DateTime?     @map("points_awarded_at")
+  imageUrl        String?       @db.Text @map("image_url")
   weightCollected Float?        @map("weight_collected")
   isVerified      Boolean       @default(false) @map("is_verified")
   reportType      ReportType    @default(WASTE) @map("report_type")
   assignedMrfId   String?       @map("assigned_mrf_id")
   reporterRank    Int?          @map("reporter_rank")
+  completedAt     DateTime?     @map("completed_at")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  reporter        User          @relation("ReportedBy", fields: [reporterId], references: [id], onDelete: Cascade)
-  assignedMrf     User?         @relation("AssignedToMRF", fields: [assignedMrfId], references: [id], onDelete: SetNull)
+  schoolYearId  String?     @map("school_year_id")
+  schoolYear    SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+
+  reporter    User  @relation("ReportedBy", fields: [reporterId], references: [id], onDelete: Cascade)
+  assignedMrf User? @relation("AssignedToMRF", fields: [assignedMrfId], references: [id], onDelete: SetNull)
 
   @@index([reporterId])
   @@index([status])
   @@index([category])
+  @@index([schoolYearId])
   @@map("reports")
 }
 
@@ -113,7 +171,7 @@ model WasteBin {
   name           String
   locationName   String        @map("location_name")
   fillLevel      Int           @default(0) @map("fill_level")
-  type           WasteCategory @default(GENERAL)
+  type           WasteCategory @default(NON_BIODEGRADABLE)
   lat            Float
   lng            Float
   activeDispatch Boolean       @default(false) @map("active_dispatch")
@@ -125,28 +183,36 @@ model WasteBin {
 }
 
 model Offense {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  description String
-  severity    Severity @default(WARNING)
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  description  String
+  severity     Severity @default(WARNING)
+  expiresAt    DateTime? @map("expires_at")
+  schoolYearId String?  @map("school_year_id")
+  schoolYear   SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([schoolYearId])
   @@map("offenses")
 }
 
 model PointHistory {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  amount    Int
-  reason    String
-  createdAt DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  amount       Int
+  reason       String
+  reportId     String?  @unique @map("report_id")
+  schoolYearId String?  @map("school_year_id")
+  schoolYear   SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([schoolYearId])
   @@map("point_histories")
 }
 
@@ -165,13 +231,23 @@ model Challenge {
 }
 
 model SystemSetting {
-  id                       String   @id @default("default_setting")
-  pointsPerReport          Int      @default(50) @map("points_per_report")
-  pointsPerKgRecyclable    Int      @default(10) @map("points_per_kg_recyclable")
-  warningThreshold         Int      @default(3) @map("warning_threshold")
+  id                        String   @id @default("default_setting")
+  pointsPerReport           Int      @default(50) @map("points_per_report")
+  pointsPerKgRecyclable     Int      @default(10) @map("points_per_kg_recyclable")
+  warningThreshold          Int      @default(3) @map("warning_threshold")
   certificatePointThreshold Int      @default(500) @map("certificate_point_threshold")
-  quarterGateActive        Boolean  @default(false) @map("quarter_gate_active")
-  updatedAt                DateTime @updatedAt @map("updated_at")
+  quarterGateActive         Boolean  @default(false) @map("quarter_gate_active")
+  smartSyncEnabled          Boolean  @default(true) @map("smart_sync_enabled")
+  blueprintPreset           String   @default("DEFAULT") @map("blueprint_preset")
+  blueprintUrl              String?  @map("blueprint_url")
+  maxUnverifiedReports      Int      @default(3) @map("max_unverified_reports")
+  dismissPointPenalty       Int      @default(10) @map("dismiss_point_penalty")
+  falseReportPointPenalty   Int      @default(50) @map("false_report_point_penalty")
+  warningAutoDeductAmount   Int      @default(10) @map("warning_auto_deduct_amount")
+  suspensionDurationHours   Int      @default(24) @map("suspension_duration_hours")
+  rewardsReservePercent     Int      @default(20) @map("rewards_reserve_percent")
+  defaultVendorName         String   @default("GreenCycle Recycling Vendor") @map("default_vendor_name")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
 }
@@ -195,4 +271,302 @@ model SyncLog {
   createdAt     DateTime   @default(now()) @map("created_at")
 
   @@map("sync_logs")
+}
+
+model AssetCategory {
+  id        String       @id @default(uuid())
+  name      String
+  code      String       @unique
+  enabled   Boolean      @default(true)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  presets   ItemPreset[]
+
+  @@map("asset_categories")
+}
+
+model ItemPreset {
+  id         String        @id @default(uuid())
+  categoryId String        @map("category_id")
+  category   AssetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name       String
+  enabled    Boolean       @default(true)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  @@index([categoryId])
+  @@map("item_presets")
+}
+
+model CampusLocation {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  status    String   @default("Available")
+  x         Float
+  y         Float
+  streams   Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("campus_locations")
+}
+
+model RoomLocation {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  building  String?
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("room_locations")
+}
+
+model WasteType {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  description String
+  hexColor    String   @map("hex_color")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("waste_types")
+}
+
+model UrgencyLevel {
+  id          String   @id @default(uuid())
+  level       String
+  code        String   @unique
+  slaHours    Int      @map("sla_hours")
+  description String
+  badgeStyle  String   @map("badge_style")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("urgency_levels")
+}
+
+model AssetCondition {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  description String
+  badgeStyle  String   @map("badge_style")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("asset_conditions")
+}
+
+model PointRule {
+  id            String   @id @default(uuid())
+  rank          Int      @unique
+  title         String
+  pointsAwarded Int      @map("points_awarded")
+  description   String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("point_rules")
+}
+
+model AcademicQuarter {
+  id          String   @id @default(uuid())
+  quarterName String   @map("quarter_name")
+  quarterCode String   @unique @map("quarter_code")
+  startDate   String   @map("start_date")
+  endDate     String   @map("end_date")
+  isActive    Boolean  @default(false) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("academic_quarters")
+}
+
+model RecycleMarketStock {
+  id                String    @id @default(uuid())
+  categoryCode      String    @unique @map("category_code")
+  categoryName      String    @map("category_name")
+  shortName         String    @map("short_name")
+  thresholdLimitKg  Float     @map("threshold_limit_kg")
+  marketPricePerKg  Float     @map("market_price_per_kg")
+  accumulatedKg     Float     @default(0.0) @map("accumulated_kg")
+  isApprovedForSale Boolean   @default(false) @map("is_approved_for_sale")
+  approvedAt        DateTime? @map("approved_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("recycle_market_stocks")
+}
+
+model RecycleSaleTransaction {
+  id            String   @id @default(uuid())
+  categoryCode  String   @map("category_code")
+  categoryName  String   @map("category_name")
+  weightKg      Float    @map("weight_kg")
+  marketPriceKg Float    @map("market_price_kg")
+  totalRevenue  Float    @map("total_revenue")
+  buyerName     String   @map("buyer_name")
+  schoolYearId  String?  @map("school_year_id")
+  schoolYear    SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  soldAt        DateTime @default(now()) @map("sold_at")
+
+  @@index([schoolYearId])
+  @@map("recycle_sale_transactions")
+}
+
+// ─── EnrollPro Sync Models ────────────────────────────────────────────
+
+model UserSession {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  refreshToken String   @unique @map("refresh_token")
+  deviceInfo   String?  @map("device_info")
+  ipAddress    String?  @map("ip_address")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshToken])
+  @@map("user_sessions")
+}
+
+model TermCalendar {
+  id              String   @id @default(uuid())
+  enrollproId     Int      @unique @map("enrollpro_id")
+  termName        String   @map("term_name")
+  termCode        String   @map("term_code")
+  startDate       DateTime @map("start_date")
+  endDate         DateTime @map("end_date")
+  schoolYearId    Int      @map("school_year_id")
+  schoolYearLabel String   @map("school_year_label")
+  isActive        Boolean  @default(false) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([schoolYearId])
+  @@map("term_calendars")
+}
+
+model EnrollmentSyncLog {
+  id              String     @id @default(uuid())
+  syncType        String     @map("sync_type")
+  status          SyncStatus @default(SUCCESS)
+  recordsPulled   Int        @default(0) @map("records_pulled")
+  recordsCreated  Int        @default(0) @map("records_created")
+  recordsUpdated  Int        @default(0) @map("records_updated")
+  recordsDeleted  Int        @default(0) @map("records_deleted")
+  errorMessage    String?    @map("error_message")
+  schoolYearId    Int?       @map("school_year_id")
+  schoolYearLabel String?    @map("school_year_label")
+  durationMs      Int?       @map("duration_ms")
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("enrollment_sync_logs")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorName    String   @map("actor_name")
+  actorRole    String   @map("actor_role")
+  actionType   String   @map("action_type")
+  details      String
+  ipAddress    String?  @map("ip_address")
+  schoolYearId String?  @map("school_year_id")
+  schoolYear   SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([actionType])
+  @@index([schoolYearId])
+  @@map("audit_logs")
+}
+
+model CampusNews {
+  id          String   @id @default(uuid())
+  title       String
+  body        String
+  tag         String
+  tagColor    String   @map("tag_color")
+  iconColor   String   @map("icon_color")
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isPublished])
+  @@index([createdAt])
+  @@map("campus_news")
+}
+
+// ─── School Year Snapshot & Inventory Models ─────────────────────────
+
+model MarketStockSnapshot {
+  id            String   @id @default(uuid())
+  schoolYearId  String   @map("school_year_id")
+  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id])
+  categoryCode  String   @map("category_code")
+  categoryName  String   @map("category_name")
+  closingKg     Float    @map("closing_kg")
+  openingKg     Float    @default(0) @map("opening_kg")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([schoolYearId, categoryCode])
+  @@map("market_stock_snapshots")
+}
+
+model UserPointSnapshot {
+  id            String   @id @default(uuid())
+  schoolYearId  String   @map("school_year_id")
+  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id])
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id])
+  closingPoints Int      @map("closing_points")
+  rank          Int?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([schoolYearId, userId])
+  @@map("user_point_snapshots")
+}
+
+model MrfInventoryItem {
+  id            String   @id @default(uuid())
+  name          String
+  category      String   // EQUIPMENT, SUPPLY, RECOVERED_MATERIAL, TOOL
+  description   String?
+  unit          String   // kg, pcs, rolls, liters
+  quantity      Float    @default(0)
+  minThreshold  Float?   @map("min_threshold")
+  condition     String   @default("GOOD") // GOOD, FAIR, NEEDS_REPAIR, DISPOSED
+  isPersistent  Boolean  @default(false) @map("is_persistent")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  transactions MrfInventoryTransaction[]
+
+  @@map("mrf_inventory_items")
+}
+
+model MrfInventoryTransaction {
+  id            String   @id @default(uuid())
+  itemId        String   @map("item_id")
+  item          MrfInventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  schoolYearId  String   @map("school_year_id")
+  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id])
+  type          String   // STOCK_IN, STOCK_OUT, ADJUSTMENT, ROLLOVER_OPENING, ROLLOVER_CLOSING
+  quantity      Float
+  notes         String?
+  performedBy   String?  @map("performed_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([itemId])
+  @@index([schoolYearId])
+  @@map("mrf_inventory_transactions")
 }

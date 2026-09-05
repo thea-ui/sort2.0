@@ -1,17 +1,22 @@
 import React from 'react';
 import { Leaf, ArrowRight, Recycle, Users, Award } from 'lucide-react';
+import { useMockData } from '../../hooks/useMockData';
 
 interface HeroSectionProps {
   scrollToLogin: () => void;
 }
 
-const STATS = [
-  { icon: Recycle, value: '1.2 tons', label: 'Waste Recovered This Year' },
-  { icon: Users, value: '480+', label: 'Active Student Participants' },
-  { icon: Award, value: '96', label: 'Eco Certificates Awarded' },
-];
-
 export const HeroSection: React.FC<HeroSectionProps> = ({ scrollToLogin }) => {
+  const { users, reports } = useMockData();
+  const studentCount = users.filter(u => u.role === 'STUDENT').length;
+  const totalReports = reports.length;
+  const totalKg = reports.reduce((sum, r) => sum + (r.weightCollected || 0), 0);
+
+  const STATS = [
+    { icon: Recycle, value: totalKg > 0 ? `${(totalKg / 1000).toFixed(1)} tons` : '0 kg', label: 'Waste Recovered' },
+    { icon: Users, value: studentCount > 0 ? `${studentCount}+` : '0', label: 'Active Students' },
+    { icon: Award, value: String(totalReports), label: 'Reports Submitted' },
+  ];
   return (
     <section className="relative overflow-hidden border-b border-[#00271D]/10 bg-[#F9F3F0]">
       {/* Subtle radial glow behind headline */}

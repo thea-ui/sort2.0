@@ -3,12 +3,13 @@ import { useMockData } from '../../hooks/useMockData';
 import { Recycle, Truck, FileText, TrendingUp } from 'lucide-react';
 
 export const MetricsRow: React.FC = () => {
-  const { reports, bins } = useMockData();
+  const { reports, bins, users } = useMockData();
 
   const totalWeight = reports.reduce((acc, r) => acc + (r.weightCollected || 0), 0);
   const activeDispatches = bins.filter((b) => b.activeDispatch).length;
   const resolvedCount = reports.filter((r) => r.status === 'RESOLVED').length;
   const pendingCount = reports.filter((r) => r.status === 'PENDING').length;
+  const totalPoints = users.reduce((acc, u) => acc + (u.points || 0), 0);
 
   const metrics = [
     {
@@ -37,11 +38,11 @@ export const MetricsRow: React.FC = () => {
     },
     {
       label: 'Eco Points Awarded',
-      value: '2,760',
+      value: totalPoints.toLocaleString(),
       sub: 'Total across all students',
       icon: TrendingUp,
       accent: 'sky',
-      trend: '+320 this week',
+      trend: 'Active points',
     },
   ];
 

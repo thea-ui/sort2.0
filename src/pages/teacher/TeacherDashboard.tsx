@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { Report } from '../../types';
 import {
@@ -15,24 +15,25 @@ import { TeacherOverviewTab } from './components/TeacherOverviewTab';
 import { TeacherSubmitReportTab } from './components/TeacherSubmitReportTab';
 import { TeacherBinMapTab } from './components/TeacherBinMapTab';
 import { TeacherReportHistoryTab } from './components/TeacherReportHistoryTab';
+import { SubmittedReportDetails } from './components/TeacherSubmitSuccessView';
+
+import { useSystemPresets } from '../../hooks/useSystemPresets';
 
 type InfrastructurePillar = 'waste' | 'furniture' | 'electronics' | 'fixtures' | 'equipment' | 'other';
+type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
 
 interface TeacherDashboardProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
 
-const AVATAR_COLORS = ['bg-emerald-500', 'bg-violet-500', 'bg-sky-500', 'bg-amber-500', 'bg-rose-500'];
-const getAvatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-
-const PILLAR_META: Record<InfrastructurePillar, { icon: React.ComponentType<any>; label: string; desc: string; accent: string; iconBg: string; iconText: string; border: string }> = {
+const BASE_PILLAR_META: Record<InfrastructurePillar, { icon: React.ComponentType<any>; label: string; desc: string; accent: string; iconBg: string; iconText: string; border: string }> = {
   waste:       { icon: Recycle,  label: 'Waste / Bin',  desc: 'Litter issues, overflows',       accent: 'emerald', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', border: 'border-emerald-200' },
   furniture:   { icon: Armchair, label: 'Furniture',    desc: 'Desks, classroom chairs',         accent: 'amber',   iconBg: 'bg-amber-50',   iconText: 'text-amber-600',   border: 'border-amber-200'   },
   electronics: { icon: Monitor,  label: 'Electronics',  desc: 'Projectors, display screens',     accent: 'sky',     iconBg: 'bg-sky-50',     iconText: 'text-sky-600',     border: 'border-sky-200'     },
   fixtures:    { icon: Zap,      label: 'Fixtures',     desc: 'AC fans, lights, switches',       accent: 'violet',  iconBg: 'bg-violet-50',  iconText: 'text-violet-600',  border: 'border-violet-200'  },
   equipment:   { icon: Wrench,   label: 'Equipment',    desc: 'Lab tool, janitorial asset',      accent: 'rose',    iconBg: 'bg-rose-50',    iconText: 'text-rose-600',    border: 'border-rose-200'    },
-  other:       { icon: FileText, label: 'Other',        desc: 'General structural repair',       accent: 'zinc',    iconBg: 'bg-zinc-50',    iconText: 'text-zinc-600',    border: 'border-zinc-200'    },
+  other:       { icon: FileText, label: 'Other',        desc: 'General structural repair',       accent: 'zinc',    iconBg: 'bg-zinc-50',    iconText: 'text-[#00271D]',   border: 'border-zinc-200'    },
 };
 
 const OBSERVATION_OPTIONS = [
@@ -69,14 +70,39 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     currentUser,
     reports,
     bins,
-    updateBinLevel,
-    toggleBinDispatch,
     createReport,
   } = useMockData();
 
+  const { presetGroups, categories } = useSystemPresets();
+
+  const PILLAR_META = useMemo(() => {
+    const meta = { ...BASE_PILLAR_META };
+
+    presetGroups.forEach((group) => {
+      const codeKey = (group.code || group.category.toLowerCase()) as InfrastructurePillar;
+      if (codeKey && meta[codeKey]) {
+        meta[codeKey] = {
+          ...meta[codeKey],
+          label: group.category,
+        };
+      }
+    });
+
+    categories.forEach((cat) => {
+      const codeKey = (cat.code || cat.name.toLowerCase()) as InfrastructurePillar;
+      if (codeKey && meta[codeKey]) {
+        meta[codeKey] = {
+          ...meta[codeKey],
+          label: cat.name,
+        };
+      }
+    });
+
+    return meta;
+  }, [presetGroups, categories]);
+
   // Map state
   const [selectedBinId, setSelectedBinId] = useState<string | null>('bin-1');
-  const activeBinDetail = bins.find(b => b.id === selectedBinId);
   const [isPinningMode, setIsPinningMode] = useState(false);
   const [isCustomDebrisPin, setIsCustomDebrisPin] = useState(false);
   const [assignedLocationText, setAssignedLocationText] = useState('Main Courtyard (Quad)');
@@ -95,6 +121,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
   const [gpsLoading, setGpsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [lastSubmittedReport, setLastSubmittedReport] = useState<SubmittedReportDetails | null>(null);
   const [urgency, setUrgency] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
 
   // Activity ledger filter
@@ -102,7 +129,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
 
   // ── Derived counts ────────────────────────────────────────────────────
-  const personalReports = reports.filter(r => r.reporterId === 'current');
+  const personalReports = reports.filter(r =>
+    r.reporterId === currentUser.id ||
+    r.reporterName?.toLowerCase() === currentUser.name?.toLowerCase()
+  );
 
   const myWasteReportsCount = personalReports.filter(r => {
     const d = r.description.toUpperCase();
@@ -127,12 +157,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
             d.includes('[PILLAR: FIXTURES]')  || d.includes('[PILLAR: EQUIPMENT]')   ||
             d.includes('[PILLAR: OTHER]')) && r.status === 'RESOLVED';
   }).length;
-
-  const totalKgDiverted  = personalReports.reduce((s, r) => s + (r.weightCollected || 0), 0);
-  const treesSaved       = (currentUser.points / 120).toFixed(1);
-  const ecoRingPct       = Math.min(Math.round((totalKgDiverted / 50) * 100), 100);
-  const ecoCircumference = 2 * Math.PI * 14;
-  const ecoOffset        = ecoCircumference * (1 - ecoRingPct / 100);
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleCapture = () => {
@@ -160,23 +184,53 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reportTitle.trim() || !notes.trim()) return;
     setIsSubmitting(true);
     setTimeout(() => {
+      const isWaste = pillarCategory === 'waste';
+
+      let reportCat: BinCategory | 'GENERAL' = 'GENERAL';
+      if (isWaste) {
+        const t = (reportTitle || '').toUpperCase();
+        if (t.includes('NON')) reportCat = 'NON_BIODEGRADABLE';
+        else if (t.includes('BIO')) reportCat = 'BIODEGRADABLE';
+        else if (t.includes('RECYC')) reportCat = 'RECYCLABLE';
+        else reportCat = 'RECYCLABLE';
+      }
+
       const pillarText   = `[Pillar: ${pillarCategory.toUpperCase()}]`;
       const obsText      = `[Observation: ${observation}]`;
-      const pinText      = isCustomDebrisPin ? '[Custom Debris Pin]' : '[Designated Location]';
-      const formattedDesc = `${pillarText} ${obsText} ${pinText} ${notes}`;
-      const buildingAndRoom = roomNumber.trim() ? `${selectedBuilding} - ${roomNumber}` : selectedBuilding;
+      const pinText      = isCustomDebrisPin ? '[Custom Debris Pin]' : `[Location: ${selectedBuilding}]`;
+      const formattedDesc = `${pillarText} ${obsText} ${pinText} ${notes}`.trim();
+      const trimmedRoom = roomNumber.trim();
+      const trimmedBuilding = selectedBuilding.trim();
+      const buildingAndRoom = isCustomDebrisPin
+        ? 'Scattered Debris'
+        : (trimmedRoom && trimmedRoom !== trimmedBuilding ? `${trimmedBuilding} - ${trimmedRoom}` : trimmedBuilding);
+      const titleToUse = reportTitle || (isCustomDebrisPin ? 'Scattered Debris' : (isWaste ? 'Waste Report' : `${pillarCategory.toUpperCase()} Infrastructure Issue`));
 
       createReport({
-        title: reportTitle,
+        title: titleToUse,
         description: formattedDesc,
-        category: 'GENERAL',
-        urgency,
+        category: reportCat,
+        urgency: urgency || 'MEDIUM',
         locationName: buildingAndRoom,
         coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
         imageUrl: capturedImage || undefined,
+      });
+
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      setLastSubmittedReport({
+        title: titleToUse,
+        category: pillarCategory,
+        location: buildingAndRoom,
+        urgency: urgency || 'MEDIUM',
+        observation: observation || 'Damaged',
+        notes: notes || '',
+        imageUrl: capturedImage,
+        ticketId: `TKT-${Math.floor(100000 + Math.random() * 900000)}`,
+        timestamp: timeStr,
       });
 
       setIsSubmitting(false);
@@ -191,7 +245,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
       setSelectedBuilding('Main Courtyard (Quad)');
       setRoomNumber('');
       setWizardStep(1);
-      setTimeout(() => setSubmitSuccess(false), 4000);
     }, 1200);
   };
 
@@ -232,29 +285,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     Dismissed: 'border-l-rose-400',
   };
 
-  const CAT_ICON: Record<string, React.ComponentType<any>> = {
-    'Waste/Bin': Recycle, Furniture: Armchair, Electronics: Monitor,
-    Fixtures: Zap, Equipment: Wrench, Other: FileText,
-  };
-
-  const timelineReports: Report[] = [
-    ...personalReports,
-    {
-      id: 'mock-dismissed-1',
-      title: 'Duplicate Bin Placement Alert [Dismissed]',
-      description: '[Pillar: WASTE] [Observation: Overflowing] [Custom Debris Pin] Secondary bin placement requested in sports corridor.',
-      status: 'PENDING' as any,
-      urgency: 'LOW' as const,
-      category: 'GENERAL' as const,
-      coordinates: { lat: 14.6000, lng: 120.9850 },
-      locationName: 'Sports Complex - Floor 1',
-      reporterId: 'current',
-      reporterName: currentUser.name,
-      pointsAwarded: 0,
-      timestamp: '2026-07-15 14:20',
-      imageUrl: undefined,
-    },
-  ];
+  const timelineReports: Report[] = personalReports;
 
   const isWasteCategory = pillarCategory === 'waste';
 
@@ -277,6 +308,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
 
       {activeTab === 'submit-report' && (
         <TeacherSubmitReportTab
+          bins={bins}
+          reports={reports}
           pillarCategory={pillarCategory}
           setPillarCategory={setPillarCategory}
           reportTitle={reportTitle}
@@ -301,6 +334,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
           handleGPSDetect={handleGPSDetect}
           isSubmitting={isSubmitting}
           submitSuccess={submitSuccess}
+          setSubmitSuccess={setSubmitSuccess}
+          lastSubmittedReport={lastSubmittedReport}
           urgency={urgency}
           setUrgency={setUrgency}
           isPinningMode={isPinningMode}
@@ -316,27 +351,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
           isWasteCategory={isWasteCategory}
           MAP_BOUNDS={MAP_BOUNDS}
           coordToPct={coordToPct}
+          setActiveTab={setActiveTab}
         />
       )}
 
       {activeTab === 'bin-map' && (
         <TeacherBinMapTab
           bins={bins}
-          selectedBinId={selectedBinId}
-          setSelectedBinId={setSelectedBinId}
-          activeBinDetail={activeBinDetail}
-          isPinningMode={isPinningMode}
-          setIsPinningMode={setIsPinningMode}
-          isCustomDebrisPin={isCustomDebrisPin}
-          setIsCustomDebrisPin={setIsCustomDebrisPin}
-          gpsCoords={gpsCoords}
-          setGpsCoords={setGpsCoords}
-          assignedLocationText={assignedLocationText}
-          setAssignedLocationText={setAssignedLocationText}
-          updateBinLevel={updateBinLevel}
-          toggleBinDispatch={toggleBinDispatch}
-          MAP_BOUNDS={MAP_BOUNDS}
-          coordToPct={coordToPct}
+          reports={reports}
+          setActiveTab={setActiveTab}
         />
       )}
 

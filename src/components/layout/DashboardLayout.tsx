@@ -22,6 +22,16 @@ import {
   Wrench,
   Trash2,
   RotateCcw,
+  PackageCheck,
+  Scale,
+  BarChart2,
+  TrendingUp,
+  Trophy,
+  MapPin,
+  Newspaper,
+  ClipboardList,
+  Package,
+  CalendarClock,
 } from 'lucide-react';
 
 // ── Nav item definitions ──────────────────────────────────────────────────────
@@ -33,19 +43,56 @@ interface NavItem {
   roles: Role[];
 }
 
-const NAV_ITEMS: NavItem[] = [
-  // MRF
-  { id: 'overview',    label: 'Overview',   icon: LayoutDashboard, roles: ['MRF'] },
-  { id: 'dispatches',  label: 'Dispatches', icon: Truck,           roles: ['MRF'] },
-  { id: 'mrf-history', label: 'History',    icon: History,         roles: ['MRF'] },
-  // Admin
-  { id: 'overview',       label: 'Overview',  icon: LayoutDashboard, roles: ['ADMIN'] },
-  { id: 'admin-reports',  label: 'Reports',   icon: FileText,        roles: ['ADMIN'] },
-  { id: 'admin-users',    label: 'Users',     icon: Users,           roles: ['ADMIN'] },
-  { id: 'admin-warnings', label: 'Warnings',  icon: AlertOctagon,    roles: ['ADMIN'] },
-  { id: 'admin-settings', label: 'Settings',  icon: Settings,        roles: ['ADMIN'] },
-  { id: 'admin-sync',     label: 'Sync Logs', icon: RefreshCw,       roles: ['ADMIN'] },
+const MRF_NAV_ITEMS: NavItem[] = [
+  { id: 'overview',       label: 'Overview',         icon: LayoutDashboard, roles: ['MRF'] },
+  { id: 'dispatches',     label: 'Dispatches',       icon: Truck,           roles: ['MRF'] },
+  { id: 'mrf-direct',     label: 'Direct Pickup',    icon: PackageCheck,    roles: ['MRF'] },
+  { id: 'mrf-inventory',  label: 'Inventory',        icon: Package,         roles: ['MRF'] },
+  { id: 'mrf-market',     label: 'Recycle Market',   icon: Scale,           roles: ['MRF'] },
+  { id: 'mrf-history',    label: 'History',          icon: History,         roles: ['MRF'] },
 ];
+
+export const ADMIN_SECTIONS = [
+  {
+    group: 'DATA & ANALYTICS',
+    items: [
+      { id: 'overview', label: 'Overview', icon: BarChart2 },
+      { id: 'admin-impact', label: 'Operational Analytics', icon: TrendingUp },
+      { id: 'admin-leaderboard', label: 'Leaderboard', icon: Trophy },
+    ],
+  },
+  {
+    group: 'MANAGEMENT',
+    items: [
+      { id: 'admin-reports', label: 'Reports', icon: FileText },
+      { id: 'admin-collections', label: 'Collections', icon: Scale },
+      { id: 'admin-bin-map', label: 'Bin Map', icon: MapPin },
+      { id: 'admin-campus-news', label: 'Campus News', icon: Newspaper },
+    ],
+  },
+  {
+    group: 'ADMINISTRATION',
+    items: [
+      { id: 'admin-users', label: 'Users', icon: Users },
+      { id: 'admin-audit-logs', label: 'Audit Logs', icon: ClipboardList },
+      { id: 'admin-settings', label: 'Settings', icon: Settings, hasSubmenu: true },
+    ],
+  },
+];
+
+export const SETTINGS_SUBITEMS = [
+  { id: 'locations', label: 'Locations' },
+  { id: 'academic-calendar', label: 'Academic Calendar' },
+  { id: 'school-years', label: 'School Years' },
+  { id: 'asset-categories', label: 'Asset Categories' },
+  { id: 'item-presets', label: 'Item Presets' },
+  { id: 'points-system', label: 'Points System' },
+  { id: 'waste-types', label: 'Waste Types' },
+  { id: 'urgency-levels', label: 'Urgency Levels' },
+  { id: 'asset-conditions', label: 'Asset Conditions' },
+  { id: 'danger-zone', label: 'Danger Zone' },
+];
+
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -62,18 +109,26 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { currentUser, changeRole, logout, reports, resetDatabase } = useMockData();
+  const { currentUser, changeRole, logout, reports, resetDatabase, notifications, dismissNotification } = useMockData();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [purgedMessage, setPurgedMessage] = useState(false);
 
+  const mainRef = React.useRef<HTMLElement>(null);
+
+  React.useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
+
   if (!currentUser) return null;
 
   const isMRF   = currentUser.role === 'MRF';
-  const navItems = NAV_ITEMS.filter(item => item.roles.includes(currentUser.role));
-  const pendingCount = reports.filter(r => r.status === 'PENDING').length;
-  const recentReports = reports.slice(0, 3);
+  const navItems = isMRF ? MRF_NAV_ITEMS : [];
+  const adminNotifications = notifications.filter(n => n.recipientId === 'admin' || n.recipientId === currentUser.id);
+  const unreadCount = adminNotifications.length;
   const subtitle  = isMRF ? 'MRF Terminal' : 'Admin Console';
   const roleColor = isMRF
     ? 'bg-sky-500 shadow-sky-500/20'
@@ -86,15 +141,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   const handlePurge = () => {
-    if (window.confirm('Wipe all reports, scores, and offenses to start fresh testing?')) {
+    if (window.confirm('Wipe all reports, scores, offenses, and reset recycle market inventory to start fresh testing?')) {
       resetDatabase();
+      // Notify market subscribers to refresh after the purge round-trip completes
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('sort_market_updated'));
+      }, 600);
       setPurgedMessage(true);
       setTimeout(() => setPurgedMessage(false), 3000);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F3F0] text-[#00271D] flex flex-col font-sans relative">
+    <div className="h-screen max-h-screen bg-[#F9F3F0] text-[#00271D] flex flex-col font-sans relative overflow-hidden">
 
       {/* ── Organic Background ── */}
       <svg className="fixed inset-0 w-full h-full pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
@@ -103,8 +162,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <ellipse cx="60%" cy="45%" rx="20%" ry="15%" fill="#e0f2ec" opacity="0.25" />
       </svg>
 
-      {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-40 w-full bg-white/85 backdrop-blur-xl border-b border-[#00271D]/10 px-4 py-3 flex items-center justify-between shadow-sm shadow-[#00271D]/5">
+      {/* ── Fixed Top Header ── */}
+      <header className="shrink-0 z-40 w-full bg-white/85 backdrop-blur-xl border-b border-[#00271D]/10 px-4 py-3 flex items-center justify-between shadow-sm shadow-[#00271D]/5">
         <div className="flex items-center gap-3">
           {/* Mobile hamburger */}
           <button
@@ -146,9 +205,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-[#00271D] transition-colors relative cursor-pointer"
             >
               <Bell size={16} />
-              {pendingCount > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white">
-                  {pendingCount}
+                  {unreadCount}
                 </span>
               )}
             </button>
@@ -157,22 +216,49 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50">
                 <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                   <h4 className="font-bold text-xs text-[#00271D] uppercase tracking-wider">Alerts & Actions</h4>
-                  <span className="text-[10px] px-2 py-0.5 bg-[#00A77C]/10 text-[#00A77C] rounded-full font-bold border border-[#00A77C]/20">
-                    {pendingCount} Pending
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); adminNotifications.forEach(n => dismissNotification(n.id)); }}
+                        className="text-[9px] text-[#00A77C] font-bold hover:underline cursor-pointer"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    <span className="text-[10px] px-2 py-0.5 bg-[#00A77C]/10 text-[#00A77C] rounded-full font-bold border border-[#00A77C]/20">
+                      {unreadCount} New
+                    </span>
+                  </div>
                 </div>
                 <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
-                  {recentReports.map(rep => (
-                    <div key={rep.id} className="p-3 hover:bg-gray-50 transition-colors cursor-pointer">
-                      <div className="flex justify-between items-start mb-0.5">
-                        <span className={`text-xs font-bold ${rep.status === 'PENDING' ? 'text-amber-600' : 'text-[#00A77C]'}`}>
-                          {rep.title}
-                        </span>
-                        <span className="text-[9px] text-gray-400 shrink-0 ml-2">Today</span>
+                  {adminNotifications.map(notif => {
+                    const isVerified = notif.type === 'REPORT_VERIFIED';
+                    const isDispatched = notif.type === 'REPORT_DISPATCHED';
+                    const isCompleted = notif.type === 'REPORT_COMPLETED';
+                    const isSubmitted = notif.type === 'REPORT_SUBMITTED';
+
+                    const color = isCompleted ? 'text-emerald-700' : isVerified ? 'text-amber-700' : isDispatched ? 'text-indigo-700' : isSubmitted ? 'text-sky-600' : 'text-gray-600';
+                    const label = isCompleted ? 'MRF Completed' : isVerified ? 'Verified' : isDispatched ? 'Dispatched' : isSubmitted ? 'New Report' : 'Update';
+
+                    return (
+                      <div
+                        key={notif.id}
+                        onClick={() => { dismissNotification(notif.id); setNotificationsOpen(false); setActiveTab(isMRF ? 'dispatches' : 'admin-reports'); }}
+                        className="p-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex justify-between items-start mb-0.5">
+                          <span className={`text-xs font-bold ${color}`}>
+                            [{label}] {notif.title}
+                          </span>
+                          <span className="text-[9px] text-gray-400 shrink-0 ml-2">{new Date(notif.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 line-clamp-1">{notif.message}</p>
                       </div>
-                      <p className="text-[11px] text-gray-500 line-clamp-1">{rep.description}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
+                  {adminNotifications.length === 0 && (
+                    <p className="text-xs text-gray-400 text-center py-6">No new alerts.</p>
+                  )}
                 </div>
                 <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
                   <button
@@ -252,55 +338,123 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </header>
 
       {/* ── BODY (Sidebar + Main) ── */}
-      <div className="flex flex-1 overflow-hidden relative z-10">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative z-10">
 
-        {/* ── Sidebar ── */}
+        {/* ── Fixed Left Sidebar ── */}
         <aside className={`
           fixed inset-y-0 left-0 z-30 w-60 bg-white/90 backdrop-blur-xl border-r border-[#00271D]/8
-          pt-20 pb-4 px-3 flex flex-col justify-between
+          pt-20 pb-4 px-3 flex flex-col justify-between shrink-0 overflow-y-auto
           transform transition-transform duration-300 ease-in-out
-          md:translate-x-0 md:static md:pt-4
+          md:translate-x-0 md:relative md:inset-auto md:h-full md:pt-4
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 overflow-hidden flex-1">
 
             {/* Section label */}
-            <div className="px-2 pb-2 border-b border-[#00271D]/8 hidden md:block">
+            <div className="px-2 pb-2 border-b border-[#00271D]/8 hidden md:block shrink-0">
               <span className="text-[10px] font-black text-[#00271D]/30 tracking-widest uppercase">
                 {isMRF ? 'MRF Operations' : 'Admin Control'}
               </span>
             </div>
 
             {/* Nav items */}
-            <nav className="flex flex-col gap-0.5">
-              {navItems.map(item => {
-                const isActive = activeTab === item.id;
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={`${item.roles[0]}-${item.id}`}
-                    onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                    className={`
-                      w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all group cursor-pointer
-                      ${isActive
-                        ? 'bg-[#00A77C]/10 text-[#00A77C]'
-                        : 'text-[#00271D]/55 hover:bg-[#00271D]/5 hover:text-[#00271D]'}
-                    `}
-                  >
-                    <Icon
-                      size={15}
-                      className={`transition-colors shrink-0 ${isActive ? 'text-[#00A77C]' : 'text-[#00271D]/30 group-hover:text-[#00271D]'}`}
-                    />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {isActive && <ChevronRight size={11} className="text-[#00A77C] shrink-0" />}
-                  </button>
-                );
-              })}
+            <nav className="flex flex-col gap-4 overflow-y-auto flex-1 pr-1">
+              {isMRF ? (
+                <div className="flex flex-col gap-0.5">
+                  {MRF_NAV_ITEMS.map(item => {
+                    const isActive = activeTab === item.id;
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                        className={`
+                          w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all group cursor-pointer
+                          ${isActive
+                            ? 'bg-[#00A77C]/10 text-[#00A77C]'
+                            : 'text-[#00271D]/55 hover:bg-[#00271D]/5 hover:text-[#00271D]'}
+                        `}
+                      >
+                        <Icon
+                          size={15}
+                          className={`transition-colors shrink-0 ${isActive ? 'text-[#00A77C]' : 'text-[#00271D]/30 group-hover:text-[#00271D]'}`}
+                        />
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {isActive && <ChevronRight size={11} className="text-[#00A77C] shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                ADMIN_SECTIONS.map(section => (
+                  <div key={section.group} className="space-y-1">
+                    <span className="px-3 text-[10px] font-black text-[#00271D]/40 uppercase tracking-wider block">
+                      {section.group}
+                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      {section.items.map(item => {
+                        const isSettings = item.id === 'admin-settings';
+                        const isSettingsActive = isSettings && (activeTab === 'admin-settings' || SETTINGS_SUBITEMS.some(sub => sub.id === activeTab));
+                        const isActive = activeTab === item.id || isSettingsActive;
+                        const Icon = item.icon;
+
+                        return (
+                          <React.Fragment key={item.id}>
+                            <button
+                              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                              className={`
+                                w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all group cursor-pointer
+                                ${isActive
+                                  ? 'bg-[#00271D] text-white shadow-sm'
+                                  : 'text-[#00271D]/70 hover:bg-[#00271D]/5 hover:text-[#00271D]'}
+                              `}
+                            >
+                              <Icon
+                                size={15}
+                                className={`transition-colors shrink-0 ${isActive ? 'text-[#00A77C]' : 'text-[#00271D]/40 group-hover:text-[#00271D]'}`}
+                              />
+                              <span className="flex-1 text-left">{item.label}</span>
+                              {isSettings && (
+                                <ChevronDown size={12} className={`transition-transform shrink-0 ${isSettingsActive ? 'rotate-180 text-white' : 'text-[#00271D]/30'}`} />
+                              )}
+                              {isActive && !isSettings && <div className="w-1.5 h-1.5 rounded-full bg-[#00A77C] shrink-0" />}
+                            </button>
+
+                            {/* Settings Expandable Sub-Menu */}
+                            {isSettings && isSettingsActive && (
+                              <div className="pl-7 pr-1 py-1 space-y-0.5">
+                                {SETTINGS_SUBITEMS.map(sub => {
+                                  const isSubActive = activeTab === sub.id || (activeTab === 'admin-settings' && sub.id === 'academic-calendar');
+                                  return (
+                                    <button
+                                      key={sub.id}
+                                      onClick={() => { setActiveTab(sub.id); setSidebarOpen(false); }}
+                                      className={`
+                                        w-full text-left px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all block cursor-pointer
+                                        ${isSubActive
+                                          ? 'bg-[#00A77C]/15 text-[#00A77C] font-bold'
+                                          : 'text-[#00271D]/60 hover:text-[#00271D] hover:bg-[#00271D]/5'}
+                                      `}
+                                    >
+                                      {sub.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
             </nav>
+
           </div>
 
           {/* Sidebar Footer */}
-          <div className="flex flex-col gap-2 pt-4 border-t border-[#00271D]/8">
+          <div className="flex flex-col gap-2 pt-4 border-t border-[#00271D]/8 shrink-0">
             <button
               onClick={() => logout()}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-[#00271D]/40 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
@@ -324,8 +478,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           />
         )}
 
-        {/* ── Main Content ── */}
-        <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 relative z-10">
+        {/* ── Main Content (Scrollable) ── */}
+        <main ref={mainRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 relative z-10 h-full min-w-0">
           {children}
         </main>
 

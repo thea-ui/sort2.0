@@ -49,15 +49,14 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
       const actualCount = reports.filter(r =>
         r.reporterId === u.id ||
         r.reporterName === u.name ||
-        (r.reporterId && u.email && r.reporterId.toLowerCase() === u.email.toLowerCase()) ||
-        (u.email.toLowerCase() === currentUser.email.toLowerCase() && (r.reporterId === 'current' || r.reporterId === currentUser.id))
+        (u.email.toLowerCase() === currentUser.email.toLowerCase() && r.reporterId === currentUser.id)
       ).length;
 
       return {
         rank: index + 1,
         studentId: u.id,
         studentName: u.name,
-        gradeSection: u.classroomSection || 'BSIT-3A',
+        gradeSection: (u as any).gradeLevel ? `${(u as any).gradeLevel} — ${(u as any).sectionName}` : u.classroomSection || 'N/A',
         pointsBalance: u.points,
         reportsCount: actualCount,
         isCurrentUser: u.email.toLowerCase() === currentUser.email.toLowerCase()
@@ -200,7 +199,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
             No students found matching your search.
           </div>
         ) : (
-          filteredEntries.map((user) => {
+          filteredEntries.slice(0, 10).map((user) => {
             const isUser = user.isCurrentUser;
             const initial = user.studentName.charAt(0).toUpperCase();
 

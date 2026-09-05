@@ -10,6 +10,17 @@ import { BinMapTab } from './components/BinMapTab';
 import { ReportHistoryTab } from './components/ReportHistoryTab';
 import { GamificationTab } from './components/GamificationTab';
 
+export interface StudentSubmittedReportDetails {
+  title: string;
+  category: WasteCategory;
+  location: string;
+  urgency: 'LOW' | 'MEDIUM' | 'HIGH';
+  notes?: string;
+  imageUrl?: string | null;
+  ticketId: string;
+  timestamp: string;
+}
+
 interface StudentDashboardProps {
   activeTab: string;
   setActiveTab?: (tab: string) => void;
@@ -40,6 +51,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
     reports,
     bins,
     challenges,
+    offenses,
     createReport,
     settings,
     deductPoints,
@@ -72,9 +84,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
   // Filter personal reports
   const personalReports = reports.filter(r =>
     r.reporterId === currentUser?.id ||
-    r.reporterId === 'current' ||
-    r.reporterName === currentUser?.name ||
-    (r.reporterId && currentUser?.email && r.reporterId.toLowerCase() === currentUser.email.toLowerCase())
+    r.reporterName?.toLowerCase() === currentUser?.name?.toLowerCase()
   );
 
   const mockImages: Record<WasteCategory, string> = {
@@ -105,6 +115,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
     }
   };
 
+  const [lastSubmittedReport, setLastSubmittedReport] = useState<StudentSubmittedReportDetails | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -113,23 +125,40 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
       const subcategoriesText = selectedMaterials.length > 0 
         ? `[Materials: ${selectedMaterials.map(m => m.charAt(0).toUpperCase() + m.slice(1)).join(', ')}]` 
         : '';
-      const associatedBinText = binId ? `[Associated Bin ID: ${binId}]` : '[Scattered Debris Pin]';
+      const associatedBinText = binId ? `[Associated Bin ID: ${binId}]` : isScatteredDebris ? '[Scattered Debris Pin]' : `[Location: ${locationName}]`;
       const formattedDesc = `${associatedBinText} ${subcategoriesText} ${reportDesc}`.trim();
+      const locToUse = isScatteredDebris ? 'Scattered Debris' : (locationName || 'Campus Station');
+      const titleToUse = reportTitle || (isScatteredDebris ? 'Scattered Debris' : `Waste Report at ${locToUse}`);
 
       createReport({
-        title: reportTitle || `Waste Report at ${locationName}`,
+        title: titleToUse,
         description: formattedDesc,
         category: category,
         urgency,
-        locationName,
+        locationName: locToUse,
         coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
         imageUrl: capturedImage || undefined,
+        isScatteredDebris: isScatteredDebris,
+      });
+
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      setLastSubmittedReport({
+        title: titleToUse,
+        category: category,
+        location: locToUse,
+        urgency: urgency || 'MEDIUM',
+        notes: reportDesc || '',
+        imageUrl: capturedImage,
+        ticketId: `TKT-${Math.floor(100000 + Math.random() * 900000)}`,
+        timestamp: timeStr,
       });
 
       setIsSubmitting(false);
       setSubmitSuccess(true);
       
-      // Reset Form
+      // Reset Form State
       setReportTitle('');
       setReportDesc('');
       setCapturedImage(null);
@@ -139,10 +168,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
       setSelectedMaterials([]);
       setSliderValue(2);
       setUrgency('MEDIUM');
-
-      setTimeout(() => {
-        setSubmitSuccess(false);
-      }, 3000);
+      setCategory('RECYCLABLE');
+      setLocationName('');
     }, 1200);
   };
 
@@ -154,6 +181,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
         <OverviewTab 
           currentUser={currentUser} 
           reports={reports} 
+          offenses={offenses}
           setActiveTab={setActiveTab} 
         />
       )}
@@ -186,6 +214,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
           setGpsCoords={setGpsCoords}
           isSubmitting={isSubmitting}
           submitSuccess={submitSuccess}
+          setSubmitSuccess={setSubmitSuccess}
+          lastSubmittedReport={lastSubmittedReport}
           binId={binId}
           setBinId={setBinId}
           isScatteredDebris={isScatteredDebris}

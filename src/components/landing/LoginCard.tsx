@@ -3,9 +3,9 @@ import { useMockData } from '../../hooks/useMockData';
 import { Lock, ArrowRight, AlertCircle, Eye, EyeOff, ChevronDown } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
-  { role: 'Student 1', color: 'text-sky-600',    email: 'student1@sort.edu',  id: 'student123' },
-  { role: 'Student 2', color: 'text-sky-600',    email: 'student2@sort.edu',  id: 'student123' },
-  { role: 'Teacher',   color: 'text-violet-600', email: 'teacher1@sort.edu',  id: 'teacher123' },
+  { role: 'Student', color: 'text-sky-600',    identifier: '202900000006', password: 'DepEd2026!' },
+  { role: 'Teacher', color: 'text-violet-600', identifier: '1000007',      password: 'DepEd2026!' },
+  { role: 'Admin',   color: 'text-rose-600',   identifier: '1234501',      password: 'DepEd2026!' },
 ];
 
 interface LoginCardProps {
@@ -15,34 +15,34 @@ interface LoginCardProps {
 export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
   const { login } = useMockData();
 
-  const [email, setEmail] = useState('');
-  const [employeeId, setEmployeeId] = useState('');
-  const [showId, setShowId] = useState(false);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
 
   const fillDemo = (acc: (typeof DEMO_ACCOUNTS)[0]) => {
-    setEmail(acc.email);
-    setEmployeeId(acc.id);
+    setIdentifier(acc.identifier);
+    setPassword(acc.password);
     setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !employeeId.trim()) {
+    if (!identifier.trim() || !password.trim()) {
       setError('Please fill in both fields to continue.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const ok = await login(employeeId, email);
+      const ok = await login(password, identifier);
       setLoading(false);
       if (ok) {
         onAuthenticated();
       } else {
-        setError('No account found in database. All credentials are pre-provisioned by the school administration.');
+        setError('No account found. Students use LRN, staff use Employee ID.');
       }
     } catch {
       setLoading(false);
@@ -62,8 +62,8 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
             <Lock size={17} className="text-emerald-600" strokeWidth={2} />
           </div>
           <div>
-            <h2 className="text-base font-extrabold tracking-tight text-gray-900">Staff & Student Access</h2>
-            <p className="text-[11px] text-gray-400">Use your school-provisioned credentials</p>
+            <h2 className="text-base font-extrabold tracking-tight text-gray-900">SORT Login</h2>
+            <p className="text-[11px] text-gray-400">Students use LRN · Staff use Employee ID</p>
           </div>
         </div>
 
@@ -79,37 +79,37 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              Email Address
+              LRN / Employee ID
             </label>
             <input
-              type="email"
+              type="text"
               required
-              placeholder="you@campus.edu"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. 123456789012 or TCH-001"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-300 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              Employee / Student ID
+              Password
             </label>
             <div className="relative">
               <input
-                type={showId ? 'text' : 'password'}
+                type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="STU-2026-000"
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-300 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
               />
               <button
                 type="button"
-                onClick={() => setShowId(!showId)}
+                onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
               >
-                {showId ? <EyeOff size={15} /> : <Eye size={15} />}
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
           </div>
@@ -122,11 +122,11 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
             {loading ? (
               <>
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Verifying credentials…
+                Verifying…
               </>
             ) : (
               <>
-                Enter Control Console
+                Sign In
                 <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
               </>
             )}
@@ -140,7 +140,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
             onClick={() => setShowDemo(!showDemo)}
             className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-gray-400 transition-colors hover:text-gray-600"
           >
-            <span>Reviewer Test Accounts</span>
+            <span>Demo Accounts</span>
             <ChevronDown size={13} className={`transition-transform ${showDemo ? 'rotate-180' : ''}`} />
           </button>
 
@@ -157,8 +157,8 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
                     {acc.role}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate font-mono text-[11px] text-gray-600">{acc.email}</p>
-                    <p className="font-mono text-[10px] text-gray-400">{acc.id}</p>
+                    <p className="font-mono text-[11px] text-gray-600">{acc.identifier}</p>
+                    <p className="font-mono text-[10px] text-gray-400">{acc.password}</p>
                   </div>
                   <span className="ml-auto shrink-0 text-[9px] font-semibold text-gray-400 group-hover:text-emerald-600">
                     Fill →

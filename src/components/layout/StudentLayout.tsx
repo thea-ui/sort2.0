@@ -9,7 +9,10 @@ import {
   Bell,
   ChevronDown,
   Flame,
-  GraduationCap
+  GraduationCap,
+  CheckCircle2,
+  Truck,
+  XCircle
 } from 'lucide-react';
 import { Role } from '../../types';
 import { SortLogo } from '../common/SortLogo';
@@ -29,7 +32,7 @@ const ALL_NAV_ITEMS = [
 ];
 
 export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTab, setActiveTab }) => {
-  const { currentUser, changeRole, logout, reports } = useMockData();
+  const { currentUser, changeRole, logout, reports, notifications, dismissNotification } = useMockData();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -42,11 +45,22 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
     ? ALL_NAV_ITEMS.filter(item => item.id !== 'gamification')
     : ALL_NAV_ITEMS;
 
-  const pendingReportsCount = reports.filter(r => r.status === 'PENDING').length;
+  const myNotifications = notifications.filter(n => n.recipientId === currentUser.id || n.recipientId === 'admin');
+  const unreadCount = myNotifications.length;
 
   const handleRoleToggle = (role: Role) => {
     changeRole(role);
     setProfileDropdownOpen(false);
+  };
+
+  const handleDismissNotification = (notifId: string, reportId: string) => {
+    dismissNotification(notifId);
+    setNotificationsOpen(false);
+    setActiveTab('report-history');
+  };
+
+  const handleClearAll = () => {
+    myNotifications.forEach(n => dismissNotification(n.id));
   };
 
   return (
@@ -106,9 +120,9 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-[#00271D] transition-colors relative cursor-pointer"
               >
                 <Bell size={16} />
-                {pendingReportsCount > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white">
-                    {pendingReportsCount}
+                    {unreadCount}
                   </span>
                 )}
               </button>
@@ -117,39 +131,49 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                 <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-fade-in">
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                     <h4 className="font-bold text-xs text-[#00271D] uppercase tracking-wider">My Notifications & Updates</h4>
-                    <span className="text-[10px] px-2 py-0.5 bg-[#00A77C]/10 text-[#00A77C] rounded-full font-bold border border-[#00A77C]/20">
-                      Live Feed
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleClearAll(); }}
+                          className="text-[9px] text-[#00A77C] font-bold hover:underline cursor-pointer"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                      <span className="text-[10px] px-2 py-0.5 bg-[#00A77C]/10 text-[#00A77C] rounded-full font-bold border border-[#00A77C]/20">
+                        Live Feed
+                      </span>
+                    </div>
                   </div>
                   <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
-                    {reports.filter(r => r.reporterId === currentUser.id || r.reporterId === 'current').map(rep => {
-                      const isDispatched = rep.status === 'DISPATCHED';
-                      const isResolved = rep.status === 'COLLECTED' || rep.status === 'RESOLVED';
+                    {myNotifications.map(notif => {
+                      const isVerified = notif.type === 'REPORT_VERIFIED';
+                      const isDispatched = notif.type === 'REPORT_DISPATCHED';
+                      const isCompleted = notif.type === 'REPORT_COMPLETED';
+                      const isDismissed = notif.type === 'REPORT_DISMISSED';
+
+                      const Icon = isCompleted ? CheckCircle2 : isVerified ? Zap : isDispatched ? Truck : isDismissed ? XCircle : Clock;
+                      const color = isCompleted ? 'text-emerald-700' : isVerified ? 'text-amber-700' : isDispatched ? 'text-indigo-700' : isDismissed ? 'text-rose-600' : 'text-amber-700';
+                      const label = isCompleted ? 'MRF Completed Cleanup' : isVerified ? 'Report Verified + Points' : isDispatched ? 'MRF Collector Dispatched' : isDismissed ? 'Report Dismissed' : 'Update';
 
                       return (
                         <div
-                          key={rep.id}
-                          onClick={() => { setNotificationsOpen(false); setActiveTab('report-history'); }}
+                          key={notif.id}
+                          onClick={() => handleDismissNotification(notif.id, notif.reportId)}
                           className="p-3 hover:bg-gray-50 transition-colors cursor-pointer space-y-0.5"
                         >
                           <div className="flex justify-between items-center">
-                            <span className={`text-xs font-extrabold ${isResolved ? 'text-emerald-700' : isDispatched ? 'text-indigo-700' : 'text-amber-700'}`}>
-                              {isResolved ? '✓ MRF Completed Cleanup' : isDispatched ? '🚚 Admin Verified Report' : '⏳ Pending Admin Review'}
+                            <span className={`text-xs font-extrabold flex items-center gap-1 ${color}`}>
+                              <Icon size={11} /> {label}
                             </span>
-                            <span className="text-[9px] text-gray-400 font-medium">{rep.timestamp}</span>
+                            <span className="text-[9px] text-gray-400 font-medium">{new Date(notif.timestamp).toLocaleString()}</span>
                           </div>
-                          <p className="text-[11px] text-gray-700 font-semibold">{rep.title}</p>
-                          <p className="text-[10px] text-gray-500">
-                            {isResolved
-                              ? `Cleanup finished! Awarded +${(rep.pointsAwarded && rep.pointsAwarded !== 50) ? rep.pointsAwarded : 15} pts.`
-                              : isDispatched
-                              ? `Admin confirmed valid report at ${rep.locationName}. Assigned to MRF.`
-                              : `Submitted report at ${rep.locationName}. Awaiting Admin verification.`}
-                          </p>
+                          <p className="text-[11px] text-gray-700 font-semibold">{notif.title}</p>
+                          <p className="text-[10px] text-gray-500">{notif.message}</p>
                         </div>
                       );
                     })}
-                    {reports.filter(r => r.reporterId === currentUser.id || r.reporterId === 'current').length === 0 && (
+                    {myNotifications.length === 0 && (
                       <p className="text-xs text-gray-400 text-center py-6">No notifications yet.</p>
                     )}
                   </div>
