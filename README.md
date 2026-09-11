@@ -13,19 +13,14 @@ Welcome to **SORTv2**! A modern, next-generation campus waste management and sus
 
 ---
 
-## 🔑 Test Account Credentials (Testing Phase)
+## 🔑 Login & Authentication
 
-The database seed script automatically creates **7 default accounts** with simple credentials for rapid multi-role testing:
+SORTv2 uses **delegated authentication** via EnrollPro. All user accounts are synced from EnrollPro, and passwords are validated against EnrollPro's authentication service — no local password storage.
 
-| Role | Full Name | Email | Default Password | Details / Assigned Role |
-| :--- | :--- | :--- | :--- | :--- |
-| 🎓 **Student 1** | Alex Rivera | `student1@sort.edu` | `student123` | BSIT-3A (150 pts, 2 Badges) |
-| 🎓 **Student 2** | Beatriz Santos | `student2@sort.edu` | `student123` | BSIT-3B (320 pts, 2 Badges) |
-| 🎓 **Student 3** | Carlos Mendoza | `student3@sort.edu` | `student123` | BSIT-3A (80 pts, 1 Warning) |
-| 👩‍🏫 **Teacher** | Prof. Eleanor Vance | `teacher1@sort.edu` | `teacher123` | BSIT-3A Class Advisor |
-| 🛠️ **Admin** | System Administrator | `admin@sort.edu` | `admin123` | System SuperAdmin |
-| 🚚 **MRF Staff 1** | Marcus Vance | `mrf1@sort.edu` | `mrf123` | MRF Team Alpha (Dispatch) |
-| 🚚 **MRF Staff 2** | Sarah Connor | `mrf2@sort.edu` | `mrf123` | MRF Team Beta (Dispatch) |
+- **Students:** Login with your LRN (Learner Reference Number) + EnrollPro password
+- **Staff (Teachers/Admin/MRF):** Login with your Employee ID + EnrollPro password
+
+> Password changes must be done through EnrollPro. The local system does not store or manage passwords.
 
 ---
 
@@ -44,6 +39,7 @@ The database seed script automatically creates **7 default accounts** with simpl
 - **Dashboard Analytics:** Real-time metrics for overall campus waste diverted, active dispatches, and user participation.
 - **Role & User Management:** User directory, warning/offense issuance system.
 - **System Settings:** Configure points per report, kg multipliers, and certificate thresholds.
+- **Sync & Integrations:** Manage EnrollPro sync mode (Manual/Automatic), run bulk sync, view sync history.
 
 ### 🚚 MRF Staff Portal
 - **Interactive Bin Map:** Live monitoring of campus waste bins and fill levels.
@@ -61,9 +57,11 @@ For detailed step-by-step PostgreSQL installation, pgAdmin database creation, an
    ```env
    DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/sortv2_db?schema=public"
    PORT=5000
-   JWT_SECRET="sortv2_super_secret_jwt_key_2026"
+   JWT_SECRET="your_jwt_secret_here"
+   ENROLLPRO_BASE_URL="https://your-enrollpro-instance.com/api"
+   ENROLLPRO_SYNC_SECRET="your_integration_key_here"
    ```
-3. Run database migrations & seed test accounts:
+3. Run database migrations & seed:
    ```bash
    cd server
    npm install
@@ -71,6 +69,19 @@ For detailed step-by-step PostgreSQL installation, pgAdmin database creation, an
    npx prisma db seed
    npm run dev
    ```
+
+---
+
+## 🔄 EnrollPro Sync Commands
+
+- **Bulk sync (CLI):** `npm run sync:enrollpro` — pulls all users and term calendars from EnrollPro
+- **Wipe accounts:** `npm run db:wipe-accounts` — deletes all users, sessions, and user-owned data (keeps bins, settings, inventory)
+- **Fresh start:** Run wipe → then sync:
+  ```bash
+  cd server
+  npm run db:wipe-accounts
+  npm run sync:enrollpro
+  ```
 
 ---
 
@@ -102,8 +113,8 @@ To run the frontend React Vite development server:
 
 ## 📐 Engineering Guidelines
 
-This repository strictly adheres to guidelines in [`.agents/AGENTS.md`](./.agents/AGENTS.md):
+This repository strictly adheres to guidelines in [`AGENTS.md`](./AGENTS.md):
 1. **File Size Limits:** No single source code file may approach or exceed **1,000 lines**.
-2. **Database Best Practices:** Enforced `snake_case` table naming, UUID primary keys, bcrypt password hashing, and version-controlled Prisma migrations.
+2. **Database Best Practices:** Enforced `snake_case` table naming, UUID primary keys, and version-controlled Prisma migrations.
 3. **Design System Tokens:** Modern organic background `#F9F3F0`, evergreen headings `#00271D`, luminous action buttons `#00A77C`, and 2026 rounded border radius system.
 4. **No Raw Emojis Rule:** Only crisp Lucide React SVG icons in UI interfaces.

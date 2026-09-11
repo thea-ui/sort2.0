@@ -1,49 +1,24 @@
 import React from 'react';
-import { Zap, Shield, BarChart3, Users, Leaf, MapPin } from 'lucide-react';
+import { Warehouse, Radio, FileCheck, Award, BarChart3 } from 'lucide-react';
 
-const FEATURES = [
-  {
-    icon: BarChart3,
-    title: 'Live Waste Analytics',
-    description:
-      'Real-time dashboards track bin fill levels, dispatch statuses, and campus-wide recovery metrics across all zones.',
-    accent: 'emerald',
-  },
-  {
-    icon: Zap,
-    title: 'Gamified Eco-Points',
-    description:
-      'Students and teachers earn points for every verified waste report, unlocking certificates and climbing the campus leaderboard.',
-    accent: 'amber',
-  },
-  {
-    icon: MapPin,
-    title: 'Bin & Zone Monitoring',
-    description:
-      'Interactive bin status maps let staff monitor fill levels at a glance and dispatch MRF teams precisely when needed.',
-    accent: 'violet',
-  },
-  {
-    icon: Shield,
-    title: 'Role-Based Access Control',
-    description:
-      'Students, teachers, MRF operators, and admins each get tailored views and permissions — all pre-provisioned securely.',
-    accent: 'sky',
-  },
-  {
-    icon: Users,
-    title: 'Classroom Compliance Audits',
-    description:
-      'Teachers can run waste compliance checks per classroom section and flag offenses for administrative review.',
-    accent: 'rose',
-  },
-  {
-    icon: Leaf,
-    title: 'Eco Campaigns & Events',
-    description:
-      'School-wide clean-up drives, collection schedules, and maintenance windows are published and tracked in one unified calendar.',
-    accent: 'teal',
-  },
+const ROW1_LEFT = {
+  icon: FileCheck,
+  title: 'Student Bin Reporting',
+  description: 'A mobile-friendly interface for students to submit real-time reports of overflowing bins — complete with photos and tagged campus locations for instant MRF notification. Each report is auto-categorized by waste type and routed to the nearest available MRF team.',
+  accent: 'amber',
+};
+
+const ROW1_RIGHT = {
+  icon: Award,
+  title: 'Point-Based Certificate Recognition',
+  description: 'Valid student reports earn non-redeemable participation points. At milestone tiers, the system auto-generates downloadable PDF Certificates of Recognition each semester.',
+  accent: 'emerald',
+};
+
+const ROW2 = [
+  { icon: Warehouse, title: 'MRF Operations & Material Recovery', description: 'MRF personnel manage daily recovery activities — logging collected materials by type, tracking inventory levels, and computing waste diversion rates.', accent: 'sky' },
+  { icon: Radio, title: 'Bin Monitoring & Staff Dispatch', description: 'Live visualization of bin statuses across campus. MRF staff receive real-time alerts with location data, enabling immediate dispatch for clearance.', accent: 'violet' },
+  { icon: BarChart3, title: 'Multi-Metric Impact Analysis', description: 'Converts raw waste weight into ecological metrics — CO₂ reduction, trees saved, and landfill space diverted. Uses time-series analysis to forecast trends.', accent: 'rose' },
 ];
 
 const ACCENT_STYLES: Record<string, { bg: string; icon: string; ring: string }> = {
@@ -52,15 +27,28 @@ const ACCENT_STYLES: Record<string, { bg: string; icon: string; ring: string }> 
   violet:  { bg: 'bg-violet-50',  icon: 'text-violet-600',  ring: 'ring-violet-100' },
   sky:     { bg: 'bg-sky-50',     icon: 'text-sky-600',     ring: 'ring-sky-100' },
   rose:    { bg: 'bg-rose-50',    icon: 'text-rose-600',    ring: 'ring-rose-100' },
-  teal:    { bg: 'bg-teal-50',    icon: 'text-teal-600',    ring: 'ring-teal-100' },
 };
 
 export const FeaturesSection: React.FC = () => {
+  const renderCard = (f: { icon: React.ComponentType<any>; title: string; description: string; accent: string }, className = '') => {
+    const Icon = f.icon;
+    const s = ACCENT_STYLES[f.accent];
+    return (
+      <div className={`group flex flex-col rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all hover:shadow-md ${className}`}>
+        <div className={`mb-5 flex h-10 w-10 items-center justify-center rounded-xl ring-1 ${s.bg} ${s.ring}`}>
+          <Icon size={18} className={s.icon} strokeWidth={1.8} />
+        </div>
+        <h3 className="mb-3 text-base font-bold text-gray-900">{f.title}</h3>
+        <p className="text-[13px] leading-relaxed text-gray-500">{f.description}</p>
+      </div>
+    );
+  };
+
   return (
-    <section id="how-it-works" className="border-b border-gray-200 bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+    <section className="border-b border-gray-200 bg-white">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
         {/* Section header */}
-        <div className="mb-12 max-w-lg">
+        <div className="mb-14 max-w-lg">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
             Platform Capabilities
           </p>
@@ -71,23 +59,21 @@ export const FeaturesSection: React.FC = () => {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => {
-            const Icon = f.icon;
-            const s = ACCENT_STYLES[f.accent];
-            return (
-              <div
-                key={f.title}
-                className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 hover:shadow-md"
-              >
-                <div className={`mb-4 flex h-9 w-9 items-center justify-center rounded-xl ring-1 ${s.bg} ${s.ring}`}>
-                  <Icon size={17} className={s.icon} strokeWidth={1.8} />
-                </div>
-                <h3 className="mb-2 text-sm font-bold text-gray-900">{f.title}</h3>
-                <p className="text-[12px] leading-relaxed text-gray-500">{f.description}</p>
-              </div>
-            );
-          })}
+        {/* Bento Grid: Row1 (8/4 split) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Row1 Left — Wide8-col card */}
+          <div className="lg:col-span-8">
+            {renderCard(ROW1_LEFT)}
+          </div>
+          {/* Row1 Right —4-col card */}
+          <div className="lg:col-span-4">
+            {renderCard(ROW1_RIGHT)}
+          </div>
+        </div>
+
+        {/* Bento Grid: Row2 (3 equal cards) */}
+        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {ROW2.map((f) => renderCard(f))}
         </div>
       </div>
     </section>

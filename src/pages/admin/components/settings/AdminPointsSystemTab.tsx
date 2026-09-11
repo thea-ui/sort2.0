@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Award, Edit2, Check, X, Trophy } from 'lucide-react';
+import { Award, Edit2, Check, X, Trophy, Loader2 } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { broadcastPresetChange } from '../../../../hooks/useSystemPresets';
 
@@ -21,6 +21,8 @@ const DEFAULT_POINT_RULES: PointRuleItem[] = [
 export const AdminPointsSystemTab: React.FC = () => {
   const [pointRules, setPointRules] = useState<PointRuleItem[]>(DEFAULT_POINT_RULES);
   const [editingRule, setEditingRule] = useState<PointRuleItem | null>(null);
+  const [certRunning, setCertRunning] = useState(false);
+  const [certResult, setCertResult] = useState<{ awarded: number; already: number; message: string } | null>(null);
 
   useEffect(() => {
     apiService.getPointRules().then((data) => {
@@ -50,8 +52,26 @@ export const AdminPointsSystemTab: React.FC = () => {
     }
   };
 
+  const handleRunCertificates = async () => {
+    setCertRunning(true);
+    setCertResult(null);
+    try {
+      const result = await apiService.claimCertificatesBatch('Eco-Champion Certificate');
+      setCertResult({
+        awarded: result.summary.newlyAwarded,
+        already: result.summary.alreadyClaimed,
+        message: result.message,
+      });
+    } catch (err: any) {
+      setCertResult({ awarded: 0, already: 0, message: err.message || 'Failed to run certificate awards' });
+    } finally {
+      setCertRunning(false);
+    }
+  };
+
   return (
-    <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-8 shadow-sm space-y-5 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-8 shadow-sm space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-2xl font-black text-amber-900 flex items-center gap-2">
@@ -141,6 +161,41 @@ export const AdminPointsSystemTab: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
+
+      {/* Certificate Awards Section */}
+      <div className="bg-[#C69B26]/10 border border-[#C69B26]/30 rounded-3xl p-8 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-2xl font-black text-[#00271D] flex items-center gap-2">
+            <Award size={22} className="text-[#C69B26]" />
+            Certificate Awards
+          </h3>
+          <p className="text-sm text-[#00271D]/50 mt-1">
+            Run batch certificate awards for all students who have reached the points threshold.
+            Best used 3 days before term ends or manually by admin.
+          </p>
+        </div>
+
+        <button
+          onClick={handleRunCertificates}
+          disabled={certRunning}
+          className="px-6 py-3 bg-[#C69B26] hover:bg-[#b38a20] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+        >
+          {certRunning ? <Loader2 size={14} className="animate-spin" /> : <Award size={14} />}
+          {certRunning ? 'Running...' : 'Run Certificate Awards'}
+        </button>
+
+        {certResult && (
+          <div className={`p-4 rounded-xl border text-sm font-medium ${certResult.awarded > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
+            {certResult.message}
+            {certResult.awarded > 0 && (
+              <span className="block mt-1 text-xs opacity-70">
+                {certResult.awarded} newly awarded, {certResult.already} already had it
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

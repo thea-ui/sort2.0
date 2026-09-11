@@ -1,4 +1,4 @@
-import { User, Report, BinStatus } from '../types';
+import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000/api';
 
@@ -107,7 +107,10 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `API Request failed with status ${response.status}`);
+    const err = new Error(errorData.error || `API Request failed with status ${response.status}`);
+    (err as any).code = errorData.code;
+    (err as any).status = response.status;
+    throw err;
   }
 
   return response.json();
@@ -160,7 +163,7 @@ export const apiService = {
 
   updateReportStatus: async (
     id: string,
-    updates: { status?: string; assignedMrfId?: string; assignedMrfName?: string; weightCollected?: number; isVerified?: boolean; pointsAwarded?: number; skipPoints?: boolean }
+    updates: { status?: string; assignedMrfId?: string; assignedMrfName?: string; weightCollected?: number }
   ): Promise<Report> => {
     return fetchAPI(`/reports/${id}/status`, {
       method: 'PATCH',
@@ -168,9 +171,15 @@ export const apiService = {
     });
   },
 
+  verifyReport: async (reportId: string): Promise<VerifySingleResult> => {
+    return fetchAPI(`/reports/${reportId}/verify`, {
+      method: 'POST',
+    });
+  },
+
   verifyReportsBatch: async (
     reportIds: string[]
-  ): Promise<{ updatedReports: Report[]; awards: { reportId: string; userId: string; amount: number; rank: number }[]; summary: { totalProcessed: number; totalAwarded: number; totalPoints: number } }> => {
+  ): Promise<VerifyBatchResult> => {
     return fetchAPI('/reports/verify-batch', {
       method: 'POST',
       body: JSON.stringify({ reportIds }),
@@ -446,16 +455,34 @@ export const apiService = {
     return fetchAPI(`/school-years/${id}`);
   },
 
-  createSchoolYear: async (data: { label: string; startDate?: string; endDate?: string; enrollproId?: number }): Promise<any> => {
+  getSchoolYearLedger: async (id: string): Promise<any> => {
+    return fetchAPI(`/school-years/${id}/ledger`);
+  },
+
+  createSchoolYear: async (data: { label: string; startDate: string; endDate: string; enrollproId?: number }): Promise<any> => {
     return fetchAPI('/school-years', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
-  archiveSchoolYear: async (id: string): Promise<any> => {
-    return fetchAPI(`/school-years/${id}/archive`, {
+  updateSchoolYear: async (id: string, data: { label?: string; startDate?: string; endDate?: string }): Promise<any> => {
+    return fetchAPI(`/school-years/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  activateSchoolYear: async (id: string): Promise<any> => {
+    return fetchAPI(`/school-years/${id}/activate`, {
       method: 'POST',
+    });
+  },
+
+  deactivateSchoolYear: async (id: string, replacementId: string): Promise<any> => {
+    return fetchAPI(`/school-years/${id}/deactivate`, {
+      method: 'POST',
+      body: JSON.stringify({ replacementId }),
     });
   },
 
@@ -494,6 +521,147 @@ export const apiService = {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  // MRF Asset Ledger API
+  getAssetRecords: async (filters?: { action?: string; schoolYearId?: string; q?: string }): Promise<any[]> => {
+    const query = filters ? new URLSearchParams(filters as Record<string, string>).toString() : '';
+    return fetchAPI(`/assets${query ? `?${query}` : ''}`);
+  },
+
+  getAssetSummary: async (schoolYearId?: string): Promise<any> => {
+    const query = schoolYearId ? `?schoolYearId=${schoolYearId}` : '';
+    return fetchAPI(`/assets/summary${query}`);
+  },
+
+  createAssetRecord: async (data: {
+    assetName: string;
+    category: string;
+    action: string;
+    quantity?: number;
+    unit?: string;
+    condition?: string;
+    sourceReportId?: string;
+    locationName?: string;
+    notes?: string;
+  }): Promise<any> => {
+    return fetchAPI('/assets', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Challenges API
+  getChallenges: async (): Promise<Challenge[]> => {
+    return fetchAPI('/challenges');
+  },
+
+  getAdminChallenges: async (): Promise<AdminChallenge[]> => {
+    return fetchAPI('/challenges/admin');
+  },
+
+  createChallenge: async (data: {
+    title: string;
+    code: string;
+    challengeType: string;
+    target: number;
+    pointsAwarded?: number;
+    iconName?: string;
+    startDate?: string;
+    endDate?: string;
+    description?: string;
+  }): Promise<Challenge> => {
+    return fetchAPI('/challenges', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateChallenge: async (id: string, data: Record<string, any>): Promise<Challenge> => {
+    return fetchAPI(`/challenges/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteChallenge: async (id: string): Promise<{ message: string }> => {
+    return fetchAPI(`/challenges/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Certificates API
+  claimCertificate: async (userId: string, certificateName: string): Promise<{ message: string; user: User }> => {
+    return fetchAPI(`/users/${userId}/claim-certificate`, {
+      method: 'POST',
+      body: JSON.stringify({ certificateName }),
+    });
+  },
+
+  claimCertificatesBatch: async (certificateName: string): Promise<{
+    message: string;
+    certificateName: string;
+    threshold: number;
+    awarded: { id: string; name: string; points: number }[];
+    alreadyHad: { id: string; name: string }[];
+    summary: { totalQualified: number; newlyAwarded: number; alreadyClaimed: number };
+  }> => {
+    return fetchAPI('/users/claim-certificates-batch', {
+      method: 'POST',
+      body: JSON.stringify({ certificateName }),
+    });
+  },
+
+  downloadCertificate: async (userId: string, certificateName: string): Promise<void> => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const encodedCertName = encodeURIComponent(certificateName);
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/certificate/${encodedCertName}/download`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Download failed with status ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const baseName = certificateName.replace(/[^a-zA-Z0-9]/g, '_');
+    a.download = baseName.toLowerCase().endsWith('certificate')
+      ? `${baseName}.pdf`
+      : `${baseName}_Certificate.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
+
+  viewCertificate: async (userId: string, certificateName: string): Promise<void> => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const encodedCertName = encodeURIComponent(certificateName);
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/certificate/${encodedCertName}/view`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `View failed with status ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => window.URL.revokeObjectURL(url), 10000);
   },
 };
 

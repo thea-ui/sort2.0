@@ -1,5 +1,7 @@
 # Points System Fix: Implementation Plan
 
+> **⚠️ SUPERSEDED** — This plan was partially implemented (transactional verify service, `verify-batch`, `pointsAwardedAt`, `PointHistory.reportId` unique). The remaining work is covered by `POINTS_SYSTEM_AND_CHALLENGES_PLAN.md` (approved) and executed via `POINTS_SYSTEM_WORKHORSE_BRIEF.md`. Do not implement from this document.
+
 ## Goal and Invariants
 
 Make report points deterministic, server-authoritative, and safe under repeated or concurrent verification.

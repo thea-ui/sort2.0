@@ -37,10 +37,89 @@ export interface UserPointSnapshot {
   user?: { id: string; name: string; gradeLevel?: string };
 }
 
+export interface LedgerSale {
+  id: string;
+  categoryCode: string;
+  categoryName: string;
+  weightKg: number;
+  marketPriceKg: number;
+  totalRevenue: number;
+  buyerName: string;
+  soldAt: string;
+}
+
+export interface LedgerReportRow {
+  id: string;
+  title: string;
+  reporterName: string;
+  gradeLevel?: string;
+  sectionName?: string;
+  locationName: string;
+  category: string;
+  status: string;
+  urgency: string;
+  weightCollected: number;
+  pointsAwarded: number;
+  createdAt: string;
+}
+
+export interface LedgerPointTxn {
+  id: string;
+  userName: string;
+  gradeLevel?: string;
+  amount: number;
+  reason: string;
+  createdAt: string;
+}
+
+export interface SchoolYearLedger {
+  schoolYear: SchoolYear;
+  reports: {
+    total: number;
+    byStatus: Record<string, number>;
+    byCategory: Record<string, number>;
+    collectedWeightKg: number;
+    rows: LedgerReportRow[];
+    rowsTruncated: boolean;
+  };
+  points: {
+    totalAwarded: number;
+    totalDeducted: number;
+    topStudents: {
+      rank: number;
+      userId: string;
+      name: string;
+      gradeLevel?: string;
+      sectionName?: string;
+      closingPoints: number;
+    }[];
+    transactions: LedgerPointTxn[];
+  };
+  market: {
+    revenuePhp: number;
+    soldKg: number;
+    sales: LedgerSale[];
+    snapshots: { categoryCode: string; categoryName: string; openingKg: number; closingKg: number }[];
+  };
+  inventory: {
+    totals: Record<string, number>;
+    transactions: {
+      id: string;
+      itemName?: string;
+      unit?: string;
+      type: string;
+      quantity: number;
+      notes?: string;
+      createdAt: string;
+    }[];
+  };
+}
+
 export function useSchoolYear() {
   const [activeSchoolYear, setActiveSchoolYear] = useState<SchoolYear | null>(null);
   const [allSchoolYears, setAllSchoolYears] = useState<SchoolYear[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchActive = useCallback(async () => {
     try {
@@ -62,6 +141,7 @@ export function useSchoolYear() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     await Promise.all([fetchActive(), fetchAll()]);
     setLoading(false);
   }, [fetchActive, fetchAll]);
@@ -72,13 +152,55 @@ export function useSchoolYear() {
     return () => clearInterval(interval);
   }, [refresh]);
 
-  const archiveSchoolYear = useCallback(async (id: string) => {
+  const createSchoolYear = useCallback(async (data: { label: string; startDate: string; endDate: string; enrollproId?: number }) => {
     try {
-      const result = await apiService.archiveSchoolYear(id);
+      setError(null);
+      const result = await apiService.createSchoolYear(data);
       await refresh();
       return result;
     } catch (err: any) {
-      throw new Error(err.message || 'Failed to archive school year');
+      const message = err.message || 'Failed to create school year';
+      setError(message);
+      throw new Error(message);
+    }
+  }, [refresh]);
+
+  const updateSchoolYear = useCallback(async (id: string, data: { label?: string; startDate?: string; endDate?: string }) => {
+    try {
+      setError(null);
+      const result = await apiService.updateSchoolYear(id, data);
+      await refresh();
+      return result;
+    } catch (err: any) {
+      const message = err.message || 'Failed to update school year';
+      setError(message);
+      throw new Error(message);
+    }
+  }, [refresh]);
+
+  const activateSchoolYear = useCallback(async (id: string) => {
+    try {
+      setError(null);
+      const result = await apiService.activateSchoolYear(id);
+      await refresh();
+      return result;
+    } catch (err: any) {
+      const message = err.message || 'Failed to activate school year';
+      setError(message);
+      throw new Error(message);
+    }
+  }, [refresh]);
+
+  const deactivateSchoolYear = useCallback(async (id: string, replacementId: string) => {
+    try {
+      setError(null);
+      const result = await apiService.deactivateSchoolYear(id, replacementId);
+      await refresh();
+      return result;
+    } catch (err: any) {
+      const message = err.message || 'Failed to deactivate school year';
+      setError(message);
+      throw new Error(message);
     }
   }, [refresh]);
 
@@ -90,12 +212,25 @@ export function useSchoolYear() {
     }
   }, []);
 
+  const getSchoolYearLedger = useCallback(async (id: string): Promise<SchoolYearLedger> => {
+    try {
+      return await apiService.getSchoolYearLedger(id);
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to fetch school year ledger');
+    }
+  }, []);
+
   return {
     activeSchoolYear,
     allSchoolYears,
     loading,
+    error,
     refresh,
-    archiveSchoolYear,
+    createSchoolYear,
+    updateSchoolYear,
+    activateSchoolYear,
+    deactivateSchoolYear,
     getSchoolYearDetails,
+    getSchoolYearLedger,
   };
 }

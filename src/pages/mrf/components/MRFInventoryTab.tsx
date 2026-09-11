@@ -15,6 +15,8 @@ import {
   Trash2,
   Clock,
   Boxes,
+  TrendingUp,
+  BarChart3,
 } from 'lucide-react';
 
 interface MRFInventoryTabProps {
@@ -77,6 +79,21 @@ export const MRFInventoryTab: React.FC<MRFInventoryTabProps> = ({ showToast }) =
     NEEDS_REPAIR: 'bg-rose-100 text-rose-700 border-rose-200',
     DISPOSED: 'bg-gray-100 text-gray-500 border-gray-200',
   };
+
+  // Calculate inventory health metrics
+  const totalItems = items.length;
+  const goodConditionItems = items.filter(i => i.condition === 'GOOD').length;
+  const inventoryHealth = totalItems > 0 ? Math.round((goodConditionItems / totalItems) * 100) : 0;
+  const totalTransactions = transactions.length;
+  const recentTransactions = transactions.slice(0, 7).length;
+
+  // Category distribution data
+  const categoryDistribution = categories.map(cat => ({
+    name: cat.replace('_', ' '),
+    count: (itemsByCategory[cat] || []).length,
+    percentage: totalItems > 0 ? Math.round(((itemsByCategory[cat] || []).length / totalItems) * 100) : 0,
+    ...categoryColors[cat],
+  }));
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,23 +200,77 @@ export const MRFInventoryTab: React.FC<MRFInventoryTabProps> = ({ showToast }) =
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Items</p>
-          <p className="text-2xl font-black text-[#00271D] mt-1">{items.length}</p>
+      {/* Enhanced Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Items</p>
+            <Package size={16} className="text-[#00A77C]" />
+          </div>
+          <p className="text-3xl font-black text-[#00271D]">{items.length}</p>
+          <p className="text-[11px] text-gray-500 mt-1">In inventory</p>
         </div>
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Equipment</p>
-          <p className="text-2xl font-black text-sky-700 mt-1">{(itemsByCategory['EQUIPMENT'] || []).length}</p>
+        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Health Score</p>
+            <CheckCircle2 size={16} className="text-emerald-500" />
+          </div>
+          <p className="text-3xl font-black text-emerald-600">{inventoryHealth}%</p>
+          <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all"
+              style={{ width: `${inventoryHealth}%` }}
+            />
+          </div>
         </div>
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Supplies</p>
-          <p className="text-2xl font-black text-amber-700 mt-1">{(itemsByCategory['SUPPLY'] || []).length}</p>
+        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Low Stock</p>
+            <AlertTriangle size={16} className="text-amber-500" />
+          </div>
+          <p className="text-3xl font-black text-amber-600">{lowStockItems.length}</p>
+          <p className="text-[11px] text-gray-500 mt-1">Need restocking</p>
         </div>
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Low Stock</p>
-          <p className="text-2xl font-black text-rose-600 mt-1">{lowStockItems.length}</p>
+        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Transactions</p>
+            <TrendingUp size={16} className="text-sky-500" />
+          </div>
+          <p className="text-3xl font-black text-sky-600">{totalTransactions}</p>
+          <p className="text-[11px] text-gray-500 mt-1">This period</p>
+        </div>
+      </div>
+
+      {/* Category Distribution Chart */}
+      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <BarChart3 size={16} className="text-[#00A77C]" />
+            <h4 className="text-sm font-bold text-[#00271D]">Category Distribution</h4>
+          </div>
+          <span className="text-[10px] font-bold text-gray-400">{totalItems} items total</span>
+        </div>
+        <div className="space-y-4">
+          {categoryDistribution.map(cat => (
+            <div key={cat.name} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`h-3 w-3 rounded-full ${cat.bg} border ${cat.border}`} />
+                  <span className="text-xs font-semibold text-gray-700">{cat.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[#00271D]">{cat.count}</span>
+                  <span className="text-[10px] text-gray-400">({cat.percentage}%)</span>
+                </div>
+              </div>
+              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${cat.bg.replace('50', '400')}`}
+                  style={{ width: `${cat.percentage}%` }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -258,8 +329,7 @@ export const MRFInventoryTab: React.FC<MRFInventoryTabProps> = ({ showToast }) =
                 <tr className="border-b border-gray-100 bg-[#00271D]/5">
                   <th className="py-3 px-4 font-bold text-[#00271D]/60 uppercase tracking-wider">Item</th>
                   <th className="py-3 px-4 font-bold text-[#00271D]/60 uppercase tracking-wider">Category</th>
-                  <th className="py-3 px-4 font-bold text-[#00271D]/60 uppercase tracking-wider text-center">Qty</th>
-                  <th className="py-3 px-4 font-bold text-[#00271D]/60 uppercase tracking-wider text-center">Unit</th>
+                  <th className="py-3 px-4 font-bold text-[#00271D]/60 uppercase tracking-wider text-center">Stock Level</th>
                   <th className="py-3 px-4 font-bold text-[#00271D]/60 uppercase tracking-wider text-center">Condition</th>
                   <th className="py-3 px-4 font-bold text-[#00271D]/60 uppercase tracking-wider text-center">Persistent</th>
                   <th className="py-3 px-4 font-bold text-[#00271D]/60 uppercase tracking-wider text-right">Actions</th>
@@ -269,6 +339,7 @@ export const MRFInventoryTab: React.FC<MRFInventoryTabProps> = ({ showToast }) =
                 {filteredItems.map(item => {
                   const catStyle = categoryColors[item.category] || categoryColors.SUPPLY;
                   const isLow = item.minThreshold && item.quantity <= item.minThreshold;
+                  const stockPercentage = item.minThreshold ? Math.min(100, Math.round((item.quantity / (item.minThreshold * 2)) * 100)) : 100;
                   return (
                     <tr key={item.id} className="hover:bg-gray-50/80 transition-colors">
                       <td className="py-3 px-4">
@@ -280,13 +351,25 @@ export const MRFInventoryTab: React.FC<MRFInventoryTabProps> = ({ showToast }) =
                           {item.category.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`font-black ${isLow ? 'text-rose-600' : 'text-[#00271D]'}`}>
-                          {item.quantity}
-                        </span>
-                        {isLow && <AlertTriangle size={11} className="inline ml-1 text-amber-500" />}
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-black ${isLow ? 'text-rose-600' : 'text-[#00271D]'}`}>
+                              {item.quantity}
+                            </span>
+                            <span className="text-[10px] text-gray-400">{item.unit}</span>
+                            {isLow && <AlertTriangle size={11} className="text-amber-500" />}
+                          </div>
+                          <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                isLow ? 'bg-rose-400' : stockPercentage > 60 ? 'bg-emerald-400' : 'bg-amber-400'
+                              }`}
+                              style={{ width: `${stockPercentage}%` }}
+                            />
+                          </div>
+                        </div>
                       </td>
-                      <td className="py-3 px-4 text-center text-gray-500 font-medium">{item.unit}</td>
                       <td className="py-3 px-4 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${conditionColors[item.condition] || conditionColors.GOOD}`}>
                           {item.condition}
@@ -400,7 +483,7 @@ export const MRFInventoryTab: React.FC<MRFInventoryTabProps> = ({ showToast }) =
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Initial Quantity</label>
-                  <input type="number" step="0.1" min="0" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs outline-none focus:border-[#00A77C]" placeholder="0" />
+                  <input type="number" step="0.1" min="0" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} className="w-full rounded-xl border border-gray-200 px3 py-2 text-xs outline-none focus:border-[#00A77C]" placeholder="0" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Low Stock Threshold</label>

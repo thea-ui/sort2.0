@@ -1,50 +1,39 @@
-import { PrismaClient, ReportStatus, Role } from '@prisma/client';
-import { getActiveSchoolYearId } from './rollover.service.js';
+import { PrismaClient, Prisma, ReportStatus, Role } from '@prisma/client';
+import { recordReportContribution } from './challenge-progress.service.js';
 
 const prisma = new PrismaClient();
 
-/**
- * Generate a deterministic advisory lock key from a stream identifier.
- * Uses a simple hash to produce a bigint suitable for pg_advisory_xact_lock.
- */
-function streamLockKey(locationName: string, category: string, schoolYearId: string): number {
-  const raw = `${locationName}::${category}::${schoolYearId}`;
+function streamLockKey(locationKey: string, category: string, schoolYearId: string): number {
+  const raw = `${locationKey}::${category}::${schoolYearId}`;
   let hash = 0;
   for (let i = 0; i < raw.length; i++) {
     const ch = raw.charCodeAt(i);
     hash = ((hash << 5) - hash + ch) | 0;
   }
-  // Ensure positive and within safe integer range for pg advisory locks
   return Math.abs(hash);
 }
 
-interface VerifyResult {
-  updatedReports: any[];
-  awards: { reportId: string; userId: string; amount: number; rank: number }[];
+export interface VerifyAward {
+  reportId: string;
+  userId: string;
+  amount: number;
+  rank: number;
 }
 
-/**
- * Core atomic, idempotent points-awarding service.
- * 
- * Uses a PostgreSQL advisory transaction lock per stream (locationName + category + schoolYearId)
- * to serialize concurrent verification requests. This prevents duplicate awards.
- * 
- * The complete active stream is ranked chronologically (createdAt ASC, id ASC as tie-breaker).
- * Already-awarded reports preserve their rank. New reports get the next available rank.
- * Faculty reports are marked processed but do not consume a student rank.
- * 
- * @param reportIds - IDs of reports to verify in this stream
- * @returns Updated reports and award details
- */
+export interface VerifyResult {
+  updatedReports: any[];
+  awards: VerifyAward[];
+  challengeCompletions: { userId: string; challengeId: string; title: string; pointsAwarded: number }[];
+  alreadyProcessed: boolean;
+}
+
 export async function verifyReports(reportIds: string[]): Promise<VerifyResult> {
   if (reportIds.length === 0) {
-    return { updatedReports: [], awards: [] };
+    return { updatedReports: [], awards: [], challengeCompletions: [], alreadyProcessed: false };
   }
 
-  // Deduplicate
   const uniqueIds = [...new Set(reportIds)];
 
-  // Load target reports to determine their streams
   const targetReports = await prisma.report.findMany({
     where: { id: { in: uniqueIds } },
     include: {
@@ -53,53 +42,53 @@ export async function verifyReports(reportIds: string[]): Promise<VerifyResult> 
   });
 
   if (targetReports.length === 0) {
-    return { updatedReports: [], awards: [] };
+    return { updatedReports: [], awards: [], challengeCompletions: [], alreadyProcessed: false };
   }
 
-  // Group by stream (locationName + category). Reports with null schoolYearId
-  // belong to the same stream as reports with a specific schoolYearId.
+  const allProcessed = targetReports.every(r => r.pointsAwardedAt !== null);
+
   const streamMap = new Map<string, typeof targetReports>();
   for (const report of targetReports) {
-    const key = `${report.locationName}::${report.category}`;
+    const key = `${report.locationKey}::${report.category}::${report.schoolYearId ?? 'null'}`;
     if (!streamMap.has(key)) streamMap.set(key, []);
     streamMap.get(key)!.push(report);
   }
 
   const allUpdatedReports: any[] = [];
-  const allAwards: VerifyResult['awards'] = [];
+  const allAwards: VerifyAward[] = [];
+  const allChallengeCompletions: VerifyResult['challengeCompletions'] = [];
 
-  // Process each stream in a transaction
   for (const [, reports] of streamMap) {
     const firstReport = reports[0];
-    const locationName = firstReport.locationName;
+    const locationKey = firstReport.locationKey;
     const category = firstReport.category;
-    const schoolYearId = firstReport.schoolYearId || await getActiveSchoolYearId() || '';
+    const schoolYearId = firstReport.schoolYearId ?? '';
 
     const result = await prisma.$transaction(async (tx) => {
-      // Acquire advisory lock for this stream to serialize concurrent requests
-      const lockKey = streamLockKey(locationName, category, schoolYearId);
+      const lockKey = streamLockKey(locationKey, category, schoolYearId);
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
 
-      // Load point rules (with fallback if table is empty)
       const pointRules = await tx.pointRule.findMany({
         orderBy: { rank: 'asc' },
       });
-      const rankPointsMap = pointRules.length > 0
-        ? pointRules.map(r => r.pointsAwarded)
-        : [15, 10, 5];
+      if (pointRules.length === 0) {
+        throw new Error('PointRule table is empty — server misconfigured');
+      }
+      const rankPointsMap = pointRules.map(r => r.pointsAwarded);
 
-      // Load the COMPLETE stream in chronological order (including already-awarded reports)
-      // Include reports with matching schoolYearId OR null schoolYearId (legacy reports)
+      const streamWhere: any = {
+        locationKey,
+        category,
+        status: { notIn: [ReportStatus.DISMISSED] },
+      };
+      if (schoolYearId) {
+        streamWhere.schoolYearId = schoolYearId;
+      } else {
+        streamWhere.schoolYearId = null;
+      }
+
       const streamReports = await tx.report.findMany({
-        where: {
-          locationName,
-          category,
-          OR: [
-            { schoolYearId },
-            { schoolYearId: null },
-          ],
-          status: { notIn: [ReportStatus.DISMISSED] },
-        },
+        where: streamWhere,
         orderBy: [
           { createdAt: 'asc' },
           { id: 'asc' },
@@ -109,7 +98,6 @@ export async function verifyReports(reportIds: string[]): Promise<VerifyResult> 
         },
       });
 
-      // Determine which reporters are faculty (never earn points)
       const reporterIds = [...new Set(streamReports.map(r => r.reporterId))];
       const reporters = await tx.user.findMany({
         where: { id: { in: reporterIds } },
@@ -121,39 +109,37 @@ export async function verifyReports(reportIds: string[]): Promise<VerifyResult> 
           .map(r => r.id)
       );
 
-      // Rank eligible student reports sequentially, skipping already-awarded
-      let studentRank = 0;
+      const maxProcessedRank = streamReports
+        .filter(r => r.pointsAwardedAt !== null && r.reporterRank !== null && !facultyIds.has(r.reporterId))
+        .reduce((max, r) => Math.max(max, r.reporterRank!), 0);
+
+      let studentRank = maxProcessedRank;
+
       const streamUpdates: { report: typeof streamReports[0]; rank: number | null; points: number }[] = [];
 
       for (const report of streamReports) {
         const isFaculty = facultyIds.has(report.reporterId);
 
         if (isFaculty) {
-          // Faculty: mark as processed (verified) but no rank, no points
           if (!report.pointsAwardedAt) {
             streamUpdates.push({ report, rank: null, points: 0 });
           }
           continue;
         }
 
-        // Student report
         if (report.pointsAwardedAt) {
-          // Already processed - preserve existing rank, skip
           continue;
         }
 
-        // New unprocessed student report - assign next rank
         studentRank++;
         const pts = studentRank <= rankPointsMap.length ? rankPointsMap[studentRank - 1] : 0;
         streamUpdates.push({ report, rank: studentRank, points: pts });
       }
 
-      // Apply updates within the transaction
       const updatedReports: any[] = [];
-      const awards: VerifyResult['awards'] = [];
+      const awards: VerifyAward[] = [];
 
       for (const { report, rank, points } of streamUpdates) {
-        // Conditional update: only process if not already processed (defense in depth)
         const updateResult = await tx.report.updateMany({
           where: {
             id: report.id,
@@ -167,12 +153,8 @@ export async function verifyReports(reportIds: string[]): Promise<VerifyResult> 
           },
         });
 
-        if (updateResult.count === 0) {
-          // Already processed by a concurrent request - skip
-          continue;
-        }
+        if (updateResult.count === 0) continue;
 
-        // Fetch the updated report for the response
         const updatedReport = await tx.report.findUnique({
           where: { id: report.id },
           include: {
@@ -186,7 +168,6 @@ export async function verifyReports(reportIds: string[]): Promise<VerifyResult> 
         }
 
         if (points > 0 && rank !== null) {
-          // Increment user balance and create history entry
           await tx.user.update({
             where: { id: report.reporterId },
             data: { points: { increment: points } },
@@ -197,9 +178,9 @@ export async function verifyReports(reportIds: string[]): Promise<VerifyResult> 
             data: {
               userId: report.reporterId,
               amount: points,
-              reason: `Verified Report: ${ordinal} Reporter Bonus (+${points} pts) for ${locationName}`,
+              reason: `Verified Report: ${ordinal} Reporter Bonus (+${points} pts) for ${report.locationName}`,
               reportId: report.id,
-              schoolYearId,
+              schoolYearId: report.schoolYearId,
             },
           });
 
@@ -210,6 +191,16 @@ export async function verifyReports(reportIds: string[]): Promise<VerifyResult> 
             rank,
           });
         }
+
+        const challengeEvent = report.category === 'HAZARDOUS' ? 'HAZARDOUS_REPORT' : 'REPORT_COUNT';
+        const { completions: reportCompletions } = await recordReportContribution(tx, {
+          id: report.id,
+          reporterId: report.reporterId,
+          category: report.category,
+          locationKey: report.locationKey,
+          schoolYearId: report.schoolYearId,
+        }, challengeEvent);
+        allChallengeCompletions.push(...reportCompletions);
       }
 
       return { updatedReports, awards };
@@ -222,12 +213,14 @@ export async function verifyReports(reportIds: string[]): Promise<VerifyResult> 
     allAwards.push(...result.awards);
   }
 
-  return { updatedReports: allUpdatedReports, awards: allAwards };
+  return {
+    updatedReports: allUpdatedReports,
+    awards: allAwards,
+    challengeCompletions: allChallengeCompletions,
+    alreadyProcessed: allProcessed,
+  };
 }
 
-/**
- * Format a report for API response (consistent across GET/POST/PATCH/batch)
- */
 export function formatReportResponse(report: any) {
   return {
     id: report.id,

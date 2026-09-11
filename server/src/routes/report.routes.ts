@@ -2,28 +2,34 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, ReportStatus, WasteCategory, Urgency, ReportType, Role } from '@prisma/client';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { verifyReports, formatReportResponse } from '../services/report-points.service.js';
+import { recordWeightContribution } from '../services/challenge-progress.service.js';
+import { authenticate, requireAdmin, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// DELETE /api/reports/purge - Wipe all test reports, point histories, offenses, and reset user points
-router.delete('/purge', async (req: Request, res: Response): Promise<any> => {
+function normalizeLocation(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// DELETE /api/reports/purge — ADMIN only
+router.delete('/purge', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
+    await prisma.challengeContribution.deleteMany({});
     await prisma.pointHistory.deleteMany({});
+    await prisma.userChallengeProgress.deleteMany({});
     await prisma.report.deleteMany({});
     await prisma.offense.deleteMany({});
     await prisma.user.updateMany({
       where: { role: Role.STUDENT },
       data: { points: 0, warningsCount: 0, certificates: [] },
     });
-
-    // Reset recycle market inventory to 0 so tests start from a clean slate
     await prisma.recycleMarketStock.updateMany({
       data: { accumulatedKg: 0.0, isApprovedForSale: false },
     });
     await prisma.recycleSaleTransaction.deleteMany({});
 
-    console.log('🧹 Purged all reports, point histories, offenses, and reset market inventory.');
+    console.log('[Purge] Purged all reports, point histories, offenses, challenge data, and reset market inventory.');
     return res.json({ message: 'Database purged successfully' });
   } catch (error) {
     console.error('Purge error:', error);
@@ -31,8 +37,8 @@ router.delete('/purge', async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-// GET /api/reports - Fetch all reports with optional filters
-router.get('/', async (req: Request, res: Response): Promise<any> => {
+// GET /api/reports — any authenticated role
+router.get('/', authenticate, async (req: Request, res: Response): Promise<any> => {
   try {
     const { status, category, reporterId, schoolYearId } = req.query;
 
@@ -41,7 +47,6 @@ router.get('/', async (req: Request, res: Response): Promise<any> => {
     if (category) where.category = category as WasteCategory;
     if (reporterId) where.reporterId = reporterId as string;
 
-    // School year filtering: explicit param or active SY
     if (schoolYearId) {
       where.schoolYearId = schoolYearId as string;
     } else {
@@ -53,12 +58,8 @@ router.get('/', async (req: Request, res: Response): Promise<any> => {
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        reporter: {
-          select: { id: true, name: true, role: true, email: true },
-        },
-        assignedMrf: {
-          select: { id: true, name: true },
-        },
+        reporter: { select: { id: true, name: true, role: true, email: true } },
+        assignedMrf: { select: { id: true, name: true } },
       },
     });
 
@@ -79,9 +80,10 @@ function mapWasteCategory(cat?: string): WasteCategory {
   return WasteCategory.NON_BIODEGRADABLE;
 }
 
-// POST /api/reports - Submit a new waste report
-router.post('/', async (req: Request, res: Response): Promise<any> => {
+// POST /api/reports — any authenticated user, reporterId from JWT
+router.post('/', authenticate, async (req: Request, res: Response): Promise<any> => {
   try {
+    const userId = (req as AuthenticatedRequest).userId;
     const {
       title,
       description,
@@ -89,8 +91,6 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
       category,
       coordinates,
       locationName,
-      reporterId,
-      reporterEmail,
       imageUrl,
       reportType,
     } = req.body;
@@ -101,31 +101,12 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
 
     const locName = locationName || 'Campus Location';
     const cat = mapWasteCategory(category);
+    const locKey = normalizeLocation(locName);
 
-    // Resolve valid reporterId by ID or email to prevent FK violation
-    let targetUser: any = null;
-    if (reporterId) {
-      targetUser = await prisma.user.findUnique({ where: { id: reporterId } }).catch(() => null);
-    }
-    if (!targetUser && reporterEmail) {
-      targetUser = await prisma.user.findUnique({ where: { email: reporterEmail.toLowerCase() } }).catch(() => null);
-    }
-    if (!targetUser) {
-      targetUser = await prisma.user.findFirst({ where: { role: Role.STUDENT } }) ||
-                   await prisma.user.findFirst();
-    }
-
-    if (!targetUser) {
-      return res.status(400).json({ error: 'No valid user found in database to attach report.' });
-    }
-
-    const validReporterId = targetUser.id;
-
-    // Duplicate Check: 1 active report per user per trash bin
     const existingActive = await prisma.report.findFirst({
       where: {
-        reporterId: validReporterId,
-        locationName: locName,
+        reporterId: userId,
+        locationKey: locKey,
         category: cat,
         status: { in: [ReportStatus.PENDING, ReportStatus.DISPATCHED] },
       },
@@ -147,16 +128,15 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
         lat: coordinates.lat || 14.5995,
         lng: coordinates.lng || 120.9842,
         locationName: cleanLoc,
-        reporterId: validReporterId,
+        locationKey: normalizeLocation(cleanLoc),
+        reporterId: userId,
         imageUrl: imageUrl || null,
         reportType: (reportType as ReportType) || ReportType.WASTE,
         pointsAwarded: 0,
         schoolYearId: await getActiveSchoolYearId(),
       },
       include: {
-        reporter: {
-          select: { id: true, name: true, role: true },
-        },
+        reporter: { select: { id: true, name: true, role: true } },
       },
     });
 
@@ -167,12 +147,28 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-// PATCH /api/reports/:id/status - Update report status (no longer awards points directly)
-router.patch('/:id/status', async (req: Request, res: Response): Promise<any> => {
+// PATCH /api/reports/:id/status — ADMIN or MRF, lifecycle fields only
+router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const targetId = Array.isArray(id) ? id[0] : id;
-    const { status, assignedMrfId, weightCollected, isVerified, skipPoints } = req.body;
+    const { status, assignedMrfId, weightCollected, isVerified, skipPoints, pointsAwarded } = req.body;
+
+    if (isVerified !== undefined || skipPoints !== undefined || pointsAwarded !== undefined) {
+      console.warn(`[Auth] Rejecting forbidden fields in status update for report ${targetId}: isVerified=${isVerified}, skipPoints=${skipPoints}, pointsAwarded=${pointsAwarded}`);
+      return res.status(400).json({
+        error: 'Status updates cannot set isVerified, skipPoints, or pointsAwarded. Use POST /verify or /verify-batch instead.',
+        code: 'FORBIDDEN_FIELDS',
+      });
+    }
+
+    const targetReport = await prisma.report.findUnique({
+      where: { id: targetId },
+      include: { reporter: { select: { id: true, role: true } } },
+    });
+    if (!targetReport) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
 
     const data: any = {};
     if (status) {
@@ -183,31 +179,36 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<any> =>
     }
     if (assignedMrfId !== undefined) data.assignedMrfId = assignedMrfId;
     if (weightCollected !== undefined) data.weightCollected = weightCollected;
-    if (isVerified !== undefined) data.isVerified = isVerified;
 
-    const targetReport = await prisma.report.findUnique({ where: { id: targetId } });
-    if (!targetReport) {
-      return res.status(404).json({ error: 'Report not found' });
-    }
+    const shouldContributeWeight =
+      weightCollected !== undefined &&
+      weightCollected > 0 &&
+      (status === 'COLLECTED' || status === 'RESOLVED' || targetReport.status === 'COLLECTED' || targetReport.status === 'RESOLVED');
 
-    // If verifying (not skipping points), use the atomic award service
-    if (!skipPoints && isVerified && !targetReport.pointsAwardedAt) {
-      const { updatedReports } = await verifyReports([targetId]);
-      // Return the updated report from the service if available
-      const awarded = updatedReports.find(r => r.id === targetId);
-      if (awarded) {
-        return res.json(formatReportResponse(awarded));
+    const allChallengeCompletions: { userId: string; challengeId: string; title: string; pointsAwarded: number }[] = [];
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.report.update({
+        where: { id: targetId },
+        data,
+        include: {
+          reporter: { select: { id: true, name: true, role: true } },
+          assignedMrf: { select: { id: true, name: true } },
+        },
+      });
+
+      if (shouldContributeWeight) {
+        const { completions } = await recordWeightContribution(tx, {
+          id: result.id,
+          reporterId: result.reporterId,
+          category: result.category,
+          locationKey: result.locationKey,
+          schoolYearId: result.schoolYearId,
+        }, weightCollected);
+        allChallengeCompletions.push(...completions);
       }
-    }
 
-    // For non-verification updates (dispatch, dismiss, weight, etc.)
-    const updated = await prisma.report.update({
-      where: { id: targetId },
-      data,
-      include: {
-        reporter: { select: { id: true, name: true, role: true } },
-        assignedMrf: { select: { id: true, name: true } },
-      },
+      return result;
     });
 
     return res.json(formatReportResponse(updated));
@@ -217,8 +218,40 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<any> =>
   }
 });
 
-// POST /api/reports/verify-batch - Batch verify reports atomically
-router.post('/verify-batch', async (req: Request, res: Response): Promise<any> => {
+// POST /api/reports/:id/verify — ADMIN only, single verify
+router.post('/:id/verify', requireAdmin, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const targetId = Array.isArray(id) ? id[0] : id;
+
+    const report = await prisma.report.findUnique({ where: { id: targetId } });
+    if (!report) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    if (report.status === ReportStatus.DISMISSED) {
+      return res.status(400).json({ error: 'Cannot verify a dismissed report', code: 'DISMISSED' });
+    }
+
+    const result = await verifyReports([targetId]);
+
+    return res.json({
+      updatedReports: result.updatedReports.map(formatReportResponse),
+      awards: result.awards,
+      challengeCompletions: result.challengeCompletions,
+      alreadyProcessed: result.alreadyProcessed,
+    });
+  } catch (error: any) {
+    console.error('Verify report error:', error);
+    if (error.message?.includes('PointRule table is empty')) {
+      return res.status(500).json({ error: 'Point system not configured', code: 'CONFIGURATION_ERROR' });
+    }
+    return res.status(500).json({ error: 'Failed to verify report' });
+  }
+});
+
+// POST /api/reports/verify-batch — ADMIN only, batch verify
+router.post('/verify-batch', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
     const { reportIds } = req.body;
 
@@ -230,19 +263,40 @@ router.post('/verify-batch', async (req: Request, res: Response): Promise<any> =
       return res.status(400).json({ error: 'Maximum 50 reports per batch' });
     }
 
-    const { updatedReports, awards } = await verifyReports(reportIds);
+    const uniqueIds = [...new Set(reportIds.map(String))];
+    const reports = await prisma.report.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true, status: true },
+    });
+
+    const foundIds = new Set(reports.map(r => r.id));
+    const missingIds = uniqueIds.filter(id => !foundIds.has(id));
+    if (missingIds.length > 0) {
+      return res.status(404).json({ error: 'Some reports not found', missingIds });
+    }
+
+    const dismissedIds = reports.filter(r => r.status === ReportStatus.DISMISSED).map(r => r.id);
+    if (dismissedIds.length > 0) {
+      return res.status(400).json({ error: 'Cannot verify dismissed reports', dismissedIds });
+    }
+
+    const result = await verifyReports(uniqueIds);
 
     return res.json({
-      updatedReports: updatedReports.map(formatReportResponse),
-      awards,
+      updatedReports: result.updatedReports.map(formatReportResponse),
+      awards: result.awards,
+      challengeCompletions: result.challengeCompletions,
       summary: {
-        totalProcessed: updatedReports.length,
-        totalAwarded: awards.length,
-        totalPoints: awards.reduce((sum, a) => sum + a.amount, 0),
+        totalProcessed: result.updatedReports.length,
+        totalAwarded: result.awards.length,
+        totalPoints: result.awards.reduce((sum, a) => sum + a.amount, 0),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Batch verify error:', error);
+    if (error.message?.includes('PointRule table is empty')) {
+      return res.status(500).json({ error: 'Point system not configured', code: 'CONFIGURATION_ERROR' });
+    }
     return res.status(500).json({ error: 'Failed to verify reports' });
   }
 });

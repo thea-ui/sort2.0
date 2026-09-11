@@ -32,6 +32,7 @@ import {
   ClipboardList,
   Package,
   CalendarClock,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 // ── Nav item definitions ──────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ const MRF_NAV_ITEMS: NavItem[] = [
   { id: 'dispatches',     label: 'Dispatches',       icon: Truck,           roles: ['MRF'] },
   { id: 'mrf-direct',     label: 'Direct Pickup',    icon: PackageCheck,    roles: ['MRF'] },
   { id: 'mrf-inventory',  label: 'Inventory',        icon: Package,         roles: ['MRF'] },
+  { id: 'mrf-assets',     label: 'Asset Ledger',     icon: FileSpreadsheet, roles: ['MRF'] },
   { id: 'mrf-market',     label: 'Recycle Market',   icon: Scale,           roles: ['MRF'] },
   { id: 'mrf-history',    label: 'History',          icon: History,         roles: ['MRF'] },
 ];
@@ -59,6 +61,7 @@ export const ADMIN_SECTIONS = [
       { id: 'overview', label: 'Overview', icon: BarChart2 },
       { id: 'admin-impact', label: 'Operational Analytics', icon: TrendingUp },
       { id: 'admin-leaderboard', label: 'Leaderboard', icon: Trophy },
+      { id: 'admin-ledger', label: 'School Year Ledger', icon: FileSpreadsheet },
     ],
   },
   {
@@ -84,9 +87,11 @@ export const SETTINGS_SUBITEMS = [
   { id: 'locations', label: 'Locations' },
   { id: 'academic-calendar', label: 'Academic Calendar' },
   { id: 'school-years', label: 'School Years' },
+  { id: 'sync-integrations', label: 'Sync & Integrations' },
   { id: 'asset-categories', label: 'Asset Categories' },
   { id: 'item-presets', label: 'Item Presets' },
   { id: 'points-system', label: 'Points System' },
+  { id: 'challenges', label: 'Challenges' },
   { id: 'waste-types', label: 'Waste Types' },
   { id: 'urgency-levels', label: 'Urgency Levels' },
   { id: 'asset-conditions', label: 'Asset Conditions' },
@@ -183,7 +188,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <button
               type="button"
               onClick={handlePurge}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-700 border border-rose-300 text-xs font-black hover:bg-rose-500 hover:text-white transition-all cursor-pointer shadow-sm"
+              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-300 bg-white/60 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer"
               title="Wipe all reports, scores, and test data for clean testing"
             >
               <RotateCcw size={13} className="shrink-0" />
@@ -276,7 +281,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <div className="relative">
             <button
               onClick={() => { setProfileDropdownOpen(!profileDropdownOpen); setNotificationsOpen(false); }}
-              className="flex items-center gap-2 border border-gray-200 bg-white rounded-full pr-3 pl-1 py-1 hover:border-[#00A77C] transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-2 bg-white/80 border border-slate-200/80 px-2.5 py-1.5 rounded-full shadow-xs hover:border-[#00A77C] transition-all cursor-pointer"
             >
               <div className={`h-7 w-7 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-md ${roleColor}`}>
                 {currentUser.name.charAt(0)}

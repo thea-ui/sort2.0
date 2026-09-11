@@ -8,8 +8,12 @@ import {
   Flame,
   Lightbulb,
   Medal,
+  Download,
+  Loader2,
+  FileText,
 } from 'lucide-react';
 import { User, Challenge, Report } from '../../../types';
+import { apiService } from '../../../services/api';
 
 interface GamificationTabProps {
   currentUser: User;
@@ -39,6 +43,18 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
   getAvatarColor
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [downloadingCert, setDownloadingCert] = useState<string | null>(null);
+
+  const handleDownloadCert = async (certName: string) => {
+    setDownloadingCert(certName);
+    try {
+      await apiService.downloadCertificate(currentUser.id, certName);
+    } catch (err) {
+      console.warn('Download certificate error:', err);
+    } finally {
+      setDownloadingCert(null);
+    }
+  };
 
   // Compute leaderboard rankings with actual report counts
   const leaderboardEntries = users
@@ -67,10 +83,9 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
   const currentUserRank = currentEntry ? currentEntry.rank : 99;
   const isWinner = currentUserRank === 1;
 
-  const handleClaim = () => {
+  const handleClaim = async () => {
     if (!isWinner || !isPeriodOver) return;
-    claimCertificate('Top 1 Institutional Certificate');
-    deductPoints('current', 500);
+    await claimCertificate('Top 1 Institutional Certificate');
     setClaimedSuccess(true);
     setTimeout(() => setClaimedSuccess(false), 5000);
   };
@@ -251,6 +266,42 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         )}
       </div>
 
+      {/* Earned Certificates Display */}
+      {currentUser.certificatesEarned && currentUser.certificatesEarned.length > 0 && (
+        <div className="bg-gradient-to-br from-[#C69B26]/5 to-amber-50/50 border border-[#C69B26]/20 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Award size={16} className="text-[#C69B26]" />
+            <h3 className="text-sm font-bold text-[#00271D]">Your Earned Certificates</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {currentUser.certificatesEarned.map((cert, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <button
+                  onClick={() => handleDownloadCert(cert)}
+                  disabled={downloadingCert === cert}
+                  className="flex items-center gap-2 px-4 py-2 rounded-l-xl bg-[#C69B26]/10 border border-[#C69B26]/25 text-[#C69B26] text-xs font-bold hover:bg-[#C69B26]/20 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {downloadingCert === cert ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Download size={14} />
+                  )}
+                  {cert}
+                </button>
+                <button
+                  onClick={() => { apiService.viewCertificate(currentUser.id, cert); }}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-r-xl bg-[#00A77C]/10 border border-[#00A77C]/25 border-l-0 text-[#00A77C] text-xs font-bold hover:bg-[#00A77C]/20 transition-colors cursor-pointer"
+                  title="View Certificate"
+                >
+                  <FileText size={14} />
+                  View
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Claim Certificate Action Bar */}
       {isWinner && isPeriodOver && (
         <div className="p-6 bg-[#00A77C] rounded-2xl text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -280,7 +331,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {challenges.map(ch => {
-            const pct = Math.round((ch.progress / ch.target) * 100);
+            const pct = Math.round((ch.currentCount / ch.target) * 100);
 
             return (
               <div key={ch.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
@@ -297,7 +348,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
                 <div className="space-y-1">
                   <div className="flex justify-between text-[10px] font-semibold text-[#00271D]/50">
                     <span>Progress</span>
-                    <span>{ch.progress} / {ch.target} ({pct}%)</span>
+                    <span>{ch.currentCount} / {ch.target} ({pct}%)</span>
                   </div>
                   <div className="w-full bg-[#00271D]/10 h-1.5 rounded-full overflow-hidden">
                     <div

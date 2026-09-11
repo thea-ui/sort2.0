@@ -12,19 +12,25 @@ import {
   List,
   Eye,
   X,
-  AlertOctagon,
   Sparkles,
-  CheckCircle,
   BadgeAlert,
   ShieldAlert,
+  Mail,
+  Hash,
+  Award,
+  CheckCircle2,
+  Lock,
+  BookOpen,
+  ClipboardList,
+  Crown,
+  Wrench,
+  AlertTriangle,
 } from 'lucide-react';
 import { User, Role } from '../../../types';
 import { useMockData } from '../../../hooks/useMockData';
 
 interface AdminUsersTabProps {
   users: User[];
-  addOffense?: (userId: string, description: string, severity: 'WARNING' | 'DEDUCT' | 'SUSPENSION') => void;
-  deductPoints?: (targetEmail: string, amount: number, reason?: string) => void;
 }
 
 const ROLE_ORDER: Record<Role, number> = {
@@ -36,7 +42,7 @@ const ROLE_ORDER: Record<Role, number> = {
 
 const ROLE_CONFIG: Record<
   Role,
-  { label: string; bg: string; border: string; text: string; icon: React.ElementType; badgeBg: string }
+  { label: string; bg: string; border: string; text: string; icon: React.ElementType; badgeBg: string; accent: string; gradient: string }
 > = {
   ADMIN: {
     label: 'Administrator',
@@ -45,6 +51,8 @@ const ROLE_CONFIG: Record<
     text: 'text-violet-700',
     icon: ShieldCheck,
     badgeBg: 'bg-violet-50 text-violet-700 border-violet-200',
+    accent: 'text-violet-600',
+    gradient: 'from-violet-600 to-violet-800',
   },
   MRF: {
     label: 'MRF Logistics',
@@ -53,6 +61,8 @@ const ROLE_CONFIG: Record<
     text: 'text-sky-700',
     icon: Truck,
     badgeBg: 'bg-sky-50 text-sky-700 border-sky-200',
+    accent: 'text-sky-600',
+    gradient: 'from-sky-500 to-sky-700',
   },
   TEACHER: {
     label: 'Faculty Advisor',
@@ -61,6 +71,8 @@ const ROLE_CONFIG: Record<
     text: 'text-purple-700',
     icon: Building2,
     badgeBg: 'bg-purple-50 text-purple-700 border-purple-200',
+    accent: 'text-purple-600',
+    gradient: 'from-purple-500 to-purple-700',
   },
   STUDENT: {
     label: 'Student Eco-Rep',
@@ -69,6 +81,31 @@ const ROLE_CONFIG: Record<
     text: 'text-[#00A77C]',
     icon: GraduationCap,
     badgeBg: 'bg-[#00A77C]/10 text-[#00A77C] border-[#00A77C]/20',
+    accent: 'text-[#00A77C]',
+    gradient: 'from-[#00A77C] to-[#007A5C]',
+  },
+};
+
+const ROLE_PERMISSIONS: Record<Role, { title: string; icon: React.ElementType; items: string[] }> = {
+  ADMIN: {
+    title: 'System Access',
+    icon: Crown,
+    items: ['Full system configuration', 'User & role management', 'Audit log review', 'Platform-wide analytics'],
+  },
+  MRF: {
+    title: 'Operations Access',
+    icon: Wrench,
+    items: ['Collection dispatch', 'Waste bin monitoring', 'Route management', 'Weight logging'],
+  },
+  TEACHER: {
+    title: 'Faculty Access',
+    icon: BookOpen,
+    items: ['Class section oversight', 'Student report review', 'Program participation', 'Achievement tracking'],
+  },
+  STUDENT: {
+    title: 'Eco-Rep Access',
+    icon: ClipboardList,
+    items: ['Submit waste reports', 'Earn eco-points', 'Claim certificates', 'View leaderboard rank'],
   },
 };
 
@@ -78,8 +115,6 @@ type ViewMode = 'table' | 'grouped';
 
 export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   users,
-  addOffense,
-  deductPoints,
 }) => {
   const { currentUser } = useMockData();
   const [searchTerm, setSearchTerm] = useState('');
@@ -88,11 +123,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
 
-  // Selected user for modal view/actions
   const [inspectUser, setInspectUser] = useState<User | null>(null);
-  const [warningReason, setWarningReason] = useState('');
-  const [warningSuccess, setWarningSuccess] = useState(false);
-  const [deductAmount, setDeductAmount] = useState<number>(50);
 
   // Strict guardrail: Only EnrollPro-synced accounts are displayed
   const enrollProUsers = useMemo(() => {
@@ -166,25 +197,23 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     }
   };
 
-  const handleIssueWarning = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inspectUser || !warningReason.trim() || !addOffense) return;
-
-    await addOffense(inspectUser.id, warningReason);
-    setWarningSuccess(true);
-    setWarningReason('');
-    setTimeout(() => setWarningSuccess(false), 3000);
-  };
-
-  const handleDeductPoints = async () => {
-    if (!inspectUser || deductAmount <= 0 || !deductPoints) return;
-    await deductPoints(inspectUser.id, deductAmount, `Admin deduction from user panel`);
-    setWarningSuccess(true);
-    setTimeout(() => setWarningSuccess(false), 3000);
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Admin-only access guard */}
+      {currentUser?.role !== 'ADMIN' && (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4 animate-fade-in">
+          <div className="p-4 rounded-full bg-rose-50 border border-rose-200">
+            <ShieldAlert size={40} className="text-rose-500" />
+          </div>
+          <h3 className="text-lg font-extrabold text-[#00271D]">Access Denied</h3>
+          <p className="text-sm text-[#00271D]/50 text-center max-w-sm">
+            User & Role Management is restricted to System Administrators only. Your role (<strong>{currentUser?.role || 'Unknown'}</strong>) does not have permission to view this panel.
+          </p>
+        </div>
+      )}
+
+      {currentUser?.role === 'ADMIN' && (
+      <>
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -245,10 +274,10 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold opacity-80 uppercase tracking-wider">All Accounts</span>
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedRole === 'ALL' ? 'text-white/80' : 'text-[#00271D]/60'}`}>All Accounts</span>
             <Users size={16} className={selectedRole === 'ALL' ? 'text-[#00A77C]' : 'text-[#00271D]/40'} />
           </div>
-          <p className="text-xl font-black mt-1">{counts.ALL}</p>
+          <p className={`text-xl font-black mt-1 ${selectedRole === 'ALL' ? 'text-white' : 'text-[#00271D]'}`}>{counts.ALL}</p>
         </button>
 
         {/* ADMIN */}
@@ -256,15 +285,15 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
           onClick={() => setSelectedRole('ADMIN')}
           className={`p-3.5 rounded-2xl text-left border transition-all ${
             selectedRole === 'ADMIN'
-              ? 'bg-violet-900 text-white border-violet-900 shadow-md ring-2 ring-violet-500/30 scale-[1.02]'
+              ? 'bg-violet-900 text-white border-violet-800 shadow-md ring-2 ring-violet-400/30 scale-[1.02]'
               : 'bg-white/90 border-white/80 text-[#00271D] hover:border-violet-400/40 shadow-sm'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wider">Admins</span>
-            <ShieldCheck size={16} className="text-violet-600" />
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedRole === 'ADMIN' ? 'text-violet-200' : 'text-violet-700'}`}>Admins</span>
+            <ShieldCheck size={16} className={selectedRole === 'ADMIN' ? 'text-violet-300' : 'text-violet-600'} />
           </div>
-          <p className="text-xl font-black text-violet-950 mt-1">{counts.ADMIN}</p>
+          <p className={`text-xl font-black mt-1 ${selectedRole === 'ADMIN' ? 'text-white' : 'text-violet-950'}`}>{counts.ADMIN}</p>
         </button>
 
         {/* MRF */}
@@ -272,15 +301,15 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
           onClick={() => setSelectedRole('MRF')}
           className={`p-3.5 rounded-2xl text-left border transition-all ${
             selectedRole === 'MRF'
-              ? 'bg-sky-900 text-white border-sky-900 shadow-md ring-2 ring-sky-500/30 scale-[1.02]'
+              ? 'bg-sky-900 text-white border-sky-800 shadow-md ring-2 ring-sky-400/30 scale-[1.02]'
               : 'bg-white/90 border-white/80 text-[#00271D] hover:border-sky-400/40 shadow-sm'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-sky-700 uppercase tracking-wider">MRF Logistics</span>
-            <Truck size={16} className="text-sky-600" />
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedRole === 'MRF' ? 'text-sky-200' : 'text-sky-700'}`}>MRF Logistics</span>
+            <Truck size={16} className={selectedRole === 'MRF' ? 'text-sky-300' : 'text-sky-600'} />
           </div>
-          <p className="text-xl font-black text-sky-950 mt-1">{counts.MRF}</p>
+          <p className={`text-xl font-black mt-1 ${selectedRole === 'MRF' ? 'text-white' : 'text-sky-950'}`}>{counts.MRF}</p>
         </button>
 
         {/* TEACHER */}
@@ -288,15 +317,15 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
           onClick={() => setSelectedRole('TEACHER')}
           className={`p-3.5 rounded-2xl text-left border transition-all ${
             selectedRole === 'TEACHER'
-              ? 'bg-purple-900 text-white border-purple-900 shadow-md ring-2 ring-purple-500/30 scale-[1.02]'
+              ? 'bg-purple-900 text-white border-purple-800 shadow-md ring-2 ring-purple-400/30 scale-[1.02]'
               : 'bg-white/90 border-white/80 text-[#00271D] hover:border-purple-400/40 shadow-sm'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Faculty</span>
-            <Building2 size={16} className="text-purple-600" />
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedRole === 'TEACHER' ? 'text-purple-200' : 'text-purple-700'}`}>Faculty</span>
+            <Building2 size={16} className={selectedRole === 'TEACHER' ? 'text-purple-300' : 'text-purple-600'} />
           </div>
-          <p className="text-xl font-black text-purple-950 mt-1">{counts.TEACHER}</p>
+          <p className={`text-xl font-black mt-1 ${selectedRole === 'TEACHER' ? 'text-white' : 'text-purple-950'}`}>{counts.TEACHER}</p>
         </button>
 
         {/* STUDENT */}
@@ -304,15 +333,15 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
           onClick={() => setSelectedRole('STUDENT')}
           className={`p-3.5 rounded-2xl text-left border transition-all ${
             selectedRole === 'STUDENT'
-              ? 'bg-[#00271D] text-white border-[#00271D] shadow-md ring-2 ring-[#00A77C]/30 scale-[1.02]'
+              ? 'bg-[#00271D] text-white border-[#00271D] shadow-md ring-2 ring-[#00A77C]/40 scale-[1.02]'
               : 'bg-white/90 border-white/80 text-[#00271D] hover:border-[#00A77C]/40 shadow-sm'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#00A77C] uppercase tracking-wider">Students</span>
+            <span className={`text-[11px] font-bold uppercase tracking-wider text-[#00A77C]`}>Students</span>
             <GraduationCap size={16} className="text-[#00A77C]" />
           </div>
-          <p className="text-xl font-black text-[#00271D] mt-1">{counts.STUDENT}</p>
+          <p className={`text-xl font-black mt-1 ${selectedRole === 'STUDENT' ? 'text-white' : 'text-[#00271D]'}`}>{counts.STUDENT}</p>
         </button>
       </div>
 
@@ -447,22 +476,8 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                   processedUsers.map((u) => {
                     const roleCfg = ROLE_CONFIG[u.role];
                     const IconComponent = roleCfg.icon;
-  // Admin-only access guard
-  if (currentUser?.role !== 'ADMIN') {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4 animate-fade-in">
-        <div className="p-4 rounded-full bg-rose-50 border border-rose-200">
-          <ShieldAlert size={40} className="text-rose-500" />
-        </div>
-        <h3 className="text-lg font-extrabold text-[#00271D]">Access Denied</h3>
-        <p className="text-sm text-[#00271D]/50 text-center max-w-sm">
-          User & Role Management is restricted to System Administrators only. Your role (<strong>{currentUser?.role || 'Unknown'}</strong>) does not have permission to view this panel.
-        </p>
-      </div>
-    );
-  }
 
-  return (
+                    return (
                       <tr key={u.id} className="hover:bg-[#00A77C]/5 transition-colors">
                         {/* Name & Avatar */}
                         <td className="py-3.5 px-4 font-bold text-[#00271D]">
@@ -482,6 +497,12 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                             <IconComponent size={12} />
                             {u.role}
                           </span>
+                          {u.role === 'STUDENT' && u.portalAccountActive === false && (
+                            <span className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <AlertTriangle size={10} />
+                              Not login-ready
+                            </span>
+                          )}
                         </td>
 
                         {/* Email & ID */}
@@ -531,7 +552,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                           <button
                             onClick={() => setInspectUser(u)}
                             className="p-1.5 text-[#00271D]/60 hover:text-[#00A77C] hover:bg-[#00A77C]/10 rounded-xl transition-all"
-                            title="Inspect User Details & Manage Sanctions"
+                            title="Inspect User Profile"
                           >
                             <Eye size={16} />
                           </button>
@@ -609,6 +630,11 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         <div className="flex items-center justify-between text-[11px] pt-2 border-t border-[#00271D]/5">
                           <span className="font-mono text-[#00271D]/50 text-[10px]">{u.employeeId}</span>
                           <div className="flex items-center gap-2">
+                            {u.role === 'STUDENT' && u.portalAccountActive === false && (
+                              <span className="inline-flex items-center gap-0.5 text-amber-700 font-extrabold text-[10px] bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                <AlertTriangle size={10} /> Not login-ready
+                              </span>
+                            )}
                             {u.warningsCount > 0 && (
                               <span className="text-rose-600 font-extrabold text-[10px] flex items-center gap-0.5 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full">
                                 <BadgeAlert size={10} /> {u.warningsCount}
@@ -629,116 +655,179 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
         </div>
       )}
 
-      {/* USER INSPECT & SANCTION MODAL */}
-      {inspectUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-white/80 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-scale-up relative">
-            <button
-              onClick={() => setInspectUser(null)}
-              className="absolute top-4 right-4 text-[#00271D]/40 hover:text-[#00271D] p-1.5 rounded-full bg-[#F9F3F0]"
-            >
-              <X size={16} />
-            </button>
+      {/* USER PROFILE INSPECTOR MODAL (Read-Only, Role-Personalized) */}
+      {inspectUser && (() => {
+        const rc = ROLE_CONFIG[inspectUser.role];
+        const RpIcon = rc.icon;
+        const perms = ROLE_PERMISSIONS[inspectUser.role];
+        const PermIcon = perms.icon;
 
-            {/* Modal Header */}
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-full ${ROLE_CONFIG[inspectUser.role].bg} ${ROLE_CONFIG[inspectUser.role].text} font-black flex items-center justify-center text-base border ${ROLE_CONFIG[inspectUser.role].border}`}>
-                {inspectUser.name.charAt(0)}
-              </div>
-              <div>
-                <h3 className="text-lg font-extrabold text-[#00271D]">{inspectUser.name}</h3>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${ROLE_CONFIG[inspectUser.role].badgeBg}`}>
-                  {inspectUser.role}
-                </span>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in">
+            <div className="bg-white border border-white/80 rounded-3xl max-w-lg w-full shadow-2xl animate-scale-up relative overflow-hidden">
+              {/* Close Button */}
+              <button
+                onClick={() => setInspectUser(null)}
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#00271D]/5 hover:bg-[#00271D]/10 text-[#00271D] flex items-center justify-center transition-all cursor-pointer z-10"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="px-6 sm:px-7 pt-6 pb-6 sm:pb-7 space-y-5">
+                {/* Avatar & Identity */}
+                <div className="flex items-center gap-4">
+                  <div className={`w-[68px] h-[68px] rounded-full bg-white ${rc.text} font-black flex items-center justify-center text-2xl shrink-0 border-4 border-white shadow-lg ring-2 ${rc.border}`}>
+                    {inspectUser.name.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-heading font-black text-[#00271D] truncate">{inspectUser.name}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`rounded-full font-black uppercase text-[10px] tracking-wider px-3 py-1 ${rc.badgeBg}`}>
+                        {rc.label}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2 py-1 rounded-full">
+                        <CheckCircle2 size={10} />
+                        EnrollPro
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Stats Grid — Role-Personalized */}
+                <div className="grid grid-cols-3 gap-2.5">
+                  {/* Stat 1: Role-specific primary metric */}
+                  <div className="bg-[#F9F3F0] rounded-2xl p-3 border border-[#00271D]/5 text-center space-y-1">
+                    <div className="flex items-center justify-center">
+                      {inspectUser.role === 'STUDENT' ? (
+                        <Sparkles size={15} className="text-[#00A77C]" />
+                      ) : inspectUser.role === 'ADMIN' ? (
+                        <Crown size={15} className="text-violet-500" />
+                      ) : inspectUser.role === 'TEACHER' ? (
+                        <BookOpen size={15} className="text-purple-500" />
+                      ) : (
+                        <Truck size={15} className="text-sky-500" />
+                      )}
+                    </div>
+                    {inspectUser.role === 'STUDENT' ? (
+                      <p className="text-lg font-black text-[#00A77C]">{inspectUser.points.toLocaleString()}</p>
+                    ) : inspectUser.role === 'ADMIN' ? (
+                      <p className="text-sm font-black text-violet-600">L4</p>
+                    ) : inspectUser.role === 'TEACHER' ? (
+                      <p className="text-sm font-black text-purple-600">Faculty</p>
+                    ) : (
+                      <p className="text-sm font-black text-sky-600">Ops</p>
+                    )}
+                    <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">
+                      {inspectUser.role === 'STUDENT' ? 'Eco-Points' : inspectUser.role === 'ADMIN' ? 'Clearance' : inspectUser.role === 'TEACHER' ? 'Division' : 'Team'}
+                    </p>
+                  </div>
+
+                  {/* Stat 2: Warning Status */}
+                  <div className="bg-[#F9F3F0] rounded-2xl p-3 border border-[#00271D]/5 text-center space-y-1">
+                    <div className="flex items-center justify-center">
+                      {inspectUser.warningsCount > 0 ? (
+                        <BadgeAlert size={15} className="text-rose-600" />
+                      ) : (
+                        <ShieldCheck size={15} className="text-emerald-600" />
+                      )}
+                    </div>
+                    {inspectUser.warningsCount > 0 ? (
+                      <p className="text-lg font-black text-rose-600">{inspectUser.warningsCount}</p>
+                    ) : (
+                      <p className="text-sm font-black text-emerald-600">Clean</p>
+                    )}
+                    <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">
+                      {inspectUser.warningsCount > 0 ? 'Warnings' : 'Record'}
+                    </p>
+                  </div>
+
+                  {/* Stat 3: Account Status */}
+                  <div className="bg-[#F9F3F0] rounded-2xl p-3 border border-[#00271D]/5 text-center space-y-1">
+                    <div className="flex items-center justify-center">
+                      <span className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-sm ${inspectUser.accountStatus === 'SUSPENDED' ? 'bg-rose-500 shadow-rose-300' : 'bg-emerald-500 shadow-emerald-300'}`} />
+                    </div>
+                    <p className={`text-sm font-black ${inspectUser.accountStatus === 'SUSPENDED' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {inspectUser.accountStatus === 'SUSPENDED' ? 'Suspended' : 'Active'}
+                    </p>
+                    <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider">Status</p>
+                  </div>
+                </div>
+
+                {/* Detailed Information */}
+                <div className="space-y-2.5">
+                  <h4 className="text-[11px] font-extrabold text-[#00271D]/40 uppercase tracking-wider">Profile Details</h4>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-3 px-3 py-2 bg-[#F9F3F0] rounded-xl border border-[#00271D]/5">
+                      <Mail size={14} className="text-[#00271D]/40 shrink-0" />
+                      <span className="font-mono text-xs text-[#00271D] truncate">{inspectUser.email}</span>
+                    </div>
+                    <div className="flex items-center gap-3 px-3 py-2 bg-[#F9F3F0] rounded-xl border border-[#00271D]/5">
+                      <Hash size={14} className="text-[#00271D]/40 shrink-0" />
+                      <span className="font-mono text-xs text-[#00271D]">{inspectUser.employeeId}</span>
+                    </div>
+                    {((inspectUser as any).gradeLevel || inspectUser.classroomSection) && (
+                      <div className="flex items-center gap-3 px-3 py-2 bg-[#F9F3F0] rounded-xl border border-[#00271D]/5">
+                        <GraduationCap size={14} className="text-[#00271D]/40 shrink-0" />
+                        <span className="text-xs font-bold text-[#00271D]">
+                          {(inspectUser as any).gradeLevel
+                            ? `${(inspectUser as any).gradeLevel} — ${(inspectUser as any).sectionName || '—'}`
+                            : inspectUser.classroomSection}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Role Permissions Callout */}
+                <div className="space-y-2.5">
+                  <h4 className="text-[11px] font-extrabold text-[#00271D]/40 uppercase tracking-wider">{perms.title}</h4>
+                  <div className={`p-3 rounded-xl border ${rc.border} ${rc.bg}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <PermIcon size={14} className={rc.accent} />
+                      <span className={`text-[11px] font-extrabold ${rc.accent} uppercase tracking-wider`}>{rc.label} Privileges</span>
+                    </div>
+                    <ul className="space-y-1">
+                      {perms.items.map((item, i) => (
+                        <li key={i} className="flex items-center gap-2 text-xs text-[#00271D]/70">
+                          <Lock size={10} className="text-[#00271D]/30 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Certificates — Only if earned */}
+                {inspectUser.certificatesEarned?.length > 0 && (
+                  <div className="space-y-2.5">
+                    <h4 className="text-[11px] font-extrabold text-[#00271D]/40 uppercase tracking-wider">Certificates Earned</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {inspectUser.certificatesEarned.map((cert, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C69B26]/10 border border-[#C69B26]/20 rounded-full text-[11px] font-bold text-[#C69B26]"
+                        >
+                          <Award size={12} />
+                          {cert}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Close Profile Button */}
+                <button
+                  onClick={() => setInspectUser(null)}
+                  className="w-full py-3 bg-[#00271D] hover:bg-[#00A77C] text-white font-bold rounded-xl transition-all shadow-md text-xs uppercase tracking-wider cursor-pointer"
+                >
+                  Close Profile
+                </button>
               </div>
             </div>
-
-            {/* Quick Details */}
-            <div className="bg-[#F9F3F0] p-4 rounded-2xl space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-[#00271D]/50 font-medium">Email:</span>
-                <span className="font-mono font-bold text-[#00271D]">{inspectUser.email}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#00271D]/50 font-medium">Employee / Badge ID:</span>
-                <span className="font-mono font-bold text-[#00271D]">{inspectUser.employeeId}</span>
-              </div>
-              {(inspectUser as any).gradeLevel ? (
-                <div className="flex justify-between">
-                  <span className="text-[#00271D]/50 font-medium">Grade & Section:</span>
-                  <span className="font-bold text-[#00271D]">{(inspectUser as any).gradeLevel} — {(inspectUser as any).sectionName || '—'}</span>
-                </div>
-              ) : inspectUser.classroomSection ? (
-                <div className="flex justify-between">
-                  <span className="text-[#00271D]/50 font-medium">Section:</span>
-                  <span className="font-bold text-[#00271D]">{inspectUser.classroomSection}</span>
-                </div>
-              ) : null}
-              {inspectUser.role === 'STUDENT' && (
-                <div className="flex justify-between">
-                  <span className="text-[#00271D]/50 font-medium">Total Eco-Points:</span>
-                  <span className="font-black text-[#00A77C]">{inspectUser.points.toLocaleString()} pts</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-[#00271D]/50 font-medium">Warning History:</span>
-                <span className={`font-bold ${inspectUser.warningsCount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                  {inspectUser.warningsCount} warnings logged
-                </span>
-              </div>
-            </div>
-
-            {/* Alert message if action taken */}
-            {warningSuccess && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
-                <CheckCircle size={16} className="text-emerald-600" />
-                <span>Account record updated successfully!</span>
-              </div>
-            )}
-
-            {/* Fast Sanction / Offense Logger Form */}
-            {addOffense && (
-              <form onSubmit={handleIssueWarning} className="pt-2 border-t border-[#00271D]/10 space-y-3">
-                <h4 className="text-xs font-heading font-extrabold text-[#00271D] flex items-center gap-1.5">
-                  <AlertOctagon size={14} className="text-rose-500" />
-                  Issue Offense
-                </h4>
-                <input
-                  type="text"
-                  placeholder="Reason for offense (e.g. Improper Sorting)"
-                  value={warningReason}
-                  onChange={(e) => setWarningReason(e.target.value)}
-                  className="w-full bg-[#F9F3F0] border border-[#00271D]/10 rounded-xl px-3 py-2 text-xs text-[#00271D] outline-none focus:border-rose-500"
-                />
-                <div className="flex items-center gap-2">
-                  <span className={`px-2.5 py-1.5 rounded-xl text-xs font-bold ${
-                    (inspectUser?.warningsCount ?? 0) + 1 === 1 ? 'bg-yellow-100 text-yellow-800' :
-                    (inspectUser?.warningsCount ?? 0) + 1 === 2 ? 'bg-orange-100 text-orange-800' :
-                    'bg-rose-100 text-rose-800'
-                  }`}>
-                    {(inspectUser?.warningsCount ?? 0) + 1 === 1 ? '1st Warning' :
-                     (inspectUser?.warningsCount ?? 0) + 1 === 2 ? '2nd = Deduct Pts' :
-                     '3rd+ = Suspension'}
-                  </span>
-                  <button
-                    type="submit"
-                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition-all shadow-sm"
-                  >
-                    Log Offense
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* Close Button */}
-            <button
-              onClick={() => setInspectUser(null)}
-              className="w-full py-2.5 bg-[#00271D] text-white rounded-xl text-xs font-bold hover:bg-[#00271D]/90 transition-all"
-            >
-              Done
-            </button>
           </div>
-        </div>
+        );
+      })()}
+      </>
       )}
     </div>
   );

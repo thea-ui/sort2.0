@@ -2,6 +2,9 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// ── Concurrency Guard ──────────────────────────────────────────────────────
+let rolloverInProgress = false;
+
 interface RolloverResult {
   success: boolean;
   previousSchoolYear: string;
@@ -9,20 +12,28 @@ interface RolloverResult {
   snapshotsCreated: number;
   inventoryTransactions: number;
   usersReset: number;
+  studentsArchived?: number;
   error?: string;
+  errorCode?: string;
 }
 
 /**
- * Execute school year rollover:
+ * Execute school year rollover atomically:
  * 1. Snapshot market stocks (closing balances)
  * 2. Snapshot user points (closing balances)
  * 3. Create inventory closing transactions
- * 4. Archive old school year
- * 5. Create new school year
- * 6. Carry forward persistent inventory as opening transactions
- * 7. Reset user points to 0
- * 8. Reset market stocks to 0
- * 9. Log in audit
+ * 4. Tag all null-school-year records to current year
+ * 5. Archive old school year
+ * 6. Create new school year
+ * 7. Carry forward persistent inventory as opening transactions
+ * 8. Carry forward market stock snapshots as opening balances
+ * 9. Carry forward unsold market stock (keep kg, clear sale approval)
+ * 10. Reset user points to 0
+ * 11. Archive all students (revoke sessions, keep history)
+ * 12. Log in audit
+ *
+ * All steps execute in a single Prisma transaction for atomicity.
+ * Idempotent: retries for the same EnrollPro ID will not duplicate work.
  */
 export async function executeRollover(
   newEnrollproId: number,
@@ -30,236 +41,249 @@ export async function executeRollover(
   newStartDate: Date,
   newEndDate: Date
 ): Promise<RolloverResult> {
+  // Concurrency guard
+  if (rolloverInProgress) {
+    console.warn('[Rollover] Attempted concurrent rollover — rejected');
+    return {
+      success: false,
+      previousSchoolYear: '',
+      newSchoolYear: newLabel,
+      snapshotsCreated: 0,
+      inventoryTransactions: 0,
+      usersReset: 0,
+      error: 'A rollover is already in progress. Please try again later.',
+      errorCode: 'ROLLOVER_CONCURRENT',
+    };
+  }
+
+  // Idempotency check: if a year with this EnrollPro ID already exists, skip
+  const existingTarget = await prisma.schoolYear.findUnique({
+    where: { enrollproId: newEnrollproId },
+  });
+  if (existingTarget) {
+    console.log(`[Rollover] School year with EnrollPro ID ${newEnrollproId} already exists (${existingTarget.label}) — skipping`);
+    return {
+      success: true,
+      previousSchoolYear: '',
+      newSchoolYear: existingTarget.label,
+      snapshotsCreated: 0,
+      inventoryTransactions: 0,
+      usersReset: 0,
+    };
+  }
+
+  rolloverInProgress = true;
   console.log(`[Rollover] Starting school year rollover to "${newLabel}" (EnrollPro ID: ${newEnrollproId})`);
 
   let snapshotsCreated = 0;
   let inventoryTransactions = 0;
   let usersReset = 0;
+  let studentsArchived = 0;
 
   try {
-    // 1. Find current active school year
-    const currentSY = await prisma.schoolYear.findFirst({
-      where: { isActive: true, isArchived: false },
-    });
+    // Execute all state changes in one transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Find current active school year
+      const currentSY = await tx.schoolYear.findFirst({
+        where: { isActive: true, isArchived: false },
+      });
 
-    const previousLabel = currentSY?.label || 'Unknown';
+      const previousLabel = currentSY?.label || 'Unknown';
 
-    if (currentSY) {
-      // 2. Snapshot market stocks (closing balances)
-      const marketStocks = await prisma.recycleMarketStock.findMany();
-      for (const stock of marketStocks) {
-        if (stock.accumulatedKg > 0) {
-          await prisma.marketStockSnapshot.upsert({
-            where: {
-              schoolYearId_categoryCode: {
+      if (currentSY) {
+        // 2. Snapshot market stocks (closing balances)
+        const marketStocks = await tx.recycleMarketStock.findMany();
+        for (const stock of marketStocks) {
+          if (stock.accumulatedKg > 0) {
+            await tx.marketStockSnapshot.upsert({
+              where: {
+                schoolYearId_categoryCode: {
+                  schoolYearId: currentSY.id,
+                  categoryCode: stock.categoryCode,
+                },
+              },
+              update: { closingKg: stock.accumulatedKg },
+              create: {
                 schoolYearId: currentSY.id,
                 categoryCode: stock.categoryCode,
+                categoryName: stock.categoryName,
+                closingKg: stock.accumulatedKg,
+                openingKg: 0,
+              },
+            });
+            snapshotsCreated++;
+          }
+        }
+
+        // 3. Snapshot user points (closing balances)
+        const studentsWithPoints = await tx.user.findMany({
+          where: { role: 'STUDENT', syncSource: 'ENROLLPRO', points: { gt: 0 } },
+        });
+
+        for (const student of studentsWithPoints) {
+          await tx.userPointSnapshot.upsert({
+            where: {
+              schoolYearId_userId: {
+                schoolYearId: currentSY.id,
+                userId: student.id,
               },
             },
-            update: {
-              closingKg: stock.accumulatedKg,
-            },
+            update: { closingPoints: student.points },
             create: {
               schoolYearId: currentSY.id,
-              categoryCode: stock.categoryCode,
-              categoryName: stock.categoryName,
-              closingKg: stock.accumulatedKg,
-              openingKg: 0,
-            },
-          });
-          snapshotsCreated++;
-        }
-      }
-      console.log(`[Rollover] Snapshotted ${snapshotsCreated} market stock categories`);
-
-      // 3. Snapshot user points (closing balances)
-      const studentsWithPoints = await prisma.user.findMany({
-        where: {
-          role: 'STUDENT',
-          syncSource: 'ENROLLPRO',
-          points: { gt: 0 },
-        },
-      });
-
-      for (const student of studentsWithPoints) {
-        await prisma.userPointSnapshot.upsert({
-          where: {
-            schoolYearId_userId: {
-              schoolYearId: currentSY.id,
               userId: student.id,
-            },
-          },
-          update: {
-            closingPoints: student.points,
-          },
-          create: {
-            schoolYearId: currentSY.id,
-            userId: student.id,
-            closingPoints: student.points,
-          },
-        });
-        snapshotsCreated++;
-      }
-      console.log(`[Rollover] Snapshotted ${studentsWithPoints.length} user point balances`);
-
-      // 4. Create inventory ROLLOVER_CLOSING transactions for all items with stock
-      const inventoryItems = await prisma.mrfInventoryItem.findMany({
-        where: { quantity: { gt: 0 } },
-      });
-
-      for (const item of inventoryItems) {
-        await prisma.mrfInventoryTransaction.create({
-          data: {
-            itemId: item.id,
-            schoolYearId: currentSY.id,
-            type: 'ROLLOVER_CLOSING',
-            quantity: -item.quantity,
-            notes: `School year closing balance for ${item.name}`,
-          },
-        });
-        inventoryTransactions++;
-      }
-      console.log(`[Rollover] Created ${inventoryTransactions} inventory closing transactions`);
-
-      // 5. Tag all untagged records with current school year before archiving
-      const [untaggedReports, untaggedPoints, untaggedOffenses, untaggedSales, untaggedAudit] = await Promise.all([
-        prisma.report.updateMany({
-          where: { schoolYearId: null },
-          data: { schoolYearId: currentSY.id },
-        }),
-        prisma.pointHistory.updateMany({
-          where: { schoolYearId: null },
-          data: { schoolYearId: currentSY.id },
-        }),
-        prisma.offense.updateMany({
-          where: { schoolYearId: null },
-          data: { schoolYearId: currentSY.id },
-        }),
-        prisma.recycleSaleTransaction.updateMany({
-          where: { schoolYearId: null },
-          data: { schoolYearId: currentSY.id },
-        }),
-        prisma.auditLog.updateMany({
-          where: { schoolYearId: null },
-          data: { schoolYearId: currentSY.id },
-        }),
-      ]);
-      console.log(`[Rollover] Tagged untagged records: ${untaggedReports.count} reports, ${untaggedPoints.count} points, ${untaggedOffenses.count} offenses, ${untaggedSales.count} sales, ${untaggedAudit.count} audit`);
-
-      // 6. Archive old school year
-      await prisma.schoolYear.update({
-        where: { id: currentSY.id },
-        data: {
-          isActive: false,
-          isArchived: true,
-          archivedAt: new Date(),
-        },
-      });
-      console.log(`[Rollover] Archived school year "${previousLabel}"`);
-    }
-
-    // 7. Create new school year
-    const newSY = await prisma.schoolYear.create({
-      data: {
-        enrollproId: newEnrollproId,
-        label: newLabel,
-        startDate: newStartDate,
-        endDate: newEndDate,
-        isActive: true,
-        isArchived: false,
-      },
-    });
-    console.log(`[Rollover] Created new school year "${newLabel}" (${newSY.id})`);
-
-    // 8. Carry forward persistent inventory items as opening transactions
-    const persistentItems = await prisma.mrfInventoryItem.findMany({
-      where: { isPersistent: true },
-    });
-
-    let carryForwardCount = 0;
-    for (const item of persistentItems) {
-      if (item.quantity > 0) {
-        await prisma.mrfInventoryTransaction.create({
-          data: {
-            itemId: item.id,
-            schoolYearId: newSY.id,
-            type: 'ROLLOVER_OPENING',
-            quantity: item.quantity,
-            notes: `Opening balance carried from ${previousLabel}`,
-          },
-        });
-        carryForwardCount++;
-      }
-    }
-    inventoryTransactions += carryForwardCount;
-    console.log(`[Rollover] Carried forward ${carryForwardCount} persistent inventory items`);
-
-    // 9. Carry forward market stock snapshots as opening balances for new SY
-    if (currentSY) {
-      const prevSnapshots = await prisma.marketStockSnapshot.findMany({
-        where: { schoolYearId: currentSY.id },
-      });
-      for (const snap of prevSnapshots) {
-        if (snap.closingKg > 0) {
-          await prisma.marketStockSnapshot.create({
-            data: {
-              schoolYearId: newSY.id,
-              categoryCode: snap.categoryCode,
-              categoryName: snap.categoryName,
-              closingKg: 0,
-              openingKg: snap.closingKg,
+              closingPoints: student.points,
             },
           });
           snapshotsCreated++;
         }
+
+        // 4. Create inventory ROLLOVER_CLOSING transactions
+        const inventoryItems = await tx.mrfInventoryItem.findMany({
+          where: { quantity: { gt: 0 } },
+        });
+
+        for (const item of inventoryItems) {
+          await tx.mrfInventoryTransaction.create({
+            data: {
+              itemId: item.id,
+              schoolYearId: currentSY.id,
+              type: 'ROLLOVER_CLOSING',
+              quantity: -item.quantity,
+              notes: `School year closing balance for ${item.name}`,
+            },
+          });
+          inventoryTransactions++;
+        }
+
+        // 5. Tag all untagged records with current school year
+        await Promise.all([
+          tx.report.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
+          tx.pointHistory.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
+          tx.offense.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
+          tx.recycleSaleTransaction.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
+          tx.auditLog.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
+        ]);
+
+        // 6. Archive old school year
+        await tx.schoolYear.update({
+          where: { id: currentSY.id },
+          data: { isActive: false, isArchived: true, archivedAt: new Date() },
+        });
       }
-    }
 
-    // 10. Reset market stocks to 0
-    await prisma.recycleMarketStock.updateMany({
-      data: {
-        accumulatedKg: 0,
-        isApprovedForSale: false,
-        approvedAt: null,
-      },
-    });
-    console.log(`[Rollover] Reset all market stocks to 0 kg`);
+      // 7. Create new school year
+      const newSY = await tx.schoolYear.create({
+        data: {
+          enrollproId: newEnrollproId,
+          label: newLabel,
+          startDate: newStartDate,
+          endDate: newEndDate,
+          isActive: true,
+          isArchived: false,
+        },
+      });
 
-    // 11. Reset user points to 0
-    const resetResult = await prisma.user.updateMany({
-      where: {
-        role: 'STUDENT',
-        syncSource: 'ENROLLPRO',
-      },
-      data: {
-        points: 0,
-        warningsCount: 0,
-        certificates: [],
-      },
-    });
-    usersReset = resetResult.count;
-    console.log(`[Rollover] Reset points for ${usersReset} students`);
+      // 8. Carry forward persistent inventory items as opening transactions
+      const persistentItems = await tx.mrfInventoryItem.findMany({
+        where: { isPersistent: true },
+      });
 
-    // 12. Create audit log for rollover
-    await prisma.auditLog.create({
-      data: {
-        actorName: 'System',
-        actorRole: 'SYSTEM',
-        actionType: 'SCHOOL_YEAR_ROLLOVER',
-        details: `Automatic rollover from "${previousLabel}" to "${newLabel}". Snapshots: ${snapshotsCreated}, Inventory txns: ${inventoryTransactions}, Users reset: ${usersReset}.`,
-        schoolYearId: newSY.id,
-      },
-    });
+      let carryForwardCount = 0;
+      for (const item of persistentItems) {
+        if (item.quantity > 0) {
+          await tx.mrfInventoryTransaction.create({
+            data: {
+              itemId: item.id,
+              schoolYearId: newSY.id,
+              type: 'ROLLOVER_OPENING',
+              quantity: item.quantity,
+              notes: `Opening balance carried from ${previousLabel}`,
+            },
+          });
+          carryForwardCount++;
+        }
+      }
+      inventoryTransactions += carryForwardCount;
 
-    console.log(`[Rollover] Rollover completed successfully: "${previousLabel}" -> "${newLabel}"`);
+      // 9. Carry forward market stock snapshots as opening balances for new SY
+      if (currentSY) {
+        const prevSnapshots = await tx.marketStockSnapshot.findMany({
+          where: { schoolYearId: currentSY.id },
+        });
+        for (const snap of prevSnapshots) {
+          if (snap.closingKg > 0) {
+            await tx.marketStockSnapshot.create({
+              data: {
+                schoolYearId: newSY.id,
+                categoryCode: snap.categoryCode,
+                categoryName: snap.categoryName,
+                closingKg: 0,
+                openingKg: snap.closingKg,
+              },
+            });
+            snapshotsCreated++;
+          }
+        }
+      }
+
+      // 10. Carry forward unsold market stock as real, sellable stock.
+      //     Keep accumulatedKg (opening snapshot records the carried balance);
+      //     only clear any pending sale approval from the previous year.
+      await tx.recycleMarketStock.updateMany({
+        data: { isApprovedForSale: false, approvedAt: null },
+      });
+
+      // 10b. Reset challenge progress for all students (per-term)
+      const challengeContributionsDeleted = await tx.challengeContribution.deleteMany({});
+      const challengeProgressDeleted = await tx.userChallengeProgress.deleteMany({});
+      console.log(`[Rollover] Challenge progress reset: ${challengeProgressDeleted.count} progress records, ${challengeContributionsDeleted.count} contributions deleted`);
+
+      // 11. Reset user points to 0
+      const resetResult = await tx.user.updateMany({
+        where: { role: 'STUDENT', syncSource: 'ENROLLPRO' },
+        data: { points: 0, warningsCount: 0, certificates: [] },
+      });
+      usersReset = resetResult.count;
+
+      // 11b. Archive all students. They are no longer enrolled in the new
+      //      school year. Returning students are re-activated by the next
+      //      enrollment sync; graduates remain archived as alumni. Sessions are
+      //      revoked so nobody stays logged in. Never delete accounts — their
+      //      reports, points, offenses, and snapshots must survive.
+      const archivedResult = await tx.user.updateMany({
+        where: { role: 'STUDENT', syncSource: 'ENROLLPRO', archivedAt: null },
+        data: { enrollmentStatus: 'NOT_ENROLLED', archivedAt: new Date() },
+      });
+      studentsArchived = archivedResult.count;
+      await tx.userSession.deleteMany({
+        where: { user: { role: 'STUDENT', syncSource: 'ENROLLPRO' } },
+      });
+
+      // 12. Create audit log for rollover
+      await tx.auditLog.create({
+        data: {
+          actorName: 'System',
+          actorRole: 'SYSTEM',
+          actionType: 'SCHOOL_YEAR_ROLLOVER',
+          details: `Automatic rollover from "${previousLabel}" to "${newLabel}". Snapshots: ${snapshotsCreated}, Inventory txns: ${inventoryTransactions}, Users reset: ${usersReset}, Students archived: ${studentsArchived}, Challenge progress cleared: ${challengeProgressDeleted.count}.`,
+          schoolYearId: newSY.id,
+        },
+      });
+
+      return { previousLabel, newLabel };
+    }, { timeout: 60000 }); // Extended timeout for large datasets
+
+    console.log(`[Rollover] Completed: "${result.previousLabel}" -> "${result.newLabel}"`);
 
     return {
       success: true,
-      previousSchoolYear: previousLabel,
-      newSchoolYear: newLabel,
+      previousSchoolYear: result.previousLabel,
+      newSchoolYear: result.newLabel,
       snapshotsCreated,
       inventoryTransactions,
       usersReset,
+      studentsArchived,
     };
   } catch (error: any) {
     console.error('[Rollover] Failed:', error.message);
@@ -270,8 +294,12 @@ export async function executeRollover(
       snapshotsCreated,
       inventoryTransactions,
       usersReset,
+      studentsArchived,
       error: error.message,
+      errorCode: 'ROLLOVER_FAILED',
     };
+  } finally {
+    rolloverInProgress = false;
   }
 }
 
@@ -292,14 +320,12 @@ export async function ensureSchoolYear(
   });
 
   if (existing) {
-    if (!existing.isActive) {
+    if (!existing.isActive && !existing.isArchived) {
       // Reactivate if somehow deactivated but not archived
-      if (!existing.isArchived) {
-        await prisma.schoolYear.update({
-          where: { id: existing.id },
-          data: { isActive: true },
-        });
-      }
+      await prisma.schoolYear.update({
+        where: { id: existing.id },
+        data: { isActive: true },
+      });
     }
     return { schoolYearId: existing.id, rolloverTriggered: false };
   }

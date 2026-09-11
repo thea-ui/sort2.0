@@ -25,6 +25,7 @@ enum ReportStatus {
   COLLECTED
   RESOLVED
   DISMISSED
+  EXPIRED
 }
 
 enum WasteCategory {
@@ -65,6 +66,13 @@ enum EventType {
 enum SyncStatus {
   SUCCESS
   FAILED
+  PARTIAL
+}
+
+enum ChallengeType {
+  REPORT_COUNT
+  WEIGHT_COLLECTED
+  HAZARDOUS_REPORT
 }
 
 model SchoolYear {
@@ -83,6 +91,7 @@ model SchoolYear {
   offenses             Offense[]
   saleTransactions     RecycleSaleTransaction[]
   inventoryTransactions MrfInventoryTransaction[]
+  assetRecords          MrfAssetRecord[]
   auditLogs            AuditLog[]
   marketStockSnapshots MarketStockSnapshot[]
   pointSnapshots       UserPointSnapshot[]
@@ -94,7 +103,7 @@ model User {
   id               String   @id @default(uuid())
   name             String
   email            String   @unique
-  passwordHash     String   @map("password_hash")
+  passwordHash     String?  @map("password_hash")
   employeeId       String   @unique @map("employee_id")
   role             Role     @default(STUDENT)
   points           Int          @default(0)
@@ -117,6 +126,8 @@ model User {
   schoolYearLabel       String?    @map("school_year_label")
   isTemporarilyEnrolled Boolean?   @default(false) @map("is_temporarily_enrolled")
   enrollmentStatus      String?    @map("enrollment_status")
+  portalAccountActive   Boolean?   @default(true) @map("portal_account_active")
+  archivedAt            DateTime?  @map("archived_at")
 
   reports         Report[]       @relation("ReportedBy")
   assignedReports Report[]       @relation("AssignedToMRF")
@@ -124,6 +135,8 @@ model User {
   pointHistories  PointHistory[]
   pointSnapshots  UserPointSnapshot[]
   sessions        UserSession[]
+  challengeProgress    UserChallengeProgress[]
+  challengeContributions ChallengeContribution[]
 
   @@index([enrollproId])
   @@index([syncSource])
@@ -140,6 +153,7 @@ model Report {
   lat             Float
   lng             Float
   locationName    String        @map("location_name")
+  locationKey     String        @map("location_key")
   reporterId      String        @map("reporter_id")
   pointsAwarded   Int           @default(0) @map("points_awarded")
   pointsAwardedAt DateTime?     @map("points_awarded_at")
@@ -159,10 +173,14 @@ model Report {
   reporter    User  @relation("ReportedBy", fields: [reporterId], references: [id], onDelete: Cascade)
   assignedMrf User? @relation("AssignedToMRF", fields: [assignedMrfId], references: [id], onDelete: SetNull)
 
+  pointHistories         PointHistory[]
+  challengeContributions ChallengeContribution[]
+
   @@index([reporterId])
   @@index([status])
   @@index([category])
   @@index([schoolYearId])
+  @@index([locationKey, category, schoolYearId])
   @@map("reports")
 }
 
@@ -200,34 +218,81 @@ model Offense {
 }
 
 model PointHistory {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
   amount       Int
   reason       String
-  reportId     String?  @unique @map("report_id")
-  schoolYearId String?  @map("school_year_id")
-  schoolYear   SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now()) @map("created_at")
+  reportId     String?   @unique @map("report_id")
+  challengeId  String?   @map("challenge_id")
+  schoolYearId String?   @map("school_year_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge  Challenge?  @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  report     Report?     @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  schoolYear SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([schoolYearId])
+  @@index([challengeId])
   @@map("point_histories")
 }
 
 model Challenge {
-  id            String   @id @default(uuid())
+  id            String        @id @default(uuid())
+  code          String        @unique
   title         String
   description   String
-  pointsAwarded Int      @map("points_awarded")
+  challengeType ChallengeType @default(REPORT_COUNT) @map("challenge_type")
+  pointsAwarded Int           @map("points_awarded")
   target        Int
-  progress      Int      @default(0)
-  completed     Boolean  @default(false)
-  iconName      String   @map("icon_name")
-  createdAt     DateTime @default(now()) @map("created_at")
+  isActive      Boolean       @default(true) @map("is_active")
+  iconName      String        @map("icon_name")
+  startDate     DateTime?     @map("start_date")
+  endDate       DateTime?     @map("end_date")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  progressRecords    UserChallengeProgress[]
+  contributions      ChallengeContribution[]
+  pointHistories     PointHistory[]
 
   @@map("challenges")
+}
+
+model UserChallengeProgress {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  challengeId  String    @map("challenge_id")
+  currentCount Int       @default(0) @map("current_count")
+  completedAt  DateTime? @map("completed_at")
+  rewardedAt   DateTime? @map("rewarded_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@index([challengeId])
+  @@map("user_challenge_progress")
+}
+
+model ChallengeContribution {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  challengeId String   @map("challenge_id")
+  reportId    String   @map("report_id")
+  value       Float    @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId, reportId])
+  @@index([challengeId])
+  @@index([reportId])
+  @@map("challenge_contributions")
 }
 
 model SystemSetting {
@@ -247,6 +312,8 @@ model SystemSetting {
   suspensionDurationHours   Int      @default(24) @map("suspension_duration_hours")
   rewardsReservePercent     Int      @default(20) @map("rewards_reserve_percent")
   defaultVendorName         String   @default("GreenCycle Recycling Vendor") @map("default_vendor_name")
+  binResetEnabled           Boolean  @default(true) @map("bin_reset_enabled")
+  binResetTime              String   @default("18:00") @map("bin_reset_time")
   updatedAt                 DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
@@ -464,6 +531,7 @@ model EnrollmentSyncLog {
   recordsUpdated  Int        @default(0) @map("records_updated")
   recordsDeleted  Int        @default(0) @map("records_deleted")
   errorMessage    String?    @map("error_message")
+  message         String?    @map("message")
   schoolYearId    Int?       @map("school_year_id")
   schoolYearLabel String?    @map("school_year_label")
   durationMs      Int?       @map("duration_ms")
@@ -569,4 +637,25 @@ model MrfInventoryTransaction {
   @@index([itemId])
   @@index([schoolYearId])
   @@map("mrf_inventory_transactions")
+}
+
+model MrfAssetRecord {
+  id             String      @id @default(uuid())
+  assetName      String      @map("asset_name")
+  category       String      // Furniture, Electronics, Fixtures, Equipment, Other
+  action         String      // RECOVERED, REPAIRED, DISPOSED
+  quantity       Float       @default(1)
+  unit           String      @default("pcs")
+  condition      String?     // GOOD, FAIR, NEEDS_REPAIR, DISPOSED
+  sourceReportId String?     @map("source_report_id")
+  locationName   String?     @map("location_name")
+  notes          String?
+  performedBy    String?     @map("performed_by")
+  schoolYearId   String?     @map("school_year_id")
+  schoolYear     SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  @@index([schoolYearId])
+  @@index([action])
+  @@map("mrf_asset_records")
 }

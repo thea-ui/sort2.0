@@ -1,8 +1,10 @@
 export type Role = 'STUDENT' | 'TEACHER' | 'MRF' | 'ADMIN';
 
-export type ReportStatus = 'PENDING' | 'DISPATCHED' | 'COLLECTED' | 'RESOLVED' | 'DISMISSED';
+export type ReportStatus = 'PENDING' | 'DISPATCHED' | 'COLLECTED' | 'RESOLVED' | 'DISMISSED' | 'EXPIRED';
 
 export type WasteCategory = 'RECYCLABLE' | 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'ORGANIC' | 'HAZARDOUS' | 'GENERAL';
+
+export type ChallengeType = 'REPORT_COUNT' | 'WEIGHT_COLLECTED' | 'HAZARDOUS_REPORT';
 
 export interface User {
   id: string;
@@ -14,8 +16,14 @@ export interface User {
   warningsCount: number;
   certificatesEarned: string[]; // names of certificates earned
   classroomSection?: string; // used for teachers/students
+  gradeLevel?: string; // EnrollPro-synced grade level (students)
+  sectionName?: string; // EnrollPro-synced section name (students)
+  academicProgram?: string; // EnrollPro-synced program type
   accountStatus?: 'ACTIVE' | 'SUSPENDED';
   suspendedUntil?: string;
+  portalAccountActive?: boolean;
+  syncSource?: string;
+  enrollproLrn?: string;
 }
 
 export interface Report {
@@ -72,13 +80,20 @@ export type Bin = BinStatus;
 
 export interface Challenge {
   id: string;
+  code: string;
   title: string;
   description: string;
+  challengeType: ChallengeType;
   pointsAwarded: number;
-  target: number; // target count
-  progress: number; // current count
-  completed: boolean;
+  target: number;
+  isActive: boolean;
   iconName: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  createdAt?: string;
+  currentCount: number;
+  completed: boolean;
+  completedAt?: string | null;
 }
 
 export interface PointHistory {
@@ -86,6 +101,7 @@ export interface PointHistory {
   userId: string;
   amount: number;
   reason: string;
+  challengeId?: string | null;
   timestamp: string;
 }
 
@@ -112,6 +128,8 @@ export interface SystemSettings {
   suspensionDurationHours: number;
   rewardsReservePercent: number;
   defaultVendorName: string;
+  binResetEnabled: boolean;
+  binResetTime: string;
 }
 
 export interface CalendarEvent {
@@ -176,6 +194,47 @@ export interface AppNotification {
   reportId: string;
   recipientId: string;
   timestamp: string;
+}
+
+export interface VerifyAward {
+  reportId: string;
+  userId: string;
+  amount: number;
+  rank: number;
+}
+
+export interface ChallengeCompletion {
+  userId: string;
+  challengeId: string;
+  title: string;
+  pointsAwarded: number;
+}
+
+export interface VerifySingleResult {
+  updatedReports: Report[];
+  awards: VerifyAward[];
+  challengeCompletions: ChallengeCompletion[];
+  alreadyProcessed: boolean;
+}
+
+export interface VerifyBatchResult {
+  updatedReports: Report[];
+  awards: VerifyAward[];
+  challengeCompletions: ChallengeCompletion[];
+  summary: {
+    totalProcessed: number;
+    totalAwarded: number;
+    totalPoints: number;
+  };
+}
+
+export interface AdminChallenge extends Challenge {
+  stats: {
+    usersInProgress: number;
+    completedCount: number;
+    totalContributions: number;
+  };
+  hasProgress: boolean;
 }
 
 

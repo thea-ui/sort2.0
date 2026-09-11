@@ -234,7 +234,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
       </header>
 
       {/* Desktop Navigation — 2026 Floating Pill Capsule */}
-      <div className="hidden md:flex relative z-20 w-full justify-center pt-5 pb-2">
+      <div className="hidden md:flex relative z-10 w-full justify-center pt-5 pb-2">
         <nav className="flex items-center gap-1.5 bg-white/85 backdrop-blur-xl border border-white/80 p-1.5 rounded-full shadow-lg shadow-[#00271D]/5">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
@@ -259,7 +259,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
       </div>
 
       {/* Main Content */}
-      <main className="relative z-10 flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-10">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-10">
         {children}
       </main>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   FileText,
   CheckCircle2,
@@ -17,13 +17,14 @@ import {
   Sparkles,
   Layers,
   Calendar,
-  Filter,
   Wine,
   RefreshCw,
   X,
   Check,
   Scale,
   AlertTriangle,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react';
 import { Report, User as UserType } from '../../../types';
 import { useRecycleMarket } from '../../../hooks/useRecycleMarket';
@@ -34,10 +35,6 @@ export interface AdminImpactTabProps {
 }
 
 export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], users = [] }) => {
-  const [timeframe, setTimeframe] = useState<'THIS_MONTH' | 'QUARTER' | 'ALL_TIME'>('THIS_MONTH');
-  const [showGoalModal, setShowGoalModal] = useState(false);
-  const [goalFeedback, setGoalFeedback] = useState<string | null>(null);
-
   const {
     stocksRecord,
     totalVendorSales,
@@ -45,22 +42,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
   } = useRecycleMarket();
 
   const activeUsers = users;
-
-  // Timeframe filtering
-  const now = new Date();
-  const filteredByTimeframe = reports.filter((r) => {
-    if (timeframe === 'ALL_TIME') return true;
-    const reportDate = new Date(r.timestamp || r.createdAt || 0);
-    if (timeframe === 'THIS_MONTH') {
-      return reportDate.getMonth() === now.getMonth() && reportDate.getFullYear() === now.getFullYear();
-    }
-    if (timeframe === 'QUARTER') {
-      const reportQ = Math.floor(reportDate.getMonth() / 3);
-      const currentQ = Math.floor(now.getMonth() / 3);
-      return reportQ === currentQ && reportDate.getFullYear() === now.getFullYear();
-    }
-    return true;
-  });
+  const filteredByTimeframe = reports;
 
   const activeReports = filteredByTimeframe;
 
@@ -215,7 +197,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
   monthNames.forEach((m) => { monthlyDataMap[m] = { weight: 0, items: 0 }; });
   collectedReports.forEach((r) => {
     try {
-      const d = new Date(r.timestamp || r.createdAt || Date.now());
+      const d = new Date(r.timestamp || Date.now());
       const key = monthNames[d.getMonth()];
       if (!monthlyDataMap[key]) monthlyDataMap[key] = { weight: 0, items: 0 };
       monthlyDataMap[key].weight += r.weightCollected || 0;
@@ -223,22 +205,36 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
     } catch { /* skip invalid dates */ }
   });
   const monthlyData = monthNames
-    .filter((m) => {
-      if (timeframe === 'ALL_TIME') return monthlyDataMap[m].items > 0;
-      return true; // show all months in current period
-    })
+    .filter((m) => monthlyDataMap[m].items > 0)
     .map((m) => ({
       month: m,
       weight: Math.round(monthlyDataMap[m].weight) || 0,
       items: monthlyDataMap[m].items,
     }));
 
-  const handleSaveGoals = (e: React.FormEvent) => {
-    e.preventDefault();
-    setShowGoalModal(false);
-    setGoalFeedback('Operational targets updated successfully!');
-    setTimeout(() => setGoalFeedback(null), 3500);
-  };
+  // Campus Hotspots — dynamic grouping of open/pending reports by locationName
+  const hotspotMap: Record<string, { count: number; highPriority: number; locations: Set<string> }> = {};
+  activeReports
+    .filter((r) => r.status === 'PENDING' || r.status === 'DISPATCHED')
+    .forEach((r) => {
+      const loc = r.locationName || 'Unknown Location';
+      if (!hotspotMap[loc]) hotspotMap[loc] = { count: 0, highPriority: 0, locations: new Set() };
+      hotspotMap[loc].count += 1;
+      if (r.urgency === 'HIGH') hotspotMap[loc].highPriority += 1;
+    });
+
+  const hotspotZones = Object.entries(hotspotMap)
+    .sort(([, a], [, b]) => b.count - a.count)
+    .slice(0, 5)
+    .map(([name, data]) => ({
+      name,
+      reportCount: data.count,
+      highPriority: data.highPriority,
+      isOverdue: data.highPriority > 0,
+    }));
+
+  const totalOpenReports = hotspotZones.reduce((sum, z) => sum + z.reportCount, 0);
+  const totalHighPriority = hotspotZones.reduce((sum, z) => sum + z.highPriority, 0);
 
   return (
     <div className="space-y-6 animate-fade-in text-[#00271D]">
@@ -259,83 +255,26 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-[#F9F3F0] p-1 rounded-xl border border-[#00271D]/10 flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setTimeframe('THIS_MONTH')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timeframe === 'THIS_MONTH'
-                  ? 'bg-[#00A77C] text-white shadow-sm'
-                  : 'text-[#00271D]/60 hover:text-[#00271D]'
-              }`}
-            >
-              This Month
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeframe('QUARTER')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timeframe === 'QUARTER'
-                  ? 'bg-[#00A77C] text-white shadow-sm'
-                  : 'text-[#00271D]/60 hover:text-[#00271D]'
-              }`}
-            >
-              Quarter
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeframe('ALL_TIME')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timeframe === 'ALL_TIME'
-                  ? 'bg-[#00A77C] text-white shadow-sm'
-                  : 'text-[#00271D]/60 hover:text-[#00271D]'
-              }`}
-            >
-              All Time
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowGoalModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold shadow-md shadow-[#00A77C]/20 cursor-pointer transition-all active:scale-95"
-          >
-            <Target size={15} />
-            <span>Set Targets</span>
-          </button>
-        </div>
       </div>
-
-      {/* Toast Feedback */}
-      {goalFeedback && (
-        <div className="bg-emerald-500 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-lg flex items-center justify-between animate-fade-in">
-          <span className="flex items-center gap-2">
-            <CheckCircle2 size={16} />
-            {goalFeedback}
-          </span>
-          <button type="button" onClick={() => setGoalFeedback(null)} className="opacity-80 hover:opacity-100">
-            <X size={14} />
-          </button>
-        </div>
-      )}
 
       {/* 1. TOP OPERATIONAL SUMMARY CARDS (4 CARDS) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Campus Reports */}
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+        <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div className="p-3 bg-orange-50 rounded-xl text-[#FF5722] group-hover:scale-110 transition-transform">
               <FileText size={22} />
             </div>
-            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <ArrowUpRight size={12} /> Live Sync
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-full border border-emerald-200/60">
+              Live Sync
             </span>
           </div>
-          <p className="text-xs font-semibold text-[#00271D]/60 mt-4">Total Campus Reports</p>
-          <p className="text-3xl font-black text-[#00271D] tracking-tight mt-0.5">
-            {totalReportsCount}
-          </p>
+          <div className="mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00271D]/60">Total Campus Reports</p>
+            <p className="text-3xl font-extrabold tracking-tight text-[#00271D] mt-0.5">
+              {totalReportsCount}
+            </p>
+          </div>
           <div className="mt-3 pt-3 border-t border-[#00271D]/5 flex items-center justify-between text-[11px] text-[#00271D]/60 font-medium">
             <span>{studentReportsCount} Student</span>
             <span>•</span>
@@ -344,19 +283,21 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
         </div>
 
         {/* Card 2: Dispatched & Collected Tasks */}
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+        <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div className="p-3 bg-sky-50 rounded-xl text-[#0091EA] group-hover:scale-110 transition-transform">
               <Truck size={22} />
             </div>
-            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <CheckCircle2 size={12} /> {dispatchResolutionRate}%
+            <span className="text-[11px] font-medium text-sky-700 bg-sky-50/80 px-2 py-0.5 rounded-full border border-sky-200/60">
+              {dispatchResolutionRate}%
             </span>
           </div>
-          <p className="text-xs font-semibold text-[#00271D]/60 mt-4">Dispatched & Collected</p>
-          <p className="text-3xl font-black text-[#00271D] tracking-tight mt-0.5">
-            {collectedReports.length} <span className="text-sm font-bold text-[#00271D]/40">/ {totalReportsCount}</span>
-          </p>
+          <div className="mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00271D]/60">Dispatched & Collected</p>
+            <p className="text-3xl font-extrabold tracking-tight text-[#00271D] mt-0.5">
+              {collectedReports.length} <span className="text-sm font-bold text-[#00271D]/40">/ {totalReportsCount}</span>
+            </p>
+          </div>
           <div className="mt-3 pt-3 border-t border-[#00271D]/5 flex items-center justify-between text-[11px] text-[#00271D]/60 font-medium">
             <span>MRF Tasks Resolved</span>
             <span className="font-bold text-[#0091EA]">{pendingReports.length} pending</span>
@@ -364,19 +305,21 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
         </div>
 
         {/* Card 3: Most Active Grade Level */}
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+        <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div className="p-3 bg-purple-50 rounded-xl text-[#651FFF] group-hover:scale-110 transition-transform">
               <GraduationCap size={22} />
             </div>
-            <span className="text-[11px] font-bold text-[#C69B26] bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <Award size={12} /> Top Grade
+            <span className="text-[11px] font-medium text-[#C69B26] bg-amber-50/80 px-2 py-0.5 rounded-full border border-amber-200/60">
+              Top Grade
             </span>
           </div>
-          <p className="text-xs font-semibold text-[#00271D]/60 mt-4">Most Active Grade Level</p>
-          <p className="text-3xl font-black text-[#00271D] tracking-tight mt-0.5">
-            {topGradeKey}
-          </p>
+          <div className="mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00271D]/60">Most Active Grade Level</p>
+            <p className="text-3xl font-extrabold tracking-tight text-[#00271D] mt-0.5">
+              {topGradeKey}
+            </p>
+          </div>
           <div className="mt-3 pt-3 border-t border-[#00271D]/5 flex items-center justify-between text-[11px] text-[#00271D]/60 font-medium">
             <span>{topGradeSubmissions} Submission{topGradeSubmissions === 1 ? '' : 's'}</span>
             <span className="font-bold text-purple-600">{topGradeShare}% Share</span>
@@ -384,19 +327,21 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
         </div>
 
         {/* Card 4: Total Recyclable Value (PHP) */}
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+        <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div className="p-3 bg-amber-50 rounded-xl text-[#FFAB00] group-hover:scale-110 transition-transform">
               <Coins size={22} />
             </div>
-            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <ArrowUpRight size={12} /> Market Sync
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-full border border-emerald-200/60">
+              Market Sync
             </span>
           </div>
-          <p className="text-xs font-semibold text-[#00271D]/60 mt-4">Total Recyclable Value</p>
-          <p className="text-3xl font-black text-[#00271D] tracking-tight mt-0.5">
-            ₱{totalValuePhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </p>
+          <div className="mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00271D]/60">Total Recyclable Value</p>
+            <p className="text-3xl font-extrabold tracking-tight text-[#00271D] mt-0.5">
+              ₱{totalValuePhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
           <div className="mt-3 pt-3 border-t border-[#00271D]/5 flex items-center justify-between text-[11px] text-[#00271D]/60 font-medium">
             <span>Est. Revenue</span>
             <span className="font-bold text-amber-600">{totalCollectedKg.toFixed(1)} kg processed</span>
@@ -419,7 +364,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                   <p className="text-xs text-[#00271D]/50">Reporting activity and engagement across all grade levels</p>
                 </div>
               </div>
-              <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200">
+              <span className="text-[11px] font-medium text-purple-700 bg-purple-50/80 px-2 py-0.5 rounded-full border border-purple-200/60">
                 {activeUsers.filter(u => u.role === 'STUDENT').length} Student Profiles
               </span>
             </div>
@@ -456,7 +401,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden mt-2.5">
+                  <div className="w-full h-1.5 bg-gray-200/80 rounded-full overflow-hidden mt-2.5">
                     <div
                       className={`h-full ${item.color} rounded-full transition-all duration-500`}
                       style={{ width: `${Math.max(item.pct, 5)}%` }}
@@ -477,7 +422,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
               <Users size={14} className="text-[#00A77C]" />
               Active Campus Grade Cohorts: <strong className="text-[#00271D]">{gradeParticipation.length} Grade{gradeParticipation.length === 1 ? '' : 's'} Configured</strong>
             </span>
-            <span className="text-[11px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2.5 py-1 rounded-full border border-[#00A77C]/20">
+            <span className="text-[11px] font-medium text-[#00A77C] bg-[#00A77C]/10 px-2.5 py-0.5 rounded-full border border-[#00A77C]/20">
               {topGradeKey} ({topGradeSubmissions} report{topGradeSubmissions === 1 ? '' : 's'})
             </span>
           </div>
@@ -558,7 +503,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
         </div>
       </div>
 
-      {/* 3. BOTTOM GRID: MONTHLY COLLECTION & OPERATIONAL TARGET GOALS */}
+      {/* 3. BOTTOM GRID: MONTHLY COLLECTION & CAMPUS HOTSPOTS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Monthly Collection (Actual Weight & Items) - 7 Columns */}
         <div className="lg:col-span-7 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
@@ -587,6 +532,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
           <div className="h-52 flex items-end justify-between gap-3 pt-8 pb-2 border-b border-[#00271D]/10">
             {monthlyData.map((m) => {
               const heightPct = Math.min(100, Math.round((m.weight / 250) * 100));
+              const hasData = m.weight > 0;
               return (
                 <div key={m.month} className="flex-1 flex flex-col items-center gap-2 group relative">
                   {/* Tooltip on hover */}
@@ -594,12 +540,18 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                     {m.weight} kg • {m.items} items
                   </div>
 
-                  <div className="w-full bg-[#00A77C]/15 rounded-t-xl group-hover:bg-[#00A77C]/25 transition-all flex items-end justify-center p-1" style={{ height: '140px' }}>
-                    <div
-                      className="w-full bg-[#00A77C] group-hover:bg-[#008f6a] rounded-t-lg transition-all duration-500 shadow-sm"
-                      style={{ height: `${Math.max(heightPct, 8)}%` }}
-                    />
-                  </div>
+                  {hasData ? (
+                    <div className="w-full flex items-end justify-center" style={{ height: '140px' }}>
+                      <div
+                        className="w-7 bg-[#00A77C] group-hover:bg-[#008f6a] rounded-t-md transition-all duration-500 shadow-sm"
+                        style={{ height: `${Math.max(heightPct, 8)}%` }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full flex items-end justify-center" style={{ height: '140px' }}>
+                      <div className="h-1 w-7 bg-gray-200 rounded-full" />
+                    </div>
+                  )}
                   <span className="text-xs font-bold text-[#00271D]/70">{m.month}</span>
                 </div>
               );
@@ -612,170 +564,76 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
           </div>
         </div>
 
-        {/* Operational Target Goals - 5 Columns */}
-        <div className="lg:col-span-5 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-5 flex flex-col justify-between">
+        {/* Campus Hotspots & Facility Load - 5 Columns */}
+        <div className="lg:col-span-5 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-amber-50 rounded-xl text-[#C69B26]">
-                  <Target size={18} />
+                <div className="p-2 bg-orange-50 rounded-xl text-[#FF5722]">
+                  <MapPin size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[#00271D]">Operational Target Goals</h3>
-                  <p className="text-xs text-[#00271D]/50">Strict operational & service delivery benchmarks</p>
+                  <h3 className="text-base font-extrabold text-[#00271D]">Campus Waste Hotspots</h3>
+                  <p className="text-xs text-[#00271D]/50">High-frequency report zones requiring MRF attention</p>
                 </div>
               </div>
             </div>
 
-            {/* Goals Progress Bars */}
-            <div className="space-y-4 mt-5">
-              {/* Goal 1: Dispatch Resolution Rate */}
-              <div className="space-y-1.5 p-3 rounded-2xl bg-gray-50/70 border border-gray-100">
-                <div className="flex justify-between text-xs font-bold text-[#00271D]">
-                  <span className="flex items-center gap-1.5">
-                    <Truck size={14} className="text-[#0091EA]" />
-                    Dispatch Resolution Rate
-                  </span>
-                  <span className="text-[#0091EA] font-extrabold">{collectedReports.length} / {totalReportsCount} ({dispatchResolutionRate}%)</span>
+            {/* Dynamic Hotspot Zone List */}
+            <div className="space-y-2.5 mt-5">
+              {hotspotZones.length > 0 ? (
+                hotspotZones.map((zone) => (
+                  <div
+                    key={zone.name}
+                    className="p-3 bg-gray-50/80 hover:bg-white rounded-2xl border border-gray-100 transition-all flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl ${zone.isOverdue ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'}`}>
+                        <MapPin size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-[#00271D]">{zone.name}</p>
+                        <p className="text-[11px] text-[#00271D]/50 font-medium">
+                          {zone.reportCount} open report{zone.reportCount === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {zone.isOverdue ? (
+                        <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                          High Priority
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
+                          Normal
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-xs text-[#00271D]/50 font-medium bg-gray-50/70 rounded-2xl border border-gray-100">
+                  No active hotspots — all zones clear
                 </div>
-                <div className="w-full h-2.5 bg-gray-200/80 rounded-full overflow-hidden">
-                  <div className="h-full bg-sky-500 rounded-full transition-all duration-500" style={{ width: `${dispatchResolutionRate}%` }} />
-                </div>
-              </div>
-
-              {/* Goal 2: Pending Reports Requiring Action */}
-              {(() => {
-                const pendingActionCount = pendingReports.length;
-                const pendingDispatchRate = totalReportsCount > 0 ? Math.round((pendingActionCount / totalReportsCount) * 100) : 0;
-                const pendingColor = pendingActionCount === 0 ? 'bg-emerald-500' : pendingActionCount <= 3 ? 'bg-amber-500' : 'bg-rose-500';
-                const pendingTextColor = pendingActionCount === 0 ? 'text-emerald-600' : pendingActionCount <= 3 ? 'text-amber-600' : 'text-rose-600';
-                return (
-                  <div className="space-y-1.5 p-3 rounded-2xl bg-gray-50/70 border border-gray-100">
-                    <div className="flex justify-between text-xs font-bold text-[#00271D]">
-                      <span className="flex items-center gap-1.5">
-                        <AlertTriangle size={14} className={pendingTextColor} />
-                        Pending Action Queue
-                      </span>
-                      <span className={`${pendingTextColor} font-extrabold`}>
-                        {pendingActionCount === 0 ? 'All Clear' : `${pendingActionCount} report${pendingActionCount !== 1 ? 's' : ''} awaiting`}
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 bg-gray-200/80 rounded-full overflow-hidden">
-                      <div className={`h-full ${pendingColor} rounded-full transition-all duration-500`} style={{ width: `${Math.max(pendingDispatchRate, pendingActionCount > 0 ? 8 : 0)}%` }} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Goal 3: Monthly Collection Weight */}
-              {(() => {
-                const monthlyTargetKg = 50;
-                const monthlyProgressPct = Math.min(100, Math.round((totalCollectedKg / monthlyTargetKg) * 100));
-                return (
-                  <div className="space-y-1.5 p-3 rounded-2xl bg-gray-50/70 border border-gray-100">
-                    <div className="flex justify-between text-xs font-bold text-[#00271D]">
-                      <span className="flex items-center gap-1.5">
-                        <Scale size={14} className="text-[#10B981]" />
-                        Monthly Collection Target ({monthlyTargetKg} kg)
-                      </span>
-                      <span className="text-emerald-600 font-extrabold">{totalCollectedKg.toFixed(1)} kg ({monthlyProgressPct}%)</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-gray-200/80 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${monthlyProgressPct}%` }} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Goal 4: Recyclable Revenue Target */}
-              {(() => {
-                const monthlyRevenueTarget = 5000;
-                const revenueProgressPct = Math.min(100, Math.round((totalValuePhp / monthlyRevenueTarget) * 100));
-                return (
-                  <div className="space-y-1.5 p-3 rounded-2xl bg-gray-50/70 border border-gray-100">
-                    <div className="flex justify-between text-xs font-bold text-[#00271D]">
-                      <span className="flex items-center gap-1.5">
-                        <Coins size={14} className="text-[#FFAB00]" />
-                        Monthly Revenue Target (₱{monthlyRevenueTarget.toLocaleString()})
-                      </span>
-                      <span className="text-amber-600 font-extrabold">₱{totalValuePhp.toLocaleString()} / ₱{monthlyRevenueTarget.toLocaleString()}</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-gray-200/80 rounded-full overflow-hidden">
-                      <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${revenueProgressPct}%` }} />
-                    </div>
-                  </div>
-                );
-              })()}
+              )}
             </div>
+          </div>
+
+          {/* Action Footer linking to Bin Map */}
+          <div className="pt-3 border-t border-[#00271D]/10 flex items-center justify-between text-xs mt-5">
+            <span className="text-[#00271D]/60 font-semibold">
+              {totalOpenReports} open report{totalOpenReports === 1 ? '' : 's'} across {hotspotZones.length} zone{hotspotZones.length === 1 ? '' : 's'}
+              {totalHighPriority > 0 && (
+                <span className="text-rose-600 ml-1">• {totalHighPriority} high priority</span>
+              )}
+            </span>
+            <span className="text-[11px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2.5 py-1 rounded-full border border-[#00A77C]/20 flex items-center gap-1">
+              <ExternalLink size={11} />
+              View Bin Map
+            </span>
           </div>
         </div>
       </div>
-
-      {/* Target Goals Configuration Modal */}
-      {showGoalModal && (
-        <div className="fixed inset-0 bg-[#00271D]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scale-in">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-base font-extrabold text-[#00271D] flex items-center gap-2">
-                <Target size={18} className="text-[#00A77C]" />
-                Update Operational Target Goals
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowGoalModal(false)}
-                className="p-1 rounded-xl hover:bg-gray-100 text-gray-500 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveGoals} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-[#00271D] block mb-1">Target Dispatch Resolution Rate (%)</label>
-                <input
-                  type="number"
-                  defaultValue={100}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#00A77C] focus:ring-1 focus:ring-[#00A77C] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-[#00271D] block mb-1">Monthly Collection Weight Target (kg)</label>
-                <input
-                  type="number"
-                  defaultValue={50}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#00A77C] focus:ring-1 focus:ring-[#00A77C] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-[#00271D] block mb-1">Monthly Revenue Target (PHP)</label>
-                <input
-                  type="number"
-                  defaultValue={5000}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#00A77C] focus:ring-1 focus:ring-[#00A77C] outline-none"
-                />
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowGoalModal(false)}
-                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold cursor-pointer"
-                >
-                  Save Benchmarks
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

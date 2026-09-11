@@ -1,14 +1,10 @@
 import { PrismaClient, SyncStatus, SyncSource, Role } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 import { ensureSchoolYear } from './rollover.service.js';
 
 const prisma = new PrismaClient();
 
 const ENROLLPRO_BASE = process.env.ENROLLPRO_BASE_URL || 'https://dev-jegs.buru-degree.ts.net/api';
 const ENROLLPRO_SYNC_SECRET = process.env.ENROLLPRO_SYNC_SECRET || '';
-const ENROLLPRO_ACCOUNT = process.env.ENROLLPRO_ACCOUNT || '';
-const ENROLLPRO_PASSWORD = process.env.ENROLLPRO_PASSWORD || '';
-const ENROLLPRO_DEFAULT_PASSWORD = process.env.ENROLLPRO_DEFAULT_PASSWORD || 'DepEd2026!';
 
 // Role overrides: "1234503=MRF,1234501=ADMIN"
 const ROLE_OVERRIDES: Record<string, Role> = {};
@@ -38,6 +34,11 @@ interface EnrollProLearnerResponse {
     extensionName?: string;
     sex?: string;
     birthdate?: string;
+    portalAccount?: {
+      isActive?: boolean;
+      mustChangePassword?: boolean;
+      accountName?: string;
+    } | null;
   };
   gradeLevel: { id: number; name: string };
   section: { id: number; name: string; programType?: string };
@@ -108,43 +109,6 @@ function mapRole(roles: string[]): Role {
   return Role.ADMIN;
 }
 
-function generateTempPassword(identifier: string): string {
-  const clean = identifier.toLowerCase().replace(/[^a-z0-9]/g, '');
-  return `sort-${clean}`.slice(0, 20);
-}
-
-// ─── EnrollPro JWT Auth ────────────────────────────────────────────────
-
-let cachedEnrollProToken: string | null = null;
-let tokenExpiryMs = 0;
-
-async function getEnrollProToken(): Promise<string | null> {
-  if (cachedEnrollProToken && Date.now() < tokenExpiryMs - 60_000) {
-    return cachedEnrollProToken;
-  }
-
-  if (!ENROLLPRO_ACCOUNT || !ENROLLPRO_PASSWORD) {
-    return null;
-  }
-
-  try {
-    const res = await fetch(`${ENROLLPRO_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accountName: ENROLLPRO_ACCOUNT, password: ENROLLPRO_PASSWORD }),
-    });
-
-    if (!res.ok) return null;
-
-    const data = await res.json() as { token?: string; accessToken?: string };
-    cachedEnrollProToken = data.token || data.accessToken || null;
-    tokenExpiryMs = Date.now() + 3_600_000;
-    return cachedEnrollProToken;
-  } catch {
-    return null;
-  }
-}
-
 // ─── API Fetcher with Pagination ───────────────────────────────────────
 
 async function fetchAllPages<T>(endpoint: string, schoolYearId?: number): Promise<T[]> {
@@ -158,9 +122,6 @@ async function fetchAllPages<T>(endpoint: string, schoolYearId?: number): Promis
   // Integration endpoints require X-Integration-Key, not JWT
   if (ENROLLPRO_SYNC_SECRET) {
     baseHeaders['X-Integration-Key'] = ENROLLPRO_SYNC_SECRET;
-  }
-  if (schoolYearId) {
-    baseHeaders['x-school-year-context-id'] = String(schoolYearId);
   }
 
   while (page <= totalPages) {
@@ -192,6 +153,14 @@ async function fetchAllPages<T>(endpoint: string, schoolYearId?: number): Promis
 
 // ─── Core Sync Logic ───────────────────────────────────────────────────
 
+interface CohortResult {
+  pulled: number;
+  created: number;
+  updated: number;
+  deleted: number;
+  error?: string;
+}
+
 interface SyncResult {
   recordsPulled: number;
   recordsCreated: number;
@@ -200,20 +169,29 @@ interface SyncResult {
   durationMs: number;
   schoolYearId?: number;
   schoolYearLabel?: string;
+  status: SyncStatus;
+  cohortResults: {
+    learners: CohortResult;
+    faculty: CohortResult;
+    staff: CohortResult;
+  };
+  message?: string;
   error?: string;
 }
 
 export async function runEnrollProSync(): Promise<SyncResult> {
   const start = Date.now();
-  let recordsCreated = 0;
-  let recordsUpdated = 0;
-  let recordsDeleted = 0;
   const errors: string[] = [];
+
+  const cohortResults = {
+    learners: { pulled: 0, created: 0, updated: 0, deleted: 0 } as CohortResult,
+    faculty: { pulled: 0, created: 0, updated: 0, deleted: 0 } as CohortResult,
+    staff: { pulled: 0, created: 0, updated: 0, deleted: 0 } as CohortResult,
+  };
 
   try {
     // 1. Get school year context
     const syHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-    // Integration endpoints require X-Integration-Key, not JWT
     if (ENROLLPRO_SYNC_SECRET) {
       syHeaders['X-Integration-Key'] = ENROLLPRO_SYNC_SECRET;
     }
@@ -227,7 +205,6 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       schoolYearId = syData.data?.id;
       schoolYearLabel = syData.data?.yearLabel;
 
-      // Auto-detect school year change and trigger rollover if needed
       if (schoolYearId && schoolYearLabel) {
         try {
           const syStartDate = syData.data?.term1Start ? new Date(syData.data.term1Start) : undefined;
@@ -243,25 +220,35 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       }
     }
 
-    // 2. Fetch all data in parallel
-    const [learnerResponses, facultyResponses, staffResponses] = await Promise.all([
-      fetchAllPages<EnrollProLearnerResponse>('/integration/v1/learners', schoolYearId).catch((e) => {
-        errors.push(`learners: ${e.message}`);
-        return [] as EnrollProLearnerResponse[];
-      }),
-      fetchAllPages<EnrollProFacultyResponse>('/integration/v1/faculty', schoolYearId).catch((e) => {
-        errors.push(`faculty: ${e.message}`);
-        return [] as EnrollProFacultyResponse[];
-      }),
-      fetchAllPages<EnrollProStaffResponse>('/integration/v1/staff').catch((e) => {
-        errors.push(`staff: ${e.message}`);
-        return [] as EnrollProStaffResponse[];
-      }),
+    // 2. Fetch all data in parallel — track success/failure per cohort
+    const [learnerResult, facultyResult, staffResult] = await Promise.allSettled([
+      fetchAllPages<EnrollProLearnerResponse>('/integration/v1/learners', schoolYearId),
+      fetchAllPages<EnrollProFacultyResponse>('/integration/v1/faculty', schoolYearId),
+      fetchAllPages<EnrollProStaffResponse>('/integration/v1/staff'),
     ]);
 
-    const totalPulled = learnerResponses.length + facultyResponses.length + staffResponses.length;
+    const learnerResponses = learnerResult.status === 'fulfilled' ? learnerResult.value : [];
+    const facultyResponses = facultyResult.status === 'fulfilled' ? facultyResult.value : [];
+    const staffResponses = staffResult.status === 'fulfilled' ? staffResult.value : [];
 
-    // 3. Build sync entries
+    if (learnerResult.status === 'rejected') {
+      cohortResults.learners.error = learnerResult.reason?.message || 'Learner fetch failed';
+      errors.push(`learners: ${cohortResults.learners.error}`);
+    }
+    if (facultyResult.status === 'rejected') {
+      cohortResults.faculty.error = facultyResult.reason?.message || 'Faculty fetch failed';
+      errors.push(`faculty: ${cohortResults.faculty.error}`);
+    }
+    if (staffResult.status === 'rejected') {
+      cohortResults.staff.error = staffResult.reason?.message || 'Staff fetch failed';
+      errors.push(`staff: ${cohortResults.staff.error}`);
+    }
+
+    cohortResults.learners.pulled = learnerResponses.length;
+    cohortResults.faculty.pulled = facultyResponses.length;
+    cohortResults.staff.pulled = staffResponses.length;
+
+    // 3. Build sync entries with cohort tracking
     type SyncEntry = {
       enrollproId: string;
       email: string;
@@ -274,82 +261,73 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       enrollproLrn?: string;
       schoolYearId?: number;
       schoolYearLabel?: string;
+      portalAccountActive?: boolean;
+      cohort: 'learners' | 'faculty' | 'staff';
     };
 
     const syncEntries: SyncEntry[] = [];
 
-    // Learners → STUDENT role
     for (const lr of learnerResponses) {
       const learner = lr.learner;
       if (!learner) continue;
-
       const extId = String(learner.externalId || learner.id);
       const lrn = learner.lrn || undefined;
       const email = lrn ? `${lrn}@sort.local` : `learner-${extId}@sort.local`;
-
+      const portalActive = lr.learner.portalAccount ? (lr.learner.portalAccount.isActive ?? true) : false;
       syncEntries.push({
-        enrollproId: `learner-${extId}`,
-        email: email.toLowerCase(),
+        enrollproId: `learner-${extId}`, email: email.toLowerCase(),
         name: buildFullName(learner.lastName, learner.firstName, learner.middleName),
-        employeeId: lrn || `LRN-${extId}`,
-        role: Role.STUDENT,
-        gradeLevel: lr.gradeLevel?.name,
-        sectionName: lr.section?.name,
-        academicProgram: lr.section?.programType,
-        enrollproLrn: lrn,
+        employeeId: lrn || `LRN-${extId}`, role: Role.STUDENT,
+        gradeLevel: lr.gradeLevel?.name, sectionName: lr.section?.name,
+        academicProgram: lr.section?.programType, enrollproLrn: lrn,
         schoolYearId: lr.schoolYear?.id || schoolYearId,
         schoolYearLabel: lr.schoolYear?.yearLabel || schoolYearLabel,
+        portalAccountActive: portalActive,
+        cohort: 'learners',
       });
     }
 
-    // Faculty → TEACHER role (sync all faculty from EnrollPro)
     for (const f of facultyResponses) {
       const empId = f.employeeId || `EMP-${f.teacherId}`;
       const email = f.email || `faculty-${empId}@sort.local`;
-
       syncEntries.push({
-        enrollproId: `faculty-${f.teacherId}`,
-        email: email.toLowerCase(),
+        enrollproId: `faculty-${f.teacherId}`, email: email.toLowerCase(),
         name: buildFullName(f.lastName, f.firstName, f.middleName),
-        employeeId: empId,
-        role: ROLE_OVERRIDES[empId] || Role.TEACHER,
-        gradeLevel: f.advisorySectionGradeLevelName,
-        sectionName: f.advisorySectionName,
+        employeeId: empId, role: ROLE_OVERRIDES[empId] || Role.TEACHER,
+        gradeLevel: f.advisorySectionGradeLevelName, sectionName: f.advisorySectionName,
         schoolYearId: f.schoolYearId || schoolYearId,
         schoolYearLabel: f.schoolYearLabel || schoolYearLabel,
+        cohort: 'faculty',
       });
     }
 
-    // Staff → ADMIN or TEACHER based on roles
-    // Skip staff entries whose employeeId already exists as a faculty member
     const facultyEmpIds = new Set(facultyResponses.map(f => f.employeeId).filter(Boolean));
     for (const s of staffResponses) {
       const empId = s.employeeId || `EMP-${s.id}`;
       const email = s.email || `staff-${empId}@sort.local`;
-
-      // Skip if this staff member is already in the faculty list (duplicate entry from EnrollPro)
       if (facultyEmpIds.has(empId)) continue;
-
       syncEntries.push({
-        enrollproId: `staff-${s.id}`,
-        email: email.toLowerCase(),
+        enrollproId: `staff-${s.id}`, email: email.toLowerCase(),
         name: buildFullName(s.lastName, s.firstName, s.middleName),
-        employeeId: empId,
-        role: ROLE_OVERRIDES[empId] || mapRole(s.roles),
+        employeeId: empId, role: ROLE_OVERRIDES[empId] || mapRole(s.roles),
         schoolYearId: s.schoolYearId || schoolYearId,
         schoolYearLabel: s.schoolYearLabel || schoolYearLabel,
+        cohort: 'staff',
       });
     }
 
-    // Apply role overrides to ALL entries (faculty included)
     for (const entry of syncEntries) {
       if (ROLE_OVERRIDES[entry.employeeId]) {
         entry.role = ROLE_OVERRIDES[entry.employeeId];
       }
     }
 
-    // 4. Batch upsert + delete in transaction (with extended timeout)
-    const syncedIds = new Set<string>();
+    // 4. Batch upsert with per-cohort tracking
+    const syncedIdsByCohort = {
+      learners: new Set<string>(),
+      faculty: new Set<string>(),
+      staff: new Set<string>(),
+    };
     const BATCH_SIZE = 50;
 
     for (let i = 0; i < syncEntries.length; i += BATCH_SIZE) {
@@ -357,7 +335,7 @@ export async function runEnrollProSync(): Promise<SyncResult> {
 
       await prisma.$transaction(async (tx) => {
         for (const entry of batch) {
-          syncedIds.add(entry.enrollproId);
+          syncedIdsByCohort[entry.cohort].add(entry.enrollproId);
 
           const existing = await tx.user.findUnique({ where: { enrollproId: entry.enrollproId } });
 
@@ -366,6 +344,8 @@ export async function runEnrollProSync(): Promise<SyncResult> {
               where: { id: existing.id },
               data: {
                 name: entry.name,
+                email: entry.email,
+                employeeId: entry.employeeId,
                 role: entry.role,
                 gradeLevel: entry.gradeLevel,
                 sectionName: entry.sectionName,
@@ -373,9 +353,12 @@ export async function runEnrollProSync(): Promise<SyncResult> {
                 enrollproLrn: entry.enrollproLrn,
                 schoolYearId: entry.schoolYearId,
                 schoolYearLabel: entry.schoolYearLabel,
+                portalAccountActive: entry.portalAccountActive,
+                archivedAt: null,
+                ...(entry.cohort === 'learners' ? { enrollmentStatus: 'ENROLLED' } : {}),
               },
             });
-            recordsUpdated++;
+            cohortResults[entry.cohort].updated++;
           } else {
             const emailDup = await tx.user.findUnique({ where: { email: entry.email } });
 
@@ -385,6 +368,8 @@ export async function runEnrollProSync(): Promise<SyncResult> {
                 data: {
                   enrollproId: entry.enrollproId,
                   syncSource: SyncSource.ENROLLPRO,
+                  email: entry.email,
+                  employeeId: entry.employeeId,
                   role: entry.role,
                   gradeLevel: entry.gradeLevel,
                   sectionName: entry.sectionName,
@@ -392,18 +377,19 @@ export async function runEnrollProSync(): Promise<SyncResult> {
                   enrollproLrn: entry.enrollproLrn,
                   schoolYearId: entry.schoolYearId,
                   schoolYearLabel: entry.schoolYearLabel,
+                  portalAccountActive: entry.portalAccountActive,
+                  archivedAt: null,
+                  ...(entry.cohort === 'learners' ? { enrollmentStatus: 'ENROLLED' } : {}),
                 },
               });
-              recordsUpdated++;
+              cohortResults[entry.cohort].updated++;
             } else {
-              const passwordHash = await bcrypt.hash(ENROLLPRO_DEFAULT_PASSWORD, 10);
-
               try {
                 await tx.user.create({
                   data: {
                     name: entry.name,
                     email: entry.email,
-                    passwordHash,
+                    passwordHash: null,
                     employeeId: entry.employeeId,
                     role: entry.role,
                     syncSource: SyncSource.ENROLLPRO,
@@ -414,9 +400,11 @@ export async function runEnrollProSync(): Promise<SyncResult> {
                     academicProgram: entry.academicProgram,
                     schoolYearId: entry.schoolYearId,
                     schoolYearLabel: entry.schoolYearLabel,
+                    portalAccountActive: entry.portalAccountActive,
+                    enrollmentStatus: entry.cohort === 'learners' ? 'ENROLLED' : undefined,
                   },
                 });
-                recordsCreated++;
+                cohortResults[entry.cohort].created++;
               } catch (createErr: any) {
                 if (createErr?.code === 'P2002') {
                   const empDup = await tx.user.findFirst({ where: { employeeId: entry.employeeId } });
@@ -427,6 +415,8 @@ export async function runEnrollProSync(): Promise<SyncResult> {
                         enrollproId: entry.enrollproId,
                         syncSource: SyncSource.ENROLLPRO,
                         name: entry.name,
+                        email: entry.email,
+                        employeeId: entry.employeeId,
                         role: entry.role,
                         gradeLevel: entry.gradeLevel,
                         sectionName: entry.sectionName,
@@ -434,9 +424,12 @@ export async function runEnrollProSync(): Promise<SyncResult> {
                         enrollproLrn: entry.enrollproLrn,
                         schoolYearId: entry.schoolYearId,
                         schoolYearLabel: entry.schoolYearLabel,
+                        portalAccountActive: entry.portalAccountActive,
+                        archivedAt: null,
+                        ...(entry.cohort === 'learners' ? { enrollmentStatus: 'ENROLLED' } : {}),
                       },
                     });
-                    recordsUpdated++;
+                    cohortResults[entry.cohort].updated++;
                   }
                 } else {
                   errors.push(`create ${entry.name}: ${createErr.message}`);
@@ -448,69 +441,118 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       }, { timeout: 30000 });
     }
 
-    // Safety guard: only delete stale users if we actually fetched data
-    // If totalPulled is 0, it means auth failed or API is down — don't wipe existing users
-    if (totalPulled > 0) {
-      // Delete EnrollPro-synced users no longer in EnrollPro
-      const localSynced = await prisma.user.findMany({
-        where: { syncSource: SyncSource.ENROLLPRO },
-        select: { id: true, enrollproId: true },
-      });
+    // 5. Per-cohort reconciliation — archive identities no longer present in a
+    //    successfully fetched roster. NEVER delete: accounts own reports,
+    //    points, offenses, and snapshots that must survive for transparency.
+    const learnerRosterEmpty = cohortResults.learners.pulled === 0 && !cohortResults.learners.error;
+    const localSynced = await prisma.user.findMany({
+      where: { syncSource: SyncSource.ENROLLPRO, archivedAt: null },
+      select: { id: true, enrollproId: true },
+    });
 
-      for (const u of localSynced) {
-        if (u.enrollproId && !syncedIds.has(u.enrollproId)) {
-          await prisma.userSession.deleteMany({ where: { userId: u.id } }).catch(() => {});
-          try {
-            await prisma.user.delete({ where: { id: u.id } });
-            recordsDeleted++;
-          } catch (delErr: any) {
-            errors.push(`delete stale ${u.enrollproId}: ${delErr.message}`);
-          }
+    for (const u of localSynced) {
+      if (!u.enrollproId) continue;
+
+      const cohort = u.enrollproId.startsWith('learner-') ? 'learners'
+        : u.enrollproId.startsWith('faculty-') ? 'faculty'
+        : u.enrollproId.startsWith('staff-') ? 'staff'
+        : null;
+
+      if (!cohort) continue;
+
+      // Only reconcile if this cohort was successfully fetched (no error)
+      if (!cohortResults[cohort].error && !syncedIdsByCohort[cohort].has(u.enrollproId)) {
+        await prisma.userSession.deleteMany({ where: { userId: u.id } }).catch(() => {});
+        // When EnrollPro has rolled over but nobody is enrolled yet, learners
+        // are archived as NOT_ENROLLED (awaiting enrollment) rather than ALUMNI.
+        const nextStatus = cohort === 'learners'
+          ? (learnerRosterEmpty ? 'NOT_ENROLLED' : 'ALUMNI')
+          : undefined;
+        try {
+          await prisma.user.update({
+            where: { id: u.id },
+            data: {
+              archivedAt: new Date(),
+              portalAccountActive: false,
+              ...(nextStatus ? { enrollmentStatus: nextStatus } : {}),
+            },
+          });
+          cohortResults[cohort].deleted++;
+        } catch (archErr: any) {
+          errors.push(`archive stale ${u.enrollproId}: ${archErr.message}`);
         }
       }
-    } else {
-      console.log('[Sync] Skipping stale user deletion — 0 records fetched (possible auth/API issue)');
     }
 
-    // Purge any leftover LOCAL-synced accounts that predate the EnrollPro-only policy
-    const localPurge = await prisma.user.deleteMany({
-      where: { syncSource: 'LOCAL' },
-    });
+    // Purge any leftover LOCAL-synced accounts
+    const localPurge = await prisma.user.deleteMany({ where: { syncSource: 'LOCAL' } });
     if (localPurge.count > 0) {
-      recordsDeleted += localPurge.count;
       console.log(`[Sync] Purged ${localPurge.count} orphaned LOCAL accounts`);
+    }
+
+    // 6. Determine accurate status
+    const totalPulled = cohortResults.learners.pulled + cohortResults.faculty.pulled + cohortResults.staff.pulled;
+    const totalCreated = cohortResults.learners.created + cohortResults.faculty.created + cohortResults.staff.created;
+    const totalUpdated = cohortResults.learners.updated + cohortResults.faculty.updated + cohortResults.staff.updated;
+    const totalDeleted = cohortResults.learners.deleted + cohortResults.faculty.deleted + cohortResults.staff.deleted + localPurge.count;
+
+    const failedCohorts = [
+      cohortResults.learners.error,
+      cohortResults.faculty.error,
+      cohortResults.staff.error,
+    ].filter(Boolean).length;
+
+    let status: SyncStatus;
+    if (failedCohorts === 3) {
+      status = SyncStatus.FAILED;
+    } else if (failedCohorts > 0) {
+      status = SyncStatus.PARTIAL;
+    } else {
+      status = SyncStatus.SUCCESS;
     }
 
     const durationMs = Date.now() - start;
 
+    const message = learnerRosterEmpty
+      ? `NO_STUDENTS_ENROLLED: EnrollPro SY ${schoolYearLabel ?? schoolYearId ?? '?'} has no enrolled learners yet`
+      : undefined;
+    if (message) console.log(`[Sync] ${message}`);
+
     await prisma.enrollmentSyncLog.create({
       data: {
         syncType: 'ENROLLPRO_FULL',
-        status: errors.length > 0 && recordsCreated === 0 && recordsUpdated === 0 ? SyncStatus.FAILED : SyncStatus.SUCCESS,
+        status,
         recordsPulled: totalPulled,
-        recordsCreated,
-        recordsUpdated,
-        recordsDeleted,
+        recordsCreated: totalCreated,
+        recordsUpdated: totalUpdated,
+        recordsDeleted: totalDeleted,
         errorMessage: errors.length > 0 ? errors.join('; ').slice(0, 1000) : null,
+        message,
         schoolYearId,
         schoolYearLabel,
         durationMs,
       },
     });
 
-    console.log(`[Sync] ${durationMs}ms: ${recordsCreated} created, ${recordsUpdated} updated, ${recordsDeleted} deleted (${totalPulled} pulled)`);
-    return { recordsPulled: totalPulled, recordsCreated, recordsUpdated, recordsDeleted, durationMs, schoolYearId, schoolYearLabel };
+    console.log(`[Sync] ${status} ${durationMs}ms: ${totalCreated} created, ${totalUpdated} updated, ${totalDeleted} archived (${totalPulled} pulled)`);
+    return {
+      recordsPulled: totalPulled, recordsCreated: totalCreated, recordsUpdated: totalUpdated,
+      recordsDeleted: totalDeleted, durationMs, schoolYearId, schoolYearLabel, status, cohortResults, message,
+    };
   } catch (error: any) {
     const durationMs = Date.now() - start;
     await prisma.enrollmentSyncLog.create({
       data: {
         syncType: 'ENROLLPRO_FULL', status: SyncStatus.FAILED,
-        recordsPulled: 0, recordsCreated, recordsUpdated, recordsDeleted,
+        recordsPulled: 0, recordsCreated: 0, recordsUpdated: 0, recordsDeleted: 0,
         errorMessage: error.message?.slice(0, 1000), durationMs,
       },
     }).catch(() => {});
     console.error('[Sync] Failed:', error.message);
-    return { recordsPulled: 0, recordsCreated, recordsUpdated, recordsDeleted, durationMs, error: error.message };
+    return {
+      recordsPulled: 0, recordsCreated: 0, recordsUpdated: 0, recordsDeleted: 0,
+      durationMs, status: SyncStatus.FAILED, cohortResults, error: error.message,
+    };
   }
 }
 

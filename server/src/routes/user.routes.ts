@@ -1,31 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import { authenticate, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
+import { generateCertificatePDF } from '../services/certificate-pdf.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'sortv2_super_secret_jwt_key_2026';
-
-// Auth middleware — only ADMIN can manage users
-function requireAdmin(req: Request, res: Response, next: Function): any {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
-    if (decoded.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    (req as any).userId = decoded.id;
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-}
 
 // GET /api/users - List EnrollPro-synced users (public for initial app load)
 router.get('/', async (_req: Request, res: Response): Promise<any> => {
@@ -233,6 +213,253 @@ router.post('/:id/deduct-points', requireAdmin, async (req: Request, res: Respon
   } catch (error) {
     console.error('Deduct points error:', error);
     return res.status(500).json({ error: 'Failed to deduct points' });
+  }
+});
+
+// POST /api/users/:id/claim-certificate — claim a certificate (authenticated user or admin)
+router.post('/:id/claim-certificate', authenticate, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { certificateName } = req.body;
+    const targetId = Array.isArray(id) ? id[0] : id;
+    const reqUser = req as AuthenticatedRequest;
+
+    // Only the user themselves or an admin can claim
+    if (reqUser.userId !== targetId && reqUser.userRole !== 'ADMIN') {
+      return res.status(403).json({ error: 'Can only claim your own certificate', code: 'FORBIDDEN' });
+    }
+
+    if (!certificateName || typeof certificateName !== 'string' || certificateName.trim().length === 0) {
+      return res.status(400).json({ error: 'certificateName is required' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.role !== 'STUDENT') {
+      return res.status(400).json({ error: 'Only students can claim certificates' });
+    }
+
+    // Check threshold
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 'default_setting' } });
+    const threshold = settings?.certificatePointThreshold ?? 500;
+
+    if (user.points < threshold) {
+      return res.status(400).json({
+        error: `Insufficient points. Need ${threshold}, have ${user.points}`,
+        code: 'INSUFFICIENT_POINTS',
+        required: threshold,
+        current: user.points,
+      });
+    }
+
+    // Check if already claimed
+    const existingCerts = user.certificates || [];
+    if (existingCerts.includes(certificateName.trim())) {
+      return res.status(409).json({
+        error: 'Certificate already claimed',
+        code: 'ALREADY_CLAIMED',
+      });
+    }
+
+    // Award certificate
+    const updated = await prisma.user.update({
+      where: { id: targetId },
+      data: {
+        certificates: { push: certificateName.trim() },
+      },
+      select: { id: true, name: true, points: true, certificates: true },
+    });
+
+    console.log(`[Certificate] ${user.name} claimed "${certificateName.trim()}" (${user.points} pts)`);
+    return res.json({
+      message: 'Certificate claimed successfully',
+      user: { ...updated, certificatesEarned: updated.certificates },
+    });
+  } catch (error) {
+    console.error('Claim certificate error:', error);
+    return res.status(500).json({ error: 'Failed to claim certificate' });
+  }
+});
+
+// POST /api/users/claim-certificates-batch — auto-claim for all qualified students (admin only)
+router.post('/claim-certificates-batch', requireAdmin, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { certificateName } = req.body;
+
+    if (!certificateName || typeof certificateName !== 'string' || certificateName.trim().length === 0) {
+      return res.status(400).json({ error: 'certificateName is required' });
+    }
+
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 'default_setting' } });
+    const threshold = settings?.certificatePointThreshold ?? 500;
+
+    // Find all students who meet threshold and haven't claimed this cert yet
+    const qualifiedStudents = await prisma.user.findMany({
+      where: {
+        role: 'STUDENT',
+        syncSource: 'ENROLLPRO',
+        points: { gte: threshold },
+      },
+      select: { id: true, name: true, points: true, certificates: true },
+    });
+
+    const certName = certificateName.trim();
+    const newlyAwarded: { id: string; name: string; points: number }[] = [];
+    const alreadyHad: { id: string; name: string }[] = [];
+
+    for (const student of qualifiedStudents) {
+      const existingCerts = student.certificates || [];
+      if (existingCerts.includes(certName)) {
+        alreadyHad.push({ id: student.id, name: student.name });
+        continue;
+      }
+
+      await prisma.user.update({
+        where: { id: student.id },
+        data: { certificates: { push: certName } },
+      });
+
+      newlyAwarded.push({ id: student.id, name: student.name, points: student.points });
+    }
+
+    console.log(`[Certificate Batch] "${certName}" awarded to ${newlyAwarded.length} students (${alreadyHad.length} already had it)`);
+
+    return res.json({
+      message: `Certificate "${certName}" awarded to ${newlyAwarded.length} students`,
+      certificateName: certName,
+      threshold,
+      awarded: newlyAwarded,
+      alreadyHad,
+      summary: {
+        totalQualified: qualifiedStudents.length,
+        newlyAwarded: newlyAwarded.length,
+        alreadyClaimed: alreadyHad.length,
+      },
+    });
+  } catch (error) {
+    console.error('Batch certificate error:', error);
+    return res.status(500).json({ error: 'Failed to award certificates' });
+  }
+});
+
+// GET /api/users/:id/certificate/:certName/download — download certificate PDF
+router.get('/:id/certificate/:certName/download', authenticate, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const certName = String(req.params.certName);
+    const targetId = Array.isArray(id) ? id[0] : id;
+    const reqUser = req as AuthenticatedRequest;
+
+    // Only the user themselves or an admin can download
+    if (reqUser.userId !== targetId && reqUser.userRole !== 'ADMIN') {
+      return res.status(403).json({ error: 'Can only download your own certificate', code: 'FORBIDDEN' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const decodedCertName = decodeURIComponent(certName);
+    const certificates = user.certificates || [];
+
+    if (!certificates.includes(decodedCertName)) {
+      return res.status(404).json({ error: 'Certificate not earned yet', code: 'NOT_EARNED' });
+    }
+
+    // Get active school year for the certificate
+    const activeSY = await prisma.schoolYear.findFirst({ where: { isActive: true } });
+    const schoolYearLabel = activeSY?.label || 'Current';
+
+    // Get leaderboard rank for this user
+    const students = await prisma.user.findMany({
+      where: { role: 'STUDENT', syncSource: 'ENROLLPRO' },
+      orderBy: { points: 'desc' },
+      select: { id: true },
+    });
+    const rank = students.findIndex(s => s.id === targetId) + 1;
+
+    const pdfBuffer = await generateCertificatePDF({
+      studentName: user.name,
+      certificateName: decodedCertName,
+      schoolYear: schoolYearLabel,
+      points: user.points,
+      rank: rank || 1,
+      gradeLevel: user.gradeLevel || undefined,
+      sectionName: user.sectionName || undefined,
+      lrn: user.enrollproLrn || undefined,
+      dateAwarded: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    });
+
+    const safeFileName = decodedCertName.replace(/[^a-zA-Z0-9]/g, '_');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}_${user.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length.toString());
+
+    return res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Download certificate error:', error);
+    return res.status(500).json({ error: 'Failed to generate certificate PDF' });
+  }
+});
+
+// GET /api/users/:id/certificate/:certName/view — view certificate PDF in browser
+router.get('/:id/certificate/:certName/view', authenticate, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const certName = String(req.params.certName);
+    const targetId = Array.isArray(id) ? id[0] : id;
+    const reqUser = req as AuthenticatedRequest;
+
+    if (reqUser.userId !== targetId && reqUser.userRole !== 'ADMIN') {
+      return res.status(403).json({ error: 'Can only view your own certificate', code: 'FORBIDDEN' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const decodedCertName = decodeURIComponent(certName);
+    const certificates = user.certificates || [];
+
+    if (!certificates.includes(decodedCertName)) {
+      return res.status(404).json({ error: 'Certificate not earned yet', code: 'NOT_EARNED' });
+    }
+
+    const activeSY = await prisma.schoolYear.findFirst({ where: { isActive: true } });
+    const schoolYearLabel = activeSY?.label || 'Current';
+
+    const students = await prisma.user.findMany({
+      where: { role: 'STUDENT', syncSource: 'ENROLLPRO' },
+      orderBy: { points: 'desc' },
+      select: { id: true },
+    });
+    const rank = students.findIndex(s => s.id === targetId) + 1;
+
+    const pdfBuffer = await generateCertificatePDF({
+      studentName: user.name,
+      certificateName: decodedCertName,
+      schoolYear: schoolYearLabel,
+      points: user.points,
+      rank: rank || 1,
+      gradeLevel: user.gradeLevel || undefined,
+      sectionName: user.sectionName || undefined,
+      lrn: user.enrollproLrn || undefined,
+      dateAwarded: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${decodedCertName}_${user.name}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length.toString());
+
+    return res.send(pdfBuffer);
+  } catch (error) {
+    console.error('View certificate error:', error);
+    return res.status(500).json({ error: 'Failed to generate certificate PDF' });
   }
 });
 

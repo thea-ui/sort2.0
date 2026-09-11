@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
-import { Lock, ArrowRight, AlertCircle, Eye, EyeOff, ChevronDown } from 'lucide-react';
-
-const DEMO_ACCOUNTS = [
-  { role: 'Student', color: 'text-sky-600',    identifier: '202900000006', password: 'DepEd2026!' },
-  { role: 'Teacher', color: 'text-violet-600', identifier: '1000007',      password: 'DepEd2026!' },
-  { role: 'Admin',   color: 'text-rose-600',   identifier: '1234501',      password: 'DepEd2026!' },
-];
+import { Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { getLoginErrorMessage, ROLE_PORTAL_MESSAGE } from '../../utils/loginErrors';
 
 interface LoginCardProps {
   onAuthenticated: () => void;
@@ -20,13 +15,6 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
-
-  const fillDemo = (acc: (typeof DEMO_ACCOUNTS)[0]) => {
-    setIdentifier(acc.identifier);
-    setPassword(acc.password);
-    setError(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,12 +25,16 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
     setLoading(true);
     setError(null);
     try {
-      const ok = await login(password, identifier);
+      const result = await login(password, identifier);
       setLoading(false);
-      if (ok) {
-        onAuthenticated();
+      if (result.ok) {
+        if (result.user.role !== 'STUDENT' && result.user.role !== 'TEACHER') {
+          setError(ROLE_PORTAL_MESSAGE);
+        } else {
+          onAuthenticated();
+        }
       } else {
-        setError('No account found. Students use LRN, staff use Employee ID.');
+        setError(getLoginErrorMessage(result.code, result.message));
       }
     } catch {
       setLoading(false);
@@ -84,7 +76,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
             <input
               type="text"
               required
-              placeholder="e.g. 123456789012 or TCH-001"
+              placeholder="Enter your LRN or Employee ID"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-300 outline-none transition-all focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
@@ -132,42 +124,6 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
             )}
           </button>
         </form>
-
-        {/* Demo accounts */}
-        <div className="mt-5 border-t border-gray-100 pt-4">
-          <button
-            type="button"
-            onClick={() => setShowDemo(!showDemo)}
-            className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-gray-400 transition-colors hover:text-gray-600"
-          >
-            <span>Demo Accounts</span>
-            <ChevronDown size={13} className={`transition-transform ${showDemo ? 'rotate-180' : ''}`} />
-          </button>
-
-          {showDemo && (
-            <div className="mt-3 space-y-2">
-              {DEMO_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.role}
-                  type="button"
-                  onClick={() => fillDemo(acc)}
-                  className="group flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-left transition-all hover:border-emerald-200 hover:bg-emerald-50"
-                >
-                  <span className={`min-w-[52px] text-[9px] font-black uppercase tracking-wider ${acc.color}`}>
-                    {acc.role}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-mono text-[11px] text-gray-600">{acc.identifier}</p>
-                    <p className="font-mono text-[10px] text-gray-400">{acc.password}</p>
-                  </div>
-                  <span className="ml-auto shrink-0 text-[9px] font-semibold text-gray-400 group-hover:text-emerald-600">
-                    Fill →
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

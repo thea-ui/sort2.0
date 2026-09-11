@@ -182,6 +182,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
           currentUser={currentUser} 
           reports={reports} 
           offenses={offenses}
+          settings={settings}
           setActiveTab={setActiveTab} 
         />
       )}

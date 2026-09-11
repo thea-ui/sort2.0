@@ -23,6 +23,8 @@ import {
   Map as MapIcon,
   Clock,
   Navigation,
+  Truck,
+  ImageIcon,
 } from 'lucide-react';
 import { Report, User as UserType, ReportStatus } from '../../../types';
 import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
@@ -34,7 +36,7 @@ interface AdminReportsTabProps {
   verifyReport: (reportId: string) => void;
   verifyReportsBatch?: (reportIds: string[]) => Promise<void>;
   dispatchReport: (reportId: string, mrfId: string, mrfName: string) => void;
-  updateReportStatus: (reportId: string, status: ReportStatus, weightCollected?: number, completionNotes?: string, collectedOutcome?: string, skipPoints?: boolean) => void;
+  updateReportStatus: (reportId: string, status: ReportStatus, weightCollected?: number, completionNotes?: string, collectedOutcome?: string) => void;
   addOffense: (userId: string, description: string, severity?: 'WARNING' | 'DEDUCT' | 'SUSPENSION', reportId?: string) => void;
   deductPoints: (userId: string, amount: number, reason?: string) => void;
 }
@@ -69,6 +71,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
   // Toast / Notification Feedback
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [rejectConfirmReport, setRejectConfirmReport] = useState<Report | null>(null);
+  const [rejectJustification, setRejectJustification] = useState('False report submission / Non-existent waste hazard');
 
   const showNotification = (msg: string) => {
     setFeedbackMsg(msg);
@@ -187,7 +190,8 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
       if (statusFilter === 'VERIFIED' && (!r.isVerified || r.status === 'DISPATCHED' || r.status === 'COLLECTED' || r.status === 'RESOLVED')) return false;
       if (statusFilter === 'DISPATCHED' && r.status !== 'DISPATCHED') return false;
       if (statusFilter === 'DISMISSED' && r.status !== 'DISMISSED') return false;
-      if (statusFilter === 'DONE' && r.status !== 'COLLECTED' && r.status !== 'RESOLVED') return false;
+      if (statusFilter === 'EXPIRED' && r.status !== 'EXPIRED') return false;
+      if (statusFilter === 'DONE' && r.status !== 'COLLECTED' && r.status !== 'RESOLVED' && r.status !== 'EXPIRED') return false;
 
       return true;
     })
@@ -261,7 +265,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
     if (report.reporterId) {
       await addOffense(
         report.reporterId,
-        `False or improper report: "${report.title}" at ${report.locationName}`,
+        rejectJustification || `False or improper report: "${report.title}" at ${report.locationName}`,
         autoSeverity,
         report.id
       );
@@ -270,11 +274,12 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
       }
     }
     if (updateReportStatus) {
-      await updateReportStatus(report.id, 'DISMISSED' as any, undefined, 'Marked as fake/dismissed by admin', undefined, true);
+      await updateReportStatus(report.id, 'DISMISSED' as any, undefined, 'Marked as fake/dismissed by admin');
     }
     const sevLabel = autoSeverity === 'WARNING' ? 'Warning' : autoSeverity === 'DEDUCT' ? `${dismissPenalty} pts deducted` : 'Account suspended';
     showNotification(`Report dismissed. ${sevLabel} for ${report.reporterName}.`);
     setRejectConfirmReport(null);
+    setRejectJustification('False report submission / Non-existent waste hazard');
     if (eyeModalReport?.id === report.id) setEyeModalReport(null);
   };
 
@@ -381,6 +386,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
           <option value="VERIFIED">Verified</option>
           <option value="DISPATCHED">Dispatched</option>
           <option value="DISMISSED">Dismissed</option>
+          <option value="EXPIRED">Expired</option>
           <option value="DONE">Done / Completed</option>
         </select>
       </div>
@@ -517,8 +523,8 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
 
                 {/* Group Nested Reports List */}
                 {isExpanded && (() => {
-                  const activeReports = group.reports.filter(r => r.status !== 'COLLECTED' && r.status !== 'RESOLVED' && r.status !== 'DISMISSED');
-                  const completedReports = group.reports.filter(r => r.status === 'COLLECTED' || r.status === 'RESOLVED' || r.status === 'DISMISSED');
+                  const activeReports = group.reports.filter(r => r.status !== 'COLLECTED' && r.status !== 'RESOLVED' && r.status !== 'DISMISSED' && r.status !== 'EXPIRED');
+                  const completedReports = group.reports.filter(r => r.status === 'COLLECTED' || r.status === 'RESOLVED' || r.status === 'DISMISSED' || r.status === 'EXPIRED');
                   const hasBoth = activeReports.length > 0 && completedReports.length > 0;
 
                   return (
@@ -648,6 +654,10 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                                     <span className="px-3 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
                                       <AlertOctagon size={11} /> Dismissed
                                     </span>
+                                  ) : rep.status === 'EXPIRED' ? (
+                                    <span className="px-3 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                                      <Clock size={11} /> Expired (6 PM)
+                                    </span>
                                   ) : (
                                     <span className="px-3 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-black uppercase tracking-wider">
                                       Done / Completed
@@ -741,11 +751,17 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                       ID: {eyeModalReport.id}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                      eyeModalReport.isVerified
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : 'bg-amber-100 text-amber-900 border border-amber-200'
+                      eyeModalReport.status === 'DISMISSED'
+                        ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                        : eyeModalReport.isVerified
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : 'bg-amber-100 text-amber-900 border border-amber-200'
                     }`}>
-                      {eyeModalReport.isVerified ? '✓ Verified' : '⏳ Pending Verification'}
+                      {eyeModalReport.status === 'DISMISSED'
+                        ? '✕ Dismissed / Flagged Fake'
+                        : eyeModalReport.isVerified
+                          ? '✓ Verified'
+                          : '⏳ Pending Verification'}
                     </span>
                     {isScattered && (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-0.5">
@@ -801,11 +817,25 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                     {!isFaculty && (
                       <div>
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Points Earned</span>
-                        <span className={`font-extrabold flex items-center gap-1.5 mt-1 text-sm ${eyeModalReport.pointsAwardedAt ? (eyeModalReport.pointsAwarded > 0 ? 'text-[#00A77C]' : 'text-gray-500') : 'text-gray-400'}`}>
-                          <Award size={14} className={eyeModalReport.pointsAwardedAt && eyeModalReport.pointsAwarded > 0 ? 'text-[#C69B26]' : 'text-gray-300'} />
-                          {eyeModalReport.pointsAwardedAt
-                            ? (eyeModalReport.pointsAwarded > 0 ? `+${eyeModalReport.pointsAwarded} pts` : 'No points awarded')
-                            : 'Pending verification'}
+                        <span className={`font-extrabold flex items-center gap-1.5 mt-1 text-sm ${
+                          eyeModalReport.status === 'DISMISSED'
+                            ? 'text-rose-600'
+                            : eyeModalReport.pointsAwardedAt
+                              ? (eyeModalReport.pointsAwarded > 0 ? 'text-[#00A77C]' : 'text-gray-500')
+                              : 'text-gray-400'
+                        }`}>
+                          <Award size={14} className={
+                            eyeModalReport.status === 'DISMISSED'
+                              ? 'text-rose-400'
+                              : eyeModalReport.pointsAwardedAt && eyeModalReport.pointsAwarded > 0
+                                ? 'text-[#C69B26]'
+                                : 'text-gray-300'
+                          } />
+                          {eyeModalReport.status === 'DISMISSED'
+                            ? '0 pts (Report Dismissed)'
+                            : eyeModalReport.pointsAwardedAt
+                              ? (eyeModalReport.pointsAwarded > 0 ? `+${eyeModalReport.pointsAwarded} pts` : 'No points awarded')
+                              : 'Pending verification'}
                           {eyeModalReport.reporterRank != null && (
                             <span className="text-[9px] font-bold text-[#C69B26] bg-[#C69B26]/10 px-1.5 py-0.5 rounded-full">
                               Rank #{eyeModalReport.reporterRank}
@@ -934,7 +964,11 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
 
               {/* Modal Verification Actions */}
               <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row gap-3 z-10">
-                {eyeModalReport.status === 'DISMISSED' ? (
+                {eyeModalReport.status === 'EXPIRED' ? (
+                  <div className="w-full py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold text-center flex items-center justify-center gap-1.5">
+                    <Clock size={16} /> Expired — Cleared at 6 PM daily reset
+                  </div>
+                ) : eyeModalReport.status === 'DISMISSED' ? (
                   <div className="w-full py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold text-center flex items-center justify-center gap-1.5">
                     <AlertOctagon size={16} /> Report Dismissed by Admin
                   </div>
@@ -1119,6 +1153,19 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                 );
               })()}
 
+              {/* Offense Justification Note */}
+              <div>
+                <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider block mb-1.5">Offense Justification Note</label>
+                <textarea
+                  value={rejectJustification}
+                  onChange={(e) => setRejectJustification(e.target.value)}
+                  rows={3}
+                  required
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-rose-500 outline-none resize-none font-medium text-xs"
+                  placeholder="Enter justification for this offense..."
+                />
+              </div>
+
               {/* Action Buttons */}
               {(() => {
                 const reporter = users.find(u => u.id === rejectConfirmReport.reporterId);
@@ -1128,7 +1175,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                 return (
                   <div className="flex gap-3 pt-1">
                     <button
-                      onClick={() => setRejectConfirmReport(null)}
+                      onClick={() => { setRejectConfirmReport(null); setRejectJustification('False report submission / Non-existent waste hazard'); }}
                       className="flex-1 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer"
                     >
                       Cancel

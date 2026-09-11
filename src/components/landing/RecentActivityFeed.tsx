@@ -4,11 +4,13 @@ import { AlertTriangle, CheckCircle, Clock, MapPin } from 'lucide-react';
 
 import { isReportDoneAndExpired } from '../../utils/reportUtils';
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, { icon: React.ComponentType<any>; bg: string; text: string; border: string; badge: string; label: string }> = {
   PENDING:    { icon: Clock,        bg: 'bg-amber-50',   text: 'text-amber-600',   border: 'border-amber-100',   badge: 'bg-amber-50 text-amber-700',   label: 'Pending' },
   DISPATCHED: { icon: MapPin,       bg: 'bg-violet-50',  text: 'text-violet-600',  border: 'border-violet-100',  badge: 'bg-violet-50 text-violet-700',  label: 'Dispatched' },
   COLLECTED:  { icon: CheckCircle,  bg: 'bg-sky-50',     text: 'text-sky-600',     border: 'border-sky-100',     badge: 'bg-sky-50 text-sky-700',        label: 'Collected' },
   RESOLVED:   { icon: CheckCircle,  bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', badge: 'bg-emerald-50 text-emerald-700', label: 'Resolved' },
+  DISMISSED:  { icon: AlertTriangle, bg: 'bg-gray-50',    text: 'text-gray-600',    border: 'border-gray-100',    badge: 'bg-gray-50 text-gray-700',      label: 'Dismissed' },
+  EXPIRED:    { icon: Clock,        bg: 'bg-rose-50',    text: 'text-rose-500',    border: 'border-rose-100',    badge: 'bg-rose-50 text-rose-600',     label: 'Expired' },
 };
 
 const URGENCY_CONFIG = {

@@ -26,6 +26,8 @@ import { AdminUrgencyLevelsTab } from './settings/AdminUrgencyLevelsTab';
 import { AdminAssetConditionsTab } from './settings/AdminAssetConditionsTab';
 import { AdminPointsSystemTab } from './settings/AdminPointsSystemTab';
 import { AdminAcademicCalendarTab } from './settings/AdminAcademicCalendarTab';
+import { AdminSyncSettingsTab } from './settings/AdminSyncSettingsTab';
+import { AdminChallengesTab } from './settings/AdminChallengesTab';
 
 const DEFAULT_PRESET_GROUPS = [
   {
@@ -252,6 +254,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
       {/* SUB-PAGE: ACADEMIC CALENDAR */}
       {activeSubTab === 'academic-calendar' && <AdminAcademicCalendarTab />}
 
+      {/* SUB-PAGE: SYNC & INTEGRATIONS */}
+      {activeSubTab === 'sync-integrations' && <AdminSyncSettingsTab />}
+
       {/* SUB-PAGE 2: ASSET CATEGORIES */}
       {activeSubTab === 'asset-categories' && <AdminAssetCategoriesTab />}
 
@@ -415,6 +420,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
 
       {/* SUB-PAGE 5: POINTS SYSTEM */}
       {activeSubTab === 'points-system' && <AdminPointsSystemTab />}
+
+      {/* SUB-PAGE: CHALLENGES */}
+      {activeSubTab === 'challenges' && <AdminChallengesTab />}
 
       {/* SUB-PAGE 9: DANGER ZONE (Screenshot 732) */}
       {activeSubTab === 'danger-zone' && (

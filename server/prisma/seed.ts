@@ -103,33 +103,36 @@ async function main() {
   // All user reports must originate from real EnrollPro student submissions.
   // No fake/local reports are seeded here.
 
-  // 8. Seed Challenges
-  const challengeCount = await prisma.challenge.count();
-  if (challengeCount === 0) {
-    await prisma.challenge.createMany({
-      data: [
-        {
-          title: 'Weekly Recycling Pioneer',
-          description: 'Submit 5 verified recyclable waste reports this week.',
-          pointsAwarded: 150,
-          target: 5,
-          progress: 3,
-          completed: false,
-          iconName: 'Recycle',
-        },
-        {
-          title: 'Zero Single-Use Plastics',
-          description: 'Participate in campus-wide plastic segregation audit.',
-          pointsAwarded: 200,
-          target: 1,
-          progress: 1,
-          completed: true,
-          iconName: 'Award',
-        },
-      ],
-    });
-    console.log('✅ Challenges Seeded');
-  }
+  // 8. Seed Challenges (upsert by stable code per D12)
+  await prisma.challenge.upsert({
+    where: { code: 'WEEKLY_RECYCLING_PIONEER' },
+    update: {},
+    create: {
+      code: 'WEEKLY_RECYCLING_PIONEER',
+      title: 'Weekly Recycling Pioneer',
+      description: 'Submit 5 verified recyclable waste reports this week.',
+      challengeType: 'REPORT_COUNT',
+      pointsAwarded: 150,
+      target: 5,
+      iconName: 'Recycle',
+      isActive: true,
+    },
+  });
+  await prisma.challenge.upsert({
+    where: { code: 'ZERO_SINGLE_USE_PLASTICS' },
+    update: {},
+    create: {
+      code: 'ZERO_SINGLE_USE_PLASTICS',
+      title: 'Zero Single-Use Plastics',
+      description: 'Participate in campus-wide plastic segregation audit.',
+      challengeType: 'REPORT_COUNT',
+      pointsAwarded: 200,
+      target: 1,
+      iconName: 'Award',
+      isActive: true,
+    },
+  });
+  console.log('✅ Challenges Seeded');
 
   // 9. Seed Asset Categories & Item Presets
   const categoryCount = await prisma.assetCategory.count();

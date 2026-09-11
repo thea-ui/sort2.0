@@ -33,7 +33,7 @@ import { useRecycleMarket } from '../../../hooks/useRecycleMarket';
 export interface AdminCollectionsTabProps {
   reports: Report[];
   users?: UserType[];
-  settings?: { falseReportPointPenalty?: number } | null;
+  settings?: { falseReportPointPenalty?: number; rewardsReservePercent?: number } | null;
   dispatchReport?: (reportId: string, mrfId: string, mrfName: string) => void;
   updateReportStatus?: (reportId: string, status: ReportStatus, weightCollected?: number) => void;
   addOffense?: (userId: string, description: string, severity: 'WARNING' | 'DEDUCT' | 'SUSPENSION') => void;
@@ -229,6 +229,12 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 size={11} /> Collected & Cleared
+          </span>
+        );
+      case 'EXPIRED':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-200">
+            <Clock size={11} /> Expired (6 PM Reset)
           </span>
         );
       default:
@@ -632,7 +638,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
                     : matchedUser?.classroomSection 
                     ? `Student (${matchedUser.classroomSection})`
                     : matchedUser?.gradeLevel 
-                    ? `Student (${(matchedUser as any).gradeLevel}${(matchedUser as any).sectionName ? ' - ' + (matchedUser as any).sectionName : ''})`
+                    ? `Student (${matchedUser.gradeLevel}${matchedUser.sectionName ? ' - ' + matchedUser.sectionName : ''})`
                     : 'Student';
 
                   return (

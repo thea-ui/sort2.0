@@ -40,6 +40,7 @@ import {
 import { MRFDirectPickupTab } from './components/MRFDirectPickupTab';
 import { MRFMarketTab } from './components/MRFMarketTab';
 import { MRFInventoryTab } from './components/MRFInventoryTab';
+import { MRFAssetLedgerPage } from './components/MRFAssetLedgerPage';
 
 export interface ItemizedRecyclableCategory {
   id: 'pet_plastic' | 'aluminum_cans' | 'cardboard' | 'glass';
@@ -647,6 +648,11 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       {/* ── INVENTORY MANAGEMENT TAB ── */}
       {activeTab === 'mrf-inventory' && (
         <MRFInventoryTab showToast={showToast} />
+      )}
+
+      {/* ── ASSET LEDGER TAB ── */}
+      {activeTab === 'mrf-assets' && (
+        <MRFAssetLedgerPage showToast={showToast} />
       )}
 
       {/* ── 5. ITEMIZED RECYCLABLE MARKET & SELLING THRESHOLD TRACKER ── */}

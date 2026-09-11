@@ -1,14 +1,27 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
+import { authenticateWithEnrollPro, authenticateLearnerWithEnrollPro } from '../services/enrollpro-auth.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'sortv2_super_secret_jwt_key_2026';
 const ACCESS_EXPIRY_SECONDS = 15 * 60; // 15 minutes
 const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  handler: (_req, res) => res.status(429).json({
+    error: 'Too many login attempts. Please try again in 15 minutes.',
+    code: 'RATE_LIMITED',
+  }),
+});
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -27,7 +40,8 @@ function safeUser(user: any) {
 
 // POST /api/auth/login
 // Students login with LRN, Teachers/Admin/MRF login with Employee ID
-router.post('/login', async (req: Request, res: Response): Promise<any> => {
+// Authentication is delegated to EnrollPro — no local password comparison
+router.post('/login', loginLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
     const { identifier, password, lrn, employeeId, email } = req.body;
     const loginId = (identifier || lrn || employeeId || email || '').trim();
@@ -49,17 +63,59 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      console.log(`[Auth] Login failed: user not found for identifier "${loginId}"`);
+      return res.status(401).json({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' });
     }
 
     // Only allow EnrollPro-synced accounts
     if (user.syncSource !== 'ENROLLPRO') {
-      return res.status(401).json({ error: 'Account not provisioned. Contact your administrator.' });
+      console.log(`[Auth] Login failed: user "${loginId}" not provisioned (syncSource=${user.syncSource})`);
+      return res.status(401).json({ error: 'Account not provisioned. Contact your administrator.', code: 'NOT_PROVISIONED' });
     }
 
-    const isMatch = await bcrypt.compare(loginPassword, user.passwordHash);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    // Enrolled students only: archived / not-yet-enrolled learners cannot sign in
+    if (user.role === 'STUDENT' && (user.archivedAt || user.enrollmentStatus === 'NOT_ENROLLED' || user.enrollmentStatus === 'ALUMNI')) {
+      console.log(`[Auth] Login denied: student "${loginId}" is not enrolled for the current school year`);
+      return res.status(403).json({
+        error: 'You are not enrolled for this school year yet. Please wait for enrollment to be completed.',
+        code: 'NOT_ENROLLED',
+      });
+    }
+
+    // Route by role: students use the dedicated learner endpoint
+    const isStudent = user.role === 'STUDENT';
+    const authResult = isStudent
+      ? await authenticateLearnerWithEnrollPro(user.enrollproLrn || loginId, loginPassword)
+      : await authenticateWithEnrollPro(loginId, loginPassword);
+
+    if (authResult.unreachable) {
+      console.log(`[Auth] Login failed: EnrollPro unreachable for "${loginId}"`);
+      return res.status(503).json({
+        error: 'Authentication service unreachable. Please try again later.',
+        code: 'AUTH_SERVICE_UNREACHABLE',
+        unreachable: true,
+      });
+    }
+
+    if (authResult.mustChangePassword) {
+      console.log(`[Auth] Login failed: user "${loginId}" must change password in EnrollPro`);
+      return res.status(403).json({
+        error: 'Please change your password in EnrollPro first, then sign in.',
+        code: 'PASSWORD_CHANGE_REQUIRED',
+      });
+    }
+
+    if (authResult.accountInactive) {
+      console.log(`[Auth] Login failed: student "${loginId}" EnrollPro portal account inactive`);
+      return res.status(403).json({
+        error: 'Your EnrollPro portal account is not yet activated. Contact the registrar.',
+        code: 'NO_ENROLLPRO_ACCOUNT',
+      });
+    }
+
+    if (!authResult.success) {
+      console.log(`[Auth] Login failed: invalid credentials for "${loginId}"`);
+      return res.status(401).json({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' });
     }
 
     // Check if account is suspended
@@ -68,8 +124,10 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
       const remainingHours = Math.ceil(remainingMs / (1000 * 60 * 60));
       const remainingMinutes = Math.ceil(remainingMs / (1000 * 60));
       const timeStr = remainingHours > 1 ? `${remainingHours} hours` : `${remainingMinutes} minutes`;
+      console.log(`[Auth] Login failed: user "${loginId}" suspended until ${user.suspendedUntil.toISOString()}`);
       return res.status(403).json({
         error: `Account is suspended. You can log in again in ${timeStr}.`,
+        code: 'ACCOUNT_SUSPENDED',
         suspendedUntil: user.suspendedUntil.toISOString(),
       });
     }
@@ -145,6 +203,12 @@ router.post('/refresh', async (req: Request, res: Response): Promise<any> => {
     if (session.user.syncSource !== 'ENROLLPRO') {
       await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
       return res.status(401).json({ error: 'Account not provisioned. Contact your administrator.' });
+    }
+
+    // Enrolled students only: block refresh for archived / not-yet-enrolled learners
+    if (session.user.role === 'STUDENT' && (session.user.archivedAt || session.user.enrollmentStatus === 'NOT_ENROLLED' || session.user.enrollmentStatus === 'ALUMNI')) {
+      await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
+      return res.status(403).json({ error: 'You are not enrolled for this school year yet.', code: 'NOT_ENROLLED' });
     }
 
     // Rotate refresh token (issue new one, invalidate old)
@@ -262,60 +326,14 @@ router.get('/me', async (req: Request, res: Response): Promise<any> => {
       return res.status(401).json({ error: 'Account not provisioned. Contact your administrator.' });
     }
 
+    // Enrolled students only
+    if (user.role === 'STUDENT' && (user.archivedAt || user.enrollmentStatus === 'NOT_ENROLLED' || user.enrollmentStatus === 'ALUMNI')) {
+      return res.status(403).json({ error: 'You are not enrolled for this school year yet.', code: 'NOT_ENROLLED' });
+    }
+
     return res.json({
       user: safeUser(user),
     });
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-});
-
-// PATCH /api/auth/change-password
-router.patch('/change-password', async (req: Request, res: Response): Promise<any> => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current and new passwords required' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Strict guard: only EnrollPro-synced accounts can change password
-    if (user.syncSource !== 'ENROLLPRO') {
-      return res.status(401).json({ error: 'Account not provisioned. Contact your administrator.' });
-    }
-
-    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
-    }
-
-    const newHash = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash: newHash },
-    });
-
-    // Invalidate all other sessions after password change
-    await prisma.userSession.deleteMany({
-      where: {
-        userId: user.id,
-        refreshToken: { not: '' },
-      },
-    });
-
-    return res.json({ message: 'Password changed successfully' });
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }

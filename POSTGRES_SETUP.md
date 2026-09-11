@@ -4,19 +4,14 @@ This document provides a simple, step-by-step guide for configuring PostgreSQL, 
 
 ---
 
-## 🔑 1. Pre-Configured Test Accounts (Testing Phase)
+## 🔑 1. Authentication & Login
 
-The database seed script automatically creates **7 default accounts** with simple credentials for rapid testing across all roles:
+SORTv2 uses **delegated authentication** via EnrollPro. All user accounts are synced from EnrollPro, and passwords are validated against EnrollPro's authentication service — no local password storage.
 
-| Role | Full Name | Email | Password | Assigned Section / Note |
-| :--- | :--- | :--- | :--- | :--- |
-| 🎓 **Student 1** | Alex Rivera | `student1@sort.edu` | `student123` | BSIT-3A (150 pts) |
-| 🎓 **Student 2** | Beatriz Santos | `student2@sort.edu` | `student123` | BSIT-3B (320 pts) |
-| 🎓 **Student 3** | Carlos Mendoza | `student3@sort.edu` | `student123` | BSIT-3A (80 pts) |
-| 👩‍🏫 **Teacher** | Prof. Eleanor Vance | `teacher1@sort.edu` | `teacher123` | BSIT-3A Advisor |
-| 🛠️ **Admin** | System Administrator | `admin@sort.edu` | `admin123` | System SuperAdmin |
-| 🚚 **MRF Staff 1** | Marcus Vance | `mrf1@sort.edu` | `mrf123` | MRF Team Alpha |
-| 🚚 **MRF Staff 2** | Sarah Connor | `mrf2@sort.edu` | `mrf123` | MRF Team Beta |
+- **Students:** Login with your LRN (Learner Reference Number) + EnrollPro password
+- **Staff (Teachers/Admin/MRF):** Login with your Employee ID + EnrollPro password
+
+> Password changes must be done through EnrollPro. The local system does not store or manage passwords.
 
 ---
 
@@ -53,8 +48,12 @@ In the `server/` directory, open `.env` (or copy `.env.example` to `.env`) and u
 DATABASE_URL="postgresql://postgres:YOUR_POSTGRES_PASSWORD@localhost:5432/sortv2_db?schema=public"
 
 PORT=5000
-JWT_SECRET="sortv2_super_secret_jwt_key_2026"
+JWT_SECRET="your_jwt_secret_here"
 NODE_ENV="development"
+
+# EnrollPro Integration
+ENROLLPRO_BASE_URL="https://your-enrollpro-instance.com/api"
+ENROLLPRO_SYNC_SECRET="your_integration_key_here"
 ```
 
 ---
@@ -74,7 +73,7 @@ Open a terminal in the `server` directory and execute:
    npx prisma db push
    ```
 
-3. **Seed Database with Test Accounts & Sample Data:**
+3. **Seed Database with System Settings & Sample Data:**
    ```bash
    npx prisma db seed
    ```
@@ -87,10 +86,23 @@ Open a terminal in the `server` directory and execute:
 
 ---
 
-## 📡 5. Backend API Endpoints Overview
+## 🔄 5. EnrollPro Sync Commands
+
+- **Bulk sync (CLI):** `npm run sync:enrollpro` — pulls all users and term calendars from EnrollPro
+- **Wipe accounts:** `npm run db:wipe-accounts` — deletes all users, sessions, and user-owned data (keeps bins, settings, inventory)
+- **Fresh start:** Run wipe → then sync:
+  ```bash
+  cd server
+  npm run db:wipe-accounts
+  npm run sync:enrollpro
+  ```
+
+---
+
+## 📡 6. Backend API Endpoints Overview
 
 - **Auth:**
-  - `POST /api/auth/login` (Body: `{ email, password }`)
+  - `POST /api/auth/login` (Body: `{ identifier, password }`)
   - `GET /api/auth/me` (Header: `Authorization: Bearer <token>`)
 - **Users & Leaderboard:**
   - `GET /api/users`
@@ -102,3 +114,6 @@ Open a terminal in the `server` directory and execute:
 - **Waste Bins:**
   - `GET /api/bins`
   - `PATCH /api/bins/:id`
+- **Sync:**
+  - `POST /api/sync/all` (Admin only — trigger full sync)
+  - `GET /api/sync/status` (Admin only — view sync history)

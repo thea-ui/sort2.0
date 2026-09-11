@@ -3,7 +3,23 @@ import { SortLogo } from '../common/SortLogo';
 
 export const LandingFooter: React.FC = () => {
   return (
-    <footer className="border-t border-gray-200 bg-gray-50">
+    <footer className="relative border-t border-gray-200 bg-gray-50">
+      {/* Organic wave separator */}
+      <div className="absolute -top-px left-0 w-full overflow-hidden">
+        <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+          <path
+            d="M0 30C240 50 480 10 720 30C960 50 1200 10 1440 30V60H0V30Z"
+            fill="#F9F3F0"
+            fillOpacity="0.5"
+          />
+          <path
+            d="M0 35C200 55 400 15 600 35C800 55 1000 15 1200 35C1400 55 1440 35 1440 35V60H0V35Z"
+            fill="#e0f2ec"
+            fillOpacity="0.3"
+          />
+        </svg>
+      </div>
+
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           {/* Brand */}

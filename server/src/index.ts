@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import cron from 'node-cron';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import reportRoutes from './routes/report.routes.js';
@@ -11,7 +10,10 @@ import marketRoutes from './routes/market.routes.js';
 import syncRoutes from './routes/sync.routes.js';
 import schoolYearRoutes from './routes/school-year.routes.js';
 import inventoryRoutes from './routes/inventory.routes.js';
-import { runEnrollProSync, syncTermCalendar } from './services/enrollpro-sync.service.js';
+import challengeRoutes from './routes/challenge.routes.js';
+import assetRoutes from './routes/asset.routes.js';
+import { rescheduleSync } from './services/sync-scheduler.service.js';
+import { rescheduleBinReset } from './services/bin-reset.service.js';
 
 dotenv.config();
 
@@ -49,6 +51,8 @@ app.use('/api/market', marketRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/school-years', schoolYearRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/assets', assetRoutes);
 
 // Global Error Handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -56,60 +60,17 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ error: err.message || 'Internal Server Error' });
 });
 
-// ─── EnrollPro Hourly Sync Cron ────────────────────────────────────────
-
-const SYNC_CRON = process.env.SYNC_INTERVAL_CRON || '0 * * * *'; // Every hour at :00
-
-let isSyncRunning = false;
-
-cron.schedule(SYNC_CRON, async () => {
-  if (isSyncRunning) {
-    console.log('[Cron] Sync already in progress, skipping...');
-    return;
-  }
-
-  isSyncRunning = true;
-  console.log(`[Cron] Starting scheduled EnrollPro sync at ${new Date().toISOString()}`);
-
-  try {
-    const [userResult, termResult] = await Promise.all([
-      runEnrollProSync(),
-      syncTermCalendar(),
-    ]);
-
-    console.log(`[Cron] Sync finished: ${userResult.recordsCreated} created, ${userResult.recordsUpdated} updated, ${userResult.recordsDeleted} deleted (${userResult.durationMs}ms)`);
-    if (termResult.error) {
-      console.log(`[Cron] Term sync warning: ${termResult.error}`);
-    }
-  } catch (error: any) {
-    console.error('[Cron] Sync failed:', error.message);
-  } finally {
-    isSyncRunning = false;
-  }
+// ─── Settings-Driven Sync Scheduler ───────────────────────────────────
+// Default mode = MANUAL: no cron scheduled, no unconditional startup sync.
+// When mode = AUTOMATIC: schedule node-cron at the configured interval.
+rescheduleSync().catch(err => {
+  console.error('[Server] Failed to initialize sync scheduler:', err.message);
 });
 
-console.log(`[Cron] EnrollPro sync scheduled: ${SYNC_CRON}`);
-
-// ─── Initial Sync on Startup ──────────────────────────────────────────
-// Run sync immediately on startup to ensure users exist for login
-(async () => {
-  console.log('[Startup] Running initial EnrollPro sync...');
-  try {
-    const [userResult, termResult] = await Promise.all([
-      runEnrollProSync(),
-      syncTermCalendar(),
-    ]);
-    console.log(`[Startup] Initial sync: ${userResult.recordsCreated} created, ${userResult.recordsUpdated} updated, ${userResult.recordsDeleted} deleted (${userResult.durationMs}ms)`);
-    if (userResult.error) {
-      console.error(`[Startup] Sync error: ${userResult.error}`);
-    }
-    if (termResult.error) {
-      console.log(`[Startup] Term sync warning: ${termResult.error}`);
-    }
-  } catch (error: any) {
-    console.error('[Startup] Initial sync failed:', error.message);
-  }
-})();
+// ─── Daily 6:00 PM Bin Reset Scheduler ─────────────────────────────────
+rescheduleBinReset().catch(err => {
+  console.error('[Server] Failed to initialize bin reset scheduler:', err.message);
+});
 
 app.listen(PORT, () => {
   console.log(`SORTv2 PostgreSQL Express Server listening on http://localhost:${PORT}`);

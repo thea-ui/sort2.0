@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { ShieldAlert, ArrowLeft, KeyRound, AlertOctagon, Eye, EyeOff } from 'lucide-react';
 import { SortLogo } from '../../components/common/SortLogo';
+import { getLoginErrorMessage, ROLE_PORTAL_MESSAGE } from '../../utils/loginErrors';
 
 interface AdminLoginProps {
   onNavigate: (route: string) => void;
@@ -25,12 +26,16 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const success = await login(password, identifier);
+      const result = await login(password, identifier);
       setLoading(false);
-      if (success) {
-        onNavigate('dashboard');
+      if (result.ok) {
+        if (result.user.role !== 'ADMIN') {
+          setErrorMsg(ROLE_PORTAL_MESSAGE);
+        } else {
+          onNavigate('dashboard');
+        }
       } else {
-        setErrorMsg('Invalid Employee ID or password.');
+        setErrorMsg(getLoginErrorMessage(result.code, result.message));
       }
     } catch {
       setLoading(false);
@@ -81,7 +86,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onNavigate }) => {
               <input
                 type="text"
                 required
-                placeholder="e.g. 1234501"
+                placeholder="Enter Employee ID"
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-xs text-[#00271D] outline-none focus:border-[#C69B26] focus:bg-white transition-all"

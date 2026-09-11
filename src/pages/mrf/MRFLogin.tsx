@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { Truck, ArrowLeft, KeyRound, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { SortLogo } from '../../components/common/SortLogo';
+import { getLoginErrorMessage, ROLE_PORTAL_MESSAGE } from '../../utils/loginErrors';
 
 interface MRFLoginProps {
   onNavigate: (route: string) => void;
@@ -25,12 +26,16 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const success = await login(password, identifier);
+      const result = await login(password, identifier);
       setLoading(false);
-      if (success) {
-        onNavigate('dashboard');
+      if (result.ok) {
+        if (result.user.role !== 'MRF') {
+          setErrorMsg(ROLE_PORTAL_MESSAGE);
+        } else {
+          onNavigate('dashboard');
+        }
       } else {
-        setErrorMsg('Invalid Employee ID or password.');
+        setErrorMsg(getLoginErrorMessage(result.code, result.message));
       }
     } catch {
       setLoading(false);
@@ -81,7 +86,7 @@ export const MRFLogin: React.FC<MRFLoginProps> = ({ onNavigate }) => {
               <input
                 type="text"
                 required
-                placeholder="e.g. 1234503"
+                placeholder="Enter Employee ID"
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all"

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { User, Report, BinStatus, Challenge, PointHistory, Offense, SystemSettings, CalendarEvent, SyncLog, Role, ReportStatus, AppNotification } from '../types';
 import { apiService, storeRefreshToken, clearRefreshToken } from '../services/api';
 import { getStoredLocations, saveLocations, locationsToBins } from '../services/locationStore';
+import { useAuthState, LoginResult } from './useAuthState';
+import { useNotifications } from './useNotifications';
 
 
 interface MockDataContextType {
@@ -19,7 +21,7 @@ interface MockDataContextType {
   isAuthenticated: boolean;
   
   // Actions
-  login: (employeeId: string, email: string) => Promise<boolean>;
+  login: (employeeId: string, email: string) => Promise<LoginResult>;
   logout: () => void;
   changeRole: (newRole: Role) => void;
   verifyReport: (reportId: string) => void;
@@ -31,12 +33,11 @@ interface MockDataContextType {
   toggleBinDispatch: (binId: string) => void;
   setBinsState: React.Dispatch<React.SetStateAction<BinStatus[]>>;
   triggerSync: (system: string) => void;
-  completeChallenge: (challengeId: string) => void;
   updateSettings: (newSettings: Partial<SystemSettings>) => void;
   resetDatabase: () => void;
   addOffense: (userId: string, description: string, severity?: 'WARNING' | 'DEDUCT' | 'SUSPENSION') => void;
   deductPoints: (userId: string, amount: number) => void;
-  claimCertificate: (certName: string) => void;
+  claimCertificate: (certName: string) => Promise<void>;
   dismissNotification: (notificationId: string) => void;
   clearNotificationsForUser: () => void;
 }
@@ -57,6 +58,8 @@ const DEFAULT_SETTINGS: SystemSettings = {
   suspensionDurationHours: 24,
   rewardsReservePercent: 20,
   defaultVendorName: 'GreenCycle Recycling Vendor',
+  binResetEnabled: true,
+  binResetTime: '18:00',
 };
 
 const DEFAULT_USERS: User[] = [];
@@ -64,11 +67,7 @@ const DEFAULT_USERS: User[] = [];
 const DEFAULT_BINS: BinStatus[] = [];
 
 
-const DEFAULT_CHALLENGES: Challenge[] = [
-  { id: 'ch-1', title: 'Eco Sentinel Campaign', description: 'Report 3 active waste overflows or bin issues across campus.', pointsAwarded: 150, target: 3, progress: 0, completed: false, iconName: 'AlertTriangle' },
-  { id: 'ch-2', title: 'Hazard Spotter', description: 'Record at least 1 chemical or hazardous waste container that requires immediate attention.', pointsAwarded: 200, target: 1, progress: 0, completed: false, iconName: 'Flame' },
-  { id: 'ch-3', title: 'MRF Supporter', description: 'Log a waste collection report that results in at least 25 kilograms of materials gathered.', pointsAwarded: 250, target: 25, progress: 0, completed: false, iconName: 'Scale' }
-];
+const DEFAULT_CHALLENGES: Challenge[] = [];
 
 const DEFAULT_REPORTS: Report[] = [];
 
@@ -77,8 +76,10 @@ const DEFAULT_CALENDAR: CalendarEvent[] = [];
 const DEFAULT_HISTORY: PointHistory[] = [];
 
 export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser, setCurrentUser, isAuthenticated, setIsAuthenticated, login: authLogin, logout: authLogout, changeRole: authChangeRole } = useAuthState();
+  const { notifications, setNotifications, addNotification, dismissNotification, clearNotificationsForUser } = useNotifications();
+
   const [users, setUsers] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [bins, setBins] = useState<BinStatus[]>([]);
 
@@ -89,10 +90,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [pointRules, setPointRules] = useState<{ rank: number; pointsAwarded: number }[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('sort_auth') === 'true';
-  });
 
   const skipStorageKeysRef = useRef(new Set<string>());
 
@@ -147,11 +144,14 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     let loadedChallenges = loadFromStorage('sort_challenges', DEFAULT_CHALLENGES);
 
-    // Force challenges to 0 progress for testing
-    if (loadedChallenges.some((c: Challenge) => c.progress > 0 || c.completed)) {
-      loadedChallenges = DEFAULT_CHALLENGES;
-      localStorage.setItem('sort_challenges', JSON.stringify(DEFAULT_CHALLENGES));
-    }
+    // Fetch challenges from server API
+    apiService.getChallenges().then(serverChallenges => {
+      if (serverChallenges && Array.isArray(serverChallenges) && serverChallenges.length > 0) {
+        setChallenges(serverChallenges);
+        localStorage.setItem('sort_challenges', JSON.stringify(serverChallenges));
+      }
+    }).catch(() => {});
+
     const loadedPointHistory = loadFromStorage('sort_point_history', DEFAULT_HISTORY);
     const loadedOffenses = loadFromStorage('sort_offenses', [] as Offense[]);
     const loadedCalendar = loadFromStorage('sort_calendar', DEFAULT_CALENDAR);
@@ -177,71 +177,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCurrentUser(loadedUsers[0] || null);
     }
   }, []);
-
-  // Check backend session on mount if token exists
-  useEffect(() => {
-    const token = sessionStorage.getItem('sortv2_token');
-    if (token) {
-      apiService.getCurrentUser()
-        .then(({ user }) => {
-          if (user) {
-            const loggedUser: User = {
-              ...user,
-              certificatesEarned: user.certificatesEarned || (user as any).certificates || [],
-            };
-            setCurrentUser(loggedUser);
-            setIsAuthenticated(true);
-            sessionStorage.setItem('sort_auth', 'true');
-          }
-        })
-        .catch(async () => {
-          // Access token expired — try refresh token before giving up
-          const refreshed = await apiService.refreshAccessToken();
-          if (refreshed && refreshed.user) {
-            const loggedUser: User = {
-              ...refreshed.user,
-              certificatesEarned: refreshed.user.certificatesEarned || (refreshed.user as any).certificates || [],
-            };
-            setCurrentUser(loggedUser);
-            setIsAuthenticated(true);
-            sessionStorage.setItem('sort_auth', 'true');
-          } else {
-            // Both access and refresh tokens invalid — clear session
-            const userId = sessionStorage.getItem('sortv2_user_id');
-            if (userId) clearRefreshToken(userId);
-            sessionStorage.removeItem('sortv2_token');
-            sessionStorage.removeItem('sortv2_user_id');
-            sessionStorage.removeItem('sort_auth');
-            sessionStorage.removeItem('sort_tab_role');
-            setIsAuthenticated(false);
-            const fallbackUsers = JSON.parse(localStorage.getItem('sort_users') || '[]') as User[];
-            setCurrentUser(fallbackUsers[0] || null);
-          }
-        });
-    }
-  }, []);
-
-  // Auto-refresh access token before it expires (every 14 minutes)
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes (token expires at 15)
-
-    const intervalId = setInterval(async () => {
-      const refreshed = await apiService.refreshAccessToken();
-      if (!refreshed) {
-        // Refresh failed — session is dead, log out silently
-        const userId = sessionStorage.getItem('sortv2_user_id');
-        if (userId) clearRefreshToken(userId);
-        sessionStorage.removeItem('sortv2_token');
-        sessionStorage.removeItem('sortv2_user_id');
-        sessionStorage.removeItem('sort_auth');
-        setIsAuthenticated(false);
-      }
-    }, REFRESH_INTERVAL_MS);
-
-    return () => clearInterval(intervalId);
-  }, [isAuthenticated]);
 
 // Real-Time Cross-Browser & Multi-Account API Polling (Chrome <-> Brave sync)
   useEffect(() => {
@@ -326,6 +261,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         if (e.key === 'sort_point_history') setPointHistory(JSON.parse(e.newValue));
         if (e.key === 'sort_challenges') setChallenges(JSON.parse(e.newValue));
+        if (e.key === 'sort_offenses') setOffenses(JSON.parse(e.newValue));
       } catch (err) {
         console.warn('Cross-session sync notice:', err);
       }
@@ -434,7 +370,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [pointHistory]);
 
   useEffect(() => {
-    if (offenses.length > 0) localStorage.setItem('sort_offenses', JSON.stringify(offenses));
+    localStorage.setItem('sort_offenses', JSON.stringify(offenses));
   }, [offenses]);
 
   useEffect(() => {
@@ -454,99 +390,29 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     apiService.getPointRules().then((rules) => {
       if (rules && Array.isArray(rules) && rules.length > 0) {
         setPointRules(rules.map(r => ({ rank: r.rank, pointsAwarded: r.pointsAwarded })));
-      } else {
-        // Fallback defaults if DB is empty
-        setPointRules([
-          { rank: 1, pointsAwarded: 15 },
-          { rank: 2, pointsAwarded: 10 },
-          { rank: 3, pointsAwarded: 5 },
-        ]);
       }
-    }).catch(() => {
-      setPointRules([
-        { rank: 1, pointsAwarded: 15 },
-        { rank: 2, pointsAwarded: 10 },
-        { rank: 3, pointsAwarded: 5 },
-      ]);
-    });
+    }).catch(() => {});
   }, []);
 
-  // Actions
-  const login = async (password: string, identifier: string): Promise<boolean> => {
-    try {
-      // 1. Authenticate against real PostgreSQL Express API (EnrollPro-synced accounts only)
-      const res = await apiService.login(identifier, password);
-      if (res && res.token && res.user) {
-        sessionStorage.setItem('sortv2_token', res.token);
-        sessionStorage.setItem('sortv2_user_id', res.user.id);
-        if (res.refreshToken) {
-          storeRefreshToken(res.user.id, res.refreshToken);
-        }
-        const loggedUser: User = {
-          ...res.user,
-          certificatesEarned: res.user.certificatesEarned || (res.user as any).certificates || [],
-        };
-
-        setCurrentUser(loggedUser);
-        setUsers(prev => prev.map(u => u.email.toLowerCase() === loggedUser.email.toLowerCase() ? loggedUser : u));
-        setIsAuthenticated(true);
-        sessionStorage.setItem('sort_auth', 'true');
-        return true;
-      }
-    } catch (err) {
-      console.warn('Backend API authentication notice:', err);
+  // Actions — delegate to extracted hooks, then sync local state
+  const login = async (password: string, identifier: string): Promise<LoginResult> => {
+    const result = await authLogin(password, identifier);
+    if (result.ok) {
+      setUsers(prev => prev.map(u => u.email.toLowerCase() === result.user.email.toLowerCase() ? result.user : u));
     }
-
-    // No local fallback — all accounts must be EnrollPro-synced.
-    // If backend is offline, login fails.
-    return false;
+    return result;
   };
 
   const logout = () => {
-    const userId = sessionStorage.getItem('sortv2_user_id');
-    const refreshToken = userId ? localStorage.getItem(`sortv2_refresh_${userId}`) : null;
-
-    // Invalidate server-side session (fire-and-forget)
-    if (refreshToken) {
-      apiService.logout(refreshToken).catch(() => {});
-    }
-
-    // Clear all client-side session data
-    if (userId) clearRefreshToken(userId);
-    sessionStorage.removeItem('sortv2_token');
-    sessionStorage.removeItem('sortv2_user_id');
-    setIsAuthenticated(false);
-    sessionStorage.setItem('sort_auth', 'false');
+    authLogout();
   };
 
   const changeRole = (newRole: Role) => {
-    sessionStorage.setItem('sort_tab_role', newRole);
-    const targetUser = users.find(u => u.role === newRole) || (currentUser ? { ...currentUser, role: newRole } : null);
-    if (targetUser) {
-      setCurrentUser(targetUser);
-    }
+    authChangeRole(newRole, users);
   };
 
-  const addNotification = (type: AppNotification['type'], title: string, message: string, reportId: string, recipientId: string) => {
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      type,
-      title,
-      message,
-      reportId,
-      recipientId,
-      timestamp: new Date().toISOString(),
-    };
-    setNotifications(prev => [notif, ...prev]);
-  };
-
-  const dismissNotification = (notificationId: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
-  };
-
-  const clearNotificationsForUser = () => {
-    if (!currentUser) return;
-    setNotifications(prev => prev.filter(n => n.recipientId !== currentUser.id));
+  const clearUserNotifications = () => {
+    if (currentUser) clearNotificationsForUser(currentUser.id);
   };
 
   const createReport = (reportData: Omit<Report, 'id' | 'status' | 'reporterId' | 'reporterName' | 'pointsAwarded' | 'timestamp'>) => {
@@ -621,8 +487,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       urgency: newReport.urgency,
       locationName: newReport.locationName,
       coordinates: newReport.coordinates,
-      reporterId: currentUserId,
-      reporterEmail: currentUser?.email,
       imageUrl: newReport.imageUrl,
       reportType: (reportData as any).reportType || 'WASTE',
     }).then(serverRes => {
@@ -633,44 +497,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn('PostgreSQL database create report notice:', err);
     });
 
-    // Update challenges progress (Eco Sentinel)
-    setChallenges(prev => prev.map(c => {
-      if (c.id === 'ch-1' && !c.completed) {
-        const newProg = c.progress + 1;
-        const comp = newProg >= c.target;
-        if (comp) {
-          setTimeout(() => addChallengeRewardPoints(c.pointsAwarded, c.title), 100);
-        }
-        return { ...c, progress: Math.min(newProg, c.target), completed: comp };
-      }
-      if (c.id === 'ch-2' && reportData.category === 'HAZARDOUS' && !c.completed) {
-        setTimeout(() => addChallengeRewardPoints(c.pointsAwarded, c.title), 100);
-        return { ...c, progress: 1, completed: true };
-      }
-      return c;
-    }));
-
     return newReport;
-  };
-
-  const addChallengeRewardPoints = (amount: number, challengeTitle: string) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === 'current' || u.id === currentUser?.id) {
-        return { ...u, points: u.points + amount };
-      }
-      return u;
-    }));
-
-    setPointHistory(prev => [
-      {
-        id: `h-challenge-${Date.now()}`,
-        userId: currentUser?.id || 'current',
-        amount,
-        reason: `Completed challenge: "${challengeTitle}"`,
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16)
-      },
-      ...prev
-    ]);
   };
 
   const updateReportStatus = (
@@ -678,8 +505,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     status: ReportStatus,
     weightCollected?: number,
     completionNotes?: string,
-    collectedOutcome?: string,
-    skipPoints?: boolean
+    collectedOutcome?: string
   ) => {
     const targetReport = reports.find(r => r.id === reportId);
     if (!targetReport) return;
@@ -695,7 +521,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               r.category === targetReport.category &&
               r.status !== 'DISMISSED' &&
               r.status !== 'COLLECTED' &&
-              r.status !== 'RESOLVED'
+              r.status !== 'RESOLVED' &&
+              r.status !== 'EXPIRED'
             )
             .map(r => r.id)
         );
@@ -720,7 +547,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return prev.map(r => r.id === reportId ? {
         ...r,
         status,
-        isVerified: status === 'DISMISSED' ? false : r.isVerified,
         weightCollected: weightCollected ?? r.weightCollected,
         completionNotes: completionNotes ?? r.completionNotes,
         collectedOutcome: collectedOutcome ?? r.collectedOutcome,
@@ -739,8 +565,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     apiService.updateReportStatus(reportId, {
       status,
       weightCollected,
-      isVerified: !skipPoints,
-      skipPoints,
     }).then(async () => {
       // Full refresh: the server may have awarded points to the entire stream.
       // A full refresh guarantees authoritative data for all reports and users.
@@ -794,16 +618,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       recordsSynced: isSuccess ? records : 0
     };
     setSyncLogs(prev => [newLog, ...prev]);
-  };
-
-  const completeChallenge = (challengeId: string) => {
-    setChallenges(prev => prev.map(c => {
-      if (c.id === challengeId && !c.completed) {
-        addChallengeRewardPoints(c.pointsAwarded, c.title);
-        return { ...c, progress: c.target, completed: true };
-      }
-      return c;
-    }));
   };
 
   const updateSettings = (newSettings: Partial<SystemSettings>) => {
@@ -913,9 +727,12 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
   };
 
-  const claimCertificate = (certName: string) => {
+  const claimCertificate = async (certName: string) => {
+    if (!currentUser) return;
+
+    // Optimistic local update
     setUsers(prev => prev.map(u => {
-      if (u.id === 'current') {
+      if (u.id === currentUser.id) {
         const certs = [...u.certificatesEarned];
         if (!certs.includes(certName)) {
           certs.push(certName);
@@ -924,6 +741,31 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       return u;
     }));
+
+    // Persist to server
+    try {
+      const result = await apiService.claimCertificate(currentUser.id, certName);
+      if (result?.user) {
+        setUsers(prev => prev.map(u => {
+          if (u.id === currentUser.id) {
+            return {
+              ...u,
+              certificatesEarned: (result.user as any).certificatesEarned || (result.user as any).certificates || u.certificatesEarned,
+            };
+          }
+          return u;
+        }));
+      }
+    } catch (err: any) {
+      console.warn('Claim certificate error:', err);
+      // Revert optimistic update on failure
+      setUsers(prev => prev.map(u => {
+        if (u.id === currentUser.id) {
+          return { ...u, certificatesEarned: u.certificatesEarned.filter(c => c !== certName) };
+        }
+        return u;
+      }));
+    }
   };
 
   const resetDatabase = () => {
@@ -954,7 +796,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUsers(cleanUsers);
     setReports([]);
     setBins(DEFAULT_BINS);
-    setChallenges(DEFAULT_CHALLENGES.map(c => ({ ...c, progress: 0, completed: false })));
+    setChallenges([]);
     setPointHistory([]);
     setOffenses([]);
     setCalendarEvents(DEFAULT_CALENDAR);
@@ -1008,7 +850,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         r.category === targetReport.category &&
         r.status !== 'DISMISSED' &&
         r.status !== 'COLLECTED' &&
-        r.status !== 'RESOLVED'
+        r.status !== 'RESOLVED' &&
+        r.status !== 'EXPIRED'
       )) {
         return { ...r, isVerified: true };
       }
@@ -1016,13 +859,14 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
 
     // Send verification to server — server is the single source of truth for points
-    apiService.updateReportStatus(reportId, { isVerified: true }).then(async () => {
+    apiService.verifyReport(reportId).then(async () => {
       // Full refresh: the server may have awarded points to the entire stream,
       // not just this one report. A full refresh guarantees authoritative data.
       try {
-        const [serverReports, serverUsers] = await Promise.all([
+        const [serverReports, serverUsers, serverChallenges] = await Promise.all([
           apiService.getReports(),
           apiService.getUsers(),
+          apiService.getChallenges(),
         ]);
         if (serverReports && Array.isArray(serverReports)) {
           setReports(serverReports);
@@ -1033,6 +877,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             certificatesEarned: u.certificatesEarned || u.certificates || [],
           })));
         }
+        if (serverChallenges && Array.isArray(serverChallenges)) {
+          setChallenges(serverChallenges);
+        }
       } catch (err) {
         console.warn('Sync after verify error:', err);
       }
@@ -1041,8 +888,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const dispatchReport = (reportId: string, mrfId: string, mrfName: string) => {
     const target = reports.find(r => r.id === reportId);
-    // Skip dismissed reports
-    if (target?.status === 'DISMISSED') return;
+    // Skip dismissed or expired reports
+    if (target?.status === 'DISMISSED' || target?.status === 'EXPIRED') return;
 
     // Optimistically update local state
     setReports(prev => prev.map(r => {
@@ -1061,13 +908,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return r;
     }));
 
-    // Send dispatch update to server (skipPoints since dispatch is not a verification action)
+    // Send dispatch update to server
     apiService.updateReportStatus(reportId, {
-      isVerified: true,
       status: 'DISPATCHED',
       assignedMrfId: mrfId,
-      assignedMrfName: mrfName,
-      skipPoints: true
     }).then(async () => {
       // Full refresh to get authoritative server state
       try {
@@ -1097,9 +941,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Full refresh: the server awards points to the entire stream per group,
       // not just the selected reports. A full refresh guarantees authoritative data.
-      const [serverReports, serverUsers] = await Promise.all([
+      const [serverReports, serverUsers, serverChallenges] = await Promise.all([
         apiService.getReports(),
         apiService.getUsers(),
+        apiService.getChallenges(),
       ]);
       if (serverReports && Array.isArray(serverReports)) {
         setReports(serverReports);
@@ -1109,6 +954,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           ...u,
           certificatesEarned: u.certificatesEarned || u.certificates || [],
         })));
+      }
+      if (serverChallenges && Array.isArray(serverChallenges)) {
+        setChallenges(serverChallenges);
       }
     } catch (err) {
       console.warn('Batch verify error:', err);
@@ -1142,14 +990,13 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       toggleBinDispatch,
       setBinsState: setBins,
       triggerSync,
-      completeChallenge,
       updateSettings,
       resetDatabase,
       addOffense,
       deductPoints,
       claimCertificate,
       dismissNotification,
-      clearNotificationsForUser
+      clearNotificationsForUser: clearUserNotifications
     }}>
       {children}
     </MockDataContext.Provider>

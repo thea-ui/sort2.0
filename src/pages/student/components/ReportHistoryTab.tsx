@@ -35,7 +35,8 @@ interface ReportHistoryTabProps {
 }
 
 const getDisplayStatus = (status: string, title: string, isVerified?: boolean) => {
-  if (title.toLowerCase().includes('dismissed') || title.toLowerCase().includes('rejected')) return 'Dismissed';
+  if (status === 'EXPIRED') return 'Expired';
+  if (status === 'DISMISSED' || title.toLowerCase().includes('dismissed') || title.toLowerCase().includes('rejected')) return 'Dismissed';
   if (status === 'COLLECTED' || status === 'RESOLVED') return 'Resolved';
   if (status === 'DISPATCHED') return 'Dispatched';
   if (isVerified) return 'Verified';
@@ -57,6 +58,7 @@ const STATUS_BADGE: Record<string, string> = {
   Dispatched: 'bg-indigo-50 text-indigo-800 border-indigo-200',
   Resolved:   'bg-sky-50 text-sky-800 border-sky-200',
   Dismissed:  'bg-rose-50 text-rose-800 border-rose-200',
+  Expired:    'bg-rose-50 text-rose-600 border-rose-200',
 };
 
 const STATUS_LEFT: Record<string, string> = {
@@ -65,6 +67,7 @@ const STATUS_LEFT: Record<string, string> = {
   Dispatched: 'border-l-indigo-400',
   Resolved:   'border-l-sky-400',
   Dismissed:  'border-l-rose-400',
+  Expired:    'border-l-rose-400',
 };
 
 const CAT_ICON: Record<string, React.ComponentType<any>> = {
@@ -220,7 +223,11 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
                       </strong></span>
                     </div>
                     <div>
-                      {rep.pointsAwardedAt ? (
+                      {rep.status === 'DISMISSED' ? (
+                        <span className="text-rose-600 font-extrabold text-[10px]">
+                          0 pts (Dismissed)
+                        </span>
+                      ) : rep.pointsAwardedAt ? (
                         rep.pointsAwarded > 0 ? (
                           <span className="text-[#00A77C] font-black text-xs">
                             +{rep.pointsAwarded} PTS AWARDED

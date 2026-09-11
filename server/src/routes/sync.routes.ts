@@ -1,31 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import { requireAdmin } from '../middleware/auth.js';
 import { runEnrollProSync, syncTermCalendar } from '../services/enrollpro-sync.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'sortv2_super_secret_jwt_key_2026';
-
-// Auth middleware — only ADMIN can trigger sync
-function requireAdmin(req: Request, res: Response, next: Function): any {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
-    if (decoded.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    (req as any).userId = decoded.id;
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-}
 
 // POST /api/sync/enrollpro — trigger full sync manually
 router.post('/enrollpro', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
@@ -94,6 +73,7 @@ router.get('/status', requireAdmin, async (req: Request, res: Response): Promise
         durationMs: lastSync.durationMs,
         schoolYearLabel: lastSync.schoolYearLabel,
         error: lastSync.errorMessage,
+        message: lastSync.message,
         createdAt: lastSync.createdAt,
       } : null,
       history: logs.map((l) => ({
@@ -104,6 +84,9 @@ router.get('/status', requireAdmin, async (req: Request, res: Response): Promise
         recordsUpdated: l.recordsUpdated,
         recordsDeleted: l.recordsDeleted,
         durationMs: l.durationMs,
+        schoolYearLabel: l.schoolYearLabel,
+        error: l.errorMessage,
+        message: l.message,
         createdAt: l.createdAt,
       })),
     });

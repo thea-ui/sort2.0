@@ -1,6 +1,7 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
+import { rescheduleBinReset } from '../services/bin-reset.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -57,6 +58,8 @@ router.patch('/', async (req, res) => {
       warningAutoDeductAmount,
       rewardsReservePercent,
       defaultVendorName,
+      binResetEnabled,
+      binResetTime,
     } = req.body;
 
     const updated = await prisma.systemSetting.upsert({
@@ -76,6 +79,8 @@ router.patch('/', async (req, res) => {
         ...(warningAutoDeductAmount !== undefined && { warningAutoDeductAmount: Number(warningAutoDeductAmount) }),
         ...(rewardsReservePercent !== undefined && { rewardsReservePercent: Number(rewardsReservePercent) }),
         ...(defaultVendorName !== undefined && { defaultVendorName: String(defaultVendorName) }),
+        ...(binResetEnabled !== undefined && { binResetEnabled: Boolean(binResetEnabled) }),
+        ...(binResetTime !== undefined && { binResetTime: String(binResetTime) }),
       },
       create: {
         id: 'default_setting',
@@ -93,7 +98,14 @@ router.patch('/', async (req, res) => {
         warningAutoDeductAmount: Number(warningAutoDeductAmount || 10),
         rewardsReservePercent: Number(rewardsReservePercent || 20),
         defaultVendorName: String(defaultVendorName || 'GreenCycle Recycling Vendor'),
+        binResetEnabled: Boolean(binResetEnabled ?? true),
+        binResetTime: String(binResetTime || '18:00'),
       },
+    });
+
+    // Re-schedule the daily reset if the time/flag changed
+    rescheduleBinReset().catch((err: any) => {
+      console.error('Failed to re-schedule bin reset:', err.message);
     });
 
     res.json(updated);
@@ -637,7 +649,7 @@ router.post('/campus-news', async (req: Request, res: Response): Promise<any> =>
 // PATCH /api/settings/campus-news/:id
 router.patch('/campus-news/:id', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { title, body, tag, tagColor, iconColor, isPublished } = req.body;
     const news = await prisma.campusNews.update({
       where: { id },
@@ -659,7 +671,7 @@ router.patch('/campus-news/:id', async (req: Request, res: Response): Promise<an
 // DELETE /api/settings/campus-news/:id
 router.delete('/campus-news/:id', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     await prisma.campusNews.delete({ where: { id } });
     res.json({ message: 'Deleted' });
   } catch (error: any) {

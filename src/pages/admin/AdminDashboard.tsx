@@ -10,6 +10,7 @@ import { AdminCampusNewsTab } from './components/AdminCampusNewsTab';
 import { AdminUsersTab } from './components/AdminUsersTab';
 import { AdminAuditLogsTab } from './components/AdminAuditLogsTab';
 import { AdminSchoolYearTab } from './components/AdminSchoolYearTab';
+import { AdminLedgerPage } from './components/AdminLedgerPage';
 import { SETTINGS_SUBITEMS } from '../../components/layout/DashboardLayout';
 
 import {
@@ -64,6 +65,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
   const [purgedAlert, setPurgedAlert] = useState(false);
   const [adminToast, setAdminToast] = useState<string | null>(null);
+  const [ledgerTargetId, setLedgerTargetId] = useState<string | null>(null);
 
   const showAdminToast = (msg: string) => {
     setAdminToast(msg);
@@ -412,14 +414,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
       {activeTab === 'admin-campus-news' && <AdminCampusNewsTab />}
 
       {/* SCHOOL YEAR MANAGEMENT TAB */}
-      {activeTab === 'school-years' && <AdminSchoolYearTab showToast={showAdminToast} />}
+      {activeTab === 'school-years' && (
+        <AdminSchoolYearTab
+          showToast={showAdminToast}
+          onOpenLedger={(id) => { setLedgerTargetId(id); setActiveTab?.('admin-ledger'); }}
+        />
+      )}
+
+      {/* SCHOOL YEAR LEDGER PAGE */}
+      {activeTab === 'admin-ledger' && (
+        <AdminLedgerPage showToast={showAdminToast} initialYearId={ledgerTargetId} />
+      )}
 
       {/* 2. LEADERBOARD / USER ACCOUNTS & ROLE MANAGEMENT */}
       {activeTab === 'admin-users' && (
         <AdminUsersTab
           users={users}
-          addOffense={addOffense}
-          deductPoints={deductPoints}
         />
       )}
 

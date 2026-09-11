@@ -16,9 +16,11 @@ import {
   AlertTriangle,
   ArrowRight,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Download,
+  Loader2
 } from 'lucide-react';
-import { User, Report, Offense } from '../../../types';
+import { User, Report, Offense, SystemSettings } from '../../../types';
 import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 import { apiService } from '../../../services/api';
 
@@ -26,11 +28,24 @@ interface OverviewTabProps {
   currentUser: User;
   reports: Report[];
   offenses?: Offense[];
+  settings?: SystemSettings | null;
   setActiveTab?: (tab: string) => void;
 }
 
-export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, offenses = [], setActiveTab }) => {
+export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, offenses = [], settings, setActiveTab }) => {
   const [campusNews, setCampusNews] = useState<any[]>([]);
+  const [downloadingCert, setDownloadingCert] = useState<string | null>(null);
+
+  const handleDownloadCert = async (certName: string) => {
+    setDownloadingCert(certName);
+    try {
+      await apiService.downloadCertificate(currentUser.id, certName);
+    } catch (err) {
+      console.warn('Download certificate error:', err);
+    } finally {
+      setDownloadingCert(null);
+    }
+  };
 
   useEffect(() => {
     apiService.getCampusNews().then(data => {
@@ -43,7 +58,11 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
     r.reporterName?.toLowerCase() === currentUser.name?.toLowerCase()
   );
   const totalReports = personalReports.length;
-  const progressPercent = Math.min(100, Math.round((currentUser.points / 500) * 100));
+  const certThreshold = settings?.certificatePointThreshold ?? 500;
+  const progressPercent = Math.min(100, Math.round((currentUser.points / certThreshold) * 100));
+  const userOffenses = offenses.filter(
+    o => o.userId === currentUser.id || (currentUser.email && o.userId === currentUser.email)
+  );
 
   return (
     <div className="max-w-6xl mx-auto space-y-9 pb-12">
@@ -107,18 +126,58 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
           <div className="h-2.5 w-full bg-[#C69B26]/15 rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-[#C69B26] to-amber-500 rounded-full transition-all duration-700" style={{ width: `${progressPercent}%` }} />
           </div>
+
+          {/* Earned Certificates */}
+          {currentUser.certificatesEarned && currentUser.certificatesEarned.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-[#C69B26]/10">
+              <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider mb-2">Earned Certificates</p>
+              <div className="flex flex-wrap gap-2">
+                {currentUser.certificatesEarned.map((cert, i) => (
+                  <div key={i} className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleDownloadCert(cert)}
+                      disabled={downloadingCert === cert}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-l-full bg-[#C69B26]/10 border border-[#C69B26]/25 text-[#C69B26] text-xs font-bold hover:bg-[#C69B26]/20 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {downloadingCert === cert ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Download size={12} />
+                      )}
+                      {cert}
+                    </button>
+                    <button
+                      onClick={() => { apiService.viewCertificate(currentUser.id, cert); }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-r-full bg-[#00A77C]/10 border border-[#00A77C]/25 border-l-0 text-[#00A77C] text-xs font-bold hover:bg-[#00A77C]/20 transition-colors cursor-pointer"
+                      title="View Certificate"
+                    >
+                      <FileText size={12} />
+                      View
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(!currentUser.certificatesEarned || currentUser.certificatesEarned.length === 0) && currentUser.points >= certThreshold && (
+            <div className="mt-4 pt-4 border-t border-[#C69B26]/10">
+              <p className="text-xs text-[#C69B26] font-bold">
+                You've reached the {certThreshold}-point threshold! Check the leaderboard to claim your certificate.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Warnings / Offenses */}
-      {offenses.length > 0 && (
+      {userOffenses.length > 0 && (
         <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={16} className="text-amber-500" />
-            <h3 className="text-sm font-bold text-amber-800">Offenses ({offenses.length})</h3>
+            <h3 className="text-sm font-bold text-amber-800">Offenses ({userOffenses.length})</h3>
           </div>
           <div className="space-y-2">
-            {offenses.slice(0, 3).map((offense) => {
+            {userOffenses.slice(0, 3).map((offense) => {
               const isExpiredSuspension = offense.severity === 'SUSPENSION' && offense.expiresAt && new Date(offense.expiresAt) <= new Date();
               return (
                 <div key={offense.id} className="flex items-start gap-3 p-3 bg-white rounded-xl border border-amber-100">
@@ -145,8 +204,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
                 </div>
               );
             })}
-            {offenses.length > 3 && (
-              <p className="text-[10px] text-amber-600 font-bold text-center">+{offenses.length - 3} more offenses</p>
+            {userOffenses.length > 3 && (
+              <p className="text-[10px] text-amber-600 font-bold text-center">+{userOffenses.length - 3} more offenses</p>
             )}
           </div>
         </div>
