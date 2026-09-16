@@ -8,16 +8,60 @@ import {
   locationsToBins,
   getStoredRoomLocations,
   saveRoomLocations,
-  STORAGE_KEY_BLUEPRINT_URL,
-  STORAGE_KEY_BLUEPRINT_PRESET,
+  BlueprintTransform,
+  DEFAULT_BLUEPRINT_TRANSFORM,
+  getStoredBlueprintUrl,
+  getBlueprintTransform,
+  saveBlueprint,
+  clearBlueprint,
 } from '../../../../services/locationStore';
 import { BlueprintHeader } from './BlueprintHeader';
-import { BlueprintPresetBar } from './BlueprintPresetBar';
+import { BlueprintAdjustControls } from './BlueprintAdjustControls';
 import { BlueprintCanvas } from './BlueprintCanvas';
 import { StationInspector } from './StationInspector';
 import { StationModals } from './StationModals';
 import { RoomLocationsManager } from './RoomLocationsManager';
 import { RoomModals } from './RoomModals';
+
+// ── Blueprint helpers ─────────────────────────────────────────────────────
+
+const MIN_BP_SCALE = 0.25;
+const MAX_BP_SCALE = 4;
+const clampScale = (n: number) => Math.min(MAX_BP_SCALE, Math.max(MIN_BP_SCALE, Math.round(n * 100) / 100));
+const clampOffset = (n: number) => Math.min(300, Math.max(-300, Math.round(n * 10) / 10));
+
+/** Downscale/compress large uploads so they fit comfortably in localStorage. */
+function downscaleImageFile(file: File, maxDim = 1920): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read-error'));
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode-error'));
+      img.onload = () => {
+        const maxSide = Math.max(img.width, img.height) || 1;
+        const ratio = Math.min(1, maxDim / maxSide);
+        if (ratio === 1 && file.size < 1_500_000) {
+          resolve(dataUrl);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * ratio));
+        canvas.height = Math.max(1, Math.round(img.height * ratio));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/webp', 0.85));
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export const CampusBlueprintEditor: React.FC = () => {
   const { setBinsState, reports } = useMockData();
@@ -49,11 +93,17 @@ export const CampusBlueprintEditor: React.FC = () => {
   const [draggingLocId, setDraggingLocId] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
-  const [blueprintUrl, setBlueprintUrl] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY_BLUEPRINT_URL));
-  const [selectedPreset, setSelectedPreset] = useState<'DEFAULT' | 'ARCHITECTURAL' | 'AERIAL'>(
-    () => (localStorage.getItem(STORAGE_KEY_BLUEPRINT_PRESET) as any) || 'DEFAULT'
-  );
+  const [blueprintUrl, setBlueprintUrl] = useState<string | null>(getStoredBlueprintUrl);
+  const [blueprintTransform, setBlueprintTransform] = useState<BlueprintTransform>(getBlueprintTransform);
+  const [isAdjusting, setIsAdjusting] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const [draftTransform, setDraftTransform] = useState<BlueprintTransform>({ ...DEFAULT_BLUEPRINT_TRANSFORM });
+  const [isSavingBlueprint, setIsSavingBlueprint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const adjustDragRef = useRef<{ x: number; y: number } | null>(null);
+
+  const displayUrl = isAdjusting ? pendingUrl : blueprintUrl;
+  const displayTransform = isAdjusting ? draftTransform : blueprintTransform;
 
   const [roomList, setRoomList] = useState<string[]>(getStoredRoomLocations);
   const [newRoomName, setNewRoomName] = useState('');
@@ -109,8 +159,16 @@ export const CampusBlueprintEditor: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const stageBlueprint = (dataUrl: string) => {
+    setPendingUrl(dataUrl);
+    setDraftTransform({ ...DEFAULT_BLUEPRINT_TRANSFORM });
+    setIsAdjusting(true);
+    triggerToast('Adjust the blueprint, then click Save.');
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
@@ -118,33 +176,83 @@ export const CampusBlueprintEditor: React.FC = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setBlueprintUrl(dataUrl);
-      localStorage.setItem(STORAGE_KEY_BLUEPRINT_URL, dataUrl);
-      window.dispatchEvent(new Event('storage'));
-      triggerToast('Campus Blueprint image uploaded successfully!');
-    };
-    reader.readAsDataURL(file);
+    downscaleImageFile(file)
+      .then(stageBlueprint)
+      .catch(() => alert('Could not read that image. Please try another file.'));
   };
 
-  const handleClearBlueprint = () => {
+  const handleAdjustExisting = () => {
+    if (!blueprintUrl) return;
+    setPendingUrl(blueprintUrl);
+    setDraftTransform({ ...blueprintTransform });
+    setIsAdjusting(true);
+  };
+
+  const handleCancelAdjust = () => {
+    setIsAdjusting(false);
+    setPendingUrl(null);
+    setDraftTransform({ ...DEFAULT_BLUEPRINT_TRANSFORM });
+  };
+
+  const handleSaveBlueprint = () => {
+    if (!pendingUrl) return;
+    setIsSavingBlueprint(true);
+    saveBlueprint(pendingUrl, draftTransform);
+    setBlueprintUrl(pendingUrl);
+    setBlueprintTransform(draftTransform);
+    setIsSavingBlueprint(false);
+    setIsAdjusting(false);
+    setPendingUrl(null);
+    triggerToast('Blueprint saved and applied to all maps.');
+  };
+
+  const handleRemoveBlueprint = () => {
+    clearBlueprint();
     setBlueprintUrl(null);
-    localStorage.removeItem(STORAGE_KEY_BLUEPRINT_URL);
-    window.dispatchEvent(new Event('storage'));
-    triggerToast('Custom blueprint cleared. Restored to default vector grid.');
+    setBlueprintTransform({ ...DEFAULT_BLUEPRINT_TRANSFORM });
+    setIsAdjusting(false);
+    setPendingUrl(null);
+    triggerToast('Blueprint removed. Showing the default grid.');
   };
 
-  const handleSelectPreset = (preset: 'DEFAULT' | 'ARCHITECTURAL' | 'AERIAL') => {
-    setSelectedPreset(preset);
-    localStorage.setItem(STORAGE_KEY_BLUEPRINT_PRESET, preset);
-    window.dispatchEvent(new Event('storage'));
-    triggerToast(`Applied ${preset.toLowerCase()} map preset.`);
+  // ── Adjust-mode interaction (pan + wheel zoom) ────────────────────────
+  const handleAdjustPointerDown = (e: React.PointerEvent) => {
+    if (!isAdjusting) return;
+    adjustDragRef.current = { x: e.clientX, y: e.clientY };
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
   };
+
+  const handleAdjustPointerMove = (e: React.PointerEvent) => {
+    if (!isAdjusting || !adjustDragRef.current || !mapContainerRef.current) return;
+    const rect = mapContainerRef.current.getBoundingClientRect();
+    const dx = ((e.clientX - adjustDragRef.current.x) / rect.width) * 100;
+    const dy = ((e.clientY - adjustDragRef.current.y) / rect.height) * 100;
+    adjustDragRef.current = { x: e.clientX, y: e.clientY };
+    setDraftTransform((t) => ({
+      ...t,
+      offsetX: clampOffset(t.offsetX + dx),
+      offsetY: clampOffset(t.offsetY + dy),
+    }));
+  };
+
+  const handleAdjustPointerUp = () => {
+    adjustDragRef.current = null;
+  };
+
+  React.useEffect(() => {
+    if (!isAdjusting) return;
+    const el = mapContainerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setDraftTransform((t) => ({ ...t, scale: clampScale(t.scale * (1 - e.deltaY * 0.001)) }));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [isAdjusting]);
 
   const handleMouseDown = (locId: string, e: React.MouseEvent) => {
-    if (!isEditMode) return;
+    if (!isEditMode || isAdjusting) return;
     e.stopPropagation();
     setDraggingLocId(locId);
     setSelectedLocId(locId);
@@ -272,6 +380,10 @@ export const CampusBlueprintEditor: React.FC = () => {
         setShowAddForm={setShowAddForm}
         fileInputRef={fileInputRef}
         handleFileUpload={handleFileUpload}
+        hasBlueprint={!!blueprintUrl}
+        isAdjusting={isAdjusting}
+        onAdjust={handleAdjustExisting}
+        onRemove={handleRemoveBlueprint}
       />
 
       {toastMessage && (
@@ -285,12 +397,16 @@ export const CampusBlueprintEditor: React.FC = () => {
         </div>
       )}
 
-      <BlueprintPresetBar
-        blueprintUrl={blueprintUrl}
-        selectedPreset={selectedPreset}
-        setSelectedPreset={handleSelectPreset}
-        handleClearBlueprint={handleClearBlueprint}
-      />
+      {isAdjusting && (
+        <BlueprintAdjustControls
+          transform={draftTransform}
+          onChange={setDraftTransform}
+          onFit={() => setDraftTransform({ ...DEFAULT_BLUEPRINT_TRANSFORM })}
+          onCancel={handleCancelAdjust}
+          onSave={handleSaveBlueprint}
+          saving={isSavingBlueprint}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <BlueprintCanvas
@@ -298,14 +414,17 @@ export const CampusBlueprintEditor: React.FC = () => {
           selectedLocId={selectedLocId}
           setSelectedLocId={setSelectedLocId}
           draggingLocId={draggingLocId}
-          setDraggingLocId={setDraggingLocId}
           isEditMode={isEditMode}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           filter={filter}
           setFilter={setFilter}
-          blueprintUrl={blueprintUrl}
-          selectedPreset={selectedPreset}
+          blueprintUrl={displayUrl}
+          blueprintTransform={displayTransform}
+          isAdjusting={isAdjusting}
+          onAdjustPointerDown={handleAdjustPointerDown}
+          onAdjustPointerMove={handleAdjustPointerMove}
+          onAdjustPointerUp={handleAdjustPointerUp}
           mapContainerRef={mapContainerRef}
           handleMouseDown={handleMouseDown}
           handleMouseMove={handleMouseMove}

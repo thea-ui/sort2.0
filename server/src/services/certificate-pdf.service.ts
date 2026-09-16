@@ -13,6 +13,9 @@ export interface CertificateData {
   sectionName?: string;
   lrn?: string;
   dateAwarded: string;
+  termName?: string;
+  serial?: string;
+  isRanked?: boolean;
 }
 
 function resolveFontsDir(): string {
@@ -256,10 +259,15 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     doc.fontSize(8.5)
       .font('Helvetica-Bold')
       .fillColor('#C69B26')
-      .text('SMART OPERATIONAL RECOVERY & TRACKING SYSTEM   \u2022   DISTINGUISHED ECO-CHAMPION', 0, curY, {
-        align: 'center',
-        characterSpacing: 2.2,
-      });
+      .text(
+        `SMART OPERATIONAL RECOVERY & TRACKING SYSTEM   \u2022   ${data.certificateName.toUpperCase()}`,
+        0,
+        curY,
+        {
+          align: 'center',
+          characterSpacing: 2.2,
+        }
+      );
 
     // ── 6. Presentation Line ──────────────────────────────────────────
     curY = 188;
@@ -331,7 +339,8 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
 
     // ── 8. Commendation Citation Text ─────────────────────────────────
     curY = subInfoParts.length > 0 ? 295 : 282;
-    const citation = `for exemplary dedication, active civic participation, and commendable leadership in campus waste recovery, segregation, and sustainable ecological stewardship under the S.O.R.T. Program for School Year ${data.schoolYear}.`;
+    const termPhrase = data.termName ? ` (${data.termName})` : '';
+    const citation = `for exemplary dedication, active civic participation, and commendable leadership in campus waste recovery, segregation, and sustainable ecological stewardship under the S.O.R.T. Program for School Year ${data.schoolYear}${termPhrase}.`;
 
     doc.fontSize(10.5)
       .font('Times-Roman')
@@ -353,6 +362,12 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     doc.roundedRect(boxX + 2.5, curY + 2.5, boxW - 5, boxH - 5, 6).lineWidth(0.5).stroke('#E2D7C3');
 
     const colW = boxW / 3;
+    const isRanked = data.isRanked !== false;
+    const cleanCertName = data.certificateName.toUpperCase().replace(/\s*CERTIFICATE\s*$/i, '');
+    const col2Label = isRanked ? 'INSTITUTIONAL RANK' : 'AWARD TYPE';
+    const col2Value = isRanked ? `RANK #${data.rank}` : 'MILESTONE';
+    const col3Label = isRanked ? 'HONOR TIER' : 'SCHOOL YEAR';
+    const col3Value = isRanked ? cleanCertName || 'ECO-CHAMPION' : data.schoolYear;
 
     // Column 1: Accumulated Points
     const c1X = boxX;
@@ -373,11 +388,11 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     doc.fontSize(8)
       .font('Helvetica-Bold')
       .fillColor('#64748B')
-      .text('INSTITUTIONAL RANK', c2X, curY + 12, { width: colW, align: 'center', characterSpacing: 0.8 });
+      .text(col2Label, c2X, curY + 12, { width: colW, align: 'center', characterSpacing: 0.8 });
     doc.fontSize(15.5)
       .font('Helvetica-Bold')
       .fillColor('#C69B26')
-      .text(`RANK #${data.rank}`, c2X, curY + 31, { width: colW, align: 'center' });
+      .text(col2Value, c2X, curY + 31, { width: colW, align: 'center' });
 
     // Vertical Divider 2
     doc.moveTo(boxX + colW * 2, curY + 10).lineTo(boxX + colW * 2, curY + boxH - 10).lineWidth(0.75).stroke('#D9CDBC');
@@ -387,12 +402,11 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     doc.fontSize(8)
       .font('Helvetica-Bold')
       .fillColor('#64748B')
-      .text('HONOR TIER', c3X, curY + 12, { width: colW, align: 'center', characterSpacing: 0.8 });
-    const cleanCertName = data.certificateName.toUpperCase().replace(/\s*CERTIFICATE\s*$/i, '');
+      .text(col3Label, c3X, curY + 12, { width: colW, align: 'center', characterSpacing: 0.8 });
     doc.fontSize(13.5)
       .font('Helvetica-Bold')
       .fillColor('#00271D')
-      .text(cleanCertName || 'ECO-CHAMPION', c3X, curY + 32, { width: colW, align: 'center' });
+      .text(col3Value, c3X, curY + 32, { width: colW, align: 'center' });
 
     // ── 10. Conferred Date Line ───────────────────────────────────────
     curY = 430;
@@ -509,7 +523,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     // ── 12. Security & Accreditation Verification Footer ──────────────
     const footY = height - 42;
     const cleanYear = data.schoolYear.split('-')[0] || '2026';
-    const certSerial = `SORT-HNHS-${cleanYear}-R${data.rank}-P${data.points}`;
+    const certSerial = data.serial || `SORT-HNHS-${cleanYear}-R${data.rank}-P${data.points}`;
 
     doc.fontSize(7)
       .font('Helvetica')

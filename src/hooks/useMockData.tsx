@@ -50,6 +50,11 @@ const DEFAULT_SETTINGS: SystemSettings = {
   pointsPerKgRecyclable: 10,
   warningThreshold: 3,
   certificatePointThreshold: 500,
+  certificateGraceDays: 3,
+  certificateMilestoneName: 'Eco-Milestone Certificate',
+  certificateChampionName: 'Eco-Champion Certificate',
+  certificateLeaderName: 'Eco-Leader Certificate',
+  certificateAdvocateName: 'Eco-Advocate Certificate',
   quarterGateActive: true,
   maxUnverifiedReports: 3,
   dismissPointPenalty: 10,
@@ -908,23 +913,34 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return r;
     }));
 
-    // Send dispatch update to server
-    apiService.updateReportStatus(reportId, {
-      status: 'DISPATCHED',
-      assignedMrfId: mrfId,
-    }).then(async () => {
-      // Full refresh to get authoritative server state
-      try {
-        const serverReports = await apiService.getReports();
-        if (serverReports && Array.isArray(serverReports)) {
-          setReports(serverReports);
+    // Approve first, then dispatch. The server rejects dispatch of an unverified
+    // report, so this preserves the "verify before dispatch" guarantee.
+    apiService.verifyReport(reportId)
+      .then(() => apiService.updateReportStatus(reportId, {
+        status: 'DISPATCHED',
+        assignedMrfId: mrfId,
+      }))
+      .then(async () => {
+        // Full refresh to get authoritative server state
+        try {
+          const serverReports = await apiService.getReports();
+          if (serverReports && Array.isArray(serverReports)) {
+            setReports(serverReports);
+          }
+        } catch (err) {
+          console.warn('Sync after dispatch:', err);
         }
-      } catch (err) {
-        console.warn('Sync after dispatch:', err);
-      }
-    }).catch((err) => {
-      console.warn('Backend dispatch update failed (local state still applied):', err);
-    });
+      })
+      .catch(async (err) => {
+        console.warn('Dispatch rejected by server:', err);
+        // Reconcile local state so we never show a dispatch the server refused.
+        try {
+          const serverReports = await apiService.getReports();
+          if (serverReports && Array.isArray(serverReports)) {
+            setReports(serverReports);
+          }
+        } catch { /* ignore */ }
+      });
   };
 
   const verifyReportsBatch = async (reportIds: string[]): Promise<void> => {

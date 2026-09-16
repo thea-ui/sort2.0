@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { useRecycleMarket } from '../../hooks/useRecycleMarket';
+import { useAssetScrap } from '../../hooks/useAssetScrap';
 import { Report } from '../../types';
-import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName } from '../../utils/reportUtils';
+import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName, parseReportTags, stripReportTags } from '../../utils/reportUtils';
+import { ASSET_DISPOSITIONS } from '../../utils/assetDispositions';
+import { apiService } from '../../services/api';
 import {
   Truck,
   Scale,
@@ -39,8 +42,8 @@ import {
 } from 'lucide-react';
 import { MRFDirectPickupTab } from './components/MRFDirectPickupTab';
 import { MRFMarketTab } from './components/MRFMarketTab';
-import { MRFInventoryTab } from './components/MRFInventoryTab';
 import { MRFAssetLedgerPage } from './components/MRFAssetLedgerPage';
+import { AssetScrapStockTab } from './components/AssetScrapStockTab';
 
 export interface ItemizedRecyclableCategory {
   id: 'pet_plastic' | 'aluminum_cans' | 'cardboard' | 'glass';
@@ -59,6 +62,24 @@ export const RECYCLABLE_CATEGORIES: ItemizedRecyclableCategory[] = [
   { id: 'cardboard',     name: 'Cardboard & Paper', shortName: 'Cardboard', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-emerald-600', bgLight: 'bg-emerald-50', borderColor: 'border-emerald-200' },
   { id: 'glass',         name: 'Glass Bottles & Containers', shortName: 'Glass Bottles', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-purple-600', bgLight: 'bg-purple-50', borderColor: 'border-purple-200' },
 ];
+
+// DepEd/COA-aligned asset dispositions live in src/utils/assetDispositions.ts
+
+// Legacy outcome strings (old UI) → current disposition value.
+const LEGACY_ASSET_OUTCOME: Record<string, string> = {
+  'Repaired On-Site': 'Repaired On-Site (returned to service)',
+  'Transported to MRF Workshop': 'Repaired at MRF Workshop',
+  'Needs Replacement': 'Declared Unserviceable → Scrap',
+};
+
+export function deriveAssetCategory(description?: string): string {
+  const d = (description || '').toUpperCase();
+  if (d.includes('[PILLAR: FURNITURE]')) return 'Furniture';
+  if (d.includes('[PILLAR: ELECTRONICS]')) return 'Electronics';
+  if (d.includes('[PILLAR: FIXTURES]')) return 'Fixtures';
+  if (d.includes('[PILLAR: EQUIPMENT]')) return 'Equipment';
+  return 'Other';
+}
 
 interface MRFDashboardProps {
   activeTab: string;
@@ -83,7 +104,9 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     cardboard: '',
     glass: '',
   });
-  const [assetOutcome, setAssetOutcome] = useState<'Repaired On-Site' | 'Transported to MRF Workshop' | 'Needs Replacement'>('Repaired On-Site');
+  const [assetOutcome, setAssetOutcome] = useState<string>(ASSET_DISPOSITIONS[1].value);
+  const [assetScrapMaterial, setAssetScrapMaterial] = useState<string>('ferrous_metal');
+  const [assetScrapKg, setAssetScrapKg] = useState<string>('');
   const [completionNotes, setCompletionNotes] = useState<string>('');
 
   // Dispatch Assignment Filter
@@ -96,6 +119,8 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     sellBatch,
     addStockKg,
   } = useRecycleMarket();
+
+  const { addScrapKg } = useAssetScrap();
 
   // Toast Notification
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -247,8 +272,39 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       updateReportStatus(completeModalReport.id, 'COLLECTED', totalWeight, completionNotes);
       showToast(`Logged: ${itemsLogged.join(', ')}. Collection submitted to Admin.`);
     } else if (isAsset) {
-      updateReportStatus(completeModalReport.id, 'RESOLVED', undefined, completionNotes, assetOutcome);
-      showToast(`Asset status updated to "${assetOutcome}". Collection report sent to Admin!`);
+      const dispositionValue = LEGACY_ASSET_OUTCOME[assetOutcome] || assetOutcome;
+      const disposition = ASSET_DISPOSITIONS.find(d => d.value === dispositionValue) || ASSET_DISPOSITIONS[1];
+      const parsedKg = parseFloat(assetScrapKg) || 0;
+
+      updateReportStatus(completeModalReport.id, 'RESOLVED', undefined, completionNotes, disposition.value);
+
+      // Record the asset in the ledger (best-effort; never blocks completion).
+      apiService.createAssetRecord({
+        assetName: cleanReportTitle(completeModalReport.title),
+        category: deriveAssetCategory(completeModalReport.description),
+        action: disposition.action,
+        disposition: disposition.value,
+        quantity: 1,
+        unit: 'pcs',
+        condition: disposition.condition,
+        sourceReportId: completeModalReport.id,
+        locationName: cleanLocationName(completeModalReport.locationName),
+        notes: completionNotes || undefined,
+      }).catch((err) => console.warn('Asset record creation notice:', err));
+
+      if (disposition.scrap && parsedKg > 0) {
+        addScrapKg(assetScrapMaterial, parsedKg)
+          .then(() => showToast(`Recorded ${parsedKg} kg of scrap; asset logged in the ledger.`))
+          .catch(() => showToast('Asset recorded, but the scrap stock update failed.'));
+      } else if (disposition.scrap) {
+        showToast('Asset recorded as unserviceable. Weigh it later in Scrap Stock when ready.');
+      } else if (disposition.hazmat) {
+        showToast('E-waste recorded — route to a DENR-accredited handler (not sold as ordinary scrap).');
+      } else {
+        showToast(`Asset outcome recorded: ${disposition.value}.`);
+      }
+
+      setAssetScrapKg('');
     } else {
       updateReportStatus(completeModalReport.id, 'COLLECTED', undefined, completionNotes);
       showToast(`Job finished! Cleanup verified and collection report sent to Admin.`);
@@ -645,14 +701,14 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
         />
       )}
 
-      {/* ── INVENTORY MANAGEMENT TAB ── */}
-      {activeTab === 'mrf-inventory' && (
-        <MRFInventoryTab showToast={showToast} />
-      )}
-
       {/* ── ASSET LEDGER TAB ── */}
       {activeTab === 'mrf-assets' && (
         <MRFAssetLedgerPage showToast={showToast} />
+      )}
+
+      {/* ── SCRAP RECOVERY STOCK TAB ── */}
+      {activeTab === 'mrf-scrap' && (
+        <AssetScrapStockTab showToast={showToast} />
       )}
 
       {/* ── 5. ITEMIZED RECYCLABLE MARKET & SELLING THRESHOLD TRACKER ── */}
@@ -783,6 +839,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-white tracking-tight">Complete Task Assignment</h3>
+                    <p className="text-xs font-black text-white mt-1 leading-snug truncate">{cleanReportTitle(completeModalReport.title)}</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       <MapPin size={11} className="text-white/50 flex-shrink-0" />
                       <p className="text-[11px] text-white/60 font-medium truncate">{cleanLocationName(completeModalReport.locationName)}</p>
@@ -793,7 +850,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 {/* Meta row */}
                 <div className="flex items-center gap-2 mt-4 relative z-10 flex-wrap">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 ring-1 ring-white/10 text-white/80`}>
-                    {completeModalReport.category}
+                    {isAsset ? deriveAssetCategory(completeModalReport.description) : completeModalReport.category}
                   </span>
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${urgencyConfig.bg} ${urgencyConfig.text} ring-1 ring-current/10`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${urgencyConfig.dot} ring-2 ${urgencyConfig.ring}`} />
@@ -889,8 +946,30 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 )}
 
                 {/* ASSET: Outcome Dropdown */}
-                {isAsset && (
+                {isAsset && (() => {
+                  const tags = parseReportTags(completeModalReport.description);
+                  const observation = tags['observation'];
+                  const freeText = stripReportTags(completeModalReport.description);
+                  return (
                   <div className="space-y-3">
+                    {/* Asset details — header already shows name, category, and location */}
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-3 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Asset Details</span>
+                        {observation && (
+                          <span className="text-[10px] font-bold text-amber-800 bg-white border border-amber-200 px-2 py-0.5 rounded-full capitalize">
+                            {observation}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-[#00271D]/60 font-semibold">
+                        Reported by {completeModalReport.reporterName}
+                      </p>
+                      {freeText && (
+                        <p className="text-[11px] text-[#00271D]/70 leading-relaxed">{freeText}</p>
+                      )}
+                    </div>
+
                     <div className="flex items-center gap-2">
                       <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center">
                         <Wrench size={14} className="text-amber-600" />
@@ -902,15 +981,69 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                     </div>
                     <select
                       value={assetOutcome}
-                      onChange={e => setAssetOutcome(e.target.value as any)}
+                      onChange={e => setAssetOutcome(e.target.value)}
                       className="w-full rounded-xl border-2 border-gray-100 bg-white px-3.5 py-2.5 text-xs font-bold text-gray-900 outline-none cursor-pointer focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
                     >
-                      <option value="Repaired On-Site">Repaired On-Site</option>
-                      <option value="Transported to MRF Workshop">Transported to MRF Workshop</option>
-                      <option value="Needs Replacement">Decommissioned / Needs Replacement</option>
+                      <optgroup label="Reuse / Recovery">
+                        {ASSET_DISPOSITIONS.filter(d => !d.scrap && !d.hazmat).map(d => (
+                          <option key={d.value} value={d.value}>{d.value}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Disposal">
+                        {ASSET_DISPOSITIONS.filter(d => d.scrap || d.hazmat).map(d => (
+                          <option key={d.value} value={d.value}>{d.value}</option>
+                        ))}
+                      </optgroup>
                     </select>
+
+                    {(() => {
+                      const sel = ASSET_DISPOSITIONS.find(d => d.value === assetOutcome);
+                      if (!sel) return null;
+                      if (sel.scrap) {
+                        return (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Material</label>
+                              <select
+                                value={assetScrapMaterial}
+                                onChange={e => setAssetScrapMaterial(e.target.value)}
+                                className="w-full rounded-xl border-2 border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-900 outline-none cursor-pointer focus:border-amber-400"
+                              >
+                                <option value="ferrous_metal">Ferrous Metal (Steel/Iron)</option>
+                                <option value="non_ferrous_metal">Non-Ferrous Metal (Aluminum/Copper)</option>
+                                <option value="plastic">Hard Plastic</option>
+                                <option value="wood">Wood / Lumber</option>
+                                <option value="glass">Glass</option>
+                                <option value="mixed">Mixed / Other</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Weight (kg) — optional</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                placeholder="0.0"
+                                value={assetScrapKg}
+                                onChange={e => setAssetScrapKg(e.target.value)}
+                                className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-3 py-2 text-xs font-bold text-gray-900 outline-none focus:bg-white focus:border-amber-400"
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (sel.hazmat) {
+                        return (
+                          <p className="text-[11px] text-rose-600 font-bold bg-rose-50 rounded-xl px-3 py-2 border border-rose-200">
+                            E-waste must go to a DENR-accredited handler — it will not be added to sellable scrap stock.
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* GENERAL TRASH: Standard Completion */}
                 {!isRecyclable && !isAsset && (

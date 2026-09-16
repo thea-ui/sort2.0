@@ -498,37 +498,6 @@ CREATE TABLE "user_point_snapshots" (
     CONSTRAINT "user_point_snapshots_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "mrf_inventory_items" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "category" TEXT NOT NULL,
-    "description" TEXT,
-    "unit" TEXT NOT NULL,
-    "quantity" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "min_threshold" DOUBLE PRECISION,
-    "condition" TEXT NOT NULL DEFAULT 'GOOD',
-    "is_persistent" BOOLEAN NOT NULL DEFAULT false,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "mrf_inventory_items_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "mrf_inventory_transactions" (
-    "id" TEXT NOT NULL,
-    "item_id" TEXT NOT NULL,
-    "school_year_id" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
-    "quantity" DOUBLE PRECISION NOT NULL,
-    "notes" TEXT,
-    "performed_by" TEXT,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "mrf_inventory_transactions_pkey" PRIMARY KEY ("id")
-);
-
 -- CreateIndex
 CREATE UNIQUE INDEX "school_years_enrollpro_id_key" ON "school_years"("enrollpro_id");
 
@@ -673,12 +642,6 @@ CREATE UNIQUE INDEX "market_stock_snapshots_school_year_id_category_code_key" ON
 -- CreateIndex
 CREATE UNIQUE INDEX "user_point_snapshots_school_year_id_user_id_key" ON "user_point_snapshots"("school_year_id", "user_id");
 
--- CreateIndex
-CREATE INDEX "mrf_inventory_transactions_item_id_idx" ON "mrf_inventory_transactions"("item_id");
-
--- CreateIndex
-CREATE INDEX "mrf_inventory_transactions_school_year_id_idx" ON "mrf_inventory_transactions"("school_year_id");
-
 -- AddForeignKey
 ALTER TABLE "reports" ADD CONSTRAINT "reports_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -741,9 +704,3 @@ ALTER TABLE "user_point_snapshots" ADD CONSTRAINT "user_point_snapshots_school_y
 
 -- AddForeignKey
 ALTER TABLE "user_point_snapshots" ADD CONSTRAINT "user_point_snapshots_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "mrf_inventory_transactions" ADD CONSTRAINT "mrf_inventory_transactions_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "mrf_inventory_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "mrf_inventory_transactions" ADD CONSTRAINT "mrf_inventory_transactions_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -1,4 +1,4 @@
-import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult } from '../types';
+import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult, Certificate, TermStatus, IssueTermResult } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000/api';
 
@@ -479,47 +479,10 @@ export const apiService = {
     });
   },
 
-  deactivateSchoolYear: async (id: string, replacementId: string): Promise<any> => {
-    return fetchAPI(`/school-years/${id}/deactivate`, {
+  // Mirror every EnrollPro school year (import only; never activates/rolls over)
+  importSchoolYears: async (): Promise<any> => {
+    return fetchAPI('/sync/school-years', {
       method: 'POST',
-      body: JSON.stringify({ replacementId }),
-    });
-  },
-
-  // Inventory Endpoints
-  getInventoryItems: async (): Promise<any[]> => {
-    return fetchAPI('/inventory');
-  },
-
-  createInventoryItem: async (data: { name: string; category: string; unit: string; quantity?: number; description?: string; minThreshold?: number; condition?: string; isPersistent?: boolean }): Promise<any> => {
-    return fetchAPI('/inventory', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  updateInventoryItem: async (id: string, data: Record<string, any>): Promise<any> => {
-    return fetchAPI(`/inventory/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  },
-
-  deleteInventoryItem: async (id: string): Promise<any> => {
-    return fetchAPI(`/inventory/${id}`, {
-      method: 'DELETE',
-    });
-  },
-
-  getInventoryTransactions: async (filters?: { itemId?: string; schoolYearId?: string; type?: string }): Promise<any[]> => {
-    const query = filters ? new URLSearchParams(filters as Record<string, string>).toString() : '';
-    return fetchAPI(`/inventory/transactions${query ? `?${query}` : ''}`);
-  },
-
-  createInventoryTransaction: async (data: { itemId: string; type: string; quantity: number; notes?: string; performedBy?: string }): Promise<any> => {
-    return fetchAPI('/inventory/transactions', {
-      method: 'POST',
-      body: JSON.stringify(data),
     });
   },
 
@@ -538,6 +501,7 @@ export const apiService = {
     assetName: string;
     category: string;
     action: string;
+    disposition?: string;
     quantity?: number;
     unit?: string;
     condition?: string;
@@ -549,6 +513,40 @@ export const apiService = {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  // Asset Scrap Recovery Stock API
+  getAssetScrapStocks: async (): Promise<any[]> => {
+    return fetchAPI('/asset-scrap/stocks');
+  },
+
+  updateAssetScrapStock: async (
+    materialCode: string,
+    data: { addKg?: number; setAccumulatedKg?: number; thresholdLimitKg?: number; marketPricePerKg?: number }
+  ): Promise<any> => {
+    return fetchAPI(`/asset-scrap/stocks/${materialCode}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  approveAssetScrapSale: async (data: { materialCode: string; isApproved?: boolean; approvalReference?: string }): Promise<any> => {
+    return fetchAPI('/asset-scrap/approve-sale', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  sellAssetScrapBatch: async (data: { materialCode: string; buyerName?: string; approvalReference?: string }): Promise<any> => {
+    return fetchAPI('/asset-scrap/sell-batch', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getAssetScrapSales: async (schoolYearId?: string): Promise<any[]> => {
+    const query = schoolYearId ? `?schoolYearId=${schoolYearId}` : '';
+    return fetchAPI(`/asset-scrap/sales${query}`);
   },
 
   // Challenges API
@@ -663,6 +661,83 @@ export const apiService = {
     window.open(url, '_blank');
     setTimeout(() => window.URL.revokeObjectURL(url), 10000);
   },
+
+  // ─── Certificate Issuance API ───────────────────────────────────────
+  getUserCertificates: async (userId: string): Promise<Certificate[]> => {
+    return fetchAPI(`/certificates?userId=${encodeURIComponent(userId)}`);
+  },
+
+  getTermStatus: async (quarterCode?: string): Promise<TermStatus> => {
+    const query = quarterCode ? `?quarterCode=${encodeURIComponent(quarterCode)}` : '';
+    return fetchAPI(`/certificates/term-status${query}`);
+  },
+
+  claimMilestoneCertificate: async (userId: string): Promise<{
+    message: string;
+    alreadyClaimed: boolean;
+    certificate: Certificate;
+  }> => {
+    return fetchAPI('/certificates/claim-milestone', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+  },
+
+  issueTermCertificates: async (opts?: { quarterCode?: string; force?: boolean }): Promise<IssueTermResult> => {
+    return fetchAPI('/certificates/issue-term', {
+      method: 'POST',
+      body: JSON.stringify(opts || {}),
+    });
+  },
+
+  getCertificateHistory: async (limit = 50): Promise<Certificate[]> => {
+    return fetchAPI(`/certificates/history?limit=${limit}`);
+  },
+
+  downloadCertificateById: async (certificateId: string, fileName?: string): Promise<void> => {
+    await fetchCertificateBlob(certificateId, 'download', fileName);
+  },
+
+  viewCertificateById: async (certificateId: string): Promise<void> => {
+    await fetchCertificateBlob(certificateId, 'view');
+  },
 };
+
+async function fetchCertificateBlob(
+  certificateId: string,
+  mode: 'download' | 'view',
+  fileName?: string
+): Promise<void> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/certificates/${certificateId}/${mode}`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Request failed with status ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  if (mode === 'view') {
+    window.open(url, '_blank');
+    setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    return;
+  }
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName || `certificate-${certificateId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
 
 

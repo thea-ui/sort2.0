@@ -281,53 +281,6 @@ router.post('/:id/activate', requireAdmin, async (req: Request, res: Response): 
   }
 });
 
-// POST /api/school-years/:id/deactivate — Deactivate with replacement requirement (admin only)
-router.post('/:id/deactivate', requireAdmin, async (req: Request, res: Response): Promise<any> => {
-  try {
-    const id = getParamId(req);
-    const { replacementId } = req.body;
-
-    const sy = await prisma.schoolYear.findUnique({ where: { id } });
-    if (!sy) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'School year not found' } });
-    if (sy.isArchived) return res.status(400).json({ error: { code: 'ARCHIVED_IMMUTABLE', message: 'Cannot deactivate an archived school year' } });
-    if (!sy.isActive) return res.status(400).json({ error: { code: 'ALREADY_INACTIVE', message: 'School year is not active' } });
-
-    // Require a replacement year
-    if (!replacementId) {
-      return res.status(400).json({ error: { code: 'REPLACEMENT_REQUIRED', message: 'A replacement active school year must be specified' } });
-    }
-
-    const replacement = await prisma.schoolYear.findUnique({ where: { id: replacementId } });
-    if (!replacement) return res.status(404).json({ error: { code: 'REPLACEMENT_NOT_FOUND', message: 'Replacement school year not found' } });
-    if (replacement.isArchived) return res.status(400).json({ error: { code: 'REPLACEMENT_ARCHIVED', message: 'Replacement cannot be an archived year' } });
-    if (replacement.id === id) return res.status(400).json({ error: { code: 'SELF_REPLACEMENT', message: 'Cannot replace a year with itself' } });
-
-    // Atomic: deactivate current, activate replacement
-    const result = await prisma.$transaction(async (tx) => {
-      await tx.schoolYear.update({
-        where: { id },
-        data: { isActive: false },
-      });
-
-      return tx.schoolYear.update({
-        where: { id: replacementId },
-        data: { isActive: true },
-      });
-    });
-
-    const actorName = (req as any).userName || 'Admin';
-    await writeAuditLog(
-      actorName, 'ADMIN', 'SCHOOL_YEAR_DEACTIVATED',
-      `Deactivated "${sy.label}", activated "${result.label}" as replacement`,
-      id
-    );
-
-    res.json({ deactivated: sy, activated: result });
-  } catch (error: any) {
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: error.message || 'Failed to deactivate school year' } });
-  }
-});
-
 // GET /api/school-years/:id/ledger — full transparency ledger for a year (admin only)
 router.get('/:id/ledger', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
@@ -346,8 +299,6 @@ router.get('/:id/ledger', requireAdmin, async (req: Request, res: Response): Pro
       pointRows,
       sales,
       snapshots,
-      inventoryTx,
-      inventoryTotals,
     ] = await Promise.all([
       prisma.report.groupBy({ by: ['status'], where: { schoolYearId: id }, _count: { _all: true } }),
       prisma.report.groupBy({ by: ['category'], where: { schoolYearId: id }, _count: { _all: true } }),
@@ -385,13 +336,6 @@ router.get('/:id/ledger', requireAdmin, async (req: Request, res: Response): Pro
       }),
       prisma.recycleSaleTransaction.findMany({ where: { schoolYearId: id }, orderBy: { soldAt: 'desc' } }),
       prisma.marketStockSnapshot.findMany({ where: { schoolYearId: id }, orderBy: { categoryName: 'asc' } }),
-      prisma.mrfInventoryTransaction.findMany({
-        where: { schoolYearId: id },
-        include: { item: { select: { name: true, unit: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 200,
-      }),
-      prisma.mrfInventoryTransaction.groupBy({ by: ['type'], where: { schoolYearId: id }, _sum: { quantity: true } }),
     ]);
 
     const revenuePhp = sales.reduce((sum, t) => sum + t.totalRevenue, 0);
@@ -467,18 +411,6 @@ router.get('/:id/ledger', requireAdmin, async (req: Request, res: Response): Pro
           categoryName: s.categoryName,
           openingKg: s.openingKg,
           closingKg: s.closingKg,
-        })),
-      },
-      inventory: {
-        totals: Object.fromEntries(inventoryTotals.map((g) => [g.type, g._sum.quantity || 0])),
-        transactions: inventoryTx.map((t) => ({
-          id: t.id,
-          itemName: t.item?.name,
-          unit: t.item?.unit,
-          type: t.type,
-          quantity: t.quantity,
-          notes: t.notes,
-          createdAt: t.createdAt,
         })),
       },
     });

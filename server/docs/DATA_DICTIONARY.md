@@ -416,42 +416,7 @@ Records sales transactions when sorted materials from the MRF are sold to recycl
 
 ---
 
-## Table 24: MrfInventoryItem (`mrf_inventory_items`)
-Tracks custodial equipment, tools, and personal protective gear (PPE) managed by the Material Recovery Facility.
-
-| Field Name | Data Type | Length / Constraint | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `VARCHAR` | 36 (UUID, PK) | Unique inventory item identifier |
-| `name` | `VARCHAR` | 150 | Tool or supply name (e.g., "Heavy Duty Sorting Gloves") |
-| `category` | `VARCHAR` | 50 | Classification (`EQUIPMENT`, `SUPPLY`, `RECOVERED_MATERIAL`, `TOOL`) |
-| `description` | `TEXT` | Nullable | Technical specs or storage location |
-| `unit` | `VARCHAR` | 20 | Measurement unit (e.g., "pcs", "kg", "rolls", "liters") |
-| `quantity` | `DOUBLE PRECISION` | Default: 0 | Current on-hand quantity |
-| `min_threshold` | `DOUBLE PRECISION` | Nullable | Reorder alert threshold |
-| `condition` | `VARCHAR` | Default: "GOOD" | Current state (`GOOD`, `FAIR`, `NEEDS_REPAIR`, `DISPOSED`) |
-| `is_persistent` | `BOOLEAN` | Default: false | Durable asset preserved across school year rollovers |
-| `created_at` | `TIMESTAMP` | Default: `now()` | Registration timestamp |
-| `updated_at` | `TIMESTAMP` | Auto-updated | Last stock update timestamp |
-
----
-
-## Table 25: MrfInventoryTransaction (`mrf_inventory_transactions`)
-Audits all material movements into and out of the MRF custodial toolroom.
-
-| Field Name | Data Type | Length / Constraint | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `VARCHAR` | 36 (UUID, PK) | Unique transaction record identifier |
-| `item_id` | `VARCHAR` | 36 (FK -> `mrf_inventory_items.id`) | Foreign key linking affected tool or supply item |
-| `school_year_id` | `VARCHAR` | 36 (FK -> `school_years.id`) | Academic year when stock movement occurred |
-| `type` | `VARCHAR` | 50 | Type (`STOCK_IN`, `STOCK_OUT`, `ADJUSTMENT`, `ROLLOVER_OPENING`, `ROLLOVER_CLOSING`) |
-| `quantity` | `DOUBLE PRECISION` | - | Units moved |
-| `notes` | `TEXT` | Nullable | Justification or receiving staff remarks |
-| `performed_by` | `VARCHAR` | 255, Nullable | Custodial officer in charge |
-| `created_at` | `TIMESTAMP` | Default: `now()` | Movement timestamp |
-
----
-
-## Table 26: MrfAssetRecord (`mrf_asset_records`)
+## Table 24: MrfAssetRecord (`mrf_asset_records`)
 Catalogs recovered, repaired, or repurposed school property rescued from waste streams (e.g., repaired armchairs, salvageable electronic components).
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -470,11 +435,11 @@ Catalogs recovered, repaired, or repurposed school property rescued from waste s
 | `school_year_id` | `VARCHAR` | 36 (FK -> `school_years.id`, Nullable) | Academic year when asset was recovered |
 | `created_at` | `TIMESTAMP` | Default: `now()` | Record creation timestamp |
 
-*Table 26 proves the school's circular economy metrics by showing how many damaged desks and computers were repaired instead of trashed.*
+*Table 24 proves the school's circular economy metrics by showing how many damaged desks and computers were repaired instead of trashed.*
 
 ---
 
-## Table 27: PointRule (`point_rules`)
+## Table 25: PointRule (`point_rules`)
 Maintains tier milestones and criteria for student rank progressions and graduation honor points.
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -489,7 +454,7 @@ Maintains tier milestones and criteria for student rank progressions and graduat
 
 ---
 
-## Table 28: AcademicQuarter (`academic_quarters`)
+## Table 26: AcademicQuarter (`academic_quarters`)
 Defines grading quarters (Q1, Q2, Q3, Q4) used for resetting seasonal leaderboards and evaluating student honors.
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -505,7 +470,7 @@ Defines grading quarters (Q1, Q2, Q3, Q4) used for resetting seasonal leaderboar
 
 ---
 
-## Table 29: UserPointSnapshot (`user_point_snapshots`)
+## Table 27: UserPointSnapshot (`user_point_snapshots`)
 Stores permanent historical snapshots of student point balances and ranks at the close of an academic school year.
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -519,7 +484,7 @@ Stores permanent historical snapshots of student point balances and ranks at the
 
 ---
 
-## Table 30: MarketStockSnapshot (`market_stock_snapshots`)
+## Table 28: MarketStockSnapshot (`market_stock_snapshots`)
 Stores opening and closing balances of recyclable commodity stockpiles across academic year boundaries.
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -534,7 +499,7 @@ Stores opening and closing balances of recyclable commodity stockpiles across ac
 
 ---
 
-## Table 31: UserSession (`user_sessions`)
+## Table 29: UserSession (`user_sessions`)
 Manages cryptographic refresh tokens, device footprints, and active session states for secure student and faculty logins.
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -549,7 +514,7 @@ Manages cryptographic refresh tokens, device footprints, and active session stat
 
 ---
 
-## Table 32: TermCalendar (`term_calendars`)
+## Table 30: TermCalendar (`term_calendars`)
 Stores calendar terms synchronized directly from EnrollPro SIS for synchronized academic scheduling.
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -568,7 +533,7 @@ Stores calendar terms synchronized directly from EnrollPro SIS for synchronized 
 
 ---
 
-## Table 33: EnrollmentSyncLog (`enrollment_sync_logs`)
+## Table 31: EnrollmentSyncLog (`enrollment_sync_logs`)
 Maintains an audit ledger of each automated student synchronization cycle with EnrollPro SIS.
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -589,7 +554,7 @@ Maintains an audit ledger of each automated student synchronization cycle with E
 
 ---
 
-## Table 34: AuditLog (`audit_logs`)
+## Table 32: AuditLog (`audit_logs`)
 Captures tamper-resistant activity logs of administrative actions, user permissions changes, and critical rollovers.
 
 | Field Name | Data Type | Length / Constraint | Description |
@@ -605,10 +570,10 @@ Captures tamper-resistant activity logs of administrative actions, user permissi
 
 ---
 
-## Table 35: CalendarEvent (`calendar_events`) & SyncLog (`sync_logs`)
+## Table 33: CalendarEvent (`calendar_events`) & SyncLog (`sync_logs`)
 Manages scheduled campus clean-up drives, recurring MRF maintenance routines, and legacy system sync milestones.
 
-### 35A: CalendarEvent (`calendar_events`)
+### 33A: CalendarEvent (`calendar_events`)
 | Field Name | Data Type | Length / Constraint | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `VARCHAR` | 36 (UUID, PK) | Unique event identifier |
@@ -618,7 +583,7 @@ Manages scheduled campus clean-up drives, recurring MRF maintenance routines, an
 | `description` | `TEXT` | - | Event objectives and participant guidance |
 | `created_at` | `TIMESTAMP` | Default: `now()` | Event creation timestamp |
 
-### 35B: SyncLog (`sync_logs`)
+### 33B: SyncLog (`sync_logs`)
 | Field Name | Data Type | Length / Constraint | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `VARCHAR` | 36 (UUID, PK) | Unique log identifier |
@@ -635,4 +600,3 @@ Manages scheduled campus clean-up drives, recurring MRF maintenance routines, an
 3. **`users` 1-to-Many `offenses`**: Disciplinary infractions and warnings are tracked under a student's profile.
 4. **`challenges` 1-to-Many `user_challenge_progress`**: Tracks individual and cooperative progress toward sustainability quotas.
 5. **`school_years` 1-to-Many `reports`, `point_histories`, `offenses`, `recycle_sale_transactions`**: All operational data links directly to an academic year, allowing clean annual rollovers and archival queries.
-6. **`mrf_inventory_items` 1-to-Many `mrf_inventory_transactions`**: Real-time custodial ledger recording all tool receipts, checkouts, and adjustments.

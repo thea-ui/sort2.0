@@ -4,6 +4,21 @@ export const STORAGE_KEY_LOCATIONS = 'sort_locations';
 export const STORAGE_KEY_ROOM_LOCATIONS = 'sort_room_locations';
 export const STORAGE_KEY_BLUEPRINT_URL = 'sort_blueprint_url';
 export const STORAGE_KEY_BLUEPRINT_PRESET = 'sort_blueprint_preset';
+export const STORAGE_KEY_BLUEPRINT_TRANSFORM = 'sort_blueprint_transform';
+
+export const BLUEPRINT_UPDATED_EVENT = 'sort_blueprint_updated';
+
+/**
+ * Alignment of the custom blueprint image, expressed as a percentage of the
+ * container so the same transform reproduces across every map surface.
+ */
+export interface BlueprintTransform {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+export const DEFAULT_BLUEPRINT_TRANSFORM: BlueprintTransform = { scale: 1, offsetX: 0, offsetY: 0 };
 
 export const DEFAULT_ROOM_LOCATIONS = [
   'Room 101 – Science Hall',
@@ -191,4 +206,60 @@ export function locationsToBins(locations: BinLocationItem[]): BinStatus[] {
   });
 
   return nextBins;
+}
+
+// ── Blueprint image + transform ────────────────────────────────────────────
+
+export function getStoredBlueprintUrl(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY_BLUEPRINT_URL);
+  } catch {
+    return null;
+  }
+}
+
+export function getBlueprintTransform(): BlueprintTransform {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_BLUEPRINT_TRANSFORM);
+    if (!raw) return { ...DEFAULT_BLUEPRINT_TRANSFORM };
+    const parsed = JSON.parse(raw);
+    return {
+      scale: typeof parsed?.scale === 'number' ? parsed.scale : 1,
+      offsetX: typeof parsed?.offsetX === 'number' ? parsed.offsetX : 0,
+      offsetY: typeof parsed?.offsetY === 'number' ? parsed.offsetY : 0,
+    };
+  } catch {
+    return { ...DEFAULT_BLUEPRINT_TRANSFORM };
+  }
+}
+
+/** Notify every blueprint consumer (and other tabs) that the blueprint changed. */
+export function broadcastBlueprintUpdate() {
+  try {
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent(BLUEPRINT_UPDATED_EVENT));
+  } catch {
+    /* no-op */
+  }
+}
+
+export function saveBlueprint(url: string, transform: BlueprintTransform) {
+  try {
+    localStorage.setItem(STORAGE_KEY_BLUEPRINT_URL, url);
+    localStorage.setItem(STORAGE_KEY_BLUEPRINT_TRANSFORM, JSON.stringify(transform));
+    broadcastBlueprintUpdate();
+  } catch (err) {
+    console.error('Failed to save blueprint:', err);
+  }
+}
+
+export function clearBlueprint() {
+  try {
+    localStorage.removeItem(STORAGE_KEY_BLUEPRINT_URL);
+    localStorage.removeItem(STORAGE_KEY_BLUEPRINT_TRANSFORM);
+    localStorage.removeItem(STORAGE_KEY_BLUEPRINT_PRESET);
+    broadcastBlueprintUpdate();
+  } catch (err) {
+    console.error('Failed to clear blueprint:', err);
+  }
 }

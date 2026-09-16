@@ -60,7 +60,7 @@ router.get('/summary', authenticate, async (req: Request, res: Response): Promis
 // POST /api/assets — record a recovered/repaired/disposed asset event
 router.post('/', requireRole('MRF', 'ADMIN'), async (req: Request, res: Response): Promise<any> => {
   try {
-    const { assetName, category, action, quantity, unit, condition, sourceReportId, locationName, notes } = req.body;
+    const { assetName, category, action, disposition, quantity, unit, condition, sourceReportId, locationName, notes } = req.body;
 
     if (!assetName || !category || !action) {
       return res.status(400).json({ error: 'assetName, category, and action are required' });
@@ -71,11 +71,23 @@ router.post('/', requireRole('MRF', 'ADMIN'), async (req: Request, res: Response
 
     const schoolYearId = await getActiveSchoolYearId();
 
+    // Idempotency: never create a duplicate ledger row for the same report+action
+    // (re-completing a task used to append duplicate records).
+    if (sourceReportId) {
+      const existing = await prisma.mrfAssetRecord.findFirst({
+        where: { sourceReportId: String(sourceReportId), action: String(action) },
+      });
+      if (existing) {
+        return res.status(200).json(existing);
+      }
+    }
+
     const record = await prisma.mrfAssetRecord.create({
       data: {
         assetName: String(assetName).trim(),
         category: String(category),
         action: String(action),
+        disposition: disposition ? String(disposition) : null,
         quantity: quantity !== undefined && quantity !== null ? Number(quantity) : 1,
         unit: unit || 'pcs',
         condition: condition || null,

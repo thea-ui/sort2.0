@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, ReportStatus, WasteCategory, Urgency, ReportType, Role } from '@prisma/client';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
-import { verifyReports, formatReportResponse } from '../services/report-points.service.js';
+import { approveReports, awardCollectedReportsWithinTransaction, formatReportResponse } from '../services/report-points.service.js';
 import { recordWeightContribution } from '../services/challenge-progress.service.js';
 import { authenticate, requireAdmin, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
 
@@ -80,6 +80,28 @@ function mapWasteCategory(cat?: string): WasteCategory {
   return WasteCategory.NON_BIODEGRADABLE;
 }
 
+// Asset reports are described with a pillar marker by the teacher portal. The
+// client may omit `reportType`, so derive it server-side as defense-in-depth.
+const ASSET_DESCRIPTION_MARKERS = [
+  '[PILLAR: FURNITURE]',
+  '[PILLAR: ELECTRONICS]',
+  '[PILLAR: FIXTURES]',
+  '[PILLAR: EQUIPMENT]',
+  '[PILLAR: OTHER]',
+];
+
+function deriveReportType(rawType: unknown, description?: string): ReportType {
+  const normalized = typeof rawType === 'string' ? rawType.trim().toUpperCase() : '';
+  if (normalized === 'ASSET') return ReportType.ASSET;
+  if (normalized === 'WASTE') return ReportType.WASTE;
+
+  const desc = (description || '').toUpperCase();
+  if (ASSET_DESCRIPTION_MARKERS.some((marker) => desc.includes(marker))) {
+    return ReportType.ASSET;
+  }
+  return ReportType.WASTE;
+}
+
 // POST /api/reports — any authenticated user, reporterId from JWT
 router.post('/', authenticate, async (req: Request, res: Response): Promise<any> => {
   try {
@@ -131,7 +153,7 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
         locationKey: normalizeLocation(cleanLoc),
         reporterId: userId,
         imageUrl: imageUrl || null,
-        reportType: (reportType as ReportType) || ReportType.WASTE,
+        reportType: deriveReportType(reportType, description),
         pointsAwarded: 0,
         schoolYearId: await getActiveSchoolYearId(),
       },
@@ -170,6 +192,31 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
       return res.status(404).json({ error: 'Report not found' });
     }
 
+    // Terminal reports are immutable: never re-open a completed, expired, or
+    // dismissed report (prevents re-dispatching already-finished reports).
+    const TERMINAL_STATUSES: ReportStatus[] = [
+      ReportStatus.COLLECTED,
+      ReportStatus.RESOLVED,
+      ReportStatus.EXPIRED,
+      ReportStatus.DISMISSED,
+    ];
+    if (status && TERMINAL_STATUSES.includes(targetReport.status) && targetReport.status !== status) {
+      return res.status(409).json({
+        error: `Report is already ${targetReport.status} and its status can no longer change.`,
+        code: 'INVALID_TRANSITION',
+      });
+    }
+
+    // Verification is a hard gate: a report must be approved before dispatch.
+    if (status === 'DISPATCHED') {
+      if (!targetReport.isVerified) {
+        return res.status(409).json({
+          error: 'Report must be verified before it can be dispatched.',
+          code: 'NOT_VERIFIED',
+        });
+      }
+    }
+
     const data: any = {};
     if (status) {
       data.status = status as ReportStatus;
@@ -180,12 +227,14 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
     if (assignedMrfId !== undefined) data.assignedMrfId = assignedMrfId;
     if (weightCollected !== undefined) data.weightCollected = weightCollected;
 
+    const becomesTerminal = status === 'COLLECTED' || status === 'RESOLVED';
     const shouldContributeWeight =
       weightCollected !== undefined &&
       weightCollected > 0 &&
-      (status === 'COLLECTED' || status === 'RESOLVED' || targetReport.status === 'COLLECTED' || targetReport.status === 'RESOLVED');
+      (becomesTerminal || targetReport.status === 'COLLECTED' || targetReport.status === 'RESOLVED');
 
     const allChallengeCompletions: { userId: string; challengeId: string; title: string; pointsAwarded: number }[] = [];
+    const allAwards: { reportId: string; userId: string; amount: number; rank: number }[] = [];
 
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.report.update({
@@ -208,10 +257,36 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
         allChallengeCompletions.push(...completions);
       }
 
+      // Collection is the reward event. Resolve every still-active report in the
+      // same stream, then award points/ranks to the collected, approved reports.
+      if (becomesTerminal) {
+        await tx.report.updateMany({
+          where: {
+            locationKey: result.locationKey,
+            category: result.category,
+            schoolYearId: result.schoolYearId,
+            status: { in: [ReportStatus.PENDING, ReportStatus.DISPATCHED] },
+          },
+          data: { status: status as ReportStatus, completedAt: data.completedAt || new Date() },
+        });
+
+        const award = await awardCollectedReportsWithinTransaction(tx, {
+          locationKey: result.locationKey,
+          category: result.category,
+          schoolYearId: result.schoolYearId,
+        });
+        allAwards.push(...award.awards);
+        allChallengeCompletions.push(...award.challengeCompletions);
+      }
+
       return result;
     });
 
-    return res.json(formatReportResponse(updated));
+    return res.json({
+      ...formatReportResponse(updated),
+      awards: allAwards,
+      challengeCompletions: allChallengeCompletions,
+    });
   } catch (error) {
     console.error('Update report status error:', error);
     return res.status(500).json({ error: 'Failed to update report status' });
@@ -233,12 +308,12 @@ router.post('/:id/verify', requireAdmin, async (req: Request, res: Response): Pr
       return res.status(400).json({ error: 'Cannot verify a dismissed report', code: 'DISMISSED' });
     }
 
-    const result = await verifyReports([targetId]);
+    const result = await approveReports([targetId]);
 
     return res.json({
       updatedReports: result.updatedReports.map(formatReportResponse),
-      awards: result.awards,
-      challengeCompletions: result.challengeCompletions,
+      awards: [],
+      challengeCompletions: [],
       alreadyProcessed: result.alreadyProcessed,
     });
   } catch (error: any) {
@@ -280,16 +355,16 @@ router.post('/verify-batch', requireAdmin, async (req: Request, res: Response): 
       return res.status(400).json({ error: 'Cannot verify dismissed reports', dismissedIds });
     }
 
-    const result = await verifyReports(uniqueIds);
+    const result = await approveReports(uniqueIds);
 
     return res.json({
       updatedReports: result.updatedReports.map(formatReportResponse),
-      awards: result.awards,
-      challengeCompletions: result.challengeCompletions,
+      awards: [],
+      challengeCompletions: [],
       summary: {
         totalProcessed: result.updatedReports.length,
-        totalAwarded: result.awards.length,
-        totalPoints: result.awards.reduce((sum, a) => sum + a.amount, 0),
+        totalAwarded: 0,
+        totalPoints: 0,
       },
     });
   } catch (error: any) {

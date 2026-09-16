@@ -75,6 +75,18 @@ enum ChallengeType {
   HAZARDOUS_REPORT
 }
 
+enum CertificateType {
+  MILESTONE
+  RANK
+}
+
+enum CertificateTier {
+  MILESTONE
+  CHAMPION
+  LEADER
+  ADVOCATE
+}
+
 model SchoolYear {
   id            String    @id @default(uuid())
   enrollproId   Int?      @unique @map("enrollpro_id")
@@ -90,8 +102,9 @@ model SchoolYear {
   pointHistories       PointHistory[]
   offenses             Offense[]
   saleTransactions     RecycleSaleTransaction[]
-  inventoryTransactions MrfInventoryTransaction[]
   assetRecords          MrfAssetRecord[]
+  assetScrapSaleTransactions AssetScrapSaleTransaction[]
+  assetScrapStockSnapshots   AssetScrapStockSnapshot[]
   auditLogs            AuditLog[]
   marketStockSnapshots MarketStockSnapshot[]
   pointSnapshots       UserPointSnapshot[]
@@ -137,6 +150,7 @@ model User {
   sessions        UserSession[]
   challengeProgress    UserChallengeProgress[]
   challengeContributions ChallengeContribution[]
+  certificatesIssued   Certificate[]
 
   @@index([enrollproId])
   @@index([syncSource])
@@ -301,6 +315,11 @@ model SystemSetting {
   pointsPerKgRecyclable     Int      @default(10) @map("points_per_kg_recyclable")
   warningThreshold          Int      @default(3) @map("warning_threshold")
   certificatePointThreshold Int      @default(500) @map("certificate_point_threshold")
+  certificateGraceDays      Int      @default(3) @map("certificate_grace_days")
+  certificateMilestoneName  String   @default("Eco-Milestone Certificate") @map("certificate_milestone_name")
+  certificateChampionName   String   @default("Eco-Champion Certificate") @map("certificate_champion_name")
+  certificateLeaderName     String   @default("Eco-Leader Certificate") @map("certificate_leader_name")
+  certificateAdvocateName   String   @default("Eco-Advocate Certificate") @map("certificate_advocate_name")
   quarterGateActive         Boolean  @default(false) @map("quarter_gate_active")
   smartSyncEnabled          Boolean  @default(true) @map("smart_sync_enabled")
   blueprintPreset           String   @default("DEFAULT") @map("blueprint_preset")
@@ -574,7 +593,7 @@ model CampusNews {
   @@map("campus_news")
 }
 
-// ─── School Year Snapshot & Inventory Models ─────────────────────────
+// ─── School Year Snapshot Models ─────────────────────────────────────
 
 model MarketStockSnapshot {
   id            String   @id @default(uuid())
@@ -604,46 +623,12 @@ model UserPointSnapshot {
   @@map("user_point_snapshots")
 }
 
-model MrfInventoryItem {
-  id            String   @id @default(uuid())
-  name          String
-  category      String   // EQUIPMENT, SUPPLY, RECOVERED_MATERIAL, TOOL
-  description   String?
-  unit          String   // kg, pcs, rolls, liters
-  quantity      Float    @default(0)
-  minThreshold  Float?   @map("min_threshold")
-  condition     String   @default("GOOD") // GOOD, FAIR, NEEDS_REPAIR, DISPOSED
-  isPersistent  Boolean  @default(false) @map("is_persistent")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  transactions MrfInventoryTransaction[]
-
-  @@map("mrf_inventory_items")
-}
-
-model MrfInventoryTransaction {
-  id            String   @id @default(uuid())
-  itemId        String   @map("item_id")
-  item          MrfInventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  schoolYearId  String   @map("school_year_id")
-  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id])
-  type          String   // STOCK_IN, STOCK_OUT, ADJUSTMENT, ROLLOVER_OPENING, ROLLOVER_CLOSING
-  quantity      Float
-  notes         String?
-  performedBy   String?  @map("performed_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  @@index([itemId])
-  @@index([schoolYearId])
-  @@map("mrf_inventory_transactions")
-}
-
 model MrfAssetRecord {
   id             String      @id @default(uuid())
   assetName      String      @map("asset_name")
   category       String      // Furniture, Electronics, Fixtures, Equipment, Other
   action         String      // RECOVERED, REPAIRED, DISPOSED
+  disposition    String?     // Specific outcome label, e.g. "Repaired at MRF Workshop"
   quantity       Float       @default(1)
   unit           String      @default("pcs")
   condition      String?     // GOOD, FAIR, NEEDS_REPAIR, DISPOSED
@@ -658,4 +643,80 @@ model MrfAssetRecord {
   @@index([schoolYearId])
   @@index([action])
   @@map("mrf_asset_records")
+}
+
+// ─── Asset Scrap Recovery Stock (unserviceable assets weighed & sold by material) ───
+
+model AssetScrapStock {
+  id                String    @id @default(uuid())
+  materialCode      String    @unique @map("material_code")
+  materialName      String    @map("material_name")
+  thresholdLimitKg  Float     @map("threshold_limit_kg")
+  marketPricePerKg  Float     @map("market_price_per_kg")
+  accumulatedKg     Float     @default(0.0) @map("accumulated_kg")
+  isApprovedForSale Boolean   @default(false) @map("is_approved_for_sale")
+  approvalReference String?   @map("approval_reference")
+  approvedAt        DateTime? @map("approved_at")
+  hazmat            Boolean   @default(false)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("asset_scrap_stocks")
+}
+
+model AssetScrapSaleTransaction {
+  id                String   @id @default(uuid())
+  materialCode      String   @map("material_code")
+  materialName      String   @map("material_name")
+  weightKg          Float    @map("weight_kg")
+  marketPriceKg     Float    @map("market_price_kg")
+  totalRevenue      Float    @map("total_revenue")
+  buyerName         String   @map("buyer_name")
+  approvalReference String?  @map("approval_reference")
+  schoolYearId      String?  @map("school_year_id")
+  schoolYear        SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  soldAt            DateTime @default(now()) @map("sold_at")
+
+  @@index([schoolYearId])
+  @@map("asset_scrap_sale_transactions")
+}
+
+model AssetScrapStockSnapshot {
+  id           String   @id @default(uuid())
+  schoolYearId String   @map("school_year_id")
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id])
+  materialCode String   @map("material_code")
+  materialName String   @map("material_name")
+  closingKg    Float    @map("closing_kg")
+  openingKg    Float    @default(0) @map("opening_kg")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([schoolYearId, materialCode])
+  @@map("asset_scrap_stock_snapshots")
+}
+
+// ─── Certificate Issuance ─────────────────────────────────────────────
+
+model Certificate {
+  id              String          @id @default(uuid())
+  userId          String          @map("user_id")
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serial          String          @unique
+  type            CertificateType
+  tier            CertificateTier
+  name            String
+  rankAtIssue     Int?            @map("rank_at_issue")
+  pointsAtIssue   Int             @map("points_at_issue")
+  termCode        String?         @map("term_code")
+  termName        String?         @map("term_name")
+  schoolYearId    String?         @map("school_year_id")
+  schoolYearLabel String?         @map("school_year_label")
+  issuedAt        DateTime        @default(now()) @map("issued_at")
+  issuedBy        String?         @map("issued_by")
+  templateVersion String          @default("v1") @map("template_version")
+
+  @@index([userId])
+  @@index([schoolYearId, termCode])
+  @@index([type])
+  @@map("certificates")
 }

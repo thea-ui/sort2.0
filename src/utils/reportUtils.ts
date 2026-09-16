@@ -18,6 +18,7 @@ export function getReportTimestampMs(timestamp?: string): number {
 export function isReportDoneAndExpired(report: Report, cutoffMs = SIX_HOURS_MS): boolean {
   const isDone = report.status === 'COLLECTED' || 
                  report.status === 'RESOLVED' || 
+                 report.status === 'EXPIRED' ||
                  report.title?.toLowerCase().includes('[dismissed]') || 
                  report.description?.toLowerCase().includes('[dismissed]');
 
@@ -56,6 +57,28 @@ export function getGridCoordinateString(coords?: { lat: number; lng: number } | 
   if (!coords || (coords.lat === 0 && coords.lng === 0)) return null;
   return `Grid [${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}]`;
 }
+
+/**
+ * Parse bracketed metadata tags like "[Pillar: FURNITURE][Observation: Damaged]"
+ * into a lowercase-keyed map.
+ */
+export function parseReportTags(description?: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!description) return out;
+  const re = /\[([^\]:]+):\s*([^\]]+)\]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(description)) !== null) {
+    out[m[1].trim().toLowerCase()] = m[2].trim();
+  }
+  return out;
+}
+
+/** Remove all bracketed tags, leaving only free text. */
+export function stripReportTags(description?: string): string {
+  if (!description) return '';
+  return description.replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 
 export function filterActiveReports(reports: Report[]): Report[] {
   return reports.filter(r => !isReportDoneAndExpired(r));

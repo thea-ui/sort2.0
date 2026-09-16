@@ -469,26 +469,6 @@ async function main() {
   await prisma.recycleSaleTransaction.deleteMany();
   console.log('✅ Recycle Sales Transactions Cleaned (Ready for live MRF sales)');
 
-  // 19. Seed MRF Inventory Items
-  const inventoryCount = await prisma.mrfInventoryItem.count();
-  if (inventoryCount === 0) {
-    const inventoryItems = [
-      { name: 'Digital Weighing Scale', category: 'EQUIPMENT', unit: 'pcs', quantity: 2, condition: 'GOOD', isPersistent: true, description: 'Platform scale for weighing recyclables' },
-      { name: 'Sorting Table (Stainless)', category: 'EQUIPMENT', unit: 'pcs', quantity: 3, condition: 'GOOD', isPersistent: true, description: 'Large stainless steel sorting tables' },
-      { name: 'Baling Machine', category: 'EQUIPMENT', unit: 'pcs', quantity: 1, condition: 'GOOD', isPersistent: true, description: 'Manual hydraulic baling press' },
-      { name: 'Safety Gloves (Pair)', category: 'SUPPLY', unit: 'pcs', quantity: 20, condition: 'GOOD', isPersistent: false, description: 'Cut-resistant work gloves' },
-      { name: 'Trash Bags (Roll)', category: 'SUPPLY', unit: 'rolls', quantity: 15, condition: 'GOOD', isPersistent: false, description: 'Large heavy-duty trash bags' },
-      { name: 'Safety Goggles', category: 'SUPPLY', unit: 'pcs', quantity: 10, condition: 'GOOD', isPersistent: false, description: 'Eye protection for sorting' },
-      { name: 'Label Stickers (Roll)', category: 'SUPPLY', unit: 'rolls', quantity: 5, condition: 'GOOD', isPersistent: false, description: 'Adhesive labels for bin marking' },
-      { name: 'MRF Signage Set', category: 'TOOL', unit: 'pcs', quantity: 1, condition: 'GOOD', isPersistent: true, description: 'Campus MRF wayfinding signs' },
-    ];
-
-    for (const item of inventoryItems) {
-      await prisma.mrfInventoryItem.create({ data: item });
-    }
-    console.log('✅ MRF Inventory Items Seeded');
-  }
-
   console.log('🌱 PostgreSQL Database Seed Completed Successfully!');
 }
 

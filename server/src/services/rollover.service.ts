@@ -10,7 +10,6 @@ interface RolloverResult {
   previousSchoolYear: string;
   newSchoolYear: string;
   snapshotsCreated: number;
-  inventoryTransactions: number;
   usersReset: number;
   studentsArchived?: number;
   error?: string;
@@ -21,16 +20,14 @@ interface RolloverResult {
  * Execute school year rollover atomically:
  * 1. Snapshot market stocks (closing balances)
  * 2. Snapshot user points (closing balances)
- * 3. Create inventory closing transactions
- * 4. Tag all null-school-year records to current year
- * 5. Archive old school year
- * 6. Create new school year
- * 7. Carry forward persistent inventory as opening transactions
- * 8. Carry forward market stock snapshots as opening balances
- * 9. Carry forward unsold market stock (keep kg, clear sale approval)
- * 10. Reset user points to 0
- * 11. Archive all students (revoke sessions, keep history)
- * 12. Log in audit
+ * 3. Tag all null-school-year records to current year
+ * 4. Archive old school year
+ * 5. Create new school year
+ * 6. Carry forward market stock snapshots as opening balances
+ * 7. Carry forward unsold market stock (keep kg, clear sale approval)
+ * 8. Reset user points to 0
+ * 9. Archive all students (revoke sessions, keep history)
+ * 10. Log in audit
  *
  * All steps execute in a single Prisma transaction for atomicity.
  * Idempotent: retries for the same EnrollPro ID will not duplicate work.
@@ -49,7 +46,6 @@ export async function executeRollover(
       previousSchoolYear: '',
       newSchoolYear: newLabel,
       snapshotsCreated: 0,
-      inventoryTransactions: 0,
       usersReset: 0,
       error: 'A rollover is already in progress. Please try again later.',
       errorCode: 'ROLLOVER_CONCURRENT',
@@ -67,7 +63,6 @@ export async function executeRollover(
       previousSchoolYear: '',
       newSchoolYear: existingTarget.label,
       snapshotsCreated: 0,
-      inventoryTransactions: 0,
       usersReset: 0,
     };
   }
@@ -76,7 +71,6 @@ export async function executeRollover(
   console.log(`[Rollover] Starting school year rollover to "${newLabel}" (EnrollPro ID: ${newEnrollproId})`);
 
   let snapshotsCreated = 0;
-  let inventoryTransactions = 0;
   let usersReset = 0;
   let studentsArchived = 0;
 
@@ -115,6 +109,30 @@ export async function executeRollover(
           }
         }
 
+        // 2b. Snapshot asset scrap stock (closing balances)
+        const scrapStocks = await tx.assetScrapStock.findMany();
+        for (const scrap of scrapStocks) {
+          if (scrap.accumulatedKg > 0) {
+            await tx.assetScrapStockSnapshot.upsert({
+              where: {
+                schoolYearId_materialCode: {
+                  schoolYearId: currentSY.id,
+                  materialCode: scrap.materialCode,
+                },
+              },
+              update: { closingKg: scrap.accumulatedKg },
+              create: {
+                schoolYearId: currentSY.id,
+                materialCode: scrap.materialCode,
+                materialName: scrap.materialName,
+                closingKg: scrap.accumulatedKg,
+                openingKg: 0,
+              },
+            });
+            snapshotsCreated++;
+          }
+        }
+
         // 3. Snapshot user points (closing balances)
         const studentsWithPoints = await tx.user.findMany({
           where: { role: 'STUDENT', syncSource: 'ENROLLPRO', points: { gt: 0 } },
@@ -138,41 +156,24 @@ export async function executeRollover(
           snapshotsCreated++;
         }
 
-        // 4. Create inventory ROLLOVER_CLOSING transactions
-        const inventoryItems = await tx.mrfInventoryItem.findMany({
-          where: { quantity: { gt: 0 } },
-        });
-
-        for (const item of inventoryItems) {
-          await tx.mrfInventoryTransaction.create({
-            data: {
-              itemId: item.id,
-              schoolYearId: currentSY.id,
-              type: 'ROLLOVER_CLOSING',
-              quantity: -item.quantity,
-              notes: `School year closing balance for ${item.name}`,
-            },
-          });
-          inventoryTransactions++;
-        }
-
-        // 5. Tag all untagged records with current school year
+        // 3. Tag all untagged records with current school year
         await Promise.all([
           tx.report.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
           tx.pointHistory.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
           tx.offense.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
           tx.recycleSaleTransaction.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
+          tx.assetScrapSaleTransaction.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
           tx.auditLog.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
         ]);
 
-        // 6. Archive old school year
+        // 4. Archive old school year
         await tx.schoolYear.update({
           where: { id: currentSY.id },
           data: { isActive: false, isArchived: true, archivedAt: new Date() },
         });
       }
 
-      // 7. Create new school year
+      // 5. Create new school year
       const newSY = await tx.schoolYear.create({
         data: {
           enrollproId: newEnrollproId,
@@ -184,29 +185,7 @@ export async function executeRollover(
         },
       });
 
-      // 8. Carry forward persistent inventory items as opening transactions
-      const persistentItems = await tx.mrfInventoryItem.findMany({
-        where: { isPersistent: true },
-      });
-
-      let carryForwardCount = 0;
-      for (const item of persistentItems) {
-        if (item.quantity > 0) {
-          await tx.mrfInventoryTransaction.create({
-            data: {
-              itemId: item.id,
-              schoolYearId: newSY.id,
-              type: 'ROLLOVER_OPENING',
-              quantity: item.quantity,
-              notes: `Opening balance carried from ${previousLabel}`,
-            },
-          });
-          carryForwardCount++;
-        }
-      }
-      inventoryTransactions += carryForwardCount;
-
-      // 9. Carry forward market stock snapshots as opening balances for new SY
+      // 6. Carry forward market stock snapshots as opening balances for new SY
       if (currentSY) {
         const prevSnapshots = await tx.marketStockSnapshot.findMany({
           where: { schoolYearId: currentSY.id },
@@ -227,26 +206,54 @@ export async function executeRollover(
         }
       }
 
-      // 10. Carry forward unsold market stock as real, sellable stock.
+      // 6b. Carry forward asset scrap stock snapshots as opening balances for new SY
+      if (currentSY) {
+        const prevScrapSnapshots = await tx.assetScrapStockSnapshot.findMany({
+          where: { schoolYearId: currentSY.id },
+        });
+        for (const snap of prevScrapSnapshots) {
+          if (snap.closingKg > 0) {
+            await tx.assetScrapStockSnapshot.create({
+              data: {
+                schoolYearId: newSY.id,
+                materialCode: snap.materialCode,
+                materialName: snap.materialName,
+                closingKg: 0,
+                openingKg: snap.closingKg,
+              },
+            });
+            snapshotsCreated++;
+          }
+        }
+      }
+
+      // 7. Carry forward unsold market stock as real, sellable stock.
       //     Keep accumulatedKg (opening snapshot records the carried balance);
       //     only clear any pending sale approval from the previous year.
       await tx.recycleMarketStock.updateMany({
         data: { isApprovedForSale: false, approvedAt: null },
       });
 
-      // 10b. Reset challenge progress for all students (per-term)
+      // 7b. Scrap stock is a standing MRF inventory carried across years; clear
+      //     any pending approval so it must be re-approved in the new year.
+      await tx.assetScrapStock.updateMany({
+        data: { isApprovedForSale: false, approvedAt: null, approvalReference: null },
+      });
+
+      // 7b. Reset challenge progress for all students (per-term)
       const challengeContributionsDeleted = await tx.challengeContribution.deleteMany({});
       const challengeProgressDeleted = await tx.userChallengeProgress.deleteMany({});
       console.log(`[Rollover] Challenge progress reset: ${challengeProgressDeleted.count} progress records, ${challengeContributionsDeleted.count} contributions deleted`);
 
-      // 11. Reset user points to 0
+      // 8. Reset user points to 0 (certificates are historical and MUST survive
+      //    rollover so past awards remain downloadable for the student).
       const resetResult = await tx.user.updateMany({
         where: { role: 'STUDENT', syncSource: 'ENROLLPRO' },
-        data: { points: 0, warningsCount: 0, certificates: [] },
+        data: { points: 0, warningsCount: 0 },
       });
       usersReset = resetResult.count;
 
-      // 11b. Archive all students. They are no longer enrolled in the new
+      // 8b. Archive all students. They are no longer enrolled in the new
       //      school year. Returning students are re-activated by the next
       //      enrollment sync; graduates remain archived as alumni. Sessions are
       //      revoked so nobody stays logged in. Never delete accounts — their
@@ -260,13 +267,13 @@ export async function executeRollover(
         where: { user: { role: 'STUDENT', syncSource: 'ENROLLPRO' } },
       });
 
-      // 12. Create audit log for rollover
+      // 9. Create audit log for rollover
       await tx.auditLog.create({
         data: {
           actorName: 'System',
           actorRole: 'SYSTEM',
           actionType: 'SCHOOL_YEAR_ROLLOVER',
-          details: `Automatic rollover from "${previousLabel}" to "${newLabel}". Snapshots: ${snapshotsCreated}, Inventory txns: ${inventoryTransactions}, Users reset: ${usersReset}, Students archived: ${studentsArchived}, Challenge progress cleared: ${challengeProgressDeleted.count}.`,
+          details: `Automatic rollover from "${previousLabel}" to "${newLabel}". Snapshots: ${snapshotsCreated}, Users reset: ${usersReset}, Students archived: ${studentsArchived}, Challenge progress cleared: ${challengeProgressDeleted.count}.`,
           schoolYearId: newSY.id,
         },
       });
@@ -281,7 +288,6 @@ export async function executeRollover(
       previousSchoolYear: result.previousLabel,
       newSchoolYear: result.newLabel,
       snapshotsCreated,
-      inventoryTransactions,
       usersReset,
       studentsArchived,
     };
@@ -292,7 +298,6 @@ export async function executeRollover(
       previousSchoolYear: '',
       newSchoolYear: newLabel,
       snapshotsCreated,
-      inventoryTransactions,
       usersReset,
       studentsArchived,
       error: error.message,

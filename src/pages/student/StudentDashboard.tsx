@@ -41,9 +41,6 @@ const URGENCY_META = {
   HIGH: { label: 'High', badge: 'bg-rose-50 text-rose-700 border-rose-200/60' },
 };
 
-const AVATAR_COLORS = ['bg-emerald-500', 'bg-violet-500', 'bg-sky-500', 'bg-amber-500', 'bg-rose-500'];
-const getAvatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, setActiveTab }) => {
   const {
     currentUser,
@@ -53,9 +50,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
     challenges,
     offenses,
     createReport,
-    settings,
-    deductPoints,
-    claimCertificate
+    settings
   } = useMockData();
 
   // Form states
@@ -76,10 +71,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
   const [isPinningMode, setIsPinningMode] = useState(false);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [sliderValue, setSliderValue] = useState(2);
-
-  // Tournament state controls
-  const [isPeriodOver, setIsPeriodOver] = useState(false);
-  const [claimedSuccess, setClaimedSuccess] = useState(false);
 
   // Filter personal reports
   const personalReports = reports.filter(r =>
@@ -139,6 +130,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
         coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
         imageUrl: capturedImage || undefined,
         isScatteredDebris: isScatteredDebris,
+        reportType: 'WASTE',
       });
 
       const now = new Date();
@@ -256,13 +248,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
           users={users}
           reports={reports}
           challenges={challenges}
-          isPeriodOver={isPeriodOver}
-          setIsPeriodOver={setIsPeriodOver}
-          claimedSuccess={claimedSuccess}
-          setClaimedSuccess={setClaimedSuccess}
-          deductPoints={deductPoints}
-          claimCertificate={claimCertificate}
-          getAvatarColor={getAvatarColor}
+          settings={settings}
         />
       )}
     </div>

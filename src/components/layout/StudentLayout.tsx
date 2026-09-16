@@ -259,7 +259,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-10">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-10 relative z-10">
         {children}
       </main>
 

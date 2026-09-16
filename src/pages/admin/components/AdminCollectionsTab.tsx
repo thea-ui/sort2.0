@@ -178,10 +178,9 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
     const mrfStaffName = mrfUser ? mrfUser.name : 'MRF Dispatch Staff';
 
     if (dispatchReport) {
+      // dispatchReport approves (verifies) first, then dispatches — the server
+      // rejects dispatch of an unverified report.
       dispatchReport(dispatchModalReport.id, selectedMrfId, mrfStaffName);
-    }
-    if (updateReportStatus) {
-      updateReportStatus(dispatchModalReport.id, 'DISPATCHED');
     }
 
     setToastMessage(`Report #${dispatchModalReport.id} approved & dispatched to ${mrfStaffName}!`);

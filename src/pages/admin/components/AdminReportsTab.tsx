@@ -29,6 +29,26 @@ import {
 import { Report, User as UserType, ReportStatus } from '../../../types';
 import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 
+// Reports queue day-scope uses the school's local day (matches the 6 PM reset TZ).
+const REPORT_QUEUE_TZ = 'Asia/Manila';
+
+function isSameLocalDay(iso?: string): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return false;
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: REPORT_QUEUE_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return fmt.format(d) === fmt.format(new Date());
+  } catch {
+    return d.toDateString() === new Date().toDateString();
+  }
+}
+
 interface AdminReportsTabProps {
   reports: Report[];
   users: UserType[];
@@ -164,6 +184,12 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
   // Filter & Sort Reports by Time (Newest First)
   const filteredReports = reports
     .filter(r => {
+      // Queue scope: only today's reports + still-active older reports.
+      // EXPIRED is terminal/neutral and lives in History/Collections, not the queue.
+      if (r.status === 'EXPIRED') return false;
+      const isActiveReport = r.status === 'PENDING' || r.status === 'DISPATCHED';
+      if (!isActiveReport && !isSameLocalDay(r.timestamp)) return false;
+
       // Waste vs Asset filter
       const isAsset = r.reportType === 'ASSET' ||
         r.description.toUpperCase().includes('[PILLAR: FURNITURE]') ||
@@ -190,8 +216,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
       if (statusFilter === 'VERIFIED' && (!r.isVerified || r.status === 'DISPATCHED' || r.status === 'COLLECTED' || r.status === 'RESOLVED')) return false;
       if (statusFilter === 'DISPATCHED' && r.status !== 'DISPATCHED') return false;
       if (statusFilter === 'DISMISSED' && r.status !== 'DISMISSED') return false;
-      if (statusFilter === 'EXPIRED' && r.status !== 'EXPIRED') return false;
-      if (statusFilter === 'DONE' && r.status !== 'COLLECTED' && r.status !== 'RESOLVED' && r.status !== 'EXPIRED') return false;
+      if (statusFilter === 'DONE' && r.status !== 'COLLECTED' && r.status !== 'RESOLVED') return false;
 
       return true;
     })
@@ -308,7 +333,9 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
             </span>
           </div>
           <h2 className="text-2xl font-heading font-black text-[#00271D] tracking-tight mt-1">All Reports</h2>
-          <p className="text-xs text-[#00271D]/60 font-medium">{reports.length} total reports submitted across campus nodes</p>
+          <p className="text-xs text-[#00271D]/60 font-medium">
+            Today's action queue · {filteredReports.length} shown · expired &amp; older reports are in <strong className="text-[#00271D]">Collections</strong>
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -386,7 +413,6 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
           <option value="VERIFIED">Verified</option>
           <option value="DISPATCHED">Dispatched</option>
           <option value="DISMISSED">Dismissed</option>
-          <option value="EXPIRED">Expired</option>
           <option value="DONE">Done / Completed</option>
         </select>
       </div>
@@ -440,9 +466,10 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
         ) : (
           locationGroups.map(group => {
             const isExpanded = expandedGroups[group.id] !== false; // default open
-            const firstReport = group.reports[0];
             const unverifiedInGroup = group.reports.filter(r => !r.isVerified && r.status !== 'DISMISSED');
-            const isGroupDispatched = group.reports.length > 0 && group.reports.every(r => r.status === 'DISPATCHED' || r.status === 'COLLECTED' || r.status === 'RESOLVED');
+            const pendingInGroup = group.reports.filter(r => r.status === 'PENDING');
+            const dispatchedInGroup = group.reports.some(r => r.status === 'DISPATCHED');
+            const canDispatch = pendingInGroup.length > 0;
             const assignedMrfName = group.reports.find(r => r.assignedMrfName)?.assignedMrfName;
 
             // Category styling for bin stream header
@@ -495,7 +522,20 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                       </button>
                     )}
 
-                    {isGroupDispatched ? (
+                    {canDispatch ? (
+                      <button
+                        onClick={() => setDispatchModalReport(pendingInGroup[0])}
+                        disabled={unverifiedInGroup.length > 0}
+                        title={unverifiedInGroup.length > 0 ? 'Verify all reports first' : 'Dispatch MRF collector'}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5 ${
+                          unverifiedInGroup.length > 0
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                            : 'bg-[#1D61E8] hover:bg-blue-700 text-white shadow-blue-500/20 cursor-pointer'
+                        }`}
+                      >
+                        <Send size={13} /> Dispatch Collector
+                      </button>
+                    ) : dispatchedInGroup ? (
                       <button
                         disabled
                         className="px-4 py-2 rounded-xl bg-emerald-500/15 text-emerald-900 border border-emerald-300 text-xs font-black shadow-xs flex items-center gap-1.5 cursor-not-allowed opacity-90"
@@ -504,12 +544,9 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                         Dispatched {assignedMrfName ? `(${assignedMrfName})` : ''}
                       </button>
                     ) : (
-                      <button
-                        onClick={() => setDispatchModalReport(firstReport)}
-                        className="px-4 py-2 rounded-xl bg-[#1D61E8] hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Send size={13} /> Dispatch Collector
-                      </button>
+                      <span className="px-4 py-2 rounded-xl bg-gray-100 text-gray-500 border border-gray-200 text-xs font-black flex items-center gap-1.5">
+                        <CheckCircle2 size={13} /> Completed / Archived
+                      </span>
                     )}
 
                     <button
@@ -835,7 +872,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
                             ? '0 pts (Report Dismissed)'
                             : eyeModalReport.pointsAwardedAt
                               ? (eyeModalReport.pointsAwarded > 0 ? `+${eyeModalReport.pointsAwarded} pts` : 'No points awarded')
-                              : 'Pending verification'}
+                              : (eyeModalReport.isVerified ? 'Awaiting MRF collection' : 'Pending verification')}
                           {eyeModalReport.reporterRank != null && (
                             <span className="text-[9px] font-bold text-[#C69B26] bg-[#C69B26]/10 px-1.5 py-0.5 rounded-full">
                               Rank #{eyeModalReport.reporterRank}

@@ -4,7 +4,6 @@ import {
   Trash2,
   Layers,
   Activity,
-  Building2,
   Send,
   MapPin,
   Clock,
@@ -78,17 +77,6 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
               </div>
             </div>
           </div>
-
-          <div className="flex items-center gap-4 bg-white/80 border border-white/90 rounded-2xl px-6 py-4 shadow-sm shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00A77C]/15 text-[#00A77C] border border-[#00A77C]/30 shadow-xs">
-              <Building2 size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#00271D]/50">Assigned Department</p>
-              <p className="text-sm font-black text-[#00271D]">Science Hall</p>
-            </div>
-          </div>
-
         </div>
       </div>
 
@@ -164,7 +152,7 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
               <p className="text-xs font-bold text-[#00271D] mt-0.5 group-hover:text-sky-700 transition-colors">Average Response Time</p>
               <p className="text-[11px] text-[#00271D]/50 font-medium flex items-center gap-1">
                 <Zap size={11} className="text-[#00A77C]" />
-                <span>4 minutes faster than avg</span>
+                <span>Typical time to resolve a report</span>
               </p>
             </div>
             <div className="h-2 w-full bg-sky-100 rounded-full overflow-hidden">

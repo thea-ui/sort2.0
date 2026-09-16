@@ -32,6 +32,7 @@ interface LedgerSheetTableProps<T = any> {
   defaultPageSize?: number;
   hideIndex?: boolean;
   borderless?: boolean;
+  onRowClick?: (row: T) => void;
 }
 
 const alignClass = (a?: string) =>
@@ -46,6 +47,7 @@ export function LedgerSheetTable<T = any>({
   defaultPageSize = 15,
   hideIndex = false,
   borderless = false,
+  onRowClick,
 }: LedgerSheetTableProps<T>) {
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
   const [pageSize, setPageSize] = useState<number | 'all'>(defaultPageSize);
@@ -198,7 +200,8 @@ export function LedgerSheetTable<T = any>({
                 return (
                   <tr
                     key={getRowId(row, i)}
-                    className="hover:bg-slate-50/70 transition-colors"
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={`hover:bg-slate-50/70 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                   >
                     {!hideIndex && (
                       <td className="w-12 px-4 py-3.5 text-left text-slate-400 font-mono text-[11px] select-none sticky left-0 bg-white">

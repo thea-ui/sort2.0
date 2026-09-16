@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSchoolYear, SchoolYearLedger, LedgerReportRow, LedgerPointTxn } from '../../../hooks/useSchoolYear';
+import { useSchoolYear, SchoolYearLedger, LedgerReportRow, LedgerPointTxn, SchoolYear } from '../../../hooks/useSchoolYear';
 import { LedgerSheetTable, SheetColumn } from './LedgerSheetTable';
+import { SchoolYearDetailModal } from './SchoolYearDetailModal';
+import { EditSchoolYearModal } from './EditSchoolYearModal';
 import {
   FileSpreadsheet,
   RefreshCw,
@@ -14,6 +16,10 @@ import {
   Boxes,
   AlertTriangle,
   CalendarClock,
+  Upload,
+  Pencil,
+  Power,
+  Lock,
 } from 'lucide-react';
 
 interface AdminLedgerPageProps {
@@ -26,14 +32,6 @@ const peso = (n: number) =>
 const num = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
 const shortDate = (d: string) =>
   new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
-
-const INV_LABELS: Record<string, string> = {
-  STOCK_IN: 'Stock In',
-  STOCK_OUT: 'Stock Out',
-  ADJUSTMENT: 'Adjustment',
-  ROLLOVER_OPENING: 'Rollover Opening',
-  ROLLOVER_CLOSING: 'Rollover Closing',
-};
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -60,13 +58,29 @@ interface LedgerSheet {
 }
 
 export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, initialYearId }) => {
-  const { allSchoolYears, activeSchoolYear, getSchoolYearLedger } = useSchoolYear();
+  const {
+    allSchoolYears,
+    activeSchoolYear,
+    refresh: refreshYears,
+    updateSchoolYear,
+    activateSchoolYear,
+    importSchoolYears,
+    getSchoolYearLedger,
+  } = useSchoolYear();
+
   const [selectedId, setSelectedId] = useState<string | null>(initialYearId ?? null);
   const [ledger, setLedger] = useState<SchoolYearLedger | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sheetId, setSheetId] = useState('reports');
   const [search, setSearch] = useState('');
+
+  // Management state
+  const [showEdit, setShowEdit] = useState(false);
+  const [editTarget, setEditTarget] = useState<SchoolYear | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialYearId) setSelectedId(initialYearId);
@@ -91,6 +105,54 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
   useEffect(() => {
     if (selectedId) load(selectedId);
   }, [selectedId, load]);
+
+  const selectedYear = useMemo(
+    () => allSchoolYears.find((sy) => sy.id === selectedId) || (activeSchoolYear?.id === selectedId ? activeSchoolYear : null),
+    [allSchoolYears, selectedId, activeSchoolYear]
+  );
+
+  // ── Management handlers ──────────────────────────────────────────────
+
+  const handleEdit = async (id: string, data: { label?: string; startDate?: string; endDate?: string }) => {
+    await updateSchoolYear(id, data);
+    showToast?.('School year updated.');
+  };
+
+  const handleActivate = async (sy: SchoolYear) => {
+    if (!window.confirm(`Activate SY ${sy.label}? This will deactivate the current active year.`)) return;
+    setActionLoading(sy.id);
+    try {
+      await activateSchoolYear(sy.id);
+      showToast?.(`SY ${sy.label} is now active.`);
+    } catch (err: any) {
+      showToast?.(`Failed: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      const result = await importSchoolYears();
+      if (result?.supported === false) {
+        showToast?.(result.message || 'EnrollPro does not expose a school-year list. Create years manually.');
+      } else {
+        showToast?.(result?.message || `Imported school years: ${result?.created ?? 0} created, ${result?.updated ?? 0} updated.`);
+      }
+    } catch (err: any) {
+      showToast?.(`Import failed: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    await refreshYears();
+    if (selectedId) await load(selectedId);
+  };
+
+  // ── Ledger sheets ────────────────────────────────────────────────────
 
   const sheets: LedgerSheet[] = useMemo(() => {
     if (!ledger) return [];
@@ -171,18 +233,6 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
         ] as SheetColumn<any>[],
         rows: L.market.snapshots,
       },
-      {
-        id: 'inventory', label: 'Inventory', icon: Boxes, minWidth: '820px',
-        columns: [
-          { key: 'date', label: 'Date', value: (t: any) => t.createdAt, render: (t: any) => shortDate(t.createdAt) },
-          { key: 'item', label: 'Item', value: (t: any) => t.itemName || '—', render: (t: any) => <span className="font-semibold">{t.itemName || '—'}</span> },
-          { key: 'type', label: 'Type', value: (t: any) => INV_LABELS[t.type] || t.type },
-          { key: 'qty', label: 'Qty', align: 'right', value: (t: any) => t.quantity },
-          { key: 'unit', label: 'Unit', value: (t: any) => t.unit || '' },
-          { key: 'notes', label: 'Notes', value: (t: any) => t.notes || '' },
-        ] as SheetColumn<any>[],
-        rows: L.inventory.transactions,
-      },
     ];
   }, [ledger]);
 
@@ -238,49 +288,49 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <span className="text-[10px] font-bold text-[#C69B26] bg-[#C69B26]/10 border border-[#C69B26]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-            Transparency Ledger
+            Academic Administration
           </span>
           <h3 className="text-2xl font-heading font-black text-[#00271D] tracking-tight mt-1.5 flex items-center gap-2">
             <FileSpreadsheet size={24} className="text-[#C69B26]" />
-            School Year Ledger
+            School Years
           </h3>
           <p className="text-xs text-[#00271D]/50 mt-0.5">
-            Detailed, per-year workbook of reports, points, sales, stock, and inventory.
+            Per-year ledger of reports, points, sales, and stock — plus year lifecycle management.
           </p>
         </div>
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
-            <CalendarClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00271D]/40" />
+            <CalendarClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00271D]/40 pointer-events-none" />
             <select
               value={selectedId || ''}
               onChange={(e) => setSelectedId(e.target.value)}
               className="pl-8 pr-8 py-2 rounded-xl border border-[#00271D]/10 bg-white text-xs font-bold text-[#00271D] outline-none focus:border-[#00A77C] cursor-pointer appearance-none"
+              aria-label="Select school year"
             >
               {allSchoolYears.map((sy) => (
                 <option key={sy.id} value={sy.id}>
-                  SY {sy.label}{sy.isActive ? ' (Active)' : sy.isArchived ? ' (Archived)' : ''}
+                  SY {sy.label}{sy.isActive ? ' (Active)' : sy.isArchived ? ' (Archived)' : ' (Inactive)'}
                 </option>
               ))}
               {allSchoolYears.length === 0 && <option value="">No school years</option>}
             </select>
           </div>
 
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00271D]/40" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search rows…"
-              className="pl-8 pr-3 py-2 rounded-xl border border-[#00271D]/10 bg-white text-xs text-[#00271D] outline-none focus:border-[#00A77C] w-44"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={handleImport}
+            disabled={importing}
+            className="px-3 py-2 rounded-xl bg-white border border-[#00271D]/10 text-xs font-bold text-[#00271D]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Fetch all school years from EnrollPro (sync only — never activates or rolls over)"
+          >
+            <Upload size={13} className={importing ? 'animate-pulse' : ''} /> {importing ? 'Syncing…' : 'Sync from EnrollPro'}
+          </button>
 
           <button
             type="button"
-            onClick={() => selectedId && load(selectedId)}
+            onClick={handleRefreshAll}
             disabled={loading}
             className="px-3 py-2 rounded-xl bg-white border border-[#00271D]/10 text-xs font-bold text-[#00271D]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
@@ -297,6 +347,75 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
           </button>
         </div>
       </div>
+
+      {/* Year lifecycle banner */}
+      {selectedYear && (
+        <div className="bg-gradient-to-br from-[#00271D] via-[#003a2b] to-[#00271D] rounded-3xl p-5 text-white relative overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #00A77C 0%, transparent 50%), radial-gradient(circle at 80% 20%, #00A77C 0%, transparent 50%)' }} />
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                  selectedYear.isActive ? 'bg-[#00A77C] text-white'
+                  : selectedYear.isArchived ? 'bg-white/15 text-white/70'
+                  : 'bg-amber-400 text-[#00271D]'
+                }`}>
+                  {selectedYear.isActive ? 'Active' : selectedYear.isArchived ? 'Archived' : 'Inactive'}
+                </span>
+                {selectedYear.isArchived && (
+                  <span className="text-[9px] font-bold text-white/50 flex items-center gap-1"><Lock size={9} /> Read-only</span>
+                )}
+                {selectedYear.enrollproId && (
+                  <span className="text-[9px] font-bold text-white/50">EnrollPro #{selectedYear.enrollproId}</span>
+                )}
+              </div>
+              <h2 className="text-2xl font-heading font-black mt-2">SY {selectedYear.label}</h2>
+              <div className="flex items-center gap-3 mt-1.5 text-white/60 text-xs flex-wrap">
+                <span>
+                  {new Date(selectedYear.startDate).toLocaleDateString()} — {new Date(selectedYear.endDate).toLocaleDateString()}
+                </span>
+                {selectedYear._count && (
+                  <>
+                    <span>·</span>
+                    <span>{selectedYear._count.reports} reports</span>
+                    <span>·</span>
+                    <span>{selectedYear._count.saleTransactions} sales</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setDetailId(selectedYear.id)}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors"
+              >
+                Details
+              </button>
+              {!selectedYear.isActive && !selectedYear.isArchived && (
+                <button
+                  type="button"
+                  onClick={() => { setEditTarget(selectedYear); setShowEdit(true); }}
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5"
+                >
+                  <Pencil size={12} /> Edit
+                </button>
+              )}
+              {!selectedYear.isActive && !selectedYear.isArchived && (
+                <button
+                  type="button"
+                  onClick={() => handleActivate(selectedYear)}
+                  disabled={actionLoading === selectedYear.id}
+                  className="px-3.5 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Power size={12} /> Activate
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -318,6 +437,20 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
 
       {ledger && (
         <>
+          {/* Search */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:flex-none">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00271D]/40" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search rows…"
+                className="pl-8 pr-3 py-2 rounded-xl border border-[#00271D]/10 bg-white text-xs text-[#00271D] outline-none focus:border-[#00A77C] w-full sm:w-64"
+              />
+            </div>
+          </div>
+
           {/* KPI strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {kpis.map((k) => (
@@ -398,6 +531,19 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
           </div>
         </>
       )}
+
+      {/* ── Modals ── */}
+      <EditSchoolYearModal
+        isOpen={showEdit}
+        schoolYear={editTarget}
+        onClose={() => { setShowEdit(false); setEditTarget(null); }}
+        onSubmit={handleEdit}
+      />
+
+      <SchoolYearDetailModal
+        schoolYearId={detailId}
+        onClose={() => setDetailId(null)}
+      />
     </div>
   );
 };

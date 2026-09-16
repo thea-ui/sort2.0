@@ -440,31 +440,6 @@ Table user_point_snapshots {
   }
 }
 
-Table mrf_inventory_items {
-  id varchar [pk]
-  name varchar
-  category varchar
-  description varchar
-  unit varchar
-  quantity double [default: 0]
-  min_threshold double
-  condition varchar [default: 'GOOD']
-  is_persistent boolean [default: false]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table mrf_inventory_transactions {
-  id varchar [pk]
-  item_id varchar [ref: > mrf_inventory_items.id]
-  school_year_id varchar [ref: > school_years.id]
-  type varchar
-  quantity double
-  notes varchar
-  performed_by varchar
-  created_at timestamp
-}
-
 Table enrollment_sync_logs {
   id varchar [pk]
   sync_type varchar

@@ -1,0 +1,2422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SORTv2 Database Data Dictionary</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00271D;
+      --accent: #00A77C;
+      --bg: #F9F3F0;
+      --card-bg: #FFFFFF;
+      --text: #00271D;
+      --text-muted: #526661;
+      --border: #E2E8F0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+    .header-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 20px -2px rgba(0, 39, 29, 0.05);
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #E6F6F2;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .info-item strong {
+      display: block;
+      color: var(--primary);
+      margin-bottom: 2px;
+    }
+    .table-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 28px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+      page-break-inside: avoid;
+    }
+    .table-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .table-tag {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      background: #E6F6F2;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .table-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+    th {
+      background: #FAF8F5;
+      color: var(--primary);
+      font-weight: 600;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #F1F5F9;
+      color: #334155;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: #F8FAFC;
+    }
+    .field-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .type-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: #0E7490;
+      background: #ECFEFF;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .table-note {
+      margin-top: 14px;
+      font-size: 13px;
+      font-style: italic;
+      color: var(--text-muted);
+    }
+    .actions-bar {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-secondary {
+      background: #FFFFFF;
+      color: var(--primary);
+      border: 1px solid var(--border);
+    }
+    @media print {
+      body { background: #FFFFFF; padding: 0; }
+      .actions-bar { display: none; }
+      .header-card, .table-section { border: none; box-shadow: none; padding: 12px 0; margin-bottom: 20px; }
+      th { background: #F1F5F9 !important; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="actions-bar">
+      <button onclick="window.print()" class="btn btn-primary">🖨️ Print / Save as PDF</button>
+    </div>
+    
+    <header class="header-card">
+      <span class="badge">Official Technical Specification</span>
+      <h1>SORTv2 Database Data Dictionary</h1>
+      <p class="subtitle">Smart Operations & Resource Tracking System — Relational Schema & Table Documentation for Capstone / Thesis</p>
+      
+      <div class="info-grid">
+        <div class="info-item">
+          <strong>Database Engine</strong>
+          PostgreSQL 15+
+        </div>
+        <div class="info-item">
+          <strong>ORM Framework</strong>
+          Prisma ORM 6.4
+        </div>
+        <div class="info-item">
+          <strong>Primary Keys</strong>
+          UUIDv4 (36 chars)
+        </div>
+        <div class="info-item">
+          <strong>Timestamp Standard</strong>
+          ISO 8601 (UTC)
+        </div>
+      </div>
+    </header>
+
+<section class="table-section">
+<div class="table-title">Table 5: User <span class="table-tag">users</span></div>
+<p class="table-desc">Stores user profiles for all platform actors across campus roles (Student, Teacher, MRF Personnel, System Administrator). Handles SIS synchronization with EnrollPro, authentication credentials, and live gamification balances.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique identifier for the user account</td>
+</tr>
+<tr>
+<td class="field-name">name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Full legal name of the user (e.g., "CASTILLO, ERIKA AQUINO")</td>
+</tr>
+<tr>
+<td class="field-name">email</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255 (Unique)</td>
+<td>School or personal contact email address used for login</td>
+</tr>
+<tr>
+<td class="field-name">password_hash</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>Nullable</td>
+<td>Cryptographic hash of the user password (bcrypt, 10 salt rounds)</td>
+</tr>
+<tr>
+<td class="field-name">employee_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100 (Unique)</td>
+<td>Unique campus identifier (DepEd LRN for students, Employee No. for staff)</td>
+</tr>
+<tr>
+<td class="field-name">role</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>Role</td>
+<td>Access permission tier (STUDENT, TEACHER, MRF, ADMIN)</td>
+</tr>
+<tr>
+<td class="field-name">points</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>Current spendable / redeemable gamification points balance</td>
+</tr>
+<tr>
+<td class="field-name">warnings_count</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>Cumulative active disciplinary warnings issued</td>
+</tr>
+<tr>
+<td class="field-name">account_status</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>AccountStatus</td>
+<td>Account standing (ACTIVE, SUSPENDED)</td>
+</tr>
+<tr>
+<td class="field-name">suspended_until</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Timestamp until which account access is restricted</td>
+</tr>
+<tr>
+<td class="field-name">classroom_section</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100, Nullable</td>
+<td>Assigned advisory classroom or homeroom section</td>
+</tr>
+<tr>
+<td class="field-name">certificates</td>
+<td><span class="type-badge">TEXT[]</span></td>
+<td>Array</td>
+<td>Array of earned achievement certificate template keys</td>
+</tr>
+<tr>
+<td class="field-name">sync_source</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>SyncSource</td>
+<td>Origin of user profile (LOCAL, ENROLLPRO)</td>
+</tr>
+<tr>
+<td class="field-name">enrollpro_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100, Unique, Nullable</td>
+<td>Remote primary key in EnrollPro SIS database</td>
+</tr>
+<tr>
+<td class="field-name">enrollpro_lrn</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>12, Unique, Nullable</td>
+<td>Official 12-digit DepEd Learner Reference Number</td>
+</tr>
+<tr>
+<td class="field-name">grade_level</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50, Nullable</td>
+<td>Educational grade level (e.g., "Grade 10", "Faculty")</td>
+</tr>
+<tr>
+<td class="field-name">section_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100, Nullable</td>
+<td>Section designation name from official enrollment register</td>
+</tr>
+<tr>
+<td class="field-name">academic_program</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100, Nullable</td>
+<td>Academic curriculum track or department (e.g., "Junior High School", "TVL-ICT")</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Nullable</td>
+<td>Current active school year foreign identifier from EnrollPro</td>
+</tr>
+<tr>
+<td class="field-name">school_year_label</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50, Nullable</td>
+<td>Text label of active school year (e.g., "2026-2027")</td>
+</tr>
+<tr>
+<td class="field-name">is_temporarily_enrolled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: false</td>
+<td>Flag indicating probationary or incomplete document enrollment</td>
+</tr>
+<tr>
+<td class="field-name">enrollment_status</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50, Nullable</td>
+<td>Current SIS standing (e.g., "Enrolled", "Transferred Out")</td>
+</tr>
+<tr>
+<td class="field-name">portal_account_active</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Flag controlling student portal login eligibility</td>
+</tr>
+<tr>
+<td class="field-name">archived_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Timestamp when record was archived during academic rollover</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Record creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Record last modification timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 5 serves as the central identity registry for SORTv2. It seamlessly mirrors SIS student enrollment data from EnrollPro while preserving local authentication tokens, gamified eco-points, and behavioral warning histories. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 6: Report <span class="table-tag">reports</span></div>
+<p class="table-desc">Functions as the core incident registry for environmental waste issues and damaged campus assets. Tracks coordinates, photographic proof, triage status, and assigned cleanup personnel.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique report identifier</td>
+</tr>
+<tr>
+<td class="field-name">title</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Headline summary of the waste or asset report</td>
+</tr>
+<tr>
+<td class="field-name">description</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Detailed contextual notes describing the incident</td>
+</tr>
+<tr>
+<td class="field-name">status</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>ReportStatus</td>
+<td>Workflow lifecycle state (PENDING, DISPATCHED, COLLECTED, RESOLVED, DISMISSED)</td>
+</tr>
+<tr>
+<td class="field-name">urgency</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>Urgency</td>
+<td>Priority assessment (LOW, MEDIUM, HIGH)</td>
+</tr>
+<tr>
+<td class="field-name">category</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>WasteCategory</td>
+<td>Waste classification (RECYCLABLE, BIODEGRADABLE, NON_BIODEGRADABLE, HAZARDOUS)</td>
+</tr>
+<tr>
+<td class="field-name">lat</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Geographic latitude coordinate of incident site</td>
+</tr>
+<tr>
+<td class="field-name">lng</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Geographic longitude coordinate of incident site</td>
+</tr>
+<tr>
+<td class="field-name">location_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Human-readable campus site (e.g., "Science Building 2nd Floor")</td>
+</tr>
+<tr>
+<td class="field-name">location_key</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Standardized location identifier for aggregation and hotspot analytics</td>
+</tr>
+<tr>
+<td class="field-name">reporter_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> users.id)</td>
+<td>Foreign key identifying the student or teacher who filed the report</td>
+</tr>
+<tr>
+<td class="field-name">points_awarded</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>Total gamification points granted upon successful resolution</td>
+</tr>
+<tr>
+<td class="field-name">points_awarded_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Timestamp when incentive points were credited to reporter</td>
+</tr>
+<tr>
+<td class="field-name">image_url</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>Nullable</td>
+<td>URL or Base64 storage pointer of uploaded photographic evidence</td>
+</tr>
+<tr>
+<td class="field-name">weight_collected</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>Nullable</td>
+<td>Measured weight in kilograms (kg) of waste recovered</td>
+</tr>
+<tr>
+<td class="field-name">is_verified</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: false</td>
+<td>Verification status confirmed by MRF personnel or admin</td>
+</tr>
+<tr>
+<td class="field-name">report_type</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>ReportType</td>
+<td>Incident classification (WASTE, ASSET)</td>
+</tr>
+<tr>
+<td class="field-name">assigned_mrf_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> users.id, Nullable)</td>
+<td>Foreign key identifying MRF staff member assigned to resolve</td>
+</tr>
+<tr>
+<td class="field-name">reporter_rank</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Nullable</td>
+<td>Campus leaderboard rank of the reporter at time of submission</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> school_years.id, Nullable)</td>
+<td>Academic school year during which the incident occurred</td>
+</tr>
+<tr>
+<td class="field-name">completed_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Timestamp of cleanup verification and ticket closure</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Timestamp when the report was submitted</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Timestamp of last report status update</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 6 captures the complete lifecycle of campus environmental issues. Linking physical coordinates with measured collected kilograms (`weight_collected`) enables quantitative reporting on campus waste diversion and carbon footprint reduction. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 7: CampusNews <span class="table-tag">campus_news</span></div>
+<p class="table-desc">Manages announcements, sustainability drives, and environmental bulletins broadcast across the campus web and mobile dashboards.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique news bulletin identifier</td>
+</tr>
+<tr>
+<td class="field-name">title</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Headline title of the announcement</td>
+</tr>
+<tr>
+<td class="field-name">body</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Comprehensive text content or announcement details</td>
+</tr>
+<tr>
+<td class="field-name">tag</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Category badge label (e.g., "Clean Up", "Drive", "Advisory")</td>
+</tr>
+<tr>
+<td class="field-name">tag_color</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>CSS/Tailwind accent badge color class for category tag</td>
+</tr>
+<tr>
+<td class="field-name">icon_color</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>UI icon palette color styling</td>
+</tr>
+<tr>
+<td class="field-name">is_published</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Visibility toggle controlling public display to students</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Announcement publication timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Timestamp of last bulletin revision</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 7 keeps the student body informed on upcoming collection dates, campus eco-drives, and zero-waste policy directives. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 8: AssetCategory <span class="table-tag">asset_categories</span></div>
+<p class="table-desc">Defines standardized campus property categories for reporting damaged or unserviceable school assets (e.g., Furniture, IT Equipment, Electrical Fixtures).</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique category identifier</td>
+</tr>
+<tr>
+<td class="field-name">name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Display name of the asset category</td>
+</tr>
+<tr>
+<td class="field-name">code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Unique)</td>
+<td>System key code (e.g., "FURNITURE", "ELECTRONICS")</td>
+</tr>
+<tr>
+<td class="field-name">enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Active status toggle for form dropdowns</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Record creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last updated timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 8 provides high-level categorization to route school facility repairs to appropriate custodial and maintenance staff. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 9: ItemPreset <span class="table-tag">item_presets</span></div>
+<p class="table-desc">Stores specific asset items under an `AssetCategory` to accelerate reporting through standardized tap-to-select interface chips.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique item preset identifier</td>
+</tr>
+<tr>
+<td class="field-name">category_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> asset_categories.id)</td>
+<td>Foreign key linking item to its parent asset category</td>
+</tr>
+<tr>
+<td class="field-name">name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Specific asset name (e.g., "Armchair", "Ceiling Fan", "Fluorescent Bulb")</td>
+</tr>
+<tr>
+<td class="field-name">enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Active status toggle for student submission view</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Record creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last updated timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 9 standardizes equipment vocabulary, preventing duplicate user-entered synonyms for common school furnishings. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 10: CampusLocation <span class="table-tag">campus_locations</span></div>
+<p class="table-desc">Manages geographical map coordinate markers, waste collection hubs, and indoor facilities across the campus blueprint. ### 10A: CampusLocation (`campus_locations`)</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique location identifier</td>
+</tr>
+<tr>
+<td class="field-name">code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Unique)</td>
+<td>Standard alphanumeric site code (e.g., "BIN-LOC-01")</td>
+</tr>
+<tr>
+<td class="field-name">name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Campus site name (e.g., "Gymnasium North Gate")</td>
+</tr>
+<tr>
+<td class="field-name">status</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Default: "Available")</td>
+<td>Operational status of the station</td>
+</tr>
+<tr>
+<td class="field-name">x</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Normalized X coordinate percentage on campus blueprint</td>
+</tr>
+<tr>
+<td class="field-name">y</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Normalized Y coordinate percentage on campus blueprint</td>
+</tr>
+<tr>
+<td class="field-name">streams</td>
+<td><span class="type-badge">JSON</span></td>
+<td>-</td>
+<td>Supported waste stream bins present (Biodegradable, Recyclable, etc.)</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Registration timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last location update timestamp</td>
+</tr>
+<tr>
+<td class="field-name">Field Name</td>
+<td><span class="type-badge">Data Type</span></td>
+<td>Length / Constraint</td>
+<td>Description</td>
+</tr>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique room identifier</td>
+</tr>
+<tr>
+<td class="field-name">name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100 (Unique)</td>
+<td>Room name or number (e.g., "Room 204", "Science Lab A")</td>
+</tr>
+<tr>
+<td class="field-name">building</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100, Nullable</td>
+<td>Building name housing the room</td>
+</tr>
+<tr>
+<td class="field-name">enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Active toggle for room selector</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Registration timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last modification timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">### 10B: RoomLocation (`room_locations`) Tables 10A and 10B govern campus spatial geometry, enabling interactive heatmap visualizers and routing drivers. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 11: SystemSetting <span class="table-tag">system_settings</span></div>
+<p class="table-desc">Houses global administrative configuration constants, point multiplier formulas, disciplinary policies, and operational thresholds.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (PK, Default: "default_setting")</td>
+<td>Singleton setting identifier</td>
+</tr>
+<tr>
+<td class="field-name">points_per_report</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 50</td>
+<td>Baseline eco-points awarded per verified report</td>
+</tr>
+<tr>
+<td class="field-name">points_per_kg_recyclable</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 10</td>
+<td>Bonus points awarded per kilogram of recyclable waste collected</td>
+</tr>
+<tr>
+<td class="field-name">warning_threshold</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 3</td>
+<td>Warning count before automated account suspension</td>
+</tr>
+<tr>
+<td class="field-name">certificate_point_threshold</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 500</td>
+<td>Points required to unlock high-tier certificates</td>
+</tr>
+<tr>
+<td class="field-name">quarter_gate_active</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: false</td>
+<td>Restricts reporting to active academic quarter windows</td>
+</tr>
+<tr>
+<td class="field-name">smart_sync_enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Enables automatic background synchronization with EnrollPro</td>
+</tr>
+<tr>
+<td class="field-name">blueprint_preset</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50, Default: "DEFAULT"</td>
+<td>Active campus layout graphic schema preset</td>
+</tr>
+<tr>
+<td class="field-name">blueprint_url</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>Nullable</td>
+<td>Static vector or raster URL of campus layout map</td>
+</tr>
+<tr>
+<td class="field-name">max_unverified_reports</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 3</td>
+<td>Max pending reports allowed per user to prevent spam</td>
+</tr>
+<tr>
+<td class="field-name">dismiss_point_penalty</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 10</td>
+<td>Point deduction assessed for rejected non-valid reports</td>
+</tr>
+<tr>
+<td class="field-name">false_report_point_penalty</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 50</td>
+<td>Point penalty applied for verified fraudulent reports</td>
+</tr>
+<tr>
+<td class="field-name">warning_auto_deduct_amount</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 10</td>
+<td>Points deducted automatically on formal disciplinary warning</td>
+</tr>
+<tr>
+<td class="field-name">suspension_duration_hours</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 24</td>
+<td>Standard lockout duration in hours for suspended users</td>
+</tr>
+<tr>
+<td class="field-name">rewards_reserve_percent</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 20</td>
+<td>Percentage of recycling revenue allocated to student prize pool</td>
+</tr>
+<tr>
+<td class="field-name">default_vendor_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Default registered recycling contractor buyer</td>
+</tr>
+<tr>
+<td class="field-name">bin_reset_enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Automated daily schedule resetting bin capacity status</td>
+</tr>
+<tr>
+<td class="field-name">bin_reset_time</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>10, Default: "18:00"</td>
+<td>Scheduled 24-hour time of daily bin capacity reset</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Timestamp when system policies were last adjusted</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 11 centralizes administrative switches, allowing system coordinators to tune gamification mechanics dynamically without code recompilation. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 12: WasteType <span class="table-tag">waste_types</span></div>
+<p class="table-desc">Stores environmental taxonomy for waste categorization, including color-coded signage standards and sorting instructions.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique waste type identifier</td>
+</tr>
+<tr>
+<td class="field-name">name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Category label (e.g., "Recyclable Plastics", "Biodegradable")</td>
+</tr>
+<tr>
+<td class="field-name">code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Unique)</td>
+<td>System key code (e.g., "RECYCLABLE", "HAZARDOUS")</td>
+</tr>
+<tr>
+<td class="field-name">description</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Sorting guidance guidelines for students</td>
+</tr>
+<tr>
+<td class="field-name">hex_color</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>20</td>
+<td>Official HEX color code used for UI tags and campus signage</td>
+</tr>
+<tr>
+<td class="field-name">enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Visibility flag in selection interfaces</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Record creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last updated timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 12 enforces DepEd and RA 9003 environmental compliance guidelines by strictly standardizing waste classifications. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 13: UrgencyLevel <span class="table-tag">urgency_levels</span></div>
+<p class="table-desc">Defines severity levels, triage urgency, and Service Level Agreement (SLA) response deadlines for custodial dispatches.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique urgency level identifier</td>
+</tr>
+<tr>
+<td class="field-name">level</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Display level name (e.g., "Low", "Medium", "High", "Critical")</td>
+</tr>
+<tr>
+<td class="field-name">code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Unique)</td>
+<td>Enumerated key code</td>
+</tr>
+<tr>
+<td class="field-name">sla_hours</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 24</td>
+<td>Target turnaround hours allowed before ticket escalates</td>
+</tr>
+<tr>
+<td class="field-name">description</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Criteria determining when this priority level applies</td>
+</tr>
+<tr>
+<td class="field-name">badge_style</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Tailwind CSS class defining badge styling</td>
+</tr>
+<tr>
+<td class="field-name">enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Active toggle</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Record creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last update timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 13 ensures custodial staff address health and safety hazards (e.g., toxic waste, shattered glass) before routine cleanups. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 14: AssetCondition <span class="table-tag">asset_conditions</span></div>
+<p class="table-desc">Defines standardized quality assessment states for campus assets and furniture recovered during operations.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique condition code identifier</td>
+</tr>
+<tr>
+<td class="field-name">name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Condition name (e.g., "Serviceable", "Damaged", "Unrepairable")</td>
+</tr>
+<tr>
+<td class="field-name">code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Unique)</td>
+<td>Unique condition key code</td>
+</tr>
+<tr>
+<td class="field-name">description</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Visual and structural criteria defining the condition</td>
+</tr>
+<tr>
+<td class="field-name">badge_style</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>UI badge styling class</td>
+</tr>
+<tr>
+<td class="field-name">enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Active status toggle</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last updated timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 14 feeds MRF asset recovery pipelines, classifying whether recovered school property can be refurbished or condemned. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 15: PointHistory <span class="table-tag">point_histories</span></div>
+<p class="table-desc">Maintains an immutable financial-grade ledger of all point credits, reward redemptions, challenge awards, and penalty deductions.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique ledger transaction identifier</td>
+</tr>
+<tr>
+<td class="field-name">user_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> users.id)</td>
+<td>Foreign key identifying account receiving point transaction</td>
+</tr>
+<tr>
+<td class="field-name">amount</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Signed</td>
+<td>Points credited (positive) or deducted (negative)</td>
+</tr>
+<tr>
+<td class="field-name">reason</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Human-readable explanation (e.g., "Verified Waste Report #R-102")</td>
+</tr>
+<tr>
+<td class="field-name">report_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> reports.id, Unique, Nullable)</td>
+<td>Associated report generating the award</td>
+</tr>
+<tr>
+<td class="field-name">challenge_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> challenges.id, Nullable)</td>
+<td>Associated challenge completed</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> school_years.id, Nullable)</td>
+<td>Academic year when points were earned</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Transaction timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 15 guarantees auditability for gamification mechanics. Because points translate to certificates and honors, every point variance is verifiable. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 16: SchoolYear <span class="table-tag">school_years</span></div>
+<p class="table-desc">Manages academic calendar cycles, annual rollover state machines, historical data partitions, and year-end inventory freeze points.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique school year record identifier</td>
+</tr>
+<tr>
+<td class="field-name">enrollpro_id</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Unique, Nullable</td>
+<td>Remote school year key mapped from EnrollPro SIS</td>
+</tr>
+<tr>
+<td class="field-name">label</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Academic year display title (e.g., "2026-2027")</td>
+</tr>
+<tr>
+<td class="field-name">start_date</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>-</td>
+<td>Official start date of academic term</td>
+</tr>
+<tr>
+<td class="field-name">end_date</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>-</td>
+<td>Official graduation / conclusion date of academic term</td>
+</tr>
+<tr>
+<td class="field-name">is_active</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Current active year toggle (only one record active at a time)</td>
+</tr>
+<tr>
+<td class="field-name">is_archived</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: false</td>
+<td>Flag indicating year has completed final ledger rollover</td>
+</tr>
+<tr>
+<td class="field-name">archived_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Exact timestamp of historical freeze and archive execution</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>School year initialization timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 16 orchestrates annual academic rollovers, ensuring graduating student points snapshot properly while starting incoming cohorts fresh. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 17: WasteBin <span class="table-tag">waste_bins</span></div>
+<p class="table-desc">Maintains real-time operational status, geolocation coordinates, and volumetric fill percentages for waste receptacles installed campus-wide.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique waste bin receptacle identifier</td>
+</tr>
+<tr>
+<td class="field-name">name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Display name of bin unit (e.g., "Receptacle Gate 3 - Recyclable")</td>
+</tr>
+<tr>
+<td class="field-name">location_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Campus station landmark</td>
+</tr>
+<tr>
+<td class="field-name">fill_level</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>0 - 100 (%)</td>
+<td>Current estimated or sensor-measured capacity fill percentage</td>
+</tr>
+<tr>
+<td class="field-name">type</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>WasteCategory</td>
+<td>Waste stream accepted (RECYCLABLE, BIODEGRADABLE, etc.)</td>
+</tr>
+<tr>
+<td class="field-name">lat</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Latitude coordinate for map rendering</td>
+</tr>
+<tr>
+<td class="field-name">lng</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Longitude coordinate for map rendering</td>
+</tr>
+<tr>
+<td class="field-name">active_dispatch</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: false</td>
+<td>Flag indicating an active MRF dispatch is currently underway</td>
+</tr>
+<tr>
+<td class="field-name">last_emptied</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Timestamp when receptacle was last serviced and cleared</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Receptacle setup timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Receptacle status update timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 17 powers predictive collection routes, highlighting overflowing bins on the custodian dashboard before litter scatters. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 18: Offense <span class="table-tag">offenses</span></div>
+<p class="table-desc">Logs disciplinary infractions, false reporting incidents, and littering violations to uphold community accountability.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique offense record identifier</td>
+</tr>
+<tr>
+<td class="field-name">user_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> users.id)</td>
+<td>Offending student or personnel account</td>
+</tr>
+<tr>
+<td class="field-name">description</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Case details describing the violation or false report</td>
+</tr>
+<tr>
+<td class="field-name">severity</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>Severity</td>
+<td>Penalty category (WARNING, DEDUCT, SUSPENSION)</td>
+</tr>
+<tr>
+<td class="field-name">expires_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Expiration date of disciplinary sanction</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> school_years.id, Nullable)</td>
+<td>Academic year when offense occurred</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Incident booking timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 18 deters platform abuse, ensuring gamified point incentives are earned legitimately through honest environmental reporting. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 19: Challenge <span class="table-tag">challenges</span></div>
+<p class="table-desc">Manages gamified campus environmental challenges, cooperative recycling quests, and time-bounded sustainability drives.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique challenge identifier</td>
+</tr>
+<tr>
+<td class="field-name">code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Unique)</td>
+<td>Alphanumeric challenge reference code</td>
+</tr>
+<tr>
+<td class="field-name">title</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Quest headline (e.g., "Plastic Vanguard Quest")</td>
+</tr>
+<tr>
+<td class="field-name">description</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Instructions and rules to qualify for challenge reward</td>
+</tr>
+<tr>
+<td class="field-name">challenge_type</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>ChallengeType</td>
+<td>Metric evaluated (REPORT_COUNT, WEIGHT_COLLECTED, HAZARDOUS_REPORT)</td>
+</tr>
+<tr>
+<td class="field-name">points_awarded</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>-</td>
+<td>Bonus points granted to users upon quest completion</td>
+</tr>
+<tr>
+<td class="field-name">target</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>-</td>
+<td>Numerical threshold required to fulfill the challenge</td>
+</tr>
+<tr>
+<td class="field-name">is_active</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Quest activation status</td>
+</tr>
+<tr>
+<td class="field-name">icon_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Lucide icon symbol representation identifier</td>
+</tr>
+<tr>
+<td class="field-name">start_date</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Quest launch window start</td>
+</tr>
+<tr>
+<td class="field-name">end_date</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Quest deadline completion timestamp</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Creation timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 19 sparks friendly competition and cooperative teamwork among homeroom sections to clean up campus grounds. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 20: UserChallengeProgress <span class="table-tag">user_challenge_progress</span></div>
+<p class="table-desc">Tracks each student's progress and completion milestone for active challenges.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Progress record identifier</td>
+</tr>
+<tr>
+<td class="field-name">user_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> users.id)</td>
+<td>Student participating in challenge</td>
+</tr>
+<tr>
+<td class="field-name">challenge_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> challenges.id)</td>
+<td>Active challenge being tackled</td>
+</tr>
+<tr>
+<td class="field-name">current_count</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>Current accumulated tally toward target threshold</td>
+</tr>
+<tr>
+<td class="field-name">completed_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Timestamp when target criteria was accomplished</td>
+</tr>
+<tr>
+<td class="field-name">rewarded_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Timestamp when bonus points were credited</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Participation start timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last progress increment timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 20 ensures accurate tracking so students are fairly rewarded immediately upon hitting challenge goals. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 21: ChallengeContribution <span class="table-tag">challenge_contributions</span></div>
+<p class="table-desc">Maps verified reports to participating challenge quests, preventing double-counting while preserving an audit link.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique contribution identifier</td>
+</tr>
+<tr>
+<td class="field-name">user_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> users.id)</td>
+<td>Contributing student</td>
+</tr>
+<tr>
+<td class="field-name">challenge_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> challenges.id)</td>
+<td>Associated quest receiving contribution</td>
+</tr>
+<tr>
+<td class="field-name">report_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> reports.id)</td>
+<td>Specific verified environmental report submitted</td>
+</tr>
+<tr>
+<td class="field-name">value</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>Default: 1.0</td>
+<td>Metric weight contributed (e.g., 1 report or 3.5 kg)</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Timestamp of contribution recording</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 22: RecycleMarketStock <span class="table-tag">recycle_market_stocks</span></div>
+<p class="table-desc">Monitors the MRF's stored inventory of sorted recyclables, accumulation towards sale thresholds, and prevailing market prices.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique commodity stock identifier</td>
+</tr>
+<tr>
+<td class="field-name">category_code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Unique)</td>
+<td>Commodity key (e.g., "PET_BOTTLES", "CORRUGATED_CARDBOARD")</td>
+</tr>
+<tr>
+<td class="field-name">category_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Display name of the material</td>
+</tr>
+<tr>
+<td class="field-name">short_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Abbreviated label for cards and chips</td>
+</tr>
+<tr>
+<td class="field-name">threshold_limit_kg</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Minimum inventory in kg required before triggering commercial sale</td>
+</tr>
+<tr>
+<td class="field-name">market_price_per_kg</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Contracted salvage value price per kilogram (PHP)</td>
+</tr>
+<tr>
+<td class="field-name">accumulated_kg</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>Default: 0.0</td>
+<td>Current physical weight on hand in MRF warehouse</td>
+</tr>
+<tr>
+<td class="field-name">is_approved_for_sale</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: false</td>
+<td>Administrative authorization flag to proceed with vendor sale</td>
+</tr>
+<tr>
+<td class="field-name">approved_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>Authorization timestamp</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Initialization timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Balance update timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 22 turns waste management into a circular economy, tracking when enough recyclable plastic or metal has accumulated to sell to authorized recyclers. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 23: RecycleSaleTransaction <span class="table-tag">recycle_sale_transactions</span></div>
+<p class="table-desc">Records sales transactions when sorted materials from the MRF are sold to recycling vendors, funding sustainability drives and rewards.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Official transaction sales receipt identifier</td>
+</tr>
+<tr>
+<td class="field-name">category_code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Material category sold</td>
+</tr>
+<tr>
+<td class="field-name">category_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Material display name</td>
+</tr>
+<tr>
+<td class="field-name">weight_kg</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Total bulk weight in kg sold to vendor</td>
+</tr>
+<tr>
+<td class="field-name">market_price_kg</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Unit price per kilogram at point of sale (PHP)</td>
+</tr>
+<tr>
+<td class="field-name">total_revenue</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Total financial proceeds generated (weight_kg * market_price_kg)</td>
+</tr>
+<tr>
+<td class="field-name">buyer_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Corporate name of purchasing scrap or recycling partner</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> school_years.id, Nullable)</td>
+<td>Academic year when sale was completed</td>
+</tr>
+<tr>
+<td class="field-name">sold_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Sales execution timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 23 guarantees transparency for all revenue generated from campus recyclables, ensuring funds are properly audited. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 24: MrfAssetRecord <span class="table-tag">mrf_asset_records</span></div>
+<p class="table-desc">Catalogs recovered, repaired, or repurposed school property rescued from waste streams (e.g., repaired armchairs, salvageable electronic components).</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique asset record identifier</td>
+</tr>
+<tr>
+<td class="field-name">asset_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Name of salvaged or restored asset</td>
+</tr>
+<tr>
+<td class="field-name">category</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Category (Furniture, Electronics, Fixtures, Equipment, Other)</td>
+</tr>
+<tr>
+<td class="field-name">action</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Lifecycle action (RECOVERED, REPAIRED, DISPOSED)</td>
+</tr>
+<tr>
+<td class="field-name">quantity</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>Default: 1.0</td>
+<td>Number of units processed</td>
+</tr>
+<tr>
+<td class="field-name">unit</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>20, Default: "pcs"</td>
+<td>Unit designation</td>
+</tr>
+<tr>
+<td class="field-name">condition</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>Nullable</td>
+<td>Restored condition grade</td>
+</tr>
+<tr>
+<td class="field-name">source_report_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100, Nullable</td>
+<td>Original waste ticket whence item was rescued</td>
+</tr>
+<tr>
+<td class="field-name">location_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255, Nullable</td>
+<td>Target classroom or storage location</td>
+</tr>
+<tr>
+<td class="field-name">notes</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>Nullable</td>
+<td>Repair technician notes</td>
+</tr>
+<tr>
+<td class="field-name">performed_by</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255, Nullable</td>
+<td>Staff member who executed the salvage</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> school_years.id, Nullable)</td>
+<td>Academic year when asset was recovered</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Record creation timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">Table 24 proves the school's circular economy metrics by showing how many damaged desks and computers were repaired instead of trashed. ---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 25: PointRule <span class="table-tag">point_rules</span></div>
+<p class="table-desc">Maintains tier milestones and criteria for student rank progressions and graduation honor points.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique rule identifier</td>
+</tr>
+<tr>
+<td class="field-name">rank</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Unique</td>
+<td>Rank tier ordinal (1 = Bronze, 2 = Silver, etc.)</td>
+</tr>
+<tr>
+<td class="field-name">title</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Distinction title (e.g., "Eco-Citizen", "Sustainability Champion")</td>
+</tr>
+<tr>
+<td class="field-name">points_awarded</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>-</td>
+<td>Milestone points required or awarded</td>
+</tr>
+<tr>
+<td class="field-name">description</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Criteria and ecological duties associated with rank</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Revision timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 26: AcademicQuarter <span class="table-tag">academic_quarters</span></div>
+<p class="table-desc">Defines grading quarters (Q1, Q2, Q3, Q4) used for resetting seasonal leaderboards and evaluating student honors.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique quarter identifier</td>
+</tr>
+<tr>
+<td class="field-name">quarter_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Display name (e.g., "1st Grading Quarter")</td>
+</tr>
+<tr>
+<td class="field-name">quarter_code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50 (Unique)</td>
+<td>System key (e.g., "Q1", "Q2", "Q3", "Q4")</td>
+</tr>
+<tr>
+<td class="field-name">start_date</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Term calendar start date</td>
+</tr>
+<tr>
+<td class="field-name">end_date</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Term calendar end date</td>
+</tr>
+<tr>
+<td class="field-name">is_active</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: false</td>
+<td>Active quarter indicator flag</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Revision timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 27: UserPointSnapshot <span class="table-tag">user_point_snapshots</span></div>
+<p class="table-desc">Stores permanent historical snapshots of student point balances and ranks at the close of an academic school year.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Snapshot record identifier</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> school_years.id)</td>
+<td>Academic year being closed</td>
+</tr>
+<tr>
+<td class="field-name">user_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> users.id)</td>
+<td>Student whose balance is captured</td>
+</tr>
+<tr>
+<td class="field-name">closing_points</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>-</td>
+<td>Final accumulated point total at year end</td>
+</tr>
+<tr>
+<td class="field-name">rank</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Nullable</td>
+<td>Final campus rank achieved for the academic year</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Snapshot creation timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 28: MarketStockSnapshot <span class="table-tag">market_stock_snapshots</span></div>
+<p class="table-desc">Stores opening and closing balances of recyclable commodity stockpiles across academic year boundaries.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Stock snapshot identifier</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> school_years.id)</td>
+<td>Closed academic year reference</td>
+</tr>
+<tr>
+<td class="field-name">category_code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Commodity category key code</td>
+</tr>
+<tr>
+<td class="field-name">category_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Display name of recyclable stock</td>
+</tr>
+<tr>
+<td class="field-name">closing_kg</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>-</td>
+<td>Final inventory weight in kg on closing day</td>
+</tr>
+<tr>
+<td class="field-name">opening_kg</td>
+<td><span class="type-badge">DOUBLE PRECISION</span></td>
+<td>Default: 0.0</td>
+<td>Carried-forward opening inventory weight for next year</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Snapshot timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 29: UserSession <span class="table-tag">user_sessions</span></div>
+<p class="table-desc">Manages cryptographic refresh tokens, device footprints, and active session states for secure student and faculty logins.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique session session identifier</td>
+</tr>
+<tr>
+<td class="field-name">user_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> users.id)</td>
+<td>Account holding active session</td>
+</tr>
+<tr>
+<td class="field-name">refresh_token</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255 (Unique)</td>
+<td>Secure cryptographic refresh token string</td>
+</tr>
+<tr>
+<td class="field-name">device_info</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255, Nullable</td>
+<td>Browser user-agent and OS footprint</td>
+</tr>
+<tr>
+<td class="field-name">ip_address</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50, Nullable</td>
+<td>Origin IP address of client connection</td>
+</tr>
+<tr>
+<td class="field-name">expires_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>-</td>
+<td>Session token expiration timestamp</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Login session creation timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 30: TermCalendar <span class="table-tag">term_calendars</span></div>
+<p class="table-desc">Stores calendar terms synchronized directly from EnrollPro SIS for synchronized academic scheduling.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique term calendar identifier</td>
+</tr>
+<tr>
+<td class="field-name">enrollpro_id</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Unique</td>
+<td>Remote identifier in EnrollPro database</td>
+</tr>
+<tr>
+<td class="field-name">term_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Term label (e.g., "Semester 1", "Quarter 2")</td>
+</tr>
+<tr>
+<td class="field-name">term_code</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Term system code</td>
+</tr>
+<tr>
+<td class="field-name">start_date</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>-</td>
+<td>Official start date</td>
+</tr>
+<tr>
+<td class="field-name">end_date</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>-</td>
+<td>Official end date</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>-</td>
+<td>Associated EnrollPro school year identifier</td>
+</tr>
+<tr>
+<td class="field-name">school_year_label</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Display label for school year</td>
+</tr>
+<tr>
+<td class="field-name">is_active</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: false</td>
+<td>Active term indicator</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Registration timestamp</td>
+</tr>
+<tr>
+<td class="field-name">updated_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Auto-updated</td>
+<td>Last modification timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 31: EnrollmentSyncLog <span class="table-tag">enrollment_sync_logs</span></div>
+<p class="table-desc">Maintains an audit ledger of each automated student synchronization cycle with EnrollPro SIS.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique sync log identifier</td>
+</tr>
+<tr>
+<td class="field-name">sync_type</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Scope (FULL_SYNC, STUDENT_DELTA, SECTION_SYNC)</td>
+</tr>
+<tr>
+<td class="field-name">status</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>SyncStatus</td>
+<td>Execution outcome (SUCCESS, FAILED, PARTIAL)</td>
+</tr>
+<tr>
+<td class="field-name">records_pulled</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>Total student records retrieved from EnrollPro API</td>
+</tr>
+<tr>
+<td class="field-name">records_created</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>New user accounts created in SORTv2</td>
+</tr>
+<tr>
+<td class="field-name">records_updated</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>Existing student profiles updated with grade/section changes</td>
+</tr>
+<tr>
+<td class="field-name">records_deleted</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>Inactive or un-enrolled students archived</td>
+</tr>
+<tr>
+<td class="field-name">error_message</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>Nullable</td>
+<td>Error stack trace if connection or schema failed</td>
+</tr>
+<tr>
+<td class="field-name">message</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>Nullable</td>
+<td>Summary message of synchronization run</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Nullable</td>
+<td>School year processed</td>
+</tr>
+<tr>
+<td class="field-name">school_year_label</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50, Nullable</td>
+<td>Text label of processed school year</td>
+</tr>
+<tr>
+<td class="field-name">duration_ms</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Nullable</td>
+<td>Total execution duration in milliseconds</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Timestamp when sync completed</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 32: AuditLog <span class="table-tag">audit_logs</span></div>
+<p class="table-desc">Captures tamper-resistant activity logs of administrative actions, user permissions changes, and critical rollovers.</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique audit entry identifier</td>
+</tr>
+<tr>
+<td class="field-name">actor_name</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Name of user or system service performing the action</td>
+</tr>
+<tr>
+<td class="field-name">actor_role</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Role permissions of actor at time of event</td>
+</tr>
+<tr>
+<td class="field-name">action_type</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Action key (e.g., USER_SUSPENDED, LEDGER_ROLLOVER, POINT_ADJUSTMENT)</td>
+</tr>
+<tr>
+<td class="field-name">details</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>JSON or plaintext breakdown of state changes before and after</td>
+</tr>
+<tr>
+<td class="field-name">ip_address</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50, Nullable</td>
+<td>Network IP of actor</td>
+</tr>
+<tr>
+<td class="field-name">school_year_id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (FK -> school_years.id, Nullable)</td>
+<td>Academic year when event took place</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Exact timestamp of audit event</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">---</p>
+</section>
+<section class="table-section">
+<div class="table-title">Table 33: CalendarEvent <span class="table-tag">calendar_events</span></div>
+<p class="table-desc">Manages scheduled campus clean-up drives, recurring MRF maintenance routines, and legacy system sync milestones. ### 33A: CalendarEvent (`calendar_events`)</p>
+<div class="table-wrapper"><table>
+<thead><tr>
+<th>Field Name</th>
+<th>Data Type</th>
+<th>Length / Constraint</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique event identifier</td>
+</tr>
+<tr>
+<td class="field-name">title</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>255</td>
+<td>Headline event title (e.g., "Campus Tree Planting & Cleanup Drive")</td>
+</tr>
+<tr>
+<td class="field-name">date</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>50</td>
+<td>Formatted calendar date string</td>
+</tr>
+<tr>
+<td class="field-name">type</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>EventType</td>
+<td>Event category (COLLECTION, EVENT, MAINTENANCE)</td>
+</tr>
+<tr>
+<td class="field-name">description</td>
+<td><span class="type-badge">TEXT</span></td>
+<td>-</td>
+<td>Event objectives and participant guidance</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Event creation timestamp</td>
+</tr>
+<tr>
+<td class="field-name">Field Name</td>
+<td><span class="type-badge">Data Type</span></td>
+<td>Length / Constraint</td>
+<td>Description</td>
+</tr>
+<tr>
+<td class="field-name">id</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>36 (UUID, PK)</td>
+<td>Unique log identifier</td>
+</tr>
+<tr>
+<td class="field-name">system</td>
+<td><span class="type-badge">VARCHAR</span></td>
+<td>100</td>
+<td>Remote subsystem name</td>
+</tr>
+<tr>
+<td class="field-name">status</td>
+<td><span class="type-badge">ENUM</span></td>
+<td>SyncStatus</td>
+<td>Sync status (SUCCESS, FAILED, PARTIAL)</td>
+</tr>
+<tr>
+<td class="field-name">records_synced</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 0</td>
+<td>Number of records processed</td>
+</tr>
+<tr>
+<td class="field-name">created_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Default: now()</td>
+<td>Log timestamp</td>
+</tr>
+</tbody></table></div>
+<p class="table-note">### 33B: SyncLog (`sync_logs`) --- ## Entity Relationship Overview (Database Relational Map) 1. `users` 1-to-Many `reports`: Users create incident reports (`ReportedBy`) or resolve them as MRF crew (`AssignedToMRF`). 2. `users` 1-to-Many `point_histories`: Every point transaction credits or debits a user's balance. 3. `users` 1-to-Many `offenses`: Disciplinary infractions and warnings are tracked under a student's profile. 4. `challenges` 1-to-Many `user_challenge_progress`: Tracks individual and cooperative progress toward sustainability quotas. 5. `school_years` 1-to-Many `reports`, `point_histories`, `offenses`, `recycle_sale_transactions`: All operational data links directly to an academic year, allowing clean annual rollovers and archival queries.</p>
+</section>
+
+  </div>
+</body>
+</html>

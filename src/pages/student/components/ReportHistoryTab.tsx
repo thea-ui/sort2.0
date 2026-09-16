@@ -212,11 +212,11 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
                         {!rep.isVerified && rep.status === 'PENDING' ? (
                           <><Clock size={11} className="text-amber-600" /> Pending Admin Verification</>
                         ) : rep.isVerified && rep.status === 'PENDING' ? (
-                          <><CheckCircle2 size={11} className="text-emerald-600" /> {rep.pointsAwardedAt ? (rep.pointsAwarded > 0 ? 'Verified by Admin · Points Awarded' : 'Verified by Admin · No points awarded') : 'Verified by Admin'}</>
+                          <><CheckCircle2 size={11} className="text-emerald-600" /> {rep.pointsAwardedAt ? (rep.pointsAwarded > 0 ? 'Collected · Points Awarded' : 'Collected · No points awarded') : 'Verified · Awaiting MRF collection'}</>
                         ) : rep.status === 'DISPATCHED' ? (
-                          <><Truck size={11} className="text-indigo-600" /> Verified · Collector Dispatched ({rep.assignedMrfName || 'MRF Staff'})</>
+                          <><Truck size={11} className="text-indigo-600" /> Collector Dispatched — points after collection ({rep.assignedMrfName || 'MRF Staff'})</>
                         ) : isResolved ? (
-                          <><CheckCircle2 size={11} className="text-sky-600" /> Verified & Cleared by MRF</>
+                          <><CheckCircle2 size={11} className="text-sky-600" /> Collected by MRF · Points Awarded</>
                         ) : (
                           <><XCircle size={11} className="text-rose-600" /> Marked Invalid by Admin</>
                         )}

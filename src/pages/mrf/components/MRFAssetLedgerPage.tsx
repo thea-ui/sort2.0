@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiService } from '../../../services/api';
 import { useSchoolYear } from '../../../hooks/useSchoolYear';
 import { LedgerSheetTable, SheetColumn } from '../../admin/components/LedgerSheetTable';
+import { getAssetDisposition, ASSET_ACTION_GUIDANCE, AssetAction } from '../../../utils/assetDispositions';
 import {
   FileSpreadsheet,
   RefreshCw,
@@ -16,6 +18,11 @@ import {
   X,
   Loader2,
   CheckCircle2,
+  ChevronRight,
+  Hash,
+  User,
+  MapPin,
+  FileText,
 } from 'lucide-react';
 
 interface MRFAssetLedgerPageProps {
@@ -27,6 +34,7 @@ interface AssetRecord {
   assetName: string;
   category: string;
   action: string;
+  disposition?: string;
   quantity: number;
   unit: string;
   condition?: string;
@@ -49,12 +57,33 @@ const ACTION_META: Record<string, { label: string; badge: string }> = {
   DISPOSED: { label: 'Disposed', badge: 'bg-gray-100 text-gray-500 border-gray-200' },
 };
 
+const CONDITION_META: Record<string, { label: string; badge: string }> = {
+  GOOD: { label: 'Good', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  FAIR: { label: 'Fair', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
+  NEEDS_REPAIR: { label: 'Needs Repair', badge: 'bg-orange-50 text-orange-700 border-orange-200' },
+  DISPOSED: { label: 'Disposed', badge: 'bg-gray-100 text-gray-500 border-gray-200' },
+};
+
 const CATEGORIES = ['Furniture', 'Electronics', 'Fixtures', 'Equipment', 'Other'];
 const CONDITIONS = ['GOOD', 'FAIR', 'NEEDS_REPAIR', 'DISPOSED'];
 
+const UNKNOWN = 'Unknown';
+
 const shortDate = (d: string) =>
   new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+const longDate = (d: string) =>
+  new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 const num = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+
+const DetailRow: React.FC<{ icon: React.ComponentType<{ size?: number; className?: string }>; label: string; children: React.ReactNode }> = ({ icon: Icon, label, children }) => (
+  <div className="flex items-start gap-3 py-2.5 border-b border-gray-100 last:border-0">
+    <Icon size={14} className="text-[#00271D]/35 mt-0.5 shrink-0" />
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">{label}</p>
+      <div className="text-xs font-semibold text-[#00271D] mt-0.5 break-words">{children}</div>
+    </div>
+  </div>
+);
 
 export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToast }) => {
   const { allSchoolYears, activeSchoolYear } = useSchoolYear();
@@ -65,6 +94,7 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
   const [error, setError] = useState<string | null>(null);
   const [actionFilter, setActionFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
+  const [detailRecord, setDetailRecord] = useState<AssetRecord | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -116,36 +146,71 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
   }, [records, actionFilter, search]);
 
   const columns: SheetColumn<AssetRecord>[] = useMemo(() => [
-    { key: 'date', label: 'Date', value: (r) => r.createdAt, render: (r) => shortDate(r.createdAt) },
-    { key: 'asset', label: 'Asset', value: (r) => r.assetName, render: (r) => <span className="font-bold">{r.assetName}</span> },
-    { key: 'category', label: 'Category', value: (r) => r.category },
+    { key: 'date', label: 'Date', width: '92px', value: (r) => r.createdAt, render: (r) => <span className="text-[#00271D]/70">{shortDate(r.createdAt)}</span> },
     {
-      key: 'action', label: 'Action', value: (r) => ACTION_META[r.action]?.label || r.action,
-      render: (r) => (
-        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${ACTION_META[r.action]?.badge || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-          {ACTION_META[r.action]?.label || r.action}
+      key: 'asset', label: 'Asset', value: (r) => r.assetName,
+      render: (r) => <span className="font-bold block max-w-[200px] truncate" title={r.assetName}>{r.assetName}</span>,
+    },
+    { key: 'category', label: 'Category', value: (r) => r.category, render: (r) => <span className="text-[#00271D]/70">{r.category}</span> },
+    {
+      key: 'action', label: 'Action', value: (r) => r.disposition || ACTION_META[r.action]?.label || r.action,
+      render: (r) => {
+        const meta = ACTION_META[r.action];
+        const label = r.disposition || meta?.label || r.action;
+        return (
+          <span
+            className={`inline-block max-w-[190px] truncate align-middle px-2 py-0.5 rounded-full text-[9px] font-bold border ${meta?.badge || 'bg-gray-100 text-gray-600 border-gray-200'}`}
+            title={label}
+          >
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'qty', label: 'Qty', align: 'right', value: (r) => r.quantity,
+      render: (r) => <span>{num(r.quantity)} <span className="text-[#00271D]/40">{r.unit}</span></span>,
+      total: (rows) => num(rows.reduce((s, r) => s + r.quantity, 0)),
+    },
+    {
+      key: 'location', label: 'Location', value: (r) => r.locationName || '',
+      render: (r) => r.locationName
+        ? <span className="block max-w-[220px] truncate text-[#00271D]/70" title={r.locationName}>{r.locationName}</span>
+        : <span className="text-[#00271D]/25">—</span>,
+    },
+    {
+      key: 'view', label: '', width: '52px',
+      render: () => (
+        <span className="inline-flex items-center justify-end gap-1 text-[10px] font-bold text-[#00A77C]">
+          View <ChevronRight size={13} />
         </span>
       ),
     },
-    { key: 'qty', label: 'Qty', align: 'right', value: (r) => r.quantity, total: (rows) => num(rows.reduce((s, r) => s + r.quantity, 0)) },
-    { key: 'unit', label: 'Unit', value: (r) => r.unit },
-    { key: 'condition', label: 'Condition', value: (r) => r.condition || '' },
-    { key: 'source', label: 'Source Report', value: (r) => r.sourceReportId || '' },
-    { key: 'location', label: 'Location', value: (r) => r.locationName || '' },
-    { key: 'notes', label: 'Notes', value: (r) => r.notes || '' },
-    { key: 'by', label: 'Performed By', value: (r) => r.performedBy || '' },
   ], []);
 
   const exportCsv = () => {
     if (filteredRecords.length === 0) return;
-    const headers = columns.map((c) => c.label);
+    // Export the FULL dataset even though the on-screen table is slimmed down.
+    const exportRows = filteredRecords.map((r) => ({
+      Date: shortDate(r.createdAt),
+      Asset: r.assetName,
+      Category: r.category,
+      Action: r.disposition || ACTION_META[r.action]?.label || r.action,
+      Quantity: r.quantity,
+      Unit: r.unit,
+      Condition: CONDITION_META[r.condition || '']?.label || r.condition || '',
+      'Source Report': r.sourceReportId || '',
+      Location: r.locationName || '',
+      Notes: r.notes || '',
+      'Performed By': r.performedBy && r.performedBy !== UNKNOWN ? r.performedBy : '',
+    }));
+    const headers = Object.keys(exportRows[0]);
     const lines = [headers.join(',')];
-    for (const row of filteredRecords) {
+    for (const row of exportRows) {
       lines.push(
-        columns
-          .map((c) => {
-            const raw = c.value ? c.value(row) : '';
-            const s = String(raw ?? '');
+        headers
+          .map((h) => {
+            const s = String((row as Record<string, unknown>)[h] ?? '');
             return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
           })
           .join(',')
@@ -333,17 +398,111 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
               columns={columns}
               rows={filteredRecords}
               getRowId={(row) => row.id}
-              minWidth="1100px"
+              minWidth="820px"
               emptyMessage="No asset records yet. Click 'Record Asset' to log recovered, repaired, or disposed assets."
               borderless
+              onRowClick={(row) => setDetailRecord(row)}
             />
           </div>
         </>
       )}
 
+      {/* ── Asset Details Drawer (portaled above the app header) ── */}
+      {detailRecord && createPortal(
+        <div className="fixed inset-0 z-[100] flex justify-end" onClick={() => setDetailRecord(null)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-br from-[#00271D] to-[#003a2b] px-6 py-5 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Asset Record</span>
+                <h3 className="text-base font-black text-white leading-snug mt-0.5 break-words">{detailRecord.assetName}</h3>
+                <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[9px] font-bold border ${ACTION_META[detailRecord.action]?.badge || 'bg-white/10 text-white/70 border-white/10'}`}>
+                  {detailRecord.disposition || ACTION_META[detailRecord.action]?.label || detailRecord.action}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailRecord(null)}
+                className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                aria-label="Close details"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
+              {(() => {
+                const disp = getAssetDisposition(detailRecord.disposition);
+                const guidance = disp ?? ASSET_ACTION_GUIDANCE[detailRecord.action as AssetAction];
+                if (!guidance) return null;
+                return (
+                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-3.5">
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Outcome Details</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-xs font-black text-[#00271D]">
+                        {detailRecord.disposition || ACTION_META[detailRecord.action]?.label || detailRecord.action}
+                      </span>
+                      <span className="text-[9px] font-bold text-amber-800 bg-white border border-amber-200 px-2 py-0.5 rounded-full">
+                        {guidance.group}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#00271D]/65 mt-1.5 leading-relaxed">{guidance.description}</p>
+                    {disp?.scrap && (                      <p className="text-[10px] text-emerald-700 font-semibold mt-2">
+                        Recorded as recyclable scrap stock (weighed and sold when approved).
+                      </p>
+                    )}
+                    {disp?.hazmat && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-2">
+                        Hazardous e-waste — must be handled by a DENR-accredited facility.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+              <DetailRow icon={FileText} label="Category">{detailRecord.category}</DetailRow>
+              <DetailRow icon={PackageCheck} label="Quantity">
+                {num(detailRecord.quantity)} {detailRecord.unit}
+              </DetailRow>
+              <DetailRow icon={CheckCircle2} label="Condition">
+                {detailRecord.condition ? (
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${CONDITION_META[detailRecord.condition]?.badge || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                    {CONDITION_META[detailRecord.condition]?.label || detailRecord.condition}
+                  </span>
+                ) : (
+                  <span className="text-[#00271D]/30">Not recorded</span>
+                )}
+              </DetailRow>
+              <DetailRow icon={MapPin} label="Location">
+                {detailRecord.locationName || <span className="text-[#00271D]/30">Not recorded</span>}
+              </DetailRow>
+              <DetailRow icon={User} label="Performed By">
+                {detailRecord.performedBy && detailRecord.performedBy !== UNKNOWN
+                  ? detailRecord.performedBy
+                  : <span className="text-[#00271D]/30">Not recorded</span>}
+              </DetailRow>
+              <DetailRow icon={Hash} label="Source Report">
+                {detailRecord.sourceReportId ? (
+                  <span className="font-mono text-[11px] text-[#0091EA] break-all">#{detailRecord.sourceReportId}</span>
+                ) : (
+                  <span className="text-[#00271D]/30">No linked report</span>
+                )}
+              </DetailRow>
+              <DetailRow icon={CalendarClock} label="Date Recorded">{longDate(detailRecord.createdAt)}</DetailRow>
+              {detailRecord.notes && (
+                <DetailRow icon={Wrench} label="Notes">{detailRecord.notes}</DetailRow>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Record Asset Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
+      {showModal && createPortal(
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden max-h-[88vh] overflow-y-auto">
             <div className="bg-gradient-to-br from-[#00271D] to-[#003a2b] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
               <div>
@@ -411,7 +570,8 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
               </button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

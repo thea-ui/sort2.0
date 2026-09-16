@@ -192,19 +192,22 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
     });
 
   // Monthly collection metrics — computed from actual report data (respects timeframe)
-  const monthNames = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May'];
+  // School-year display order (Jun → May) but indexed by calendar month number.
+  const monthOrder = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May'];
+  const calendarMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthlyDataMap: Record<string, { weight: number; items: number }> = {};
-  monthNames.forEach((m) => { monthlyDataMap[m] = { weight: 0, items: 0 }; });
+  monthOrder.forEach((m) => { monthlyDataMap[m] = { weight: 0, items: 0 }; });
   collectedReports.forEach((r) => {
     try {
       const d = new Date(r.timestamp || Date.now());
-      const key = monthNames[d.getMonth()];
+      if (Number.isNaN(d.getTime())) return;
+      const key = calendarMonths[d.getMonth()];
       if (!monthlyDataMap[key]) monthlyDataMap[key] = { weight: 0, items: 0 };
       monthlyDataMap[key].weight += r.weightCollected || 0;
       monthlyDataMap[key].items += 1;
     } catch { /* skip invalid dates */ }
   });
-  const monthlyData = monthNames
+  const monthlyData = monthOrder
     .filter((m) => monthlyDataMap[m].items > 0)
     .map((m) => ({
       month: m,

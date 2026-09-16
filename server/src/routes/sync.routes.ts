@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { requireAdmin } from '../middleware/auth.js';
-import { runEnrollProSync, syncTermCalendar } from '../services/enrollpro-sync.service.js';
+import { runEnrollProSync, syncTermCalendar, mirrorEnrollProSchoolYears } from '../services/enrollpro-sync.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -25,6 +25,22 @@ router.post('/terms', requireAdmin, async (_req: Request, res: Response): Promis
     const result = await syncTermCalendar();
     return res.json({
       message: 'Term sync completed',
+      ...result,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/sync/school-years — mirror the full EnrollPro school-year catalog.
+// Import only: never activates a year and never triggers a rollover.
+router.post('/school-years', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
+  try {
+    const result = await mirrorEnrollProSchoolYears();
+    return res.json({
+      message: result.supported
+        ? `Imported school years: ${result.created} created, ${result.updated} updated, ${result.linked} linked`
+        : result.message,
       ...result,
     });
   } catch (error: any) {

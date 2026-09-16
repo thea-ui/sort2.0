@@ -25,6 +25,7 @@ import { AdminWasteTypesTab } from './settings/AdminWasteTypesTab';
 import { AdminUrgencyLevelsTab } from './settings/AdminUrgencyLevelsTab';
 import { AdminAssetConditionsTab } from './settings/AdminAssetConditionsTab';
 import { AdminPointsSystemTab } from './settings/AdminPointsSystemTab';
+import { AdminCertificateTab } from './settings/AdminCertificateTab';
 import { AdminAcademicCalendarTab } from './settings/AdminAcademicCalendarTab';
 import { AdminSyncSettingsTab } from './settings/AdminSyncSettingsTab';
 import { AdminChallengesTab } from './settings/AdminChallengesTab';
@@ -420,6 +421,11 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
 
       {/* SUB-PAGE 5: POINTS SYSTEM */}
       {activeSubTab === 'points-system' && <AdminPointsSystemTab />}
+
+      {/* SUB-PAGE: CERTIFICATES */}
+      {activeSubTab === 'certificates' && (
+        <AdminCertificateTab settings={settings} updateSettings={updateSettings} />
+      )}
 
       {/* SUB-PAGE: CHALLENGES */}
       {activeSubTab === 'challenges' && <AdminChallengesTab />}

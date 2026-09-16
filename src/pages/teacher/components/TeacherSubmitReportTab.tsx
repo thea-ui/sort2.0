@@ -138,18 +138,18 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
   }, []);
 
   const [blueprintUrl, setBlueprintUrl] = useState<string | null>(() => localStorage.getItem('sort_blueprint_url'));
-  const [blueprintPreset, setBlueprintPreset] = useState<string>(() => localStorage.getItem('sort_blueprint_preset') || 'DEFAULT');
 
   useEffect(() => {
     const handleBlueprintStorage = () => {
       setBlueprintUrl(localStorage.getItem('sort_blueprint_url'));
-      setBlueprintPreset(localStorage.getItem('sort_blueprint_preset') || 'DEFAULT');
     };
     window.addEventListener('storage', handleBlueprintStorage);
     window.addEventListener('sort_locations_updated', handleBlueprintStorage as EventListener);
+    window.addEventListener('sort_blueprint_updated', handleBlueprintStorage as EventListener);
     return () => {
       window.removeEventListener('storage', handleBlueprintStorage);
       window.removeEventListener('sort_locations_updated', handleBlueprintStorage as EventListener);
+      window.removeEventListener('sort_blueprint_updated', handleBlueprintStorage as EventListener);
     };
   }, []);
 
@@ -370,7 +370,6 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
             selectedItem={selectedItem}
             handleItemSelect={handleItemSelect}
             blueprintUrl={blueprintUrl}
-            blueprintPreset={blueprintPreset}
             gpsCoords={gpsCoords}
             setGpsCoords={setGpsCoords}
             isCustomDebrisPin={isCustomDebrisPin}

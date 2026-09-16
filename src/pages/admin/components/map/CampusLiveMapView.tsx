@@ -17,9 +17,9 @@ import { BinStatus, Report, WasteCategory, BinLocationItem } from '../../../../t
 import {
   getStoredLocations,
   STORAGE_KEY_BLUEPRINT_URL,
-  STORAGE_KEY_BLUEPRINT_PRESET,
   STORAGE_KEY_LOCATIONS,
 } from '../../../../services/locationStore';
+import { BlueprintImage } from '../../../../components/map/BlueprintImage';
 
 interface CampusLiveMapViewProps {
   bins?: BinStatus[];
@@ -61,20 +61,20 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
   // Reactive Locations state & Blueprint image listener
   const [locationList, setLocationList] = useState<BinLocationItem[]>(getStoredLocations);
   const [blueprintUrl, setBlueprintUrl] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY_BLUEPRINT_URL));
-  const [blueprintPreset, setBlueprintPreset] = useState<string>(() => localStorage.getItem(STORAGE_KEY_BLUEPRINT_PRESET) || 'DEFAULT');
 
   useEffect(() => {
     const handleStorageChange = () => {
       setLocationList(getStoredLocations());
       setBlueprintUrl(localStorage.getItem(STORAGE_KEY_BLUEPRINT_URL));
-      setBlueprintPreset(localStorage.getItem(STORAGE_KEY_BLUEPRINT_PRESET) || 'DEFAULT');
     };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('sort_locations_updated', handleStorageChange as EventListener);
+    window.addEventListener('sort_blueprint_updated', handleStorageChange as EventListener);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('sort_locations_updated', handleStorageChange as EventListener);
+      window.removeEventListener('sort_blueprint_updated', handleStorageChange as EventListener);
     };
   }, []);
 
@@ -174,49 +174,37 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
             </div>
 
             {/* Map Canvas Frame */}
-            <div className="relative w-full h-[380px] sm:h-[430px] rounded-2xl border border-gray-200 bg-[#f8fafc] overflow-hidden shadow-inner flex items-center justify-center select-none">
-              {/* Blueprint Image overlay or preset vector grid */}
-              {blueprintUrl ? (
-                <img src={blueprintUrl} alt="Campus Map Blueprint" className="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none" />
-              ) : blueprintPreset === 'ARCHITECTURAL' ? (
-                <div className="absolute inset-0 bg-slate-950 border border-slate-800 p-6 pointer-events-none overflow-hidden">
-                  <svg className="w-full h-full opacity-40 stroke-cyan-400 fill-cyan-950/20" strokeWidth="1.5">
-                    <rect x="42%" y="25%" width="16%" height="22%" rx="8" strokeDasharray="4 2" />
-                    <text x="50%" y="36%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">GYMNASIUM COMPLEX</text>
-                    <rect x="32%" y="55%" width="18%" height="24%" rx="8" />
-                    <text x="41%" y="67%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">SCIENCE HALL</text>
-                    <rect x="52%" y="48%" width="16%" height="26%" rx="8" />
-                    <text x="60%" y="61%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">LIBRARY BLDG</text>
-                    <rect x="64%" y="38%" width="18%" height="20%" rx="8" />
-                    <text x="73%" y="48%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">CAFETERIA BLOCK A</text>
-                    <rect x="52%" y="22%" width="16%" height="18%" rx="8" />
-                    <text x="60%" y="31%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">ADMIN BUILDING</text>
+            <div className="relative w-full h-[380px] sm:h-[430px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center select-none">
+              {/* Clipping layer: keeps blueprint/grid corners rounded without cutting off pin popovers */}
+              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                {/* Blueprint Image overlay or preset vector grid */}
+                {blueprintUrl ? (
+                  <BlueprintImage url={blueprintUrl} className="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none" />
+                ) : (
+                  <svg className="absolute inset-0 w-full h-full opacity-50 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <pattern id="light-grid-adminview" width="28" height="28" patternUnits="userSpaceOnUse">
+                        <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#light-grid-adminview)" />
+                    <rect x="15%" y="10%" width="20%" height="15%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
+
+                    <rect x="65%" y="12%" width="22%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
+
+                    <circle cx="50%" cy="50%" r="35" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
+
+                    <rect x="10%" y="70%" width="25%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
+
+                    <rect x="60%" y="72%" width="28%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
                   </svg>
-                </div>
-              ) : (
-                <svg className="absolute inset-0 w-full h-full opacity-50 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <pattern id="light-grid-adminview" width="28" height="28" patternUnits="userSpaceOnUse">
-                      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#light-grid-adminview)" />
-                  <rect x="15%" y="10%" width="20%" height="15%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
-
-                  <rect x="65%" y="12%" width="22%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
-
-                  <circle cx="50%" cy="50%" r="35" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
-
-                  <rect x="10%" y="70%" width="25%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
-
-                  <rect x="60%" y="72%" width="28%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
-                </svg>
-              )}
+                )}
+              </div>
 
               <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
                 <MapIcon size={12} className="text-[#0091EA]" />

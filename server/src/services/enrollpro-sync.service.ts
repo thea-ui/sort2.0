@@ -88,6 +88,21 @@ interface EnrollProResponse<T> {
   meta: EnrollProMeta;
 }
 
+interface EnrollProSchoolYear {
+  id: number;
+  yearLabel: string;
+  termFormat?: string;
+  terms?: { identity?: string; displayLabel?: string; startDate?: string | null; endDate?: string | null }[];
+  term1Start?: string | null;
+  term1End?: string | null;
+  term2Start?: string | null;
+  term2End?: string | null;
+  term3Start?: string | null;
+  term3End?: string | null;
+  term4Start?: string | null;
+  term4End?: string | null;
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────
 
 function buildFullName(last?: string, first?: string, middle?: string): string {
@@ -107,6 +122,46 @@ function mapRole(roles: string[]): Role {
     return Role.MRF;
   }
   return Role.ADMIN;
+}
+
+/**
+ * Resolve the full start/end range of an EnrollPro school year. The school year
+ * spans all terms, so the end date must be the LAST term end — not term1End.
+ * Falls back to the nested `terms` array and finally to a one-year span.
+ */
+export function resolveSchoolYearRange(sy: EnrollProSchoolYear): { startDate?: Date; endDate?: Date } {
+  const starts: string[] = [];
+  const ends: string[] = [];
+
+  for (const s of [sy.term1Start, sy.term2Start, sy.term3Start, sy.term4Start]) {
+    if (s) starts.push(s);
+  }
+  for (const e of [sy.term1End, sy.term2End, sy.term3End, sy.term4End]) {
+    if (e) ends.push(e);
+  }
+
+  if (starts.length === 0 && Array.isArray(sy.terms)) {
+    for (const t of sy.terms) {
+      if (t?.startDate) starts.push(t.startDate);
+      if (t?.endDate) ends.push(t.endDate);
+    }
+  }
+
+  const startMs = starts.map((s) => new Date(s).getTime()).filter((n) => !isNaN(n));
+  const endMs = ends.map((e) => new Date(e).getTime()).filter((n) => !isNaN(n));
+  if (startMs.length === 0 || endMs.length === 0) return {};
+
+  const startDate = new Date(Math.min(...startMs));
+  let endDate = new Date(Math.max(...endMs));
+
+  // Safety net: a valid school year must have endDate > startDate.
+  if (endDate <= startDate) {
+    endDate = new Date(startDate);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    endDate.setDate(endDate.getDate() - 1);
+  }
+
+  return { startDate, endDate };
 }
 
 // ─── API Fetcher with Pagination ───────────────────────────────────────
@@ -151,6 +206,249 @@ async function fetchAllPages<T>(endpoint: string, schoolYearId?: number): Promis
   return results;
 }
 
+// ─── School-Year Mirror ────────────────────────────────────────────────
+
+function integrationHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (ENROLLPRO_SYNC_SECRET) headers['X-Integration-Key'] = ENROLLPRO_SYNC_SECRET;
+  return headers;
+}
+
+interface EnrollProSchoolYearTemplate {
+  startMonthDay: string;
+  endMonthDay: string;
+}
+
+export interface EnrollProSchoolYearCatalog {
+  supported: boolean;
+  years: EnrollProSchoolYear[];
+  activeId?: number;
+  template?: EnrollProSchoolYearTemplate;
+  source: 'LIST' | 'ENUMERATED' | 'NONE';
+}
+
+function monthDay(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return `${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+function buildTemplate(years: EnrollProSchoolYear[]): EnrollProSchoolYearTemplate | undefined {
+  for (const sy of years) {
+    const { startDate, endDate } = resolveSchoolYearRange(sy);
+    if (startDate && endDate) {
+      return {
+        startMonthDay: monthDay(startDate.toISOString()) || '06-08',
+        endMonthDay: monthDay(endDate.toISOString()) || '04-08',
+      };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Derive a date range from a `YYYY-YYYY` label for years whose term data is
+ * unavailable (EnrollPro returns 409 for those). Uses the academic calendar
+ * pattern observed on other years, defaulting to Jun 8 → Apr 8.
+ */
+function deriveRangeFromLabel(
+  label: string,
+  template?: EnrollProSchoolYearTemplate
+): { startDate?: Date; endDate?: Date } {
+  const match = /^(\d{4})-(\d{4})$/.exec(label.trim());
+  if (!match) return {};
+  const startMonthDay = template?.startMonthDay || '06-08';
+  const endMonthDay = template?.endMonthDay || '04-08';
+  const startDate = new Date(`${match[1]}-${startMonthDay}T00:00:00.000Z`);
+  const endDate = new Date(`${match[2]}-${endMonthDay}T00:00:00.000Z`);
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return {};
+  return { startDate, endDate };
+}
+
+async function fetchActiveEnrollProSchoolYear(): Promise<EnrollProSchoolYear | null> {
+  const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
+  if (!res.ok) return null;
+  const json = await res.json() as { data?: EnrollProSchoolYear };
+  return json.data?.id ? json.data : null;
+}
+
+/**
+ * Resolve a single EnrollPro school year by ID.
+ * - 200: full record with term dates.
+ * - 404: the year does not exist.
+ * - other (e.g. 409 TERM_ORDER_INVALID): the year exists but its term data is
+ *   inconsistent; recover the label from the section/learner rosters so
+ *   historical years still mirror.
+ */
+async function resolveEnrollProSchoolYearById(id: number): Promise<EnrollProSchoolYear | null> {
+  const headers = integrationHeaders();
+
+  const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year?schoolYearId=${id}`, { headers });
+  if (res.ok) {
+    const json = await res.json() as { data?: EnrollProSchoolYear };
+    if (json.data?.id && json.data?.yearLabel) return json.data;
+  }
+  if (res.status === 404) return null;
+
+  const labelFrom = async (path: string): Promise<string | null> => {
+    try {
+      const r = await fetch(`${ENROLLPRO_BASE}${path}?schoolYearId=${id}&page=1&limit=1`, { headers });
+      if (!r.ok) return null;
+      const j = await r.json() as { data?: Array<{ schoolYear?: { id: number; yearLabel: string } }> };
+      return j.data?.[0]?.schoolYear?.yearLabel ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const label = (await labelFrom('/integration/v1/sections')) ?? (await labelFrom('/integration/v1/learners'));
+  return label ? { id, yearLabel: label } : null;
+}
+
+/**
+ * Enumerate EnrollPro school years when no list endpoint exists.
+ *
+ * School years are created sequentially, so historical years have IDs lower
+ * than the active year. We walk downward from the active ID and stop after a
+ * short run of consecutive misses (tolerating small ID gaps).
+ */
+async function enumerateEnrollProSchoolYears(activeId: number): Promise<EnrollProSchoolYear[]> {
+  const years: EnrollProSchoolYear[] = [];
+  const MAX_PROBES = 60;
+  const MAX_CONSECUTIVE_MISSES = 4;
+  let consecutiveMisses = 0;
+
+  for (let id = activeId, probes = 0; id >= 1 && probes < MAX_PROBES && consecutiveMisses < MAX_CONSECUTIVE_MISSES; id--, probes++) {
+    const sy = await resolveEnrollProSchoolYearById(id);
+    if (sy) {
+      years.push(sy);
+      consecutiveMisses = 0;
+    } else {
+      consecutiveMisses++;
+    }
+  }
+
+  return years;
+}
+
+/**
+ * Fetch the full EnrollPro school-year catalog.
+ *
+ * Preferred: a dedicated list endpoint (if the partner ever adds one).
+ * Fallback: enumerate IDs around the active year. Enumeration recovers labels
+ * from the roster endpoints when `/school-year` fails on old years.
+ */
+export async function fetchEnrollProSchoolYears(): Promise<EnrollProSchoolYearCatalog> {
+  // 1. Preferred list endpoint.
+  const listRes = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-years?page=1&limit=200`, { headers: integrationHeaders() });
+  if (listRes.ok) {
+    const json = await listRes.json() as { data?: EnrollProSchoolYear[] | { data?: EnrollProSchoolYear[] } };
+    const payload = json.data as any;
+    const years: EnrollProSchoolYear[] = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+    if (years.length > 0) {
+      return { supported: true, years, template: buildTemplate(years), source: 'LIST' };
+    }
+  }
+
+  // 2. Fallback enumeration around the authoritative active year.
+  const active = await fetchActiveEnrollProSchoolYear();
+  if (!active?.id) {
+    return { supported: false, years: [], source: 'NONE' };
+  }
+
+  const enumerated = await enumerateEnrollProSchoolYears(active.id);
+  if (!enumerated.some((y) => y.id === active.id)) enumerated.push(active);
+  enumerated.sort((a, b) => b.id - a.id);
+
+  return {
+    supported: true,
+    years: enumerated,
+    activeId: active.id,
+    template: buildTemplate(enumerated),
+    source: 'ENUMERATED',
+  };
+}
+
+export interface SchoolYearMirrorResult {
+  supported: boolean;
+  fetched: number;
+  created: number;
+  updated: number;
+  linked: number;
+  message?: string;
+}
+
+/**
+ * Mirror every EnrollPro school year into the local DB.
+ *
+ * Safety contract:
+ * - Never activates or archives a year (the active pointer stays owned by sync).
+ * - Never triggers a rollover.
+ * - Creates missing historical years as inactive, non-archived rows.
+ * - Idempotent: re-running only updates / links existing rows.
+ */
+export async function mirrorEnrollProSchoolYears(): Promise<SchoolYearMirrorResult> {
+  const result: SchoolYearMirrorResult = { supported: false, fetched: 0, created: 0, updated: 0, linked: 0 };
+
+  const catalog = await fetchEnrollProSchoolYears();
+  result.supported = catalog.supported;
+
+  if (!catalog.supported) {
+    result.message = 'Could not reach the EnrollPro school-year catalog.';
+    return result;
+  }
+
+  result.fetched = catalog.years.length;
+
+  for (const sy of catalog.years) {
+    if (!sy?.id || !sy?.yearLabel) continue;
+
+    let { startDate, endDate } = resolveSchoolYearRange(sy);
+    if (!startDate || !endDate) {
+      ({ startDate, endDate } = deriveRangeFromLabel(sy.yearLabel, catalog.template));
+    }
+    if (!startDate || !endDate) continue;
+
+    const byEnrollproId = await prisma.schoolYear.findUnique({ where: { enrollproId: sy.id } });
+    if (byEnrollproId) {
+      await prisma.schoolYear.update({
+        where: { id: byEnrollproId.id },
+        data: { label: sy.yearLabel, startDate, endDate },
+      });
+      result.updated++;
+      continue;
+    }
+
+    // Link a manually created year that has no EnrollPro ID yet but matches by label.
+    const byLabel = await prisma.schoolYear.findFirst({
+      where: { label: sy.yearLabel, enrollproId: null },
+    });
+    if (byLabel) {
+      await prisma.schoolYear.update({
+        where: { id: byLabel.id },
+        data: { enrollproId: sy.id, startDate, endDate },
+      });
+      result.linked++;
+      continue;
+    }
+
+    await prisma.schoolYear.create({
+      data: {
+        enrollproId: sy.id,
+        label: sy.yearLabel,
+        startDate,
+        endDate,
+        isActive: false,
+        isArchived: false,
+      },
+    });
+    result.created++;
+  }
+
+  return result;
+}
+
 // ─── Core Sync Logic ───────────────────────────────────────────────────
 
 interface CohortResult {
@@ -191,32 +489,55 @@ export async function runEnrollProSync(): Promise<SyncResult> {
 
   try {
     // 1. Get school year context
-    const syHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (ENROLLPRO_SYNC_SECRET) {
-      syHeaders['X-Integration-Key'] = ENROLLPRO_SYNC_SECRET;
-    }
-
-    const schoolYearRes = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: syHeaders });
+    const schoolYearRes = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
     let schoolYearId: number | undefined;
     let schoolYearLabel: string | undefined;
+    let activeSchoolYear: EnrollProSchoolYear | undefined;
 
     if (schoolYearRes.ok) {
-      const syData = await schoolYearRes.json() as { data?: { id: number; yearLabel: string; term1Start?: string; term1End?: string } };
-      schoolYearId = syData.data?.id;
-      schoolYearLabel = syData.data?.yearLabel;
+      const syData = await schoolYearRes.json() as { data?: EnrollProSchoolYear };
+      activeSchoolYear = syData.data;
+      schoolYearId = activeSchoolYear?.id;
+      schoolYearLabel = activeSchoolYear?.yearLabel;
+    }
 
-      if (schoolYearId && schoolYearLabel) {
-        try {
-          const syStartDate = syData.data?.term1Start ? new Date(syData.data.term1Start) : undefined;
-          const syEndDate = syData.data?.term1End ? new Date(syData.data.term1End) : undefined;
-          const { rolloverTriggered } = await ensureSchoolYear(schoolYearId, schoolYearLabel, syStartDate, syEndDate);
-          if (rolloverTriggered) {
-            console.log(`[Sync] School year rollover triggered: transitioned to "${schoolYearLabel}"`);
-          }
-        } catch (rolloverErr: any) {
-          console.error('[Sync] School year rollover error:', rolloverErr.message);
-          errors.push(`rollover: ${rolloverErr.message}`);
+    // 1b. Mirror the full EnrollPro school-year catalog. This never activates
+    //     or rolls a year over — it only fills in the historical years SORT has
+    //     been missing. When EnrollPro has no list endpoint, the catalog is
+    //     enumerated from the active year.
+    try {
+      const mirror = await mirrorEnrollProSchoolYears();
+      if (mirror.supported) {
+        console.log(`[Sync] School-year mirror: ${mirror.created} created, ${mirror.updated} updated, ${mirror.linked} linked (${mirror.fetched} fetched)`);
+      } else {
+        console.log('[Sync] School-year catalog unavailable — keeping existing years');
+      }
+    } catch (mirrorErr: any) {
+      console.error('[Sync] School-year mirror error:', mirrorErr.message);
+      errors.push(`school-year mirror: ${mirrorErr.message}`);
+    }
+
+    if (schoolYearId && schoolYearLabel) {
+      try {
+        const { startDate: syStartDate, endDate: syEndDate } = activeSchoolYear
+          ? resolveSchoolYearRange(activeSchoolYear)
+          : {};
+        const { rolloverTriggered } = await ensureSchoolYear(schoolYearId, schoolYearLabel, syStartDate, syEndDate);
+        if (rolloverTriggered) {
+          console.log(`[Sync] School year rollover triggered: transitioned to "${schoolYearLabel}"`);
         }
+
+        // Correct the active year's dates/label from EnrollPro (fixes years that
+        // were previously stored with term1End as the school-year end).
+        if (syStartDate && syEndDate) {
+          await prisma.schoolYear.updateMany({
+            where: { enrollproId: schoolYearId },
+            data: { label: schoolYearLabel, startDate: syStartDate, endDate: syEndDate },
+          });
+        }
+      } catch (rolloverErr: any) {
+        console.error('[Sync] School year rollover error:', rolloverErr.message);
+        errors.push(`rollover: ${rolloverErr.message}`);
       }
     }
 

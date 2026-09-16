@@ -120,6 +120,11 @@ export interface SystemSettings {
   pointsPerKgRecyclable: number;
   warningThreshold: number;
   certificatePointThreshold: number;
+  certificateGraceDays: number;
+  certificateMilestoneName: string;
+  certificateChampionName: string;
+  certificateLeaderName: string;
+  certificateAdvocateName: string;
   quarterGateActive: boolean;
   maxUnverifiedReports: number;
   dismissPointPenalty: number;
@@ -235,6 +240,77 @@ export interface AdminChallenge extends Challenge {
     totalContributions: number;
   };
   hasProgress: boolean;
+}
+
+// ─── Certification ────────────────────────────────────────────────────
+
+export type CertificateType = 'MILESTONE' | 'RANK';
+
+export type CertificateTier = 'MILESTONE' | 'CHAMPION' | 'LEADER' | 'ADVOCATE';
+
+export interface Certificate {
+  id: string;
+  userId: string;
+  serial: string;
+  type: CertificateType;
+  tier: CertificateTier;
+  name: string;
+  rankAtIssue?: number | null;
+  pointsAtIssue: number;
+  termCode?: string | null;
+  termName?: string | null;
+  schoolYearId?: string | null;
+  schoolYearLabel?: string | null;
+  issuedAt: string;
+  issuedBy?: string | null;
+  templateVersion?: string;
+  studentName?: string;
+  gradeLevel?: string | null;
+  sectionName?: string | null;
+}
+
+export type TermState = 'NO_TERM' | 'IN_TERM' | 'GRACE' | 'CLOSED';
+
+export interface TermStatus {
+  quarterCode: string | null;
+  quarterName: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  state: TermState;
+  graceDays: number;
+  graceEndsAt: string | null;
+  daysRemaining: number;
+  issuanceOpen: boolean;
+  isPeriodOver: boolean;
+  resultsReady: boolean;
+  awardedCount: number;
+}
+
+export interface TermStanding {
+  userId: string;
+  name: string;
+  gradeLevel: string | null;
+  sectionName: string | null;
+  termPoints: number;
+  totalPoints: number;
+}
+
+export interface IssueTermResult {
+  message: string;
+  quarterCode?: string;
+  quarterName?: string;
+  awarded: {
+    id: string;
+    userId: string;
+    studentName: string;
+    serial: string;
+    tier: CertificateTier;
+    name: string;
+    rankAtIssue: number | null;
+    pointsAtIssue: number;
+  }[];
+  alreadyIssued: number;
+  standings: TermStanding[];
 }
 
 

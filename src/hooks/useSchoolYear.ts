@@ -101,108 +101,143 @@ export interface SchoolYearLedger {
     sales: LedgerSale[];
     snapshots: { categoryCode: string; categoryName: string; openingKg: number; closingKg: number }[];
   };
-  inventory: {
-    totals: Record<string, number>;
-    transactions: {
-      id: string;
-      itemName?: string;
-      unit?: string;
-      type: string;
-      quantity: number;
-      notes?: string;
-      createdAt: string;
-    }[];
-  };
+}
+
+// ── Shared cache ─────────────────────────────────────────────────────────
+// Multiple components (Ledger, MRF Asset Ledger, …) consume this hook. A
+// module-level cache + single poller prevents duplicate requests and request
+// waterfalls while keeping every consumer in sync.
+
+interface SchoolYearCache {
+  active: SchoolYear | null;
+  all: SchoolYear[];
+  at: number;
+}
+
+let cache: SchoolYearCache | null = null;
+let inflight: Promise<void> | null = null;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+const CACHE_TTL_MS = 15000;
+const listeners = new Set<() => void>();
+
+function notify() {
+  for (const listener of listeners) listener();
+}
+
+async function loadSchoolYears(force = false): Promise<void> {
+  if (!force && cache && Date.now() - cache.at < CACHE_TTL_MS) return;
+  if (inflight) return inflight;
+
+  inflight = (async () => {
+    try {
+      const [active, all] = await Promise.all([
+        apiService.getActiveSchoolYear().catch(() => null),
+        apiService.getSchoolYears().catch(() => []),
+      ]);
+      cache = {
+        active: active ?? null,
+        all: Array.isArray(all) ? all : [],
+        at: Date.now(),
+      };
+    } finally {
+      inflight = null;
+    }
+  })();
+
+  await inflight;
+  notify();
+}
+
+function ensurePolling() {
+  if (pollTimer !== null) return;
+  pollTimer = setInterval(() => {
+    void loadSchoolYears(true).catch(() => {});
+  }, 30000);
 }
 
 export function useSchoolYear() {
-  const [activeSchoolYear, setActiveSchoolYear] = useState<SchoolYear | null>(null);
-  const [allSchoolYears, setAllSchoolYears] = useState<SchoolYear[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setTick] = useState(0);
+  const [loading, setLoading] = useState(!cache);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchActive = useCallback(async () => {
-    try {
-      const sy = await apiService.getActiveSchoolYear();
-      setActiveSchoolYear(sy);
-    } catch {
-      console.warn('Failed to fetch active school year');
-    }
-  }, []);
+  useEffect(() => {
+    const rerender = () => {
+      setLoading(false);
+      setTick((n) => n + 1);
+    };
+    listeners.add(rerender);
+    ensurePolling();
 
-  const fetchAll = useCallback(async () => {
-    try {
-      const list = await apiService.getSchoolYears();
-      setAllSchoolYears(list);
-    } catch {
-      console.warn('Failed to fetch school years');
+    if (!cache) {
+      setLoading(true);
+      loadSchoolYears()
+        .catch(() => {})
+        .finally(rerender);
     }
+
+    return () => {
+      listeners.delete(rerender);
+    };
   }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    await Promise.all([fetchActive(), fetchAll()]);
+    await loadSchoolYears(true);
     setLoading(false);
-  }, [fetchActive, fetchAll]);
-
-  useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 30000);
-    return () => clearInterval(interval);
-  }, [refresh]);
+  }, []);
 
   const createSchoolYear = useCallback(async (data: { label: string; startDate: string; endDate: string; enrollproId?: number }) => {
     try {
       setError(null);
       const result = await apiService.createSchoolYear(data);
-      await refresh();
+      await loadSchoolYears(true);
       return result;
     } catch (err: any) {
       const message = err.message || 'Failed to create school year';
       setError(message);
       throw new Error(message);
     }
-  }, [refresh]);
+  }, []);
 
   const updateSchoolYear = useCallback(async (id: string, data: { label?: string; startDate?: string; endDate?: string }) => {
     try {
       setError(null);
       const result = await apiService.updateSchoolYear(id, data);
-      await refresh();
+      await loadSchoolYears(true);
       return result;
     } catch (err: any) {
       const message = err.message || 'Failed to update school year';
       setError(message);
       throw new Error(message);
     }
-  }, [refresh]);
+  }, []);
 
   const activateSchoolYear = useCallback(async (id: string) => {
     try {
       setError(null);
       const result = await apiService.activateSchoolYear(id);
-      await refresh();
+      await loadSchoolYears(true);
       return result;
     } catch (err: any) {
       const message = err.message || 'Failed to activate school year';
       setError(message);
       throw new Error(message);
     }
-  }, [refresh]);
+  }, []);
 
-  const deactivateSchoolYear = useCallback(async (id: string, replacementId: string) => {
+  const importSchoolYears = useCallback(async () => {
     try {
       setError(null);
-      const result = await apiService.deactivateSchoolYear(id, replacementId);
-      await refresh();
+      const result = await apiService.importSchoolYears();
+      await loadSchoolYears(true);
       return result;
     } catch (err: any) {
-      const message = err.message || 'Failed to deactivate school year';
+      const message = err.message || 'Failed to import school years';
       setError(message);
       throw new Error(message);
     }
-  }, [refresh]);
+  }, []);
 
   const getSchoolYearDetails = useCallback(async (id: string) => {
     try {
@@ -221,15 +256,15 @@ export function useSchoolYear() {
   }, []);
 
   return {
-    activeSchoolYear,
-    allSchoolYears,
+    activeSchoolYear: cache?.active ?? null,
+    allSchoolYears: cache?.all ?? [],
     loading,
     error,
     refresh,
     createSchoolYear,
     updateSchoolYear,
     activateSchoolYear,
-    deactivateSchoolYear,
+    importSchoolYears,
     getSchoolYearDetails,
     getSchoolYearLedger,
   };

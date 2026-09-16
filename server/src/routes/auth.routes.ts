@@ -144,7 +144,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
 
     // Create short-lived access token
     const accessToken = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role, name: user.name },
       JWT_SECRET,
       { expiresIn: ACCESS_EXPIRY_SECONDS }
     );
@@ -222,7 +222,7 @@ router.post('/refresh', async (req: Request, res: Response): Promise<any> => {
     });
 
     const accessToken = jwt.sign(
-      { id: session.user.id, email: session.user.email, role: session.user.role },
+      { id: session.user.id, email: session.user.email, role: session.user.role, name: session.user.name },
       JWT_SECRET,
       { expiresIn: ACCESS_EXPIRY_SECONDS }
     );

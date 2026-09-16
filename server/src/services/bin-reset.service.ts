@@ -7,6 +7,16 @@ let binResetInProgress = false;
 
 const BIN_RESET_TZ = process.env.BIN_RESET_TZ || 'Asia/Manila';
 
+// Asset reports are identified by pillar markers in the description. Even if a
+// legacy row is mis-typed as WASTE, the reset must never touch it.
+const ASSET_DESCRIPTION_MARKERS = [
+  '[PILLAR: FURNITURE]',
+  '[PILLAR: ELECTRONICS]',
+  '[PILLAR: FIXTURES]',
+  '[PILLAR: EQUIPMENT]',
+  '[PILLAR: OTHER]',
+];
+
 let scheduledTask: any = null;
 
 export interface BinResetResult {
@@ -19,11 +29,11 @@ export interface BinResetResult {
  * Daily 6:00 PM cleanup:
  * 1. Reset every waste bin to empty (fillLevel 0, no active dispatch,
  *    lastEmptied stamped).
- * 2. Expire stale WASTE reports that were never collected (PENDING or
- *    DISPATCHED) — the school has physically cleared the trash, so these
- *    are moot. This is neutral: no points awarded or deducted, and it
- *    unblocks the duplicate-report guard so students can report again the
- *    next day. ASSET reports are never touched.
+ * 2. Expire stale WASTE reports that are still PENDING (verified or not) —
+ *    the school has physically cleared the trash, so these are moot. This is
+ *    neutral: no points are removed. ASSET reports are NEVER touched, and
+ *    DISPATCHED reports are NEVER expired (MRF has an active task). This also
+ *    unblocks the duplicate-report guard so students can report again.
  * 3. Audit the whole operation.
  */
 export async function executeDailyBinReset(): Promise<BinResetResult> {
@@ -43,10 +53,20 @@ export async function executeDailyBinReset(): Promise<BinResetResult> {
 
       const expired = await tx.report.updateMany({
         where: {
-          status: { in: [ReportStatus.PENDING, ReportStatus.DISPATCHED] },
+          status: ReportStatus.PENDING,
           reportType: 'WASTE',
+          NOT: {
+            OR: ASSET_DESCRIPTION_MARKERS.map((marker) => ({
+              description: { contains: marker, mode: 'insensitive' as const },
+            })),
+          },
         },
         data: { status: ReportStatus.EXPIRED, completedAt: now },
+      });
+
+      const activeSY = await tx.schoolYear.findFirst({
+        where: { isActive: true, isArchived: false },
+        select: { id: true },
       });
 
       await tx.auditLog.create({
@@ -54,8 +74,8 @@ export async function executeDailyBinReset(): Promise<BinResetResult> {
           actorName: 'System',
           actorRole: 'SYSTEM',
           actionType: 'DAILY_BIN_RESET',
-          details: `Daily bin reset: ${bins.count} bins cleared, ${expired.count} stale waste reports expired (cleared at 6 PM).`,
-          schoolYearId: null,
+          details: `Daily bin reset: ${bins.count} bins cleared, ${expired.count} pending waste reports expired (asset + dispatched reports untouched).`,
+          schoolYearId: activeSY?.id || null,
         },
       });
 

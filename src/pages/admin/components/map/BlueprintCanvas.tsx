@@ -1,20 +1,25 @@
 import React from 'react';
 import { MapPin, Search } from 'lucide-react';
 import { BinLocationItem } from '../../../../types';
+import { BlueprintTransform } from '../../../../services/locationStore';
+import { BlueprintImage } from '../../../../components/map/BlueprintImage';
 
 interface BlueprintCanvasProps {
   filteredList: BinLocationItem[];
   selectedLocId: string | null;
   setSelectedLocId: (id: string | null) => void;
   draggingLocId: string | null;
-  setDraggingLocId: (id: string | null) => void;
   isEditMode: boolean;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   filter: 'All' | 'Available' | 'Unavailable';
   setFilter: (f: 'All' | 'Available' | 'Unavailable') => void;
   blueprintUrl: string | null;
-  selectedPreset: string;
+  blueprintTransform: BlueprintTransform;
+  isAdjusting: boolean;
+  onAdjustPointerDown: (e: React.PointerEvent) => void;
+  onAdjustPointerMove: (e: React.PointerEvent) => void;
+  onAdjustPointerUp: () => void;
   mapContainerRef: React.RefObject<HTMLDivElement | null>;
   handleMouseDown: (locId: string, e: React.MouseEvent) => void;
   handleMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -32,7 +37,11 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   filter,
   setFilter,
   blueprintUrl,
-  selectedPreset,
+  blueprintTransform,
+  isAdjusting,
+  onAdjustPointerDown,
+  onAdjustPointerMove,
+  onAdjustPointerUp,
   mapContainerRef,
   handleMouseDown,
   handleMouseMove,
@@ -72,7 +81,11 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         <MapPin size={15} className="text-sky-600" />
         Blueprint Grid Editor
       </span>
-      {isEditMode ? (
+      {isAdjusting ? (
+        <span className="text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold animate-pulse">
+          DRAG TO POSITION · SCROLL TO ZOOM
+        </span>
+      ) : isEditMode ? (
         <span className="text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold animate-pulse">
           DRAG PINS TO RE-POSITION (0-100%)
         </span>
@@ -85,27 +98,20 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       ref={mapContainerRef}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onPointerDown={onAdjustPointerDown}
+      onPointerMove={onAdjustPointerMove}
+      onPointerUp={onAdjustPointerUp}
+      onPointerLeave={onAdjustPointerUp}
       className={`relative w-full h-[400px] rounded-2xl border border-gray-200 bg-slate-900 overflow-hidden shadow-inner flex items-center justify-center select-none ${
-        isEditMode ? 'cursor-crosshair border-amber-400 border-2' : ''
+        isAdjusting
+          ? 'cursor-grab active:cursor-grabbing border-amber-400 border-2'
+          : isEditMode
+            ? 'cursor-crosshair border-amber-400 border-2'
+            : ''
       }`}
     >
       {blueprintUrl ? (
-        <img src={blueprintUrl} alt="Blueprint" className="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none" />
-      ) : selectedPreset === 'ARCHITECTURAL' ? (
-        <div className="absolute inset-0 bg-slate-950 p-6 pointer-events-none overflow-hidden border border-slate-800">
-          <svg className="w-full h-full opacity-40 stroke-cyan-400 fill-cyan-950/20" strokeWidth="1.5">
-            <rect x="42%" y="25%" width="16%" height="22%" rx="8" strokeDasharray="4 2" />
-            <text x="50%" y="36%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">GYMNASIUM COMPLEX</text>
-            <rect x="32%" y="55%" width="18%" height="24%" rx="8" />
-            <text x="41%" y="67%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">SCIENCE HALL</text>
-            <rect x="52%" y="48%" width="16%" height="26%" rx="8" />
-            <text x="60%" y="61%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">LIBRARY BLDG</text>
-            <rect x="64%" y="38%" width="18%" height="20%" rx="8" />
-            <text x="73%" y="48%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">CAFETERIA BLOCK A</text>
-            <rect x="52%" y="22%" width="16%" height="18%" rx="8" />
-            <text x="60%" y="31%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">ADMIN BUILDING</text>
-          </svg>
-        </div>
+        <BlueprintImage url={blueprintUrl} transform={blueprintTransform} />
       ) : (
         <svg className="absolute inset-0 w-full h-full opacity-40 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -128,8 +134,8 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
             onClick={() => setSelectedLocId(loc.id)}
             style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
             className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform ${
-              isDragging ? 'scale-125 z-30' : isSelected ? 'scale-110 z-20' : 'z-10 hover:scale-105'
-            }`}
+              isAdjusting ? 'pointer-events-none opacity-40' : ''
+            } ${isDragging ? 'scale-125 z-30' : isSelected ? 'scale-110 z-20' : 'z-10 hover:scale-105'}`}
           >
             <div className={`h-9 w-9 rounded-full flex items-center justify-center border-2 shadow-lg ${
               loc.status === 'Unavailable' ? 'bg-rose-500 border-white text-white' : 'bg-[#00A77C] border-white text-white'

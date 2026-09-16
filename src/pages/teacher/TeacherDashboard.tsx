@@ -216,6 +216,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
         locationName: buildingAndRoom,
         coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
         imageUrl: capturedImage || undefined,
+        reportType: isWaste ? 'WASTE' : 'ASSET',
       });
 
       const now = new Date();

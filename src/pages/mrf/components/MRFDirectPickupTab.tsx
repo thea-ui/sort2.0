@@ -17,8 +17,8 @@ import { BinStatus, BinLocationItem } from '../../../types';
 import {
   getStoredLocations,
   STORAGE_KEY_BLUEPRINT_URL,
-  STORAGE_KEY_BLUEPRINT_PRESET,
 } from '../../../services/locationStore';
+import { BlueprintImage } from '../../../components/map/BlueprintImage';
 import { RECYCLABLE_CATEGORIES, ItemizedRecyclableCategory } from '../MRFDashboard';
 
 interface MRFDirectPickupTabProps {
@@ -49,22 +49,20 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
   const [blueprintUrl, setBlueprintUrl] = useState<string | null>(() =>
     localStorage.getItem(STORAGE_KEY_BLUEPRINT_URL)
   );
-  const [blueprintPreset, setBlueprintPreset] = useState<string>(
-    () => localStorage.getItem(STORAGE_KEY_BLUEPRINT_PRESET) || 'DEFAULT'
-  );
 
   useEffect(() => {
     const handleStorageChange = () => {
       setLocationList(getStoredLocations());
       setBlueprintUrl(localStorage.getItem(STORAGE_KEY_BLUEPRINT_URL));
-      setBlueprintPreset(localStorage.getItem(STORAGE_KEY_BLUEPRINT_PRESET) || 'DEFAULT');
     };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('sort_locations_updated', handleStorageChange as EventListener);
+    window.addEventListener('sort_blueprint_updated', handleStorageChange as EventListener);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('sort_locations_updated', handleStorageChange as EventListener);
+      window.removeEventListener('sort_blueprint_updated', handleStorageChange as EventListener);
     };
   }, []);
 
@@ -193,26 +191,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
               >
                 {/* Admin Blueprint Image or Vector Floorplan */}
                 {blueprintUrl ? (
-                  <img
-                    src={blueprintUrl}
-                    alt="Custom Campus Map Blueprint"
-                    className="absolute inset-0 w-full h-full object-cover opacity-75 pointer-events-none"
-                  />
-                ) : blueprintPreset === 'ARCHITECTURAL' ? (
-                  <div className="absolute inset-0 bg-slate-950 border border-slate-800 p-6 pointer-events-none overflow-hidden">
-                    <svg className="w-full h-full opacity-40 stroke-cyan-400 fill-cyan-950/20" strokeWidth="1.5">
-                      <rect x="42%" y="25%" width="16%" height="22%" rx="8" strokeDasharray="4 2" />
-                      <text x="50%" y="36%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">GYMNASIUM COMPLEX</text>
-                      <rect x="32%" y="55%" width="18%" height="24%" rx="8" />
-                      <text x="41%" y="67%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">SCIENCE HALL</text>
-                      <rect x="52%" y="48%" width="16%" height="26%" rx="8" />
-                      <text x="60%" y="61%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">LIBRARY BLDG</text>
-                      <rect x="64%" y="38%" width="18%" height="20%" rx="8" />
-                      <text x="73%" y="48%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">CAFETERIA BLOCK A</text>
-                      <rect x="52%" y="22%" width="16%" height="18%" rx="8" />
-                      <text x="60%" y="31%" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">ADMIN BUILDING</text>
-                    </svg>
-                  </div>
+                  <BlueprintImage url={blueprintUrl} />
                 ) : (
                   <svg className="absolute inset-0 w-full h-full opacity-50 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
                     <defs>

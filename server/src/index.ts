@@ -9,9 +9,10 @@ import settingsRoutes from './routes/settings.routes.js';
 import marketRoutes from './routes/market.routes.js';
 import syncRoutes from './routes/sync.routes.js';
 import schoolYearRoutes from './routes/school-year.routes.js';
-import inventoryRoutes from './routes/inventory.routes.js';
 import challengeRoutes from './routes/challenge.routes.js';
+import certificateRoutes from './routes/certificate.routes.js';
 import assetRoutes from './routes/asset.routes.js';
+import assetScrapRoutes from './routes/asset-scrap.routes.js';
 import { rescheduleSync } from './services/sync-scheduler.service.js';
 import { rescheduleBinReset } from './services/bin-reset.service.js';
 
@@ -50,9 +51,10 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/school-years', schoolYearRoutes);
-app.use('/api/inventory', inventoryRoutes);
 app.use('/api/challenges', challengeRoutes);
+app.use('/api/certificates', certificateRoutes);
 app.use('/api/assets', assetRoutes);
+app.use('/api/asset-scrap', assetScrapRoutes);
 
 // Global Error Handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -1,32 +1,22 @@
 import React, { useState } from 'react';
 import {
   Trophy,
-  CheckCircle,
-  Award,
   Search,
   RotateCcw,
   Flame,
   Lightbulb,
   Medal,
-  Download,
-  Loader2,
-  FileText,
 } from 'lucide-react';
-import { User, Challenge, Report } from '../../../types';
-import { apiService } from '../../../services/api';
+import { User, Challenge, Report, SystemSettings } from '../../../types';
+import { CertificateVault } from './CertificateVault';
 
 interface GamificationTabProps {
   currentUser: User;
   users: User[];
   reports?: Report[];
   challenges: Challenge[];
-  isPeriodOver: boolean;
-  setIsPeriodOver: (v: boolean) => void;
-  claimedSuccess: boolean;
-  setClaimedSuccess: (v: boolean) => void;
-  deductPoints: (id: string, amt: number) => void;
-  claimCertificate: (cert: string) => void;
-  getAvatarColor: (name: string) => string;
+  settings?: SystemSettings | null;
+  onCertificateChange?: () => void;
 }
 
 export const GamificationTab: React.FC<GamificationTabProps> = ({
@@ -34,27 +24,10 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
   users,
   reports = [],
   challenges,
-  isPeriodOver,
-  setIsPeriodOver,
-  claimedSuccess,
-  setClaimedSuccess,
-  deductPoints,
-  claimCertificate,
-  getAvatarColor
+  settings,
+  onCertificateChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [downloadingCert, setDownloadingCert] = useState<string | null>(null);
-
-  const handleDownloadCert = async (certName: string) => {
-    setDownloadingCert(certName);
-    try {
-      await apiService.downloadCertificate(currentUser.id, certName);
-    } catch (err) {
-      console.warn('Download certificate error:', err);
-    } finally {
-      setDownloadingCert(null);
-    }
-  };
 
   // Compute leaderboard rankings with actual report counts
   const leaderboardEntries = users
@@ -78,17 +51,6 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         isCurrentUser: u.email.toLowerCase() === currentUser.email.toLowerCase()
       };
     });
-
-  const currentEntry = leaderboardEntries.find(e => e.isCurrentUser);
-  const currentUserRank = currentEntry ? currentEntry.rank : 99;
-  const isWinner = currentUserRank === 1;
-
-  const handleClaim = async () => {
-    if (!isWinner || !isPeriodOver) return;
-    await claimCertificate('Top 1 Institutional Certificate');
-    setClaimedSuccess(true);
-    setTimeout(() => setClaimedSuccess(false), 5000);
-  };
 
   const filteredEntries = leaderboardEntries.filter(e =>
     e.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -124,18 +86,8 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         </button>
       </div>
 
-      {/* Claim success alert */}
-      {claimedSuccess && (
-        <div className="p-4 bg-[#00A77C]/20 border border-[#00A77C]/50 text-[#00A77C] rounded-2xl flex items-center gap-3 animate-fade-in text-xs shadow-xs">
-          <CheckCircle size={20} className="shrink-0 text-[#00A77C]" />
-          <div>
-            <p className="font-bold text-sm">Certificate Claimed Successfully!</p>
-            <p className="text-[#00A77C] mt-0.5">
-              "Top 1 Institutional Certificate" has been added to your Showcase.
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Certificate Vault — milestone (instant) + ranked (term-end) */}
+      <CertificateVault currentUser={currentUser} settings={settings} onClaimed={onCertificateChange} />
 
       {/* Banner: How Points Work */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5 text-[#00271D] shadow-sm space-y-3">
@@ -144,7 +96,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
           <span>How Points Work</span>
         </div>
         <p className="text-xs text-[#00271D]/80 leading-relaxed font-medium">
-          When the same bin is reported by multiple students, only the first 3 get points after admin verification:
+          When the same bin is reported by multiple students, only the first 3 get points after the MRF collects the reported waste:
         </p>
 
         <div className="flex flex-wrap gap-2 pt-0.5">
@@ -265,62 +217,6 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
           })
         )}
       </div>
-
-      {/* Earned Certificates Display */}
-      {currentUser.certificatesEarned && currentUser.certificatesEarned.length > 0 && (
-        <div className="bg-gradient-to-br from-[#C69B26]/5 to-amber-50/50 border border-[#C69B26]/20 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Award size={16} className="text-[#C69B26]" />
-            <h3 className="text-sm font-bold text-[#00271D]">Your Earned Certificates</h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {currentUser.certificatesEarned.map((cert, i) => (
-              <div key={i} className="flex items-center gap-1">
-                <button
-                  onClick={() => handleDownloadCert(cert)}
-                  disabled={downloadingCert === cert}
-                  className="flex items-center gap-2 px-4 py-2 rounded-l-xl bg-[#C69B26]/10 border border-[#C69B26]/25 text-[#C69B26] text-xs font-bold hover:bg-[#C69B26]/20 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {downloadingCert === cert ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Download size={14} />
-                  )}
-                  {cert}
-                </button>
-                <button
-                  onClick={() => { apiService.viewCertificate(currentUser.id, cert); }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-r-xl bg-[#00A77C]/10 border border-[#00A77C]/25 border-l-0 text-[#00A77C] text-xs font-bold hover:bg-[#00A77C]/20 transition-colors cursor-pointer"
-                  title="View Certificate"
-                >
-                  <FileText size={14} />
-                  View
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Claim Certificate Action Bar */}
-      {isWinner && isPeriodOver && (
-        <div className="p-6 bg-[#00A77C] rounded-2xl text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>
-            <h4 className="font-extrabold text-sm flex items-center gap-1.5">
-              <Award size={18} />
-              <span>Rank #1 Winner Prize Available!</span>
-            </h4>
-            <p className="text-xs text-white/80 mt-0.5">You finished as the #1 Ecology Champion for this quarter.</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleClaim}
-            className="py-2.5 px-5 bg-white text-[#00A77C] font-extrabold text-xs rounded-full shadow cursor-pointer hover:bg-[#F9F3F0] transition-all shrink-0"
-          >
-            Claim Institutional Certificate
-          </button>
-        </div>
-      )}
 
       {/* Active Challenges Section */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">

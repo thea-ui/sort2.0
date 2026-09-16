@@ -30,7 +30,6 @@ import {
   MapPin,
   Newspaper,
   ClipboardList,
-  Package,
   CalendarClock,
   FileSpreadsheet,
 } from 'lucide-react';
@@ -48,8 +47,8 @@ const MRF_NAV_ITEMS: NavItem[] = [
   { id: 'overview',       label: 'Overview',         icon: LayoutDashboard, roles: ['MRF'] },
   { id: 'dispatches',     label: 'Dispatches',       icon: Truck,           roles: ['MRF'] },
   { id: 'mrf-direct',     label: 'Direct Pickup',    icon: PackageCheck,    roles: ['MRF'] },
-  { id: 'mrf-inventory',  label: 'Inventory',        icon: Package,         roles: ['MRF'] },
   { id: 'mrf-assets',     label: 'Asset Ledger',     icon: FileSpreadsheet, roles: ['MRF'] },
+  { id: 'mrf-scrap',      label: 'Scrap Stock',      icon: Trash2,          roles: ['MRF'] },
   { id: 'mrf-market',     label: 'Recycle Market',   icon: Scale,           roles: ['MRF'] },
   { id: 'mrf-history',    label: 'History',          icon: History,         roles: ['MRF'] },
 ];
@@ -61,7 +60,7 @@ export const ADMIN_SECTIONS = [
       { id: 'overview', label: 'Overview', icon: BarChart2 },
       { id: 'admin-impact', label: 'Operational Analytics', icon: TrendingUp },
       { id: 'admin-leaderboard', label: 'Leaderboard', icon: Trophy },
-      { id: 'admin-ledger', label: 'School Year Ledger', icon: FileSpreadsheet },
+      { id: 'admin-ledger', label: 'School Years', icon: FileSpreadsheet },
     ],
   },
   {
@@ -86,11 +85,11 @@ export const ADMIN_SECTIONS = [
 export const SETTINGS_SUBITEMS = [
   { id: 'locations', label: 'Locations' },
   { id: 'academic-calendar', label: 'Academic Calendar' },
-  { id: 'school-years', label: 'School Years' },
   { id: 'sync-integrations', label: 'Sync & Integrations' },
   { id: 'asset-categories', label: 'Asset Categories' },
   { id: 'item-presets', label: 'Item Presets' },
   { id: 'points-system', label: 'Points System' },
+  { id: 'certificates', label: 'Certificates' },
   { id: 'challenges', label: 'Challenges' },
   { id: 'waste-types', label: 'Waste Types' },
   { id: 'urgency-levels', label: 'Urgency Levels' },

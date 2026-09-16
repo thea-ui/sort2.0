@@ -7,18 +7,11 @@ import {
   Clock,
   Activity,
   Recycle,
-  CheckCircle2,
-  ShieldCheck,
-  Star,
   Newspaper,
   Award,
-  Radio,
   AlertTriangle,
   ArrowRight,
-  FileText,
-  TrendingUp,
-  Download,
-  Loader2
+  FileText
 } from 'lucide-react';
 import { User, Report, Offense, SystemSettings } from '../../../types';
 import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
@@ -34,18 +27,6 @@ interface OverviewTabProps {
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, offenses = [], settings, setActiveTab }) => {
   const [campusNews, setCampusNews] = useState<any[]>([]);
-  const [downloadingCert, setDownloadingCert] = useState<string | null>(null);
-
-  const handleDownloadCert = async (certName: string) => {
-    setDownloadingCert(certName);
-    try {
-      await apiService.downloadCertificate(currentUser.id, certName);
-    } catch (err) {
-      console.warn('Download certificate error:', err);
-    } finally {
-      setDownloadingCert(null);
-    }
-  };
 
   useEffect(() => {
     apiService.getCampusNews().then(data => {
@@ -127,45 +108,22 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             <div className="h-full bg-gradient-to-r from-[#C69B26] to-amber-500 rounded-full transition-all duration-700" style={{ width: `${progressPercent}%` }} />
           </div>
 
-          {/* Earned Certificates */}
-          {currentUser.certificatesEarned && currentUser.certificatesEarned.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-[#C69B26]/10">
-              <p className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider mb-2">Earned Certificates</p>
-              <div className="flex flex-wrap gap-2">
-                {currentUser.certificatesEarned.map((cert, i) => (
-                  <div key={i} className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleDownloadCert(cert)}
-                      disabled={downloadingCert === cert}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-l-full bg-[#C69B26]/10 border border-[#C69B26]/25 text-[#C69B26] text-xs font-bold hover:bg-[#C69B26]/20 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      {downloadingCert === cert ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <Download size={12} />
-                      )}
-                      {cert}
-                    </button>
-                    <button
-                      onClick={() => { apiService.viewCertificate(currentUser.id, cert); }}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-r-full bg-[#00A77C]/10 border border-[#00A77C]/25 border-l-0 text-[#00A77C] text-xs font-bold hover:bg-[#00A77C]/20 transition-colors cursor-pointer"
-                      title="View Certificate"
-                    >
-                      <FileText size={12} />
-                      View
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {(!currentUser.certificatesEarned || currentUser.certificatesEarned.length === 0) && currentUser.points >= certThreshold && (
-            <div className="mt-4 pt-4 border-t border-[#C69B26]/10">
-              <p className="text-xs text-[#C69B26] font-bold">
-                You've reached the {certThreshold}-point threshold! Check the leaderboard to claim your certificate.
-              </p>
-            </div>
-          )}
+          {/* Certificate CTA */}
+          <div className="mt-4 pt-4 border-t border-[#C69B26]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <p className="text-[11px] text-[#00271D]/60 font-semibold">
+              {currentUser.points >= certThreshold
+                ? 'You\u2019ve reached the certificate threshold \u2014 claim your Eco-Milestone award and check your ranked standing.'
+                : `Earn ${Math.max(0, certThreshold - currentUser.points)} more eco-points to unlock your Eco-Milestone certificate.`}
+            </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab?.('gamification')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#C69B26]/10 border border-[#C69B26]/25 text-[#C69B26] text-[11px] font-extrabold hover:bg-[#C69B26]/20 transition-colors cursor-pointer shrink-0"
+            >
+              <Award size={12} />
+              Certificate Vault
+            </button>
+          </div>
         </div>
       </div>
 
@@ -226,14 +184,14 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-amber-300"
           >
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[#00271D]/60 group-hover:text-amber-700 transition-colors">My Section Standing</p>
+              <p className="text-xs font-bold text-[#00271D]/60 group-hover:text-amber-700 transition-colors">My Grade Level Standing</p>
               <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10 group-hover:scale-105 transition-transform">
                 <Award size={20} strokeWidth={2} />
               </div>
             </div>
             <div className="space-y-3 w-full">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100/80 text-amber-900 border border-amber-200 text-xs font-black">
-                Section {(currentUser as any).gradeLevel ? `${(currentUser as any).gradeLevel} — ${(currentUser as any).sectionName}` : currentUser.classroomSection || 'N/A'}
+                Grade Level {(currentUser as any).gradeLevel ? `${(currentUser as any).gradeLevel} — ${(currentUser as any).sectionName}` : currentUser.classroomSection || 'N/A'}
               </span>
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[11px] text-[#00271D]/60 font-semibold">
