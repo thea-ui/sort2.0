@@ -18,7 +18,7 @@ const ROW1_RIGHT = {
 const ROW2 = [
   { icon: Warehouse, title: 'MRF Operations & Material Recovery', description: 'MRF personnel manage daily recovery activities — logging collected materials by type, tracking inventory levels, and computing waste diversion rates.', accent: 'sky' },
   { icon: Radio, title: 'Bin Monitoring & Staff Dispatch', description: 'Live visualization of bin statuses across campus. MRF staff receive real-time alerts with location data, enabling immediate dispatch for clearance.', accent: 'violet' },
-  { icon: BarChart3, title: 'Multi-Metric Impact Analysis', description: 'Converts raw waste weight into ecological metrics — CO₂ reduction, trees saved, and landfill space diverted. Uses time-series analysis to forecast trends.', accent: 'rose' },
+  { icon: BarChart3, title: 'Residual Waste Monitoring', description: 'Tracks residual (non-biodegradable) waste by volume and weight, per station and per week, so the school can document what is routed to disposal alongside what is recovered.', accent: 'rose' },
 ];
 
 const ACCENT_STYLES: Record<string, { bg: string; icon: string; ring: string }> = {
@@ -34,7 +34,7 @@ export const FeaturesSection: React.FC = () => {
     const Icon = f.icon;
     const s = ACCENT_STYLES[f.accent];
     return (
-      <div className={`group flex flex-col rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all hover:shadow-md ${className}`}>
+      <div key={f.title} className={`group flex flex-col rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all hover:shadow-md ${className}`}>
         <div className={`mb-5 flex h-10 w-10 items-center justify-center rounded-xl ring-1 ${s.bg} ${s.ring}`}>
           <Icon size={18} className={s.icon} strokeWidth={1.8} />
         </div>

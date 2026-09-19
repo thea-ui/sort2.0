@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient, WasteCategory } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 const prisma = new PrismaClient();
 
 // GET /api/bins - List all waste bins
-router.get('/', async (_req: Request, res: Response): Promise<any> => {
+router.get('/', authenticate, async (_req: Request, res: Response): Promise<any> => {
   try {
     const bins = await prisma.wasteBin.findMany({
       orderBy: { fillLevel: 'desc' },
@@ -30,15 +31,27 @@ router.get('/', async (_req: Request, res: Response): Promise<any> => {
 });
 
 // PATCH /api/bins/:id - Update bin status or trigger dispatch
-router.patch('/:id', async (req: Request, res: Response): Promise<any> => {
+router.patch('/:id', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { fillLevel, activeDispatch, lastEmptied } = req.body;
 
     const data: any = {};
-    if (fillLevel !== undefined) data.fillLevel = fillLevel;
-    if (activeDispatch !== undefined) data.activeDispatch = activeDispatch;
-    if (lastEmptied) data.lastEmptied = new Date(lastEmptied);
+    if (fillLevel !== undefined) {
+      const level = Number(fillLevel);
+      if (!Number.isFinite(level) || level < 0 || level > 100) {
+        return res.status(400).json({ error: 'fillLevel must be a number between 0 and 100' });
+      }
+      data.fillLevel = level;
+    }
+    if (activeDispatch !== undefined) data.activeDispatch = Boolean(activeDispatch);
+    if (lastEmptied) {
+      const parsed = new Date(lastEmptied);
+      if (Number.isNaN(parsed.getTime())) {
+        return res.status(400).json({ error: 'lastEmptied must be a valid date' });
+      }
+      data.lastEmptied = parsed;
+    }
 
     const updated = await prisma.wasteBin.update({
       where: { id: Array.isArray(id) ? id[0] : id },

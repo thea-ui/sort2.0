@@ -58,7 +58,8 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<any> 
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        reporter: { select: { id: true, name: true, role: true, email: true } },
+        // Never expose reporter email in list payloads.
+        reporter: { select: { id: true, name: true, role: true } },
         assignedMrf: { select: { id: true, name: true } },
       },
     });
@@ -224,8 +225,37 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
         data.completedAt = new Date();
       }
     }
-    if (assignedMrfId !== undefined) data.assignedMrfId = assignedMrfId;
-    if (weightCollected !== undefined) data.weightCollected = weightCollected;
+    // Validate the two integrity-critical fields before persisting them:
+    // assignedMrfId must reference real dispatch personnel, and weightCollected
+    // feeds points/challenge progress so it must be a sane, bounded number.
+    if (assignedMrfId !== undefined) {
+      if (assignedMrfId === null) {
+        data.assignedMrfId = null;
+      } else {
+        const assignee = await prisma.user.findUnique({
+          where: { id: String(assignedMrfId) },
+          select: { role: true },
+        });
+        if (!assignee || (assignee.role !== 'MRF' && assignee.role !== 'ADMIN')) {
+          return res.status(400).json({
+            error: 'assignedMrfId must reference an existing MRF or admin user',
+            code: 'INVALID_ASSIGNEE',
+          });
+        }
+        data.assignedMrfId = String(assignedMrfId);
+      }
+    }
+
+    if (weightCollected !== undefined) {
+      const kg = Number(weightCollected);
+      if (!Number.isFinite(kg) || kg < 0 || kg > 100000) {
+        return res.status(400).json({
+          error: 'weightCollected must be a number between 0 and 100000 kg',
+          code: 'INVALID_WEIGHT',
+        });
+      }
+      data.weightCollected = kg;
+    }
 
     const becomesTerminal = status === 'COLLECTED' || status === 'RESOLVED';
     const shouldContributeWeight =

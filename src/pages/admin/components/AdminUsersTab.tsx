@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   ShieldCheck,
@@ -123,12 +123,31 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
 
+  // The user list arrives asynchronously, so the first paint used to show
+  // "0 Registered Accounts" / "No user accounts found" before data landed.
+  // Track whether we have ever received accounts and show a loading state
+  // instead of a misleading empty state.
+  const [hasLoadedUsers, setHasLoadedUsers] = useState(users.length > 0);
+  useEffect(() => {
+    if (users.length > 0) setHasLoadedUsers(true);
+  }, [users.length]);
+  const isLoadingUsers = !hasLoadedUsers;
+
   const [inspectUser, setInspectUser] = useState<User | null>(null);
+
+  // Graduated/archived accounts cannot sign in, so they must not inflate the
+  // active counts. "Active" is the default view; staff can switch filters.
+  const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'ARCHIVED' | 'ALL'>('ACTIVE');
 
   // Strict guardrail: Only EnrollPro-synced accounts are displayed
   const enrollProUsers = useMemo(() => {
-    return users.filter((u: any) => u.syncSource === 'ENROLLPRO');
-  }, [users]);
+    return users.filter((u: any) => {
+      if (u.syncSource !== 'ENROLLPRO') return false;
+      if (statusFilter === 'ALL') return true;
+      const isArchived = Boolean(u.archivedAt);
+      return statusFilter === 'ARCHIVED' ? isArchived : !isArchived;
+    });
+  }, [users, statusFilter]);
 
   // Role Counts — EnrollPro-synced accounts only
   const counts = useMemo(() => {
@@ -223,7 +242,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
               Role Database Audit
             </span>
             <span className="text-[10px] font-bold text-[#C69B26] bg-[#C69B26]/10 border border-[#C69B26]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-              {enrollProUsers.length} Registered Accounts
+              {isLoadingUsers ? 'Loading accounts…' : `${enrollProUsers.length} Registered Accounts`}
             </span>
           </div>
           <h2 className="text-2xl font-extrabold text-[#00271D] tracking-tight mt-1.5 flex items-center gap-2">
@@ -262,155 +281,109 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
         </div>
       </div>
 
-      {/* ROLE BREAKDOWN KPI CARDS (Interactive Role Filters) */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {/* ALL */}
-        <button
-          onClick={() => setSelectedRole('ALL')}
-          className={`p-3.5 rounded-2xl text-left border transition-all ${
-            selectedRole === 'ALL'
-              ? 'bg-[#00271D] text-white border-[#00271D] shadow-md ring-2 ring-[#00271D]/20 scale-[1.02]'
-              : 'bg-white/90 border-white/80 text-[#00271D] hover:border-[#00A77C]/40 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedRole === 'ALL' ? 'text-white/80' : 'text-[#00271D]/60'}`}>All Accounts</span>
-            <Users size={16} className={selectedRole === 'ALL' ? 'text-[#00A77C]' : 'text-[#00271D]/40'} />
-          </div>
-          <p className={`text-xl font-black mt-1 ${selectedRole === 'ALL' ? 'text-white' : 'text-[#00271D]'}`}>{counts.ALL}</p>
-        </button>
-
-        {/* ADMIN */}
-        <button
-          onClick={() => setSelectedRole('ADMIN')}
-          className={`p-3.5 rounded-2xl text-left border transition-all ${
-            selectedRole === 'ADMIN'
-              ? 'bg-violet-900 text-white border-violet-800 shadow-md ring-2 ring-violet-400/30 scale-[1.02]'
-              : 'bg-white/90 border-white/80 text-[#00271D] hover:border-violet-400/40 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedRole === 'ADMIN' ? 'text-violet-200' : 'text-violet-700'}`}>Admins</span>
-            <ShieldCheck size={16} className={selectedRole === 'ADMIN' ? 'text-violet-300' : 'text-violet-600'} />
-          </div>
-          <p className={`text-xl font-black mt-1 ${selectedRole === 'ADMIN' ? 'text-white' : 'text-violet-950'}`}>{counts.ADMIN}</p>
-        </button>
-
-        {/* MRF */}
-        <button
-          onClick={() => setSelectedRole('MRF')}
-          className={`p-3.5 rounded-2xl text-left border transition-all ${
-            selectedRole === 'MRF'
-              ? 'bg-sky-900 text-white border-sky-800 shadow-md ring-2 ring-sky-400/30 scale-[1.02]'
-              : 'bg-white/90 border-white/80 text-[#00271D] hover:border-sky-400/40 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedRole === 'MRF' ? 'text-sky-200' : 'text-sky-700'}`}>MRF Logistics</span>
-            <Truck size={16} className={selectedRole === 'MRF' ? 'text-sky-300' : 'text-sky-600'} />
-          </div>
-          <p className={`text-xl font-black mt-1 ${selectedRole === 'MRF' ? 'text-white' : 'text-sky-950'}`}>{counts.MRF}</p>
-        </button>
-
-        {/* TEACHER */}
-        <button
-          onClick={() => setSelectedRole('TEACHER')}
-          className={`p-3.5 rounded-2xl text-left border transition-all ${
-            selectedRole === 'TEACHER'
-              ? 'bg-purple-900 text-white border-purple-800 shadow-md ring-2 ring-purple-400/30 scale-[1.02]'
-              : 'bg-white/90 border-white/80 text-[#00271D] hover:border-purple-400/40 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-[11px] font-bold uppercase tracking-wider ${selectedRole === 'TEACHER' ? 'text-purple-200' : 'text-purple-700'}`}>Faculty</span>
-            <Building2 size={16} className={selectedRole === 'TEACHER' ? 'text-purple-300' : 'text-purple-600'} />
-          </div>
-          <p className={`text-xl font-black mt-1 ${selectedRole === 'TEACHER' ? 'text-white' : 'text-purple-950'}`}>{counts.TEACHER}</p>
-        </button>
-
-        {/* STUDENT */}
-        <button
-          onClick={() => setSelectedRole('STUDENT')}
-          className={`p-3.5 rounded-2xl text-left border transition-all ${
-            selectedRole === 'STUDENT'
-              ? 'bg-[#00271D] text-white border-[#00271D] shadow-md ring-2 ring-[#00A77C]/40 scale-[1.02]'
-              : 'bg-white/90 border-white/80 text-[#00271D] hover:border-[#00A77C]/40 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className={`text-[11px] font-bold uppercase tracking-wider text-[#00A77C]`}>Students</span>
-            <GraduationCap size={16} className="text-[#00A77C]" />
-          </div>
-          <p className={`text-xl font-black mt-1 ${selectedRole === 'STUDENT' ? 'text-white' : 'text-[#00271D]'}`}>{counts.STUDENT}</p>
-        </button>
-      </div>
-
-      {/* TOOLBAR: SEARCH & SORT CONTROLS */}
-      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3.5 top-3 text-[#00271D]/40" />
-          <input
-            type="text"
-            placeholder="Search by user name, email, employee ID, section..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#F9F3F0] border border-[#00271D]/10 rounded-xl pl-10 pr-4 py-2 text-xs text-[#00271D] placeholder-[#00271D]/40 outline-none focus:border-[#00A77C] focus:ring-1 focus:ring-[#00A77C] transition-all"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-2.5 text-[#00271D]/40 hover:text-[#00271D]"
-            >
-              <X size={14} />
-            </button>
-          )}
+      {/* TOOLBAR: ROLE FILTER, SEARCH & SORT CONTROLS */}
+      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl shadow-sm overflow-hidden">
+        {/* Role segmented filter */}
+        <div className="flex flex-wrap items-center gap-1.5 p-3 border-b border-[#00271D]/5">
+          <span className="text-[11px] font-bold text-[#00271D]/40 uppercase tracking-wider px-1.5 mr-1">Role:</span>
+          {([
+            { key: 'ALL' as const, label: 'All Accounts', count: counts.ALL, Icon: Users },
+            { key: 'ADMIN' as const, label: 'Admins', count: counts.ADMIN, Icon: ShieldCheck },
+            { key: 'MRF' as const, label: 'MRF Logistics', count: counts.MRF, Icon: Truck },
+            { key: 'TEACHER' as const, label: 'Faculty', count: counts.TEACHER, Icon: Building2 },
+            { key: 'STUDENT' as const, label: 'Students', count: counts.STUDENT, Icon: GraduationCap },
+          ]).map(({ key, label, count, Icon }) => {
+            const active = selectedRole === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setSelectedRole(key)}
+                aria-pressed={active}
+                className={`flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                  active
+                    ? 'bg-[#00271D] text-white border-[#00271D] shadow-sm'
+                    : 'bg-[#F9F3F0] text-[#00271D]/60 border-transparent hover:text-[#00271D] hover:border-[#00A77C]/30'
+                }`}
+              >
+                <Icon size={14} className={active ? 'text-[#00A77C]' : 'text-[#00271D]/40'} />
+                {label}
+                <span
+                  className={`text-[10px] font-black min-w-[20px] text-center px-1.5 py-0.5 rounded-full ${
+                    active ? 'bg-white/15 text-white' : 'bg-white text-[#00271D]/50'
+                  }`}
+                >
+                  {isLoadingUsers ? '—' : count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Sort & Role Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Role Filter */}
-          <div className="flex items-center gap-1.5 bg-[#F9F3F0] px-3 py-1.5 rounded-xl border border-[#00271D]/10">
-            <Filter size={13} className="text-[#00271D]/50" />
-            <span className="text-[11px] font-bold text-[#00271D]/60 uppercase">Role:</span>
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as Role | 'ALL')}
-              className="bg-transparent text-xs font-extrabold text-[#00271D] outline-none cursor-pointer"
-            >
-              <option value="ALL">All Roles ({counts.ALL})</option>
-              <option value="ADMIN">Admins ({counts.ADMIN})</option>
-              <option value="MRF">MRF Logistics ({counts.MRF})</option>
-              <option value="TEACHER">Faculty ({counts.TEACHER})</option>
-              <option value="STUDENT">Students ({counts.STUDENT})</option>
-            </select>
+        {/* Search & sort controls */}
+        <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3.5 top-3 text-[#00271D]/40" />
+            <input
+              type="text"
+              placeholder="Search by user name, email, employee ID, section..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-[#F9F3F0] border border-[#00271D]/10 rounded-xl pl-10 pr-4 py-2 text-xs text-[#00271D] placeholder-[#00271D]/40 outline-none focus:border-[#00A77C] focus:ring-1 focus:ring-[#00A77C] transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-2.5 text-[#00271D]/40 hover:text-[#00271D]"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          {/* Sort By Field */}
-          <div className="flex items-center gap-1.5 bg-[#F9F3F0] px-3 py-1.5 rounded-xl border border-[#00271D]/10">
-            <ArrowUpDown size={13} className="text-[#00271D]/50" />
-            <span className="text-[11px] font-bold text-[#00271D]/60 uppercase">Sort:</span>
-            <select
-              value={sortField}
-              onChange={(e) => setSortField(e.target.value as SortField)}
-              className="bg-transparent text-xs font-extrabold text-[#00271D] outline-none cursor-pointer"
-            >
-              <option value="role">Role Hierarchy (Admin → Student)</option>
-              <option value="name">Name (A-Z)</option>
-              <option value="points">Eco-Points (High → Low)</option>
-              <option value="warnings">Warnings Count</option>
-              <option value="email">Email Address</option>
-            </select>
-          </div>
+          {/* Sort Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Account status filter — archived accounts are graduated and cannot sign in */}
+            <div className="flex items-center gap-1.5 bg-[#F9F3F0] px-3 py-1.5 rounded-xl border border-[#00271D]/10">
+              <Filter size={13} className="text-[#00271D]/50" />
+              <span className="text-[11px] font-bold text-[#00271D]/60 uppercase">Status:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'ACTIVE' | 'ARCHIVED' | 'ALL')}
+                className="bg-transparent text-xs font-extrabold text-[#00271D] outline-none cursor-pointer"
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="ARCHIVED">Archived</option>
+                <option value="ALL">All</option>
+              </select>
+            </div>
 
-          {/* Sort Direction Toggle */}
-          <button
-            onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-            className="px-3 py-1.5 bg-[#00A77C]/10 text-[#00A77C] border border-[#00A77C]/20 hover:bg-[#00A77C]/20 rounded-xl text-xs font-black uppercase tracking-wider transition-all"
-            title="Toggle Ascending / Descending"
-          >
-            {sortDirection === 'asc' ? 'ASC ↑' : 'DESC ↓'}
-          </button>
+            {/* Sort By Field */}
+            <div className="flex items-center gap-1.5 bg-[#F9F3F0] px-3 py-1.5 rounded-xl border border-[#00271D]/10">
+              <ArrowUpDown size={13} className="text-[#00271D]/50" />
+              <span className="text-[11px] font-bold text-[#00271D]/60 uppercase">Sort:</span>
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value as SortField)}
+                className="bg-transparent text-xs font-extrabold text-[#00271D] outline-none cursor-pointer"
+              >
+                <option value="role">Role Hierarchy (Admin → Student)</option>
+                <option value="name">Name (A-Z)</option>
+                <option value="points">Eco-Points (High → Low)</option>
+                <option value="warnings">Warnings Count</option>
+                <option value="email">Email Address</option>
+              </select>
+            </div>
+
+            {/* Sort Direction Toggle */}
+            <button
+              onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+              className="px-3 py-1.5 bg-[#00A77C]/10 text-[#00A77C] border border-[#00A77C]/20 hover:bg-[#00A77C]/20 rounded-xl text-xs font-black uppercase tracking-wider transition-all"
+              title="Toggle Ascending / Descending"
+            >
+              {sortDirection === 'asc' ? 'ASC ↑' : 'DESC ↓'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -469,7 +442,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                 {processedUsers.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-[#00271D]/40 font-medium">
-                      No user accounts found matching your filter criteria.
+                      {isLoadingUsers ? 'Loading user accounts…' : 'No user accounts found matching your filter criteria.'}
                     </td>
                   </tr>
                 ) : (

@@ -10,8 +10,8 @@ export async function getSyncSettings(): Promise<{ syncMode: string; syncInterva
   try {
     const settings = await prisma.systemSetting.findUnique({ where: { id: 'default_setting' } });
     return {
-      syncMode: (settings as any)?.syncMode || 'MANUAL',
-      syncIntervalMinutes: (settings as any)?.syncIntervalMinutes || 60,
+      syncMode: settings?.syncMode || 'MANUAL',
+      syncIntervalMinutes: settings?.syncIntervalMinutes || 60,
     };
   } catch {
     return { syncMode: 'MANUAL', syncIntervalMinutes: 60 };
@@ -52,6 +52,22 @@ export function stopScheduledSync() {
   }
 }
 
+/**
+ * Builds a valid cron expression for the configured interval.
+ * `*​/N * * * *` is only valid for N <= 59, so larger intervals switch to an
+ * hourly or daily schedule instead of crashing the scheduler.
+ */
+function buildCronExpression(intervalMinutes: number): string {
+  if (intervalMinutes < 60) {
+    return `*/${Math.max(1, Math.round(intervalMinutes))} * * * *`;
+  }
+  const hours = Math.round(intervalMinutes / 60);
+  if (hours >= 24) {
+    return '0 0 * * *';
+  }
+  return `0 */${Math.max(1, hours)} * * *`;
+}
+
 export async function rescheduleSync() {
   stopScheduledSync();
 
@@ -60,9 +76,9 @@ export async function rescheduleSync() {
   if (syncMode === 'AUTO' && syncIntervalMinutes > 0) {
     try {
       const cron = await import('node-cron');
-      const cronExpression = `*/${syncIntervalMinutes} * * * *`;
+      const cronExpression = buildCronExpression(syncIntervalMinutes);
       scheduledTask = cron.default.schedule(cronExpression, executeSync);
-      console.log(`[Scheduler] Auto-sync scheduled every ${syncIntervalMinutes} minutes`);
+      console.log(`[Scheduler] Auto-sync scheduled every ${syncIntervalMinutes} minutes (cron: ${cronExpression})`);
     } catch (err) {
       console.error('[Scheduler] Failed to schedule cron:', err);
     }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
-import { Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { getLoginErrorMessage, ROLE_PORTAL_MESSAGE } from '../../utils/loginErrors';
 
 interface LoginCardProps {
@@ -124,6 +124,16 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
             )}
           </button>
         </form>
+
+        {/* Data privacy notice (RA 10173) */}
+        <div className="mt-5 flex items-start gap-2 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0] px-3.5 py-3">
+          <ShieldCheck size={14} className="mt-0.5 shrink-0 text-[#00A77C]" strokeWidth={2} />
+          <p className="text-[10px] leading-relaxed text-[#00271D]/70">
+            Your credentials are verified by <span className="font-semibold">EnrollPro</span>. SORT never stores
+            passwords. Learner and staff records are processed in line with RA 10173 (Data Privacy Act of 2012) and
+            are visible only to authorised school personnel.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -103,9 +103,16 @@ async function main() {
   // All user reports must originate from real EnrollPro student submissions.
   // No fake/local reports are seeded here.
 
-  // 8. Seed Challenges (upsert by stable code per D12)
+  // 8. Seed Challenges (per-term instances keyed by stable code + quarterCode)
+  //    A challenge instance belongs to the active academic term so it closes
+  //    with that term; progress therefore resets naturally each term.
+  const activeQuarter = await prisma.academicQuarter.findFirst({ where: { isActive: true } });
+  const challengeQuarterCode = activeQuarter?.quarterCode ?? 'GLOBAL';
+  const challengeStartDate = activeQuarter ? new Date(activeQuarter.startDate) : null;
+  const challengeEndDate = activeQuarter ? new Date(activeQuarter.endDate) : null;
+
   await prisma.challenge.upsert({
-    where: { code: 'WEEKLY_RECYCLING_PIONEER' },
+    where: { code_quarterCode: { code: 'WEEKLY_RECYCLING_PIONEER', quarterCode: challengeQuarterCode } },
     update: {},
     create: {
       code: 'WEEKLY_RECYCLING_PIONEER',
@@ -116,10 +123,13 @@ async function main() {
       target: 5,
       iconName: 'Recycle',
       isActive: true,
+      quarterCode: challengeQuarterCode,
+      startDate: challengeStartDate,
+      endDate: challengeEndDate,
     },
   });
   await prisma.challenge.upsert({
-    where: { code: 'ZERO_SINGLE_USE_PLASTICS' },
+    where: { code_quarterCode: { code: 'ZERO_SINGLE_USE_PLASTICS', quarterCode: challengeQuarterCode } },
     update: {},
     create: {
       code: 'ZERO_SINGLE_USE_PLASTICS',
@@ -130,6 +140,9 @@ async function main() {
       target: 1,
       iconName: 'Award',
       isActive: true,
+      quarterCode: challengeQuarterCode,
+      startDate: challengeStartDate,
+      endDate: challengeEndDate,
     },
   });
   console.log('✅ Challenges Seeded');

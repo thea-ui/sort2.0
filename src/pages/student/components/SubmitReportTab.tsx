@@ -71,7 +71,10 @@ interface SubmitReportTabProps {
   handleSubmit: (e: React.FormEvent) => void;
 }
 
-type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
+// DepEd Order No. 5, s. 2014 requires segregation into biodegradable,
+// non-biodegradable and hazardous/toxic waste. Recyclable is retained as an
+// additional RA 9003 stream. Bin colours follow the DO 5 colour coding.
+type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE' | 'HAZARDOUS';
 export type BinReportStatusState = 'AVAILABLE' | 'REPORTED_FULL' | 'DISPATCHED' | 'LIMIT_REACHED' | 'NO_BIN' | 'UNAVAILABLE';
 
 interface BinSlot {
@@ -89,15 +92,17 @@ interface StationCluster {
   coordinates: { lat: number; lng: number };
   x?: number;
   y?: number;
-  slots: [BinSlot, BinSlot, BinSlot];
+  slots: [BinSlot, BinSlot, BinSlot, BinSlot];
 }
 
-const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE'];
+const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE', 'HAZARDOUS'];
 
 const CAT_META: Record<BinCategory, { label: string; short: string; bg: string; border: string; text: string; Icon: React.FC<{ size?: number; className?: string }>; desc: string }> = {
-  BIODEGRADABLE:     { label: 'Biodegradable',     short: 'Bio', bg: 'bg-emerald-500', border: 'border-emerald-400', text: 'text-emerald-600', Icon: Droplets, desc: 'Food scraps, organic waste & plant leaves' },
-  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', short: 'Non', bg: 'bg-rose-500',    border: 'border-rose-400',    text: 'text-rose-600',    Icon: PackageX, desc: 'Wrappers, plastic films & residual waste' },
-  RECYCLABLE:        { label: 'Recyclable',         short: 'Rec', bg: 'bg-sky-500',     border: 'border-sky-400',     text: 'text-sky-600',     Icon: Recycle,  desc: 'PET bottles, aluminum cans, glass & cardboard' },
+  // DO 5 s. 2014 colour coding: green/yellow = biodegradable, black/blue = non-biodegradable, red/orange = hazardous.
+  BIODEGRADABLE:     { label: 'Biodegradable',     short: 'Bio', bg: 'bg-emerald-500', border: 'border-emerald-400', text: 'text-emerald-600', Icon: Droplets,     desc: 'Food scraps, organic waste & plant leaves' },
+  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', short: 'Non', bg: 'bg-slate-800',   border: 'border-slate-600',   text: 'text-slate-700',   Icon: PackageX,     desc: 'Wrappers, plastic films & residual waste (black/blue bin)' },
+  RECYCLABLE:        { label: 'Recyclable',         short: 'Rec', bg: 'bg-sky-500',     border: 'border-sky-400',     text: 'text-sky-600',     Icon: Recycle,      desc: 'PET bottles, aluminum cans, glass & cardboard' },
+  HAZARDOUS:         { label: 'Hazardous',          short: 'Haz', bg: 'bg-orange-500',  border: 'border-orange-400',  text: 'text-orange-600',  Icon: AlertTriangle, desc: 'Batteries, bulbs, chemicals, sharps & e-waste (red/orange bin)' },
 };
 
 function getBinSlotDetails(bin: Bin | null, reports: Report[] = []): {
@@ -176,7 +181,7 @@ function groupStations(bins: Bin[], reports: Report[] = []): StationCluster[] {
         unverifiedCount: details.unverifiedCount,
         activeReport: details.activeReport,
       };
-    }) as [BinSlot, BinSlot, BinSlot],
+    }) as [BinSlot, BinSlot, BinSlot, BinSlot],
   }));
 }
 
@@ -249,14 +254,21 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
 
   const handleSelectCategoryAndBin = (selectedCat: WasteCategory, targetBinId?: string | null) => {
     setCategory?.(selectedCat);
-    const catLabel = selectedCat === 'BIODEGRADABLE' ? 'Biodegradable' : selectedCat === 'NON_BIODEGRADABLE' ? 'Non-Biodegradable' : 'Recyclable';
+    // Normalise legacy aliases, then take the label from the single source of
+    // truth (CAT_META). The previous hand-rolled ternary had no HAZARDOUS
+    // branch and silently titled hazardous reports "Recyclable".
+    const canonical: BinCategory =
+      selectedCat === 'ORGANIC' ? 'BIODEGRADABLE'
+      : selectedCat === 'GENERAL' ? 'NON_BIODEGRADABLE'
+      : (selectedCat as BinCategory);
+    const catLabel = CAT_META[canonical]?.label ?? 'Waste Report';
     setReportTitle?.(catLabel);
     setSelectedMaterials([catLabel]);
 
     if (targetBinId) {
       setBinId(targetBinId);
     } else if (activeStation) {
-      const slot = activeStation.slots.find(s => s.type === selectedCat);
+      const slot = activeStation.slots.find(s => s.type === canonical);
       if (slot?.bin) {
         setBinId(slot.bin.id);
       }

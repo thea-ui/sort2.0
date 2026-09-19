@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -13,7 +14,7 @@ const DEFAULT_STOCKS = [
 ];
 
 // GET /api/market/stocks - Get current market stock levels & thresholds
-router.get('/stocks', async (_req: Request, res: Response) => {
+router.get('/stocks', authenticate, async (_req: Request, res: Response) => {
   try {
     let stocks = await prisma.recycleMarketStock.findMany({
       orderBy: { createdAt: 'asc' },
@@ -34,7 +35,7 @@ router.get('/stocks', async (_req: Request, res: Response) => {
 });
 
 // PATCH /api/market/stocks/:code - Update threshold, price, or add accumulated kg
-router.patch('/stocks/:code', async (req: Request, res: Response) => {
+router.patch('/stocks/:code', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response) => {
   try {
     const code = req.params.code as string;
     const { thresholdLimitKg, marketPricePerKg, addKg, setAccumulatedKg } = req.body;
@@ -72,7 +73,7 @@ router.patch('/stocks/:code', async (req: Request, res: Response) => {
 });
 
 // POST /api/market/approve-sale - Admin authorizes batch sale for MRF
-router.post('/approve-sale', async (req: Request, res: Response) => {
+router.post('/approve-sale', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response) => {
   try {
     const { categoryCode, isApproved } = req.body;
     if (!categoryCode) {
@@ -97,7 +98,7 @@ router.post('/approve-sale', async (req: Request, res: Response) => {
 });
 
 // POST /api/market/sell-batch - Execute batch sale for category
-router.post('/sell-batch', async (req: Request, res: Response) => {
+router.post('/sell-batch', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response) => {
   try {
     const { categoryCode, buyerName } = req.body;
 
@@ -164,7 +165,7 @@ router.post('/sell-batch', async (req: Request, res: Response) => {
 });
 
 // GET /api/market/sales - Get all logged sales transactions (Ledger)
-router.get('/sales', async (req: Request, res: Response) => {
+router.get('/sales', authenticate, async (req: Request, res: Response) => {
   try {
     const { schoolYearId } = req.query;
     const where: any = {};

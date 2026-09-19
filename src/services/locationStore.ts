@@ -88,6 +88,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
+      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
   {
@@ -101,6 +102,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
+      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
   {
@@ -114,6 +116,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
+      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
   {
@@ -127,6 +130,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
+      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
   {
@@ -140,6 +144,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
+      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
 ];

@@ -29,9 +29,9 @@ interface StudentDashboardProps {
 const CATEGORY_META: Record<WasteCategory, { label: string; icon: React.ComponentType<any>; color: string; bg: string; border: string }> = {
   RECYCLABLE: { label: 'Recyclable', icon: Scale, color: 'text-blue-600', bg: 'bg-blue-50/50', border: 'border-blue-100' },
   BIODEGRADABLE: { label: 'Biodegradable', icon: Sparkles, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100' },
-  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', icon: Trash2, color: 'text-rose-600', bg: 'bg-rose-50/50', border: 'border-rose-100' },
+  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', icon: Trash2, color: 'text-slate-700', bg: 'bg-slate-50/50', border: 'border-slate-200' },
   ORGANIC: { label: 'Organic', icon: Sparkles, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100' },
-  HAZARDOUS: { label: 'Hazardous', icon: Flame, color: 'text-rose-600', bg: 'bg-rose-50/50', border: 'border-rose-100' },
+  HAZARDOUS: { label: 'Hazardous', icon: Flame, color: 'text-orange-600', bg: 'bg-orange-50/50', border: 'border-orange-200' },
   GENERAL: { label: 'General', icon: Trash2, color: 'text-zinc-600', bg: 'bg-zinc-50/50', border: 'border-zinc-200' },
 };
 

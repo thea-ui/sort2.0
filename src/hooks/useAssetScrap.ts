@@ -14,6 +14,36 @@ export interface ScrapStockItem {
   hazmat?: boolean;
 }
 
+export type ScrapItemStatus = 'AWAITING_WEIGHT' | 'IN_STOCK' | 'SOLD' | 'DISPOSED';
+
+export interface ScrapItem {
+  id: string;
+  materialCode: string;
+  materialName: string;
+  weightKg: number | null;
+  status: ScrapItemStatus;
+  description?: string | null;
+  sourceAssetId?: string | null;
+  sourceReportId?: string | null;
+  weighedBy?: string | null;
+  weighedAt?: string | null;
+  saleTransactionId?: string | null;
+  disposedBy?: string | null;
+  disposedAt?: string | null;
+  disposalReference?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateScrapItemInput {
+  materialCode: string;
+  weightKg?: number;
+  status?: 'AWAITING_WEIGHT' | 'IN_STOCK';
+  description?: string;
+  sourceAssetId?: string;
+  sourceReportId?: string;
+}
+
 export interface ScrapSaleTransaction {
   id: string;
   materialCode: string;
@@ -46,6 +76,7 @@ function broadcastChange() {
 export function useAssetScrap() {
   const [stocksRecord, setStocksRecord] = useState<Record<string, ScrapStockItem>>(DEFAULT_SCRAP);
   const [salesHistory, setSalesHistory] = useState<ScrapSaleTransaction[]>([]);
+  const [items, setItems] = useState<ScrapItem[]>([]);
 
   const reloadScrapData = useCallback(async () => {
     try {
@@ -78,6 +109,13 @@ export function useAssetScrap() {
       }
     } catch (err) {
       console.warn('Failed to fetch scrap sales:', err);
+    }
+
+    try {
+      const scrapItems = await apiService.getAssetScrapItems();
+      if (Array.isArray(scrapItems)) setItems(scrapItems as ScrapItem[]);
+    } catch (err) {
+      console.warn('Failed to fetch scrap items:', err);
     }
   }, []);
 
@@ -147,6 +185,27 @@ export function useAssetScrap() {
     }
   };
 
+  const createScrapItem = async (input: CreateScrapItemInput) => {
+    const created = await apiService.createAssetScrapItem(input);
+    await reloadScrapData();
+    broadcastChange();
+    return created as ScrapItem;
+  };
+
+  const weighScrapItem = async (id: string, weightKg: number) => {
+    const res = await apiService.weighAssetScrapItem(id, weightKg);
+    await reloadScrapData();
+    broadcastChange();
+    return res?.item as ScrapItem | undefined;
+  };
+
+  const disposeScrapItem = async (id: string, disposalReference?: string) => {
+    const res = await apiService.disposeAssetScrapItem(id, disposalReference);
+    await reloadScrapData();
+    broadcastChange();
+    return res?.item as ScrapItem | undefined;
+  };
+
   const totalScrapSales = useMemo(
     () => salesHistory.reduce((sum, tx) => sum + (tx.totalRevenue || 0), 0),
     [salesHistory]
@@ -154,12 +213,37 @@ export function useAssetScrap() {
 
   const materials = useMemo(() => Object.values(stocksRecord), [stocksRecord]);
 
+  const pendingItems = useMemo(
+    () => items.filter((it) => it.status === 'AWAITING_WEIGHT'),
+    [items]
+  );
+
+  // Items that have already been weighed (in stock, sold, or disposed),
+  // newest weighing first — used for the scrap weigh history.
+  const weighedItems = useMemo(
+    () =>
+      items
+        .filter((it) => it.status !== 'AWAITING_WEIGHT')
+        .sort((a, b) => {
+          const aTime = new Date(a.weighedAt || a.updatedAt || a.createdAt).getTime();
+          const bTime = new Date(b.weighedAt || b.updatedAt || b.createdAt).getTime();
+          return bTime - aTime;
+        }),
+    [items]
+  );
+
   return {
     stocksRecord,
     materials,
+    items,
+    pendingItems,
+    weighedItems,
     salesHistory,
     totalScrapSales,
     addScrapKg,
+    createScrapItem,
+    weighScrapItem,
+    disposeScrapItem,
     approveSale,
     sellBatch,
     updateThresholdOrPrice,

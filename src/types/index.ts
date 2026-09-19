@@ -2,7 +2,19 @@ export type Role = 'STUDENT' | 'TEACHER' | 'MRF' | 'ADMIN';
 
 export type ReportStatus = 'PENDING' | 'DISPATCHED' | 'COLLECTED' | 'RESOLVED' | 'DISMISSED' | 'EXPIRED';
 
-export type WasteCategory = 'RECYCLABLE' | 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'ORGANIC' | 'HAZARDOUS' | 'GENERAL';
+// Canonical waste streams mirror the Prisma `WasteCategory` enum
+// (DepEd Order No. 5, s. 2014: biodegradable / non-biodegradable / hazardous;
+//  RA 9003 additionally recognises recyclable).
+// `ORGANIC` and `GENERAL` are LEGACY aliases still present in older cached
+// records. The API normalises ORGANIC -> BIODEGRADABLE and GENERAL ->
+// NON_BIODEGRADABLE on write, so new records must never use them.
+export type WasteCategory =
+  | 'RECYCLABLE'
+  | 'BIODEGRADABLE'
+  | 'NON_BIODEGRADABLE'
+  | 'HAZARDOUS'
+  | 'ORGANIC' // legacy alias -> BIODEGRADABLE
+  | 'GENERAL'; // legacy alias -> NON_BIODEGRADABLE
 
 export type ChallengeType = 'REPORT_COUNT' | 'WEIGHT_COLLECTED' | 'HAZARDOUS_REPORT';
 
@@ -88,6 +100,7 @@ export interface Challenge {
   target: number;
   isActive: boolean;
   iconName: string;
+  quarterCode?: string;
   startDate?: string | null;
   endDate?: string | null;
   createdAt?: string;
@@ -171,7 +184,9 @@ export interface AuditLogEntry {
   details: string;
 }
 
-export type CategoryStreamType = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
+// Segregation streams at a campus location. HAZARDOUS is required by
+// DepEd Order No. 5, s. 2014 (red/orange bin).
+export type CategoryStreamType = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE' | 'HAZARDOUS';
 
 export interface StreamBinStatus {
   type: CategoryStreamType;
@@ -240,6 +255,7 @@ export interface AdminChallenge extends Challenge {
     totalContributions: number;
   };
   hasProgress: boolean;
+  isEnded?: boolean;
 }
 
 // ─── Certification ────────────────────────────────────────────────────

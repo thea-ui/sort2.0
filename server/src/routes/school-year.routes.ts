@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticate, requireAdmin, requireRole } from '../middleware/auth.js';
+import { mirrorEnrollProSchoolYears } from '../services/enrollpro-sync.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -14,6 +15,11 @@ function getParamId(req: Request): string {
 
 const LABEL_REGEX = /^\d{4}-\d{4}$/;
 
+// Manual school-year creation is for real academic years, not arbitrary input.
+// EnrollPro-mirrored years bypass this (they are the authoritative catalog).
+const MAX_FUTURE_YEARS = 2;
+const MAX_PAST_YEARS = 30;
+
 function validateLabel(label: string): string | null {
   if (!label || typeof label !== 'string') return 'label is required';
   const trimmed = label.trim();
@@ -22,6 +28,16 @@ function validateLabel(label: string): string | null {
   const startYear = parseInt(parts[0], 10);
   const endYear = parseInt(parts[1], 10);
   if (endYear !== startYear + 1) return 'second year must equal first year plus one';
+
+  // Reject implausible labels (e.g. a typo like "2099-2100"). Without this an
+  // admin can create a school year that no real data will ever belong to.
+  const currentYear = new Date().getUTCFullYear();
+  if (startYear > currentYear + MAX_FUTURE_YEARS) {
+    return `start year ${startYear} is too far in the future (max ${currentYear + MAX_FUTURE_YEARS})`;
+  }
+  if (startYear < currentYear - MAX_PAST_YEARS) {
+    return `start year ${startYear} is too far in the past (min ${currentYear - MAX_PAST_YEARS})`;
+  }
   return null;
 }
 
@@ -76,22 +92,40 @@ async function writeAuditLog(
 
 // ── Routes ─────────────────────────────────────────────────────────────────
 
-// GET /api/school-years — List all school years with counts (admin only)
-router.get('/', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
+// GET /api/school-years — List all school years with counts (admin + MRF).
+//
+// The MRF Asset Ledger consumes this list for its school-year dropdown. When
+// the local catalog is empty we mirror EnrollPro's school-year catalog first,
+// so the dropdown tracks EnrollPro without requiring a manual admin sync. A
+// short cooldown prevents hammering EnrollPro while its catalog is unreachable.
+let lastSchoolYearMirrorAttempt = 0;
+const SCHOOL_YEAR_MIRROR_COOLDOWN_MS = 60_000;
+
+router.get('/', requireRole('ADMIN', 'MRF'), async (_req: Request, res: Response): Promise<any> => {
   try {
-    const schoolYears = await prisma.schoolYear.findMany({
-      orderBy: { startDate: 'desc' },
-      include: {
-        _count: {
-          select: {
-            reports: true,
-            pointHistories: true,
-            offenses: true,
-            saleTransactions: true,
+    const listSchoolYears = () =>
+      prisma.schoolYear.findMany({
+        orderBy: { startDate: 'desc' },
+        include: {
+          _count: {
+            select: {
+              reports: true,
+              pointHistories: true,
+              offenses: true,
+              saleTransactions: true,
+            },
           },
         },
-      },
-    });
+      });
+
+    let schoolYears = await listSchoolYears();
+
+    if (schoolYears.length === 0 && Date.now() - lastSchoolYearMirrorAttempt > SCHOOL_YEAR_MIRROR_COOLDOWN_MS) {
+      lastSchoolYearMirrorAttempt = Date.now();
+      await mirrorEnrollProSchoolYears().catch(() => {});
+      schoolYears = await listSchoolYears();
+    }
+
     res.json(schoolYears);
   } catch (error: any) {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: error.message || 'Failed to fetch school years' } });
@@ -101,10 +135,18 @@ router.get('/', requireAdmin, async (_req: Request, res: Response): Promise<any>
 // GET /api/school-years/active — Get current active school year (authenticated)
 router.get('/active', authenticate, async (_req: Request, res: Response): Promise<any> => {
   try {
-    const sy = await prisma.schoolYear.findFirst({
+    // Deterministic: newest start date wins if legacy data has more than one
+    // active row. Log loudly so the anomaly is visible in server logs.
+    const active = await prisma.schoolYear.findMany({
       where: { isActive: true, isArchived: false },
+      orderBy: { startDate: 'desc' },
     });
-    res.json(sy || null);
+    if (active.length > 1) {
+      console.warn(
+        `[SY] ${active.length} active school years found: ${active.map((s) => s.label).join(', ')} — using "${active[0].label}"`
+      );
+    }
+    res.json(active[0] || null);
   } catch (error: any) {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: error.message || 'Failed to fetch active school year' } });
   }
@@ -257,8 +299,41 @@ router.post('/:id/activate', requireAdmin, async (req: Request, res: Response): 
     if (sy.isArchived) return res.status(400).json({ error: { code: 'ARCHIVED_IMMUTABLE', message: 'Cannot activate an archived school year' } });
     if (sy.isActive) return res.status(400).json({ error: { code: 'ALREADY_ACTIVE', message: 'School year is already active' } });
 
-    // Atomic: deactivate current active, then activate target
+    // Atomic: snapshot + reset outgoing market stock, deactivate current, activate target
     const result = await prisma.$transaction(async (tx) => {
+      const currentActive = await tx.schoolYear.findFirst({
+        where: { isActive: true, isArchived: false },
+      });
+
+      // Archive the outgoing year's recyclable closing balances, then empty the
+      // live stock so the new year starts at zero (see rollover.service.ts step 7).
+      if (currentActive) {
+        const marketStocks = await tx.recycleMarketStock.findMany();
+        for (const stock of marketStocks) {
+          if (stock.accumulatedKg > 0) {
+            await tx.marketStockSnapshot.upsert({
+              where: {
+                schoolYearId_categoryCode: {
+                  schoolYearId: currentActive.id,
+                  categoryCode: stock.categoryCode,
+                },
+              },
+              update: { closingKg: stock.accumulatedKg },
+              create: {
+                schoolYearId: currentActive.id,
+                categoryCode: stock.categoryCode,
+                categoryName: stock.categoryName,
+                closingKg: stock.accumulatedKg,
+                openingKg: 0,
+              },
+            });
+          }
+        }
+        await tx.recycleMarketStock.updateMany({
+          data: { accumulatedKg: 0, isApprovedForSale: false, approvedAt: null },
+        });
+      }
+
       // Deactivate current active year
       await tx.schoolYear.updateMany({
         where: { isActive: true, isArchived: false },

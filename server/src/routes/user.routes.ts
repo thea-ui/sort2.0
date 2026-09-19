@@ -1,37 +1,55 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticate, optionalAuthenticate, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { generateCertificatePDF } from '../services/certificate-pdf.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// GET /api/users - List EnrollPro-synced users (public for initial app load)
-router.get('/', async (_req: Request, res: Response): Promise<any> => {
+// GET /api/users
+// Privacy: anonymous callers get a minimised projection (no email, employee ID,
+// account status). Only staff roles receive the full record (RA 10173 data minimisation).
+router.get('/', optionalAuthenticate, async (req: Request, res: Response): Promise<any> => {
   try {
+    const role = (req as AuthenticatedRequest).userRole;
+    const isStaff = role === 'ADMIN' || role === 'TEACHER' || role === 'MRF';
+
     const users = await prisma.user.findMany({
       where: {
         syncSource: 'ENROLLPRO',
       },
       orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        employeeId: true,
-        role: true,
-        points: true,
-        warningsCount: true,
-        classroomSection: true,
-        certificates: true,
-        syncSource: true,
-        gradeLevel: true,
-        sectionName: true,
-        createdAt: true,
-        accountStatus: true,
-        suspendedUntil: true,
-      },
+      select: isStaff
+        ? {
+            id: true,
+            name: true,
+            email: true,
+            employeeId: true,
+            role: true,
+            points: true,
+            warningsCount: true,
+            classroomSection: true,
+            certificates: true,
+            syncSource: true,
+            gradeLevel: true,
+            sectionName: true,
+            createdAt: true,
+            accountStatus: true,
+            suspendedUntil: true,
+            archivedAt: true,
+            enrollmentStatus: true,
+          }
+        : {
+            id: true,
+            name: true,
+            role: true,
+            points: true,
+            classroomSection: true,
+            certificates: true,
+            gradeLevel: true,
+            sectionName: true,
+          },
     });
 
     const formatted = users.map((u) => ({
@@ -53,6 +71,8 @@ router.get('/leaderboard', async (_req: Request, res: Response): Promise<any> =>
       where: {
         role: 'STUDENT',
         syncSource: 'ENROLLPRO',
+        // Graduated/archived learners cannot sign in, so they must never be ranked.
+        archivedAt: null,
       },
       orderBy: { points: 'desc' },
       take: 20,
@@ -191,24 +211,32 @@ router.post('/:id/deduct-points', requireAdmin, async (req: Request, res: Respon
       return res.json({ message: 'No points to deduct', points: 0 });
     }
 
-    await prisma.user.update({
-      where: { id: targetId },
-      data: { points: { decrement: actualDeduction } },
+    // The ledger and the balance must move together, and the ledger must record
+    // the amount ACTUALLY deducted (not the requested amount) or the history
+    // stops reconciling with users.points.
+    const activeSchoolYearId = await getActiveSchoolYearId();
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: targetId },
+        data: { points: { decrement: actualDeduction } },
+      });
+
+      await tx.pointHistory.create({
+        data: {
+          userId: targetId,
+          amount: -actualDeduction,
+          reason: reason || 'Admin point deduction',
+          schoolYearId: activeSchoolYearId,
+        },
+      });
+
+      return updated;
     });
 
-    await prisma.pointHistory.create({
-      data: {
-        userId: targetId,
-        amount: -deductAmount,
-        reason: reason || 'Admin point deduction',
-        schoolYearId: await getActiveSchoolYearId(),
-      },
-    });
-
-    const updatedUser = await prisma.user.findUnique({ where: { id: targetId } });
     return res.json({
-      message: `${deductAmount} points deducted`,
-      points: updatedUser?.points || 0,
+      message: `${actualDeduction} points deducted`,
+      points: updatedUser.points,
+      requestedAmount: deductAmount,
     });
   } catch (error) {
     console.error('Deduct points error:', error);

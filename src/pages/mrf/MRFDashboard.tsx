@@ -120,7 +120,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     addStockKg,
   } = useRecycleMarket();
 
-  const { addScrapKg } = useAssetScrap();
+  const { createScrapItem } = useAssetScrap();
 
   // Toast Notification
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -237,9 +237,10 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     showToast(`Dispatch confirmed! Admin status updated to "Ongoing / Doing it now".`);
   };
 
-  const handleCompleteSubmit = (e: React.FormEvent) => {
+  const handleCompleteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!completeModalReport) return;
+    const report = completeModalReport;
 
     const isRecyclable = completeModalReport.category === 'RECYCLABLE' ||
       completeModalReport.description.toUpperCase().includes('WASTE');
@@ -276,37 +277,73 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       const disposition = ASSET_DISPOSITIONS.find(d => d.value === dispositionValue) || ASSET_DISPOSITIONS[1];
       const parsedKg = parseFloat(assetScrapKg) || 0;
 
-      updateReportStatus(completeModalReport.id, 'RESOLVED', undefined, completionNotes, disposition.value);
+      updateReportStatus(report.id, 'RESOLVED', undefined, completionNotes, disposition.value);
 
-      // Record the asset in the ledger (best-effort; never blocks completion).
-      apiService.createAssetRecord({
-        assetName: cleanReportTitle(completeModalReport.title),
-        category: deriveAssetCategory(completeModalReport.description),
-        action: disposition.action,
-        disposition: disposition.value,
-        quantity: 1,
-        unit: 'pcs',
-        condition: disposition.condition,
-        sourceReportId: completeModalReport.id,
-        locationName: cleanLocationName(completeModalReport.locationName),
-        notes: completionNotes || undefined,
-      }).catch((err) => console.warn('Asset record creation notice:', err));
+      // Record the asset in the ledger first so the scrap item can reference it.
+      const assetTitle = cleanReportTitle(report.title);
+      let assetRecordId: string | undefined;
+      try {
+        const assetRecord = await apiService.createAssetRecord({
+          assetName: assetTitle,
+          category: deriveAssetCategory(report.description),
+          action: disposition.action,
+          disposition: disposition.value,
+          quantity: 1,
+          unit: 'pcs',
+          condition: disposition.condition,
+          sourceReportId: report.id,
+          locationName: cleanLocationName(report.locationName),
+          notes: completionNotes || undefined,
+        });
+        assetRecordId = assetRecord?.id;
+      } catch (err) {
+        console.warn('Asset record creation notice:', err);
+      }
 
-      if (disposition.scrap && parsedKg > 0) {
-        addScrapKg(assetScrapMaterial, parsedKg)
-          .then(() => showToast(`Recorded ${parsedKg} kg of scrap; asset logged in the ledger.`))
-          .catch(() => showToast('Asset recorded, but the scrap stock update failed.'));
-      } else if (disposition.scrap) {
-        showToast('Asset recorded as unserviceable. Weigh it later in Scrap Stock when ready.');
-      } else if (disposition.hazmat) {
-        showToast('E-waste recorded — route to a DENR-accredited handler (not sold as ordinary scrap).');
+      // Scrap/e-waste assets become a per-material item. If no weight was entered
+      // it is logged as AWAITING_WEIGHT so it stays visible in the Scrap Stock
+      // queue instead of silently vanishing.
+      if (disposition.scrap || disposition.hazmat) {
+        const scrapMaterialCode = disposition.hazmat ? 'e_waste' : assetScrapMaterial;
+        try {
+          if (parsedKg > 0) {
+            await createScrapItem({
+              materialCode: scrapMaterialCode,
+              weightKg: parsedKg,
+              status: 'IN_STOCK',
+              description: assetTitle,
+              sourceAssetId: assetRecordId,
+              sourceReportId: report.id,
+            });
+            showToast(disposition.hazmat
+              ? `E-waste recorded (${parsedKg} kg) — route to a DENR-accredited handler (not sold as ordinary scrap).`
+              : `Recorded ${parsedKg} kg of scrap; asset logged in the ledger.`);
+          } else {
+            await createScrapItem({
+              materialCode: scrapMaterialCode,
+              status: 'AWAITING_WEIGHT',
+              description: assetTitle,
+              sourceAssetId: assetRecordId,
+              sourceReportId: report.id,
+            });
+            showToast(disposition.hazmat
+              ? 'E-waste logged as unweighed — record its disposal in Scrap Stock.'
+              : 'Asset logged as unweighed scrap — weigh it in Scrap Stock when ready.');
+          }
+        } catch (err) {
+          console.warn('Scrap item creation notice:', err);
+          showToast('Asset recorded, but the scrap stock update failed.');
+        }
       } else {
         showToast(`Asset outcome recorded: ${disposition.value}.`);
       }
 
       setAssetScrapKg('');
     } else {
-      updateReportStatus(completeModalReport.id, 'COLLECTED', undefined, completionNotes);
+        // Non-recyclable collections (residual, biodegradable, hazardous) are
+        // weighed manually. Previously this passed `undefined`, so residual was
+        // always recorded as 0 kg and could never be monitored by weight.
+        updateReportStatus(completeModalReport.id, 'COLLECTED', parseFloat(weightKg) || 0, completionNotes);
       showToast(`Job finished! Cleanup verified and collection report sent to Admin.`);
     }
 
@@ -807,7 +844,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
             const totalWeight = isRecyclable
               ? Object.values(itemWeights).reduce((sum, v) => sum + (parseFloat(v) || 0), 0)
-              : 0;
+              : (parseFloat(weightKg) || 0);
 
             const filledCount = isRecyclable
               ? Object.values(itemWeights).filter(v => (parseFloat(v) || 0) > 0).length
@@ -1047,11 +1084,30 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
                 {/* GENERAL TRASH: Standard Completion */}
                 {!isRecyclable && !isAsset && (
-                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-xs font-bold text-[#00271D] mb-1">Standard Waste Collection</p>
-                    <p className="text-[11px] text-gray-500 leading-relaxed">
-                      Confirming will mark this task as done and notify <span className="font-bold text-gray-700">{completeModalReport.reporterName}</span>.
-                    </p>
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
+                    <div>
+                      <p className="text-xs font-bold text-[#00271D] mb-1">Standard Waste Collection</p>
+                      <p className="text-[11px] text-gray-500 leading-relaxed">
+                        Confirming will mark this task as done and notify <span className="font-bold text-gray-700">{completeModalReport.reporterName}</span>.
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Collected Weight (kg)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="e.g. 4.5"
+                        value={weightKg}
+                        onChange={e => setWeightKg(e.target.value)}
+                        className="w-full rounded-xl border-2 border-gray-100 bg-white px-3.5 py-2.5 text-xs text-gray-900 outline-none placeholder:text-gray-300 focus:border-[#00A77C]/40 focus:ring-2 focus:ring-[#00A77C]/20 transition-all"
+                      />
+                      <p className="text-[10px] text-gray-400">
+                        Used for residual waste monitoring. Leave blank if it could not be weighed — the batch will be flagged as unweighed.
+                      </p>
+                    </div>
                   </div>
                 )}
 

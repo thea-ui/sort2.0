@@ -80,6 +80,39 @@ const DEFAULT_CALENDAR: CalendarEvent[] = [];
 
 const DEFAULT_HISTORY: PointHistory[] = [];
 
+// The public `/users` endpoint serves a privacy-minimised projection (no email,
+// employeeId or syncSource) to anonymous callers and to non-staff sessions,
+// while staff receive the full record. A minimised payload (e.g. from a signed
+// out landing tab polling every 2s) must never downgrade the richer projection
+// held by an admin tab — otherwise the Users tab blanks out and repopulates on
+// every cross-tab sync, which reads as flickering.
+const isFullUserProjection = (list: User[]): boolean =>
+  list.length > 0 && Boolean((list[0] as any)?.email || (list[0] as any)?.syncSource);
+
+const sameUserList = (a: User[], b: User[]): boolean =>
+  a === b || (a.length === b.length && JSON.stringify(a) === JSON.stringify(b));
+
+/**
+ * Reconciles an incoming server user list with the current one, skipping the
+ * update when the list is unchanged so the heavy Users table is not forced to
+ * re-render on every 2s poll. Same-tab fetches intentionally still allow a
+ * downgrade to the minimised projection (e.g. after a logout/role switch) so a
+ * learner session can never inherit a cached admin projection.
+ */
+const reconcileUsers = (prev: User[], next: User[]): User[] =>
+  sameUserList(prev, next) ? prev : next;
+
+/**
+ * Cross-tab guard: a minimised payload written by an unauthenticated or
+ * non-staff tab (e.g. the public landing poll) must never downgrade the full
+ * projection an admin tab already holds — that is what made the Users tab blank
+ * and repopulate on every storage event.
+ */
+const reconcileUsersFromStorage = (prev: User[], next: User[]): User[] => {
+  if (isFullUserProjection(prev) && !isFullUserProjection(next)) return prev;
+  return reconcileUsers(prev, next);
+};
+
 export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, setCurrentUser, isAuthenticated, setIsAuthenticated, login: authLogin, logout: authLogout, changeRole: authChangeRole } = useAuthState();
   const { notifications, setNotifications, addNotification, dismissNotification, clearNotificationsForUser } = useNotifications();
@@ -91,7 +124,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
   const [offenses, setOffenses] = useState<Offense[]>([]);
-  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
   const [pointRules, setPointRules] = useState<{ rank: number; pointsAwarded: number }[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
@@ -108,9 +141,11 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const loadedSettings = loadFromStorage('sort_settings', DEFAULT_SETTINGS);
     let loadedUsers = loadFromStorage('sort_users', DEFAULT_USERS);
 
-    // Sanitize and deduplicate users array by email
+    // Sanitize and deduplicate users. Anonymous API responses omit `email`
+    // (data minimisation), so the key must fall back to `id` and never crash.
+    const userKey = (user: User): string => String(user.email ?? user.id ?? '').toLowerCase();
     loadedUsers = loadedUsers.filter((u: User, index: number, self: User[]) =>
-      index === self.findIndex((t: User) => t.email.toLowerCase() === u.email.toLowerCase())
+      index === self.findIndex((t: User) => userKey(t) === userKey(u))
     );
 
     // Always try to fetch users from API first
@@ -120,16 +155,20 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           ...u,
             certificatesEarned: u.certificatesEarned || (u as any).certificates || [],
           }));
-          setUsers(formatted);
-          localStorage.setItem('sort_users', JSON.stringify(formatted));
+          setUsers((prev) => reconcileUsers(prev, formatted));
+          // Only cache the full (authenticated) projection. Anonymous responses
+          // are privacy-minimised and must not pollute the local cache.
+          if (isFullUserProjection(formatted)) {
+            localStorage.setItem('sort_users', JSON.stringify(formatted));
+          }
       } else if (loadedUsers.length > 0) {
-        setUsers(loadedUsers);
+        setUsers((prev) => reconcileUsers(prev, loadedUsers));
       } else {
-        setUsers([]);
+        setUsers((prev) => reconcileUsers(prev, []));
       }
     }).catch(() => {
       // API offline, use localStorage fallback
-      setUsers(loadedUsers);
+      setUsers((prev) => reconcileUsers(prev, loadedUsers));
     });
 
     const rawReports = loadFromStorage('sort_reports', DEFAULT_REPORTS);
@@ -149,13 +188,17 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     let loadedChallenges = loadFromStorage('sort_challenges', DEFAULT_CHALLENGES);
 
-    // Fetch challenges from server API
-    apiService.getChallenges().then(serverChallenges => {
-      if (serverChallenges && Array.isArray(serverChallenges) && serverChallenges.length > 0) {
-        setChallenges(serverChallenges);
-        localStorage.setItem('sort_challenges', JSON.stringify(serverChallenges));
-      }
-    }).catch(() => {});
+    // Fetch challenges from server API (requires auth — skip while signed out)
+    if (sessionStorage.getItem('sortv2_token')) {
+      apiService.getChallenges().then(serverChallenges => {
+        // An empty array is authoritative (e.g. the term ended) and must
+        // overwrite the stale cache, so only reject non-array responses.
+        if (Array.isArray(serverChallenges)) {
+          setChallenges(serverChallenges);
+          localStorage.setItem('sort_challenges', JSON.stringify(serverChallenges));
+        }
+      }).catch(() => {});
+    }
 
     const loadedPointHistory = loadFromStorage('sort_point_history', DEFAULT_HISTORY);
     const loadedOffenses = loadFromStorage('sort_offenses', [] as Offense[]);
@@ -164,7 +207,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const loadedNotifications = loadFromStorage('sort_notifications', [] as AppNotification[]);
 
     setSettings(loadedSettings);
-    setUsers(loadedUsers);
+    setUsers((prev) => reconcileUsers(prev, loadedUsers));
     setReports(loadedReports);
     setBins(loadedBins);
     setChallenges(loadedChallenges);
@@ -187,9 +230,14 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const syncBackendData = async () => {
       try {
-        const serverReports = await apiService.getReports();
-        if (serverReports && Array.isArray(serverReports)) {
-          setReports(prev => {
+        // Reports require authentication. Skip while signed out so the public
+        // landing page never spams the console with 401s.
+        const isSignedIn = Boolean(sessionStorage.getItem('sortv2_token'));
+
+        if (isSignedIn) {
+          const serverReports = await apiService.getReports();
+          if (serverReports && Array.isArray(serverReports)) {
+            setReports(prev => {
             if (serverReports.length === 0) return prev;
 
             // Server reports are authoritative
@@ -230,16 +278,21 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             return result;
           });
+          }
         }
 
-        // Sync users from backend (overrides localStorage mock data)
+        // Sync users from backend (public endpoint, keeps the landing leaderboard live)
         const serverUsers = await apiService.getUsers();
         if (serverUsers && Array.isArray(serverUsers) && serverUsers.length > 0) {
-          setUsers(serverUsers.map((u: any) => ({
+          const formattedUsers = serverUsers.map((u: any) => ({
             ...u,
             certificatesEarned: u.certificatesEarned || u.certificates || [],
-          })));
-          localStorage.setItem('sort_users', JSON.stringify(serverUsers));
+          }));
+          setUsers((prev) => reconcileUsers(prev, formattedUsers));
+          // Cache only the full projection (see mount effect above).
+          if (isFullUserProjection(formattedUsers)) {
+            localStorage.setItem('sort_users', JSON.stringify(formattedUsers));
+          }
         }
       } catch {
         // Express server offline fallback to local storage
@@ -255,18 +308,19 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.newValue) return;
+      const newValue = e.newValue;
       try {
         if (e.key) skipStorageKeysRef.current.add(e.key);
-        if (e.key === 'sort_reports') setReports(JSON.parse(e.newValue));
-        if (e.key === 'sort_users') setUsers(JSON.parse(e.newValue));
-        if (e.key === 'sort_bins') setBins(JSON.parse(e.newValue));
+        if (e.key === 'sort_reports') setReports(JSON.parse(newValue));
+        if (e.key === 'sort_users') setUsers((prev) => reconcileUsersFromStorage(prev, JSON.parse(newValue)));
+        if (e.key === 'sort_bins') setBins(JSON.parse(newValue));
         if (e.key === 'sort_locations') {
           skipStorageKeysRef.current.add('sort_bins');
-          setBins(locationsToBins(JSON.parse(e.newValue)));
+          setBins(locationsToBins(JSON.parse(newValue)));
         }
-        if (e.key === 'sort_point_history') setPointHistory(JSON.parse(e.newValue));
-        if (e.key === 'sort_challenges') setChallenges(JSON.parse(e.newValue));
-        if (e.key === 'sort_offenses') setOffenses(JSON.parse(e.newValue));
+        if (e.key === 'sort_point_history') setPointHistory(JSON.parse(newValue));
+        if (e.key === 'sort_challenges') setChallenges(JSON.parse(newValue));
+        if (e.key === 'sort_offenses') setOffenses(JSON.parse(newValue));
       } catch (err) {
         console.warn('Cross-session sync notice:', err);
       }
@@ -298,7 +352,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (skipStorageKeysRef.current.has('sort_users')) {
       skipStorageKeysRef.current.delete('sort_users');
-    } else if (users.length > 0) {
+    } else if (users.length > 0 && isFullUserProjection(users)) {
+      // Never persist the anonymised public projection: another tab would ingest
+      // it via the storage event and blank its richer admin user list.
       localStorage.setItem('sort_users', JSON.stringify(users));
     }
   }, [users]);
@@ -365,7 +421,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (skipStorageKeysRef.current.has('sort_challenges')) {
       skipStorageKeysRef.current.delete('sort_challenges');
-    } else if (challenges.length > 0) {
+    } else {
+      // Persist even when empty so a term-end wipe is not resurrected on reload.
       localStorage.setItem('sort_challenges', JSON.stringify(challenges));
     }
   }, [challenges]);
@@ -390,8 +447,22 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('sort_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
-  // Fetch tiered point rules from Admin Settings/Database
+  // Keep server-side settings in sync for every signed-in user. Previously the
+  // client only read its own localStorage copy, so an admin changing thresholds
+  // (e.g. the certificate target) never reached learners' screens.
   useEffect(() => {
+    if (!isAuthenticated) return;
+    apiService.getSettings().then((serverSettings) => {
+      if (serverSettings && typeof serverSettings === 'object') {
+        setSettings(prev => ({ ...prev, ...serverSettings }));
+        localStorage.setItem('sort_settings', JSON.stringify(serverSettings));
+      }
+    }).catch(() => {});
+  }, [isAuthenticated]);
+
+  // Fetch tiered point rules from Admin Settings/Database (requires auth)
+  useEffect(() => {
+    if (!sessionStorage.getItem('sortv2_token')) return;
     apiService.getPointRules().then((rules) => {
       if (rules && Array.isArray(rules) && rules.length > 0) {
         setPointRules(rules.map(r => ({ rank: r.rank, pointsAwarded: r.pointsAwarded })));
@@ -403,7 +474,15 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const login = async (password: string, identifier: string): Promise<LoginResult> => {
     const result = await authLogin(password, identifier);
     if (result.ok) {
-      setUsers(prev => prev.map(u => u.email.toLowerCase() === result.user.email.toLowerCase() ? result.user : u));
+      // Upsert the signed-in user. Cached users may be the anonymous, minimised
+      // projection (no `email`), so match on email OR id and never assume email.
+      const loggedIn = result.user;
+      const keyOf = (user: User) => String(user.email ?? user.id ?? '').toLowerCase();
+      const target = keyOf(loggedIn);
+      setUsers(prev => {
+        const exists = prev.some(u => keyOf(u) === target);
+        return exists ? prev.map(u => (keyOf(u) === target ? loggedIn : u)) : [...prev, loggedIn];
+      });
     }
     return result;
   };
@@ -582,10 +661,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setReports(serverReports);
         }
         if (serverUsers && Array.isArray(serverUsers)) {
-          setUsers(serverUsers.map((u: any) => ({
+          setUsers((prev) => reconcileUsers(prev, serverUsers.map((u: any) => ({
             ...u,
             certificatesEarned: u.certificatesEarned || u.certificates || [],
-          })));
+          }))));
         }
       } catch (err) {
         console.warn('Sync after status update notice:', err);
@@ -626,7 +705,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateSettings = (newSettings: Partial<SystemSettings>) => {
-    setSettings(prev => prev ? { ...prev, ...newSettings } : null);
+    setSettings(prev => ({ ...(prev ?? DEFAULT_SETTINGS), ...newSettings }));
   };
 
   const addOffense = async (userId: string, description: string, severity?: 'WARNING' | 'DEDUCT' | 'SUSPENSION', reportId?: string) => {
@@ -814,28 +893,30 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  if (!currentUser || !settings) {
-    // Prevent rendering until local storage is read and initialized.
-    // Provide a manual escape hatch in case loading hangs (clear session + retry).
+  // Only block rendering while an authenticated session is being restored.
+  // Unauthenticated visitors (including a completely fresh browser with empty
+  // storage) must always reach the public landing/login screen, otherwise the
+  // app hangs on the loader forever with no way in.
+  if (isAuthenticated && !currentUser) {
     const handleRecovery = () => {
-        sessionStorage.removeItem('sort_auth');
-        sessionStorage.removeItem('sortv2_token');
-        sessionStorage.removeItem('sort_tab_role');
-        localStorage.removeItem('sort_users');
-        localStorage.removeItem('sort_reports');
-        localStorage.removeItem('sort_settings');
-        window.location.reload();
-      };
+      // Clear both cached data and session state so a corrupt entry can never
+      // wedge startup again.
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('sort_') || key.startsWith('sortv2_'))
+        .forEach((key) => localStorage.removeItem(key));
+      sessionStorage.clear();
+      window.location.reload();
+    };
 
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-emerald-400">
+      <div className="flex h-screen w-screen items-center justify-center bg-[#F9F3F0] text-[#00271D]">
         <div className="flex flex-col items-center space-y-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-          <p className="text-lg font-semibold tracking-wider animate-pulse">Initializing S.O.R.T. Database...</p>
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#00A77C] border-t-transparent"></div>
+          <p className="text-lg font-semibold tracking-wider animate-pulse">Restoring session...</p>
           <button
             type="button"
             onClick={handleRecovery}
-            className="mt-6 px-4 py-2 rounded-xl border border-emerald-500/40 text-emerald-300 text-xs font-bold hover:bg-emerald-500/10 transition-colors"
+            className="mt-6 px-4 py-2 rounded-xl border border-[#00A77C]/40 text-[#00A77C] text-xs font-bold hover:bg-[#00A77C]/10 transition-colors"
           >
             Stuck? Reset session & retry
           </button>
@@ -877,10 +958,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setReports(serverReports);
         }
         if (serverUsers && Array.isArray(serverUsers)) {
-          setUsers(serverUsers.map((u: any) => ({
+          setUsers((prev) => reconcileUsers(prev, serverUsers.map((u: any) => ({
             ...u,
             certificatesEarned: u.certificatesEarned || u.certificates || [],
-          })));
+          }))));
         }
         if (serverChallenges && Array.isArray(serverChallenges)) {
           setChallenges(serverChallenges);
@@ -966,10 +1047,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setReports(serverReports);
       }
       if (serverUsers && Array.isArray(serverUsers)) {
-        setUsers(serverUsers.map((u: any) => ({
+        setUsers((prev) => reconcileUsers(prev, serverUsers.map((u: any) => ({
           ...u,
           certificatesEarned: u.certificatesEarned || u.certificates || [],
-        })));
+        }))));
       }
       if (serverChallenges && Array.isArray(serverChallenges)) {
         setChallenges(serverChallenges);
@@ -982,7 +1063,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   return (
     <MockDataContext.Provider value={{
-      currentUser,
+      // currentUser is only read inside authenticated subtrees (AppShell gates
+      // rendering on it). The public landing/login screens never read it.
+      currentUser: currentUser as User,
       users,
       reports,
       bins,

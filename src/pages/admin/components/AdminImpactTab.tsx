@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { residualRecords, sumResidualKg } from '../../../utils/wasteStreams';
 import {
   FileText,
   CheckCircle2,
@@ -68,11 +69,11 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
   const paperKg = stocksRecord['cardboard']?.accumulatedKg || 0;
   const glassKg = stocksRecord['glass']?.accumulatedKg || 0;
 
-  // Residual waste from collected reports (GENERAL/ORGANIC/HAZARDOUS categories)
-  const residualReports = collectedReports.filter((r) =>
-    r.category === 'GENERAL' || r.category === 'ORGANIC' || r.category === 'BIODEGRADABLE' || r.category === 'HAZARDOUS' || r.category === 'NON_BIODEGRADABLE'
-  );
-  const residualKg = residualReports.reduce((sum, r) => sum + (r.weightCollected || 0), 0);
+  // Residual waste — single shared definition (see utils/wasteStreams).
+  // Previously this counted every non-recyclable category (including
+  // biodegradable and hazardous), which disagreed with the Collections screen.
+  const residualReports = residualRecords(collectedReports);
+  const residualKg = sumResidualKg(residualReports);
 
   const totalCollectedKg = plasticKg + aluminumKg + paperKg + glassKg + residualKg;
 

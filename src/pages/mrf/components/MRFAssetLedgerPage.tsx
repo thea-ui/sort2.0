@@ -70,7 +70,7 @@ const CONDITIONS = ['GOOD', 'FAIR', 'NEEDS_REPAIR', 'DISPOSED'];
 const UNKNOWN = 'Unknown';
 
 const shortDate = (d: string) =>
-  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const longDate = (d: string) =>
   new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 const num = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -146,7 +146,7 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
   }, [records, actionFilter, search]);
 
   const columns: SheetColumn<AssetRecord>[] = useMemo(() => [
-    { key: 'date', label: 'Date', width: '92px', value: (r) => r.createdAt, render: (r) => <span className="text-[#00271D]/70">{shortDate(r.createdAt)}</span> },
+    { key: 'date', label: 'Date', width: '108px', value: (r) => r.createdAt, render: (r) => <span className="text-[#00271D]/70 whitespace-nowrap">{shortDate(r.createdAt)}</span> },
     {
       key: 'asset', label: 'Asset', value: (r) => r.assetName,
       render: (r) => <span className="font-bold block max-w-[200px] truncate" title={r.assetName}>{r.assetName}</span>,

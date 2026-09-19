@@ -105,6 +105,7 @@ model SchoolYear {
   assetRecords          MrfAssetRecord[]
   assetScrapSaleTransactions AssetScrapSaleTransaction[]
   assetScrapStockSnapshots   AssetScrapStockSnapshot[]
+  assetScrapItems            AssetScrapItem[]
   auditLogs            AuditLog[]
   marketStockSnapshots MarketStockSnapshot[]
   pointSnapshots       UserPointSnapshot[]
@@ -154,6 +155,8 @@ model User {
 
   @@index([enrollproId])
   @@index([syncSource])
+  @@index([role])
+  @@index([points])
   @@map("users")
 }
 
@@ -195,6 +198,7 @@ model Report {
   @@index([category])
   @@index([schoolYearId])
   @@index([locationKey, category, schoolYearId])
+  @@index([assignedMrfId])
   @@map("reports")
 }
 
@@ -254,7 +258,7 @@ model PointHistory {
 
 model Challenge {
   id            String        @id @default(uuid())
-  code          String        @unique
+  code          String
   title         String
   description   String
   challengeType ChallengeType @default(REPORT_COUNT) @map("challenge_type")
@@ -262,6 +266,8 @@ model Challenge {
   target        Int
   isActive      Boolean       @default(true) @map("is_active")
   iconName      String        @map("icon_name")
+  // Academic term this challenge instance belongs to. "GLOBAL" = unscoped/legacy.
+  quarterCode   String        @default("GLOBAL") @map("quarter_code")
   startDate     DateTime?     @map("start_date")
   endDate       DateTime?     @map("end_date")
   createdAt     DateTime      @default(now()) @map("created_at")
@@ -270,6 +276,8 @@ model Challenge {
   contributions      ChallengeContribution[]
   pointHistories     PointHistory[]
 
+  @@unique([code, quarterCode])
+  @@index([quarterCode])
   @@map("challenges")
 }
 
@@ -322,6 +330,8 @@ model SystemSetting {
   certificateAdvocateName   String   @default("Eco-Advocate Certificate") @map("certificate_advocate_name")
   quarterGateActive         Boolean  @default(false) @map("quarter_gate_active")
   smartSyncEnabled          Boolean  @default(true) @map("smart_sync_enabled")
+  syncMode                  String   @default("MANUAL") @map("sync_mode")
+  syncIntervalMinutes       Int      @default(60) @map("sync_interval_minutes")
   blueprintPreset           String   @default("DEFAULT") @map("blueprint_preset")
   blueprintUrl              String?  @map("blueprint_url")
   maxUnverifiedReports      Int      @default(3) @map("max_unverified_reports")
@@ -521,6 +531,7 @@ model UserSession {
 
   @@index([userId])
   @@index([refreshToken])
+  @@index([expiresAt])
   @@map("user_sessions")
 }
 
@@ -642,6 +653,7 @@ model MrfAssetRecord {
 
   @@index([schoolYearId])
   @@index([action])
+  @@index([sourceReportId])
   @@map("mrf_asset_records")
 }
 
@@ -662,6 +674,38 @@ model AssetScrapStock {
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@map("asset_scrap_stocks")
+}
+
+// Per-item scrap records. An item enters as AWAITING_WEIGHT when an asset is
+// declared unserviceable but cannot be weighed yet (mirrors the residual
+// "unweighed batch" concept), then moves IN_STOCK once weighed, SOLD when its
+// batch is sold, or DISPOSED when routed to an accredited handler.
+model AssetScrapItem {
+  id                String    @id @default(uuid())
+  materialCode      String    @map("material_code")
+  materialName      String    @map("material_name")
+  weightKg          Float?    @map("weight_kg")
+  status            String    @default("AWAITING_WEIGHT")
+  description       String?
+  sourceAssetId     String?   @map("source_asset_id")
+  sourceReportId    String?   @map("source_report_id")
+  weighedBy         String?   @map("weighed_by")
+  weighedAt         DateTime? @map("weighed_at")
+  saleTransactionId String?   @map("sale_transaction_id")
+  disposedBy        String?   @map("disposed_by")
+  disposedAt        DateTime? @map("disposed_at")
+  disposalReference String?   @map("disposal_reference")
+  schoolYearId      String?   @map("school_year_id")
+  schoolYear        SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([materialCode])
+  @@index([status])
+  @@index([sourceAssetId])
+  @@index([sourceReportId])
+  @@index([schoolYearId])
+  @@map("asset_scrap_items")
 }
 
 model AssetScrapSaleTransaction {

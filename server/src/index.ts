@@ -1,6 +1,7 @@
+import { validateEnv } from './config/env.js';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import crypto from 'crypto';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import reportRoutes from './routes/report.routes.js';
@@ -16,10 +17,22 @@ import assetScrapRoutes from './routes/asset-scrap.routes.js';
 import { rescheduleSync } from './services/sync-scheduler.service.js';
 import { rescheduleBinReset } from './services/bin-reset.service.js';
 
-dotenv.config();
+// Fail fast: never boot with a missing or insecure JWT secret.
+validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// When the API sits behind a reverse proxy (Tailscale Serve, nginx, a cloud
+// load balancer), Express must trust that proxy so it reads the real client IP
+// from X-Forwarded-For. Otherwise express-rate-limit throws
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and aborts login requests.
+// Set TRUST_PROXY to a hop count (e.g. "1"), a preset ("loopback"), or "true".
+const trustProxy = (process.env.TRUST_PROXY || 'loopback').trim();
+app.set(
+  'trust proxy',
+  trustProxy === 'true' ? true : /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy
+);
 
 // Prevent unhandled rejections from crashing the server
 process.on('unhandledRejection', (reason: any) => {
@@ -30,10 +43,29 @@ process.on('uncaughtException', (err) => {
 });
 
 // Middleware
-app.use(cors({
-  origin: '*',
-  credentials: true,
-}));
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const isLocalDevOrigin = (origin: string) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Non-browser clients (curl, health checks) send no Origin header.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (isLocalDevOrigin(origin)) return callback(null, true);
+      // Self-hosted tailnet access (e.g. *.ts.net)
+      if (origin.endsWith('.ts.net')) return callback(null, true);
+      // Reject by omitting CORS headers rather than throwing a 500.
+      return callback(null, false);
+    },
+    credentials: false,
+  })
+);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -56,10 +88,19 @@ app.use('/api/certificates', certificateRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/asset-scrap', assetScrapRoutes);
 
-// Global Error Handler
+// Global Error Handler — log the full error, never leak internals to clients
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Unhandled Server Error:', err);
-  res.status(500).json({ error: err.message || 'Internal Server Error' });
+  const errorId = crypto.randomUUID();
+  const status =
+    typeof err?.status === 'number' ? err.status : typeof err?.statusCode === 'number' ? err.statusCode : 500;
+
+  console.error(`[Server] Unhandled error [${errorId}]:`, err?.stack || err?.message || err);
+
+  if (status >= 500) {
+    return res.status(500).json({ error: 'Internal server error', errorId });
+  }
+  // Client errors (e.g. malformed JSON) are safe to describe.
+  return res.status(status).json({ error: err?.message || 'Bad request', errorId });
 });
 
 // ─── Settings-Driven Sync Scheduler ───────────────────────────────────

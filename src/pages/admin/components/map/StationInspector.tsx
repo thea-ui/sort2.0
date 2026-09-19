@@ -3,9 +3,11 @@ import { Edit2, Trash2, SlidersHorizontal, AlertTriangle, Droplets, PackageX, Re
 import { BinLocationItem, CategoryStreamType, BinStreamState } from '../../../../types';
 
 const CAT_META: Record<CategoryStreamType, { label: string; bg: string; desc: string; Icon: React.FC<{ size?: number; className?: string }> }> = {
+  // DO 5 s. 2014 colour coding: green/yellow, black/blue, red/orange.
   BIODEGRADABLE: { label: 'Biodegradable Bin', bg: 'bg-emerald-500', desc: 'Food scraps, organic waste & plant leaves', Icon: Droplets },
-  NON_BIODEGRADABLE: { label: 'Non-Biodegradable Bin', bg: 'bg-rose-500', desc: 'Wrappers, plastic films & residual waste', Icon: PackageX },
+  NON_BIODEGRADABLE: { label: 'Non-Biodegradable Bin', bg: 'bg-slate-800', desc: 'Wrappers, plastic films & residual waste (black/blue)', Icon: PackageX },
   RECYCLABLE: { label: 'Recyclable Bin', bg: 'bg-sky-500', desc: 'PET bottles, aluminum cans, glass & cardboard', Icon: Recycle },
+  HAZARDOUS: { label: 'Hazardous Bin', bg: 'bg-orange-500', desc: 'Batteries, bulbs, chemicals, sharps & e-waste (red/orange)', Icon: AlertTriangle },
 };
 
 interface StationInspectorProps {

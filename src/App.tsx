@@ -1,13 +1,37 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { MockDataProvider, useMockData } from './hooks/useMockData';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DashboardLayout } from './components/layout/DashboardLayout';
-import { StudentDashboard } from './pages/student/StudentDashboard';
-import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
-import { MRFDashboard } from './pages/mrf/MRFDashboard';
-import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { PublicLanding } from './pages/PublicLanding';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { MRFLogin } from './pages/mrf/MRFLogin';
+import { StudentLayout } from './components/layout/StudentLayout';
+
+// Route-level code splitting: each role dashboard is loaded on demand so the
+// public landing page never ships the admin/MRF bundles.
+const StudentDashboard = lazy(() =>
+  import('./pages/student/StudentDashboard').then((m) => ({ default: m.StudentDashboard }))
+);
+const TeacherDashboard = lazy(() =>
+  import('./pages/teacher/TeacherDashboard').then((m) => ({ default: m.TeacherDashboard }))
+);
+const MRFDashboard = lazy(() =>
+  import('./pages/mrf/MRFDashboard').then((m) => ({ default: m.MRFDashboard }))
+);
+const AdminDashboard = lazy(() =>
+  import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+);
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[60vh] w-full items-center justify-center bg-[#F9F3F0] text-[#00271D]">
+      <div className="flex flex-col items-center space-y-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#00A77C] border-t-transparent"></div>
+        <p className="text-sm font-semibold tracking-wide">Loading workspace...</p>
+      </div>
+    </div>
+  );
+}
 
 function DashboardContent({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (tab: string) => void }) {
   const { currentUser } = useMockData();
@@ -30,8 +54,6 @@ function DashboardContent({ activeTab, setActiveTab }: { activeTab: string; setA
   }
 }
 
-import { StudentLayout } from './components/layout/StudentLayout';
-
 function AppShell({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (tab: string) => void }) {
   const { isAuthenticated, currentUser } = useMockData();
   const [currentRoute, setCurrentRoute] = useState<'landing' | 'admin-login' | 'mrf-login'>('landing');
@@ -44,26 +66,23 @@ function AppShell({ activeTab, setActiveTab }: { activeTab: string; setActiveTab
   if (isAuthenticated) {
     if (!currentUser) {
       // Authenticated but user data not yet loaded — show a brief loading state
-      return (
-        <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-emerald-400">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-            <p className="text-lg font-semibold tracking-wider animate-pulse">Restoring session...</p>
-          </div>
-        </div>
-      );
+      return <RouteFallback />;
     }
     if (currentUser?.role === 'STUDENT' || currentUser?.role === 'TEACHER') {
       return (
         <StudentLayout activeTab={activeTab} setActiveTab={setActiveTab}>
-          <DashboardContent activeTab={activeTab} setActiveTab={setActiveTab} />
+          <Suspense fallback={<RouteFallback />}>
+            <DashboardContent activeTab={activeTab} setActiveTab={setActiveTab} />
+          </Suspense>
         </StudentLayout>
       );
     }
 
     return (
       <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab}>
-        <DashboardContent activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Suspense fallback={<RouteFallback />}>
+          <DashboardContent activeTab={activeTab} setActiveTab={setActiveTab} />
+        </Suspense>
       </DashboardLayout>
     );
   }
@@ -83,7 +102,9 @@ function App() {
 
   return (
     <MockDataProvider>
-      <AppShell activeTab={activeTab} setActiveTab={setActiveTab} />
+      <ErrorBoundary>
+        <AppShell activeTab={activeTab} setActiveTab={setActiveTab} />
+      </ErrorBoundary>
     </MockDataProvider>
   );
 }

@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 
 server/.env
+
+# E2E test credentials — never commit real credentials
+scripts/e2e/credentials.local.json
+
+# Local scratch / logs
+.tmp-*
+.playwright-mcp/

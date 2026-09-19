@@ -21,7 +21,6 @@ import {
   X,
   Wrench,
   Trash2,
-  RotateCcw,
   PackageCheck,
   Scale,
   BarChart2,
@@ -113,11 +112,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { currentUser, changeRole, logout, reports, resetDatabase, notifications, dismissNotification } = useMockData();
+  const { currentUser, changeRole, logout, reports, notifications, dismissNotification } = useMockData();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [purgedMessage, setPurgedMessage] = useState(false);
 
   const mainRef = React.useRef<HTMLElement>(null);
 
@@ -142,18 +140,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     changeRole(role);
     setProfileDropdownOpen(false);
     setActiveTab('overview');
-  };
-
-  const handlePurge = () => {
-    if (window.confirm('Wipe all reports, scores, offenses, and reset recycle market inventory to start fresh testing?')) {
-      resetDatabase();
-      // Notify market subscribers to refresh after the purge round-trip completes
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('sort_market_updated'));
-      }, 600);
-      setPurgedMessage(true);
-      setTimeout(() => setPurgedMessage(false), 3000);
-    }
   };
 
   return (
@@ -181,26 +167,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         {/* Header Right */}
         <div className="flex items-center gap-2">
-
-          {/* Quick Purge Button for Admin Testing */}
-          {currentUser.role === 'ADMIN' && (
-            <button
-              type="button"
-              onClick={handlePurge}
-              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-300 bg-white/60 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer"
-              title="Wipe all reports, scores, and test data for clean testing"
-            >
-              <RotateCcw size={13} className="shrink-0" />
-              <span className="hidden sm:inline">Purge Test Data</span>
-              <span className="sm:hidden">Purge</span>
-            </button>
-          )}
-
-          {purgedMessage && (
-            <span className="text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full animate-bounce">
-              Cleared!
-            </span>
-          )}
 
           {/* Notifications */}
           <div className="relative">

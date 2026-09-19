@@ -35,7 +35,10 @@ import {
   FlaskConical,
   Target,
 } from 'lucide-react';
-export type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
+// DepEd Order No. 5, s. 2014 requires segregation into biodegradable,
+// non-biodegradable and hazardous/toxic waste. Recyclable is retained as an
+// additional RA 9003 stream. Bin colours follow the DO 5 colour coding.
+export type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE' | 'HAZARDOUS';
 
 export type InfrastructurePillar = 'waste' | 'furniture' | 'electronics' | 'fixtures' | 'equipment' | 'other';
 export type BinReportStatusState = 'AVAILABLE' | 'REPORTED_FULL' | 'LIMIT_REACHED' | 'DISPATCHED' | 'NO_BIN' | 'UNAVAILABLE';
@@ -53,10 +56,10 @@ export interface BinSlot {
 export interface StationCluster {
   locationName: string;
   coordinates: { lat: number; lng: number };
-  slots: [BinSlot, BinSlot, BinSlot];
+  slots: [BinSlot, BinSlot, BinSlot, BinSlot];
 }
 
-export const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE'];
+export const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE', 'HAZARDOUS'];
 
 export const CAT_META: Record<
   BinCategory,
@@ -82,11 +85,11 @@ export const CAT_META: Record<
   NON_BIODEGRADABLE: {
     label: 'Non-Biodegradable',
     short: 'Non',
-    bg: 'bg-rose-500',
-    border: 'border-rose-400',
-    text: 'text-rose-600',
+    bg: 'bg-slate-800',
+    border: 'border-slate-600',
+    text: 'text-slate-700',
     Icon: PackageX,
-    desc: 'Wrappers, plastic films & residual waste',
+    desc: 'Wrappers, plastic films & residual waste (black/blue bin)',
   },
   RECYCLABLE: {
     label: 'Recyclable',
@@ -96,6 +99,15 @@ export const CAT_META: Record<
     text: 'text-sky-600',
     Icon: Recycle,
     desc: 'PET bottles, aluminum cans, glass & cardboard',
+  },
+  HAZARDOUS: {
+    label: 'Hazardous',
+    short: 'Haz',
+    bg: 'bg-orange-500',
+    border: 'border-orange-400',
+    text: 'text-orange-600',
+    Icon: AlertTriangle,
+    desc: 'Batteries, bulbs, chemicals, sharps & e-waste (red/orange bin)',
   },
 };
 
@@ -138,6 +150,7 @@ export const CATEGORY_DETAILS: Record<
       { id: 'biodegradable', label: 'Biodegradable', icon: Droplets },
       { id: 'non-biodegradable', label: 'Non-Biodegradable', icon: PackageX },
       { id: 'recyclable', label: 'Recyclable', icon: Recycle },
+      { id: 'hazardous', label: 'Hazardous / Toxic', icon: AlertTriangle },
       { id: 'plastic-bottles', label: 'Plastic Bottles', icon: Trash },
       { id: 'glass-bottles', label: 'Glass Bottles / Containers', icon: Wine },
       { id: 'aluminum-cans', label: 'Aluminum Cans', icon: Trash },
@@ -328,6 +341,6 @@ export function groupStations(bins: any[], reports: any[] = []): StationCluster[
         unverifiedCount: details.unverifiedCount,
         activeReport: details.activeReport,
       };
-    }) as [BinSlot, BinSlot, BinSlot],
+    }) as [BinSlot, BinSlot, BinSlot, BinSlot],
   }));
 }

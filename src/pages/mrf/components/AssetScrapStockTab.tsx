@@ -1,24 +1,59 @@
-import React, { useState } from 'react';
-import { Scale, CheckCircle2, Clock, Coins, ShieldAlert, Loader2, PackageCheck, Plus } from 'lucide-react';
-import { useAssetScrap } from '../../../hooks/useAssetScrap';
+import React, { useEffect, useState } from 'react';
+import { Scale, CheckCircle2, Clock, Coins, ShieldAlert, Loader2, PackageCheck, Plus, Trash2, Inbox } from 'lucide-react';
+import { useAssetScrap, type ScrapItem } from '../../../hooks/useAssetScrap';
 import { useMockData } from '../../../hooks/useMockData';
+import { AssetScrapWeighedHistory } from './AssetScrapWeighedHistory';
 
 interface AssetScrapStockTabProps {
   showToast: (msg: string) => void;
 }
 
+const NEW_ENTRY = '__new__';
+
+function formatLogged(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToast }) => {
   const { currentUser } = useMockData();
-  const { materials, salesHistory, totalScrapSales, approveSale, sellBatch, addScrapKg } = useAssetScrap();
+  const {
+    materials,
+    salesHistory,
+    totalScrapSales,
+    pendingItems,
+    weighedItems,
+    approveSale,
+    sellBatch,
+    createScrapItem,
+    weighScrapItem,
+    disposeScrapItem,
+  } = useAssetScrap();
   const [busy, setBusy] = useState<string | null>(null);
   const [approveFor, setApproveFor] = useState<string | null>(null);
   const [approvalRef, setApprovalRef] = useState('');
   const [showWeigh, setShowWeigh] = useState(false);
+  const [weighTarget, setWeighTarget] = useState<string>(NEW_ENTRY);
   const [weighMaterial, setWeighMaterial] = useState('ferrous_metal');
   const [weighKg, setWeighKg] = useState('');
   const [weighing, setWeighing] = useState(false);
 
   const isAdmin = currentUser?.role === 'ADMIN';
+
+  const openWeigh = (targetId: string = NEW_ENTRY) => {
+    setWeighTarget(targetId);
+    setWeighKg('');
+    setShowWeigh(true);
+  };
+
+  useEffect(() => {
+    if (showWeigh && weighTarget !== NEW_ENTRY) {
+      const target = pendingItems.find((it) => it.id === weighTarget);
+      if (target) setWeighMaterial(target.materialCode);
+    }
+  }, [showWeigh, weighTarget, pendingItems]);
 
   const handleSell = async (materialCode: string, materialName: string, accumulatedKg: number, thresholdKg: number) => {
     const sellKg = Math.min(accumulatedKg, thresholdKg);
@@ -59,9 +94,15 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
     if (kg <= 0) return;
     setWeighing(true);
     try {
-      await addScrapKg(weighMaterial, kg);
-      const name = materials.find((m) => m.materialCode === weighMaterial)?.materialName || weighMaterial;
-      showToast(`Weighed ${kg} kg of ${name} into scrap stock.`);
+      if (weighTarget === NEW_ENTRY) {
+        await createScrapItem({ materialCode: weighMaterial, weightKg: kg, status: 'IN_STOCK' });
+        const name = materials.find((m) => m.materialCode === weighMaterial)?.materialName || weighMaterial;
+        showToast(`Weighed ${kg} kg of ${name} into scrap stock.`);
+      } else {
+        const item = pendingItems.find((it) => it.id === weighTarget);
+        await weighScrapItem(weighTarget, kg);
+        showToast(`Weighed ${kg} kg of ${item?.materialName || 'scrap'} into stock.`);
+      }
       setShowWeigh(false);
       setWeighKg('');
     } catch (err: any) {
@@ -70,6 +111,25 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
       setWeighing(false);
     }
   };
+
+  const handleDispose = async (item: ScrapItem) => {
+    const reference = window.prompt(
+      `Dispose "${item.description || item.materialName}" via an accredited handler.\nEnter disposal reference (WMR / DENR receipt no.):`,
+      ''
+    );
+    if (reference === null) return;
+    setBusy(item.id);
+    try {
+      await disposeScrapItem(item.id, reference.trim() || undefined);
+      showToast(`Marked ${item.materialName} as disposed.`);
+    } catch (err: any) {
+      showToast(`Disposal failed: ${err.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const selectedPending = weighTarget !== NEW_ENTRY ? pendingItems.find((it) => it.id === weighTarget) : undefined;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -90,7 +150,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
         <div className="flex items-center gap-3 shrink-0">
           <button
             type="button"
-            onClick={() => { setShowWeigh(true); setWeighKg(''); }}
+            onClick={() => openWeigh(NEW_ENTRY)}
             className="px-4 py-2.5 rounded-xl bg-[#00271D] hover:bg-[#003a2b] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
           >
             <Plus size={14} /> Weigh Scrap
@@ -100,6 +160,61 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
             <span className="text-xl font-heading font-black text-[#00A77C]">₱{totalScrapSales.toLocaleString()}</span>
           </div>
         </div>
+      </div>
+
+      {/* Unweighed queue */}
+      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
+            <Inbox size={16} className="text-[#0091EA]" />
+            <span>Awaiting Weighing</span>
+          </h4>
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
+            pendingItems.length > 0 ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-gray-100 text-gray-500 border-gray-200'
+          }`}>
+            {pendingItems.length} unweighed
+          </span>
+        </div>
+
+        {pendingItems.length === 0 ? (
+          <div className="text-center py-5 space-y-2">
+            <CheckCircle2 size={22} className="mx-auto text-emerald-400" />
+            <p className="text-xs text-gray-400">No unweighed scrap. Every logged item has a weight.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 text-xs">
+            {pendingItems.map((item) => (
+              <div key={item.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-[#00271D] truncate">{item.description || item.materialName}</p>
+                  <p className="text-[10px] text-gray-400">
+                    {item.materialName}
+                    {item.sourceAssetId ? ' · from asset ledger' : ''}
+                    {item.createdAt ? ` · logged ${formatLogged(item.createdAt)}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openWeigh(item.id)}
+                    disabled={busy === item.id}
+                    className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-[#00A77C] hover:bg-[#008f6a] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Scale size={13} /> Weigh
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDispose(item)}
+                    disabled={busy === item.id}
+                    className="px-3 py-2 rounded-xl text-[11px] font-bold bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {busy === item.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />} Dispose
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Material cards */}
@@ -205,6 +320,9 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
         })}
       </div>
 
+      {/* Weighed history */}
+      <AssetScrapWeighedHistory items={weighedItems} />
+
       {/* Sales ledger */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
         <h4 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
@@ -286,20 +404,42 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
             </div>
             <form onSubmit={handleWeighSubmit} className="p-6 space-y-4">
               <p className="text-xs text-[#00271D]/70">
-                Record the weight of an unserviceable item brought to the MRF. It is added to that material's scrap stock.
+                {selectedPending
+                  ? 'Record the weight of this logged item. It is added to that material\'s scrap stock.'
+                  : 'Record the weight of an unserviceable item brought to the MRF. It is added to that material\'s scrap stock.'}
               </p>
+
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Material *</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Item</label>
                 <select
-                  value={weighMaterial}
-                  onChange={(e) => setWeighMaterial(e.target.value)}
+                  value={weighTarget}
+                  onChange={(e) => setWeighTarget(e.target.value)}
                   className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-bold outline-none focus:border-[#00A77C] cursor-pointer"
                 >
-                  {materials.map((m) => (
-                    <option key={m.materialCode} value={m.materialCode}>{m.materialName}</option>
+                  <option value={NEW_ENTRY}>New weighed entry…</option>
+                  {pendingItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.description || item.materialName} ({item.materialName})
+                    </option>
                   ))}
                 </select>
               </div>
+
+              {weighTarget === NEW_ENTRY && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Material *</label>
+                  <select
+                    value={weighMaterial}
+                    onChange={(e) => setWeighMaterial(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-bold outline-none focus:border-[#00A77C] cursor-pointer"
+                  >
+                    {materials.map((m) => (
+                      <option key={m.materialCode} value={m.materialCode}>{m.materialName}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Weight (kg) *</label>
                 <input

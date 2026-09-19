@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSchoolYear, SchoolYearLedger, LedgerReportRow, LedgerPointTxn, SchoolYear } from '../../../hooks/useSchoolYear';
 import { LedgerSheetTable, SheetColumn } from './LedgerSheetTable';
 import { SchoolYearDetailModal } from './SchoolYearDetailModal';
@@ -19,7 +20,8 @@ import {
   Upload,
   Pencil,
   Power,
-  Lock,
+  ChevronRight,
+  X,
 } from 'lucide-react';
 
 interface AdminLedgerPageProps {
@@ -31,7 +33,7 @@ const peso = (n: number) =>
   `₱${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const num = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
 const shortDate = (d: string) =>
-  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -47,6 +49,31 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => (
     {status}
   </span>
 );
+
+const VIEW_COLUMN: SheetColumn<any> = {
+  key: 'view',
+  label: '',
+  align: 'right',
+  width: '52px',
+  render: () => (
+    <span className="inline-flex items-center justify-end gap-1 text-[10px] font-bold text-[#00A77C]">
+      View <ChevronRight size={13} />
+    </span>
+  ),
+};
+
+const MetricCell: React.FC<{ value: number; status: string }> = ({ value, status }) => {
+  if (value > 0) return <span className="font-semibold">{num(value)}</span>;
+  const label =
+    status === 'PENDING' ? 'Awaiting'
+    : status === 'DISPATCHED' ? 'In transit'
+    : '—';
+  return (
+    <span className={`text-[10px] font-bold uppercase tracking-wider ${label === '—' ? 'text-[#00271D]/20' : 'text-[#00271D]/35'}`}>
+      {label}
+    </span>
+  );
+};
 
 interface LedgerSheet {
   id: string;
@@ -81,6 +108,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
   const [detailId, setDetailId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [viewRow, setViewRow] = useState<{ row: any; sheet: LedgerSheet } | null>(null);
 
   useEffect(() => {
     if (initialYearId) setSelectedId(initialYearId);
@@ -159,7 +187,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
     const L = ledger;
 
     const reportCols: SheetColumn<LedgerReportRow>[] = [
-      { key: 'date', label: 'Date', value: (r) => r.createdAt, render: (r) => shortDate(r.createdAt) },
+      { key: 'date', label: 'Date', value: (r) => r.createdAt, render: (r) => <span className="whitespace-nowrap">{shortDate(r.createdAt)}</span> },
       { key: 'title', label: 'Report', value: (r) => r.title, render: (r) => <span className="font-bold">{r.title}</span> },
       {
         key: 'reporter', label: 'Reporter', value: (r) => r.reporterName,
@@ -174,12 +202,12 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
       { key: 'category', label: 'Category', value: (r) => r.category },
       { key: 'status', label: 'Status', value: (r) => r.status, render: (r) => <StatusBadge status={r.status} /> },
       { key: 'urgency', label: 'Urgency', align: 'center', value: (r) => r.urgency },
-      { key: 'weight', label: 'Weight (kg)', align: 'right', value: (r) => r.weightCollected, total: (rows) => num(rows.reduce((s, r) => s + r.weightCollected, 0)) },
-      { key: 'points', label: 'Points', align: 'right', value: (r) => r.pointsAwarded, total: (rows) => num(rows.reduce((s, r) => s + r.pointsAwarded, 0)) },
+      { key: 'weight', label: 'Weight (kg)', align: 'right', value: (r) => r.weightCollected, render: (r) => <MetricCell value={r.weightCollected} status={r.status} />, total: (rows) => num(rows.reduce((s, r) => s + r.weightCollected, 0)) },
+      { key: 'points', label: 'Points', align: 'right', value: (r) => r.pointsAwarded, render: (r) => <MetricCell value={r.pointsAwarded} status={r.status} />, total: (rows) => num(rows.reduce((s, r) => s + r.pointsAwarded, 0)) },
     ];
 
     const pointCols: SheetColumn<LedgerPointTxn>[] = [
-      { key: 'date', label: 'Date', value: (p) => p.createdAt, render: (p) => shortDate(p.createdAt) },
+      { key: 'date', label: 'Date', value: (p) => p.createdAt, render: (p) => <span className="whitespace-nowrap">{shortDate(p.createdAt)}</span> },
       {
         key: 'student', label: 'Student', value: (p) => p.userName,
         render: (p) => (
@@ -198,8 +226,8 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
     ];
 
     return [
-      { id: 'reports', label: 'Reports', icon: FileText, columns: reportCols as SheetColumn<any>[], rows: L.reports.rows, minWidth: '1100px' },
-      { id: 'points', label: 'Points Ledger', icon: Coins, columns: pointCols as SheetColumn<any>[], rows: L.points.transactions, minWidth: '720px' },
+      { id: 'reports', label: 'Reports', icon: FileText, columns: [...reportCols, VIEW_COLUMN] as SheetColumn<any>[], rows: L.reports.rows, minWidth: '1100px' },
+      { id: 'points', label: 'Points Ledger', icon: Coins, columns: [...pointCols, VIEW_COLUMN] as SheetColumn<any>[], rows: L.points.transactions, minWidth: '720px' },
       {
         id: 'leaderboard', label: 'Leaderboard', icon: Trophy, minWidth: '640px',
         columns: [
@@ -208,18 +236,20 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
           { key: 'grade', label: 'Grade', value: (s: any) => s.gradeLevel || '' },
           { key: 'section', label: 'Section', value: (s: any) => s.sectionName || '' },
           { key: 'points', label: 'Closing Points', align: 'right', value: (s: any) => s.closingPoints, total: (rows: any[]) => num(rows.reduce((a, r) => a + r.closingPoints, 0)) },
+          VIEW_COLUMN,
         ] as SheetColumn<any>[],
         rows: L.points.topStudents,
       },
       {
         id: 'sales', label: 'Market Sales', icon: Scale, minWidth: '820px',
         columns: [
-          { key: 'date', label: 'Date', value: (t: any) => t.soldAt, render: (t: any) => shortDate(t.soldAt) },
+          { key: 'date', label: 'Date', value: (t: any) => t.soldAt, render: (t: any) => <span className="whitespace-nowrap">{shortDate(t.soldAt)}</span> },
           { key: 'category', label: 'Category', value: (t: any) => t.categoryName, render: (t: any) => <span className="font-bold">{t.categoryName}</span> },
           { key: 'kg', label: 'Weight (kg)', align: 'right', value: (t: any) => t.weightKg, total: (rows: any[]) => num(rows.reduce((a, r) => a + r.weightKg, 0)) },
           { key: 'price', label: '₱/kg', align: 'right', value: (t: any) => t.marketPriceKg },
           { key: 'revenue', label: 'Revenue', align: 'right', value: (t: any) => t.totalRevenue, render: (t: any) => peso(t.totalRevenue), total: (rows: any[]) => peso(rows.reduce((a, r) => a + r.totalRevenue, 0)) },
           { key: 'buyer', label: 'Buyer', value: (t: any) => t.buyerName },
+          VIEW_COLUMN,
         ] as SheetColumn<any>[],
         rows: L.market.sales,
       },
@@ -230,6 +260,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
           { key: 'opening', label: 'Opening (kg)', align: 'right', value: (s: any) => s.openingKg, total: (rows: any[]) => num(rows.reduce((a, r) => a + r.openingKg, 0)) },
           { key: 'closing', label: 'Closing (kg)', align: 'right', value: (s: any) => s.closingKg, total: (rows: any[]) => num(rows.reduce((a, r) => a + r.closingKg, 0)) },
           { key: 'net', label: 'Net (kg)', align: 'right', value: (s: any) => s.closingKg - s.openingKg, render: (s: any) => num(s.closingKg - s.openingKg) },
+          VIEW_COLUMN,
         ] as SheetColumn<any>[],
         rows: L.market.snapshots,
       },
@@ -247,11 +278,12 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
 
   const exportCsv = () => {
     if (!activeSheet || !ledger) return;
-    const headers = activeSheet.columns.map((c) => c.label);
+    const exportCols = activeSheet.columns.filter((c) => c.key !== 'view');
+    const headers = exportCols.map((c) => c.label);
     const lines = [headers.join(',')];
     for (const row of filteredRows) {
       lines.push(
-        activeSheet.columns
+        exportCols
           .map((c) => {
             const raw = c.value ? c.value(row) : '';
             const s = String(raw ?? '');
@@ -273,12 +305,12 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
 
   const kpis = ledger
     ? [
-        { label: 'Sales Revenue', value: peso(ledger.market.revenuePhp), icon: Coins, color: 'text-[#C69B26]', bg: 'bg-gradient-to-br from-amber-50 to-orange-50/80 border-amber-200' },
-        { label: 'Recyclables Sold', value: `${num(ledger.market.soldKg)} kg`, icon: Scale, color: 'text-[#00A77C]', bg: 'bg-white border-gray-100' },
-        { label: 'Collected Weight', value: `${num(ledger.reports.collectedWeightKg)} kg`, icon: Recycle, color: 'text-[#10B981]', bg: 'bg-white border-gray-100' },
-        { label: 'Reports', value: num(ledger.reports.total), icon: FileText, color: 'text-[#0091EA]', bg: 'bg-white border-gray-100' },
-        { label: 'Points Awarded', value: num(ledger.points.totalAwarded), icon: Trophy, color: 'text-[#FFAB00]', bg: 'bg-white border-gray-100' },
-        { label: 'Students Ranked', value: num(ledger.points.topStudents.length), icon: Trophy, color: 'text-[#651FFF]', bg: 'bg-white border-gray-100' },
+        { label: 'Sales Revenue', value: peso(ledger.market.revenuePhp), icon: Coins, color: 'text-[#C69B26]' },
+        { label: 'Recyclables Sold', value: `${num(ledger.market.soldKg)} kg`, icon: Scale, color: 'text-[#00A77C]' },
+        { label: 'Collected Weight', value: `${num(ledger.reports.collectedWeightKg)} kg`, icon: Recycle, color: 'text-[#10B981]' },
+        { label: 'Reports', value: num(ledger.reports.total), icon: FileText, color: 'text-[#0091EA]' },
+        { label: 'Points Awarded', value: num(ledger.points.totalAwarded), icon: Trophy, color: 'text-[#FFAB00]' },
+        { label: 'Students Ranked', value: num(ledger.points.topStudents.length), icon: Trophy, color: 'text-[#651FFF]' },
       ]
     : [];
 
@@ -318,6 +350,17 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             </select>
           </div>
 
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00271D]/40" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search rows…"
+              className="pl-8 pr-3 py-2 rounded-xl border border-[#00271D]/10 bg-white text-xs text-[#00271D] outline-none focus:border-[#00A77C] w-44"
+            />
+          </div>
+
           <button
             type="button"
             onClick={handleImport}
@@ -325,7 +368,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             className="px-3 py-2 rounded-xl bg-white border border-[#00271D]/10 text-xs font-bold text-[#00271D]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             title="Fetch all school years from EnrollPro (sync only — never activates or rolls over)"
           >
-            <Upload size={13} className={importing ? 'animate-pulse' : ''} /> {importing ? 'Syncing…' : 'Sync from EnrollPro'}
+            <Upload size={13} className={importing ? 'animate-pulse' : ''} /> Sync
           </button>
 
           <button
@@ -345,77 +388,38 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
           >
             <Download size={13} /> Export CSV
           </button>
+
+          {selectedYear && !selectedYear.isActive && !selectedYear.isArchived && (
+            <button
+              type="button"
+              onClick={() => { setEditTarget(selectedYear); setShowEdit(true); }}
+              className="px-3 py-2 rounded-xl bg-white border border-[#00271D]/10 text-xs font-bold text-[#00271D]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer"
+            >
+              <Pencil size={13} /> Edit
+            </button>
+          )}
+
+          {selectedYear && !selectedYear.isActive && !selectedYear.isArchived && (
+            <button
+              type="button"
+              onClick={() => handleActivate(selectedYear)}
+              disabled={actionLoading === selectedYear.id}
+              className="px-3 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Power size={13} /> Activate
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => selectedYear && setDetailId(selectedYear.id)}
+            disabled={!selectedYear}
+            className="px-3 py-2 rounded-xl bg-[#00271D] hover:bg-[#003a2b] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+          >
+            <FileSpreadsheet size={13} /> Details
+          </button>
         </div>
       </div>
-
-      {/* Year lifecycle banner */}
-      {selectedYear && (
-        <div className="bg-gradient-to-br from-[#00271D] via-[#003a2b] to-[#00271D] rounded-3xl p-5 text-white relative overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #00A77C 0%, transparent 50%), radial-gradient(circle at 80% 20%, #00A77C 0%, transparent 50%)' }} />
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                  selectedYear.isActive ? 'bg-[#00A77C] text-white'
-                  : selectedYear.isArchived ? 'bg-white/15 text-white/70'
-                  : 'bg-amber-400 text-[#00271D]'
-                }`}>
-                  {selectedYear.isActive ? 'Active' : selectedYear.isArchived ? 'Archived' : 'Inactive'}
-                </span>
-                {selectedYear.isArchived && (
-                  <span className="text-[9px] font-bold text-white/50 flex items-center gap-1"><Lock size={9} /> Read-only</span>
-                )}
-                {selectedYear.enrollproId && (
-                  <span className="text-[9px] font-bold text-white/50">EnrollPro #{selectedYear.enrollproId}</span>
-                )}
-              </div>
-              <h2 className="text-2xl font-heading font-black mt-2">SY {selectedYear.label}</h2>
-              <div className="flex items-center gap-3 mt-1.5 text-white/60 text-xs flex-wrap">
-                <span>
-                  {new Date(selectedYear.startDate).toLocaleDateString()} — {new Date(selectedYear.endDate).toLocaleDateString()}
-                </span>
-                {selectedYear._count && (
-                  <>
-                    <span>·</span>
-                    <span>{selectedYear._count.reports} reports</span>
-                    <span>·</span>
-                    <span>{selectedYear._count.saleTransactions} sales</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setDetailId(selectedYear.id)}
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors"
-              >
-                Details
-              </button>
-              {!selectedYear.isActive && !selectedYear.isArchived && (
-                <button
-                  type="button"
-                  onClick={() => { setEditTarget(selectedYear); setShowEdit(true); }}
-                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5"
-                >
-                  <Pencil size={12} /> Edit
-                </button>
-              )}
-              {!selectedYear.isActive && !selectedYear.isArchived && (
-                <button
-                  type="button"
-                  onClick={() => handleActivate(selectedYear)}
-                  disabled={actionLoading === selectedYear.id}
-                  className="px-3.5 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <Power size={12} /> Activate
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Error */}
       {error && (
@@ -437,24 +441,10 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
 
       {ledger && (
         <>
-          {/* Search */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 sm:flex-none">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00271D]/40" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search rows…"
-                className="pl-8 pr-3 py-2 rounded-xl border border-[#00271D]/10 bg-white text-xs text-[#00271D] outline-none focus:border-[#00A77C] w-full sm:w-64"
-              />
-            </div>
-          </div>
-
           {/* KPI strip */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {kpis.map((k) => (
-              <div key={k.label} className={`border rounded-2xl p-4 ${k.bg.includes('border') ? k.bg : `${k.bg} border`}`}>
+              <div key={k.label} className="bg-white border border-gray-100 rounded-2xl p-4">
                 <k.icon size={17} className={k.color} />
                 <p className="text-lg font-black text-[#00271D] mt-2 leading-none">{k.value}</p>
                 <p className="text-[10px] font-bold text-[#00271D]/45 uppercase tracking-wider mt-1">{k.label}</p>
@@ -465,20 +455,20 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
           {/* Breakdown chips */}
           <div className="flex flex-wrap items-center gap-2">
             {Object.entries(ledger.reports.byStatus).map(([status, count]) => (
-              <span key={status} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${STATUS_STYLES[status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              <span key={status} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border ${STATUS_STYLES[status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                 {status}: {count}
               </span>
             ))}
             <span className="text-[10px] text-[#00271D]/30 font-bold">|</span>
             {Object.entries(ledger.reports.byCategory).map(([cat, count]) => (
-              <span key={cat} className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#F9F3F0] text-[#00271D]/70 border border-[#00271D]/10">
+              <span key={cat} className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-[#00271D]/60 border border-[#00271D]/10">
                 {cat}: {count}
               </span>
             ))}
           </div>
 
           {/* Workbook */}
-          <div className="rounded-3xl border border-[#00271D]/10 bg-white/80 backdrop-blur-md shadow-sm overflow-hidden">
+          <div className="rounded-3xl border border-[#00271D]/10 bg-white shadow-sm overflow-hidden">
             {/* Sheet tabs */}
             <div className="flex items-center gap-1 px-3 pt-3 border-b border-[#00271D]/10 overflow-x-auto bg-[#F9F3F0]/50">
               {sheets.map((s) => {
@@ -526,10 +516,63 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
                 minWidth={activeSheet.minWidth}
                 emptyMessage={search ? 'No rows match your search.' : 'No records for this sheet.'}
                 borderless
+                onRowClick={(row) => setViewRow({ row, sheet: activeSheet })}
               />
             )}
           </div>
         </>
+      )}
+
+      {/* ── Row Details Drawer ── */}
+      {viewRow && createPortal(
+        <div className="fixed inset-0 z-[100] flex justify-end" onClick={() => setViewRow(null)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-br from-[#00271D] to-[#003a2b] px-6 py-5 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
+                    {viewRow.sheet.label}
+                  </span>
+                  <h3 className="text-lg font-heading font-black mt-0.5 truncate">
+                    Ledger Record
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewRow(null)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 cursor-pointer transition-colors shrink-0"
+                  aria-label="Close"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
+              {viewRow.sheet.columns.filter((c) => c.key !== 'view').map((col) => {
+                const raw = col.value ? col.value(viewRow.row) : '';
+                const content = col.render
+                  ? col.render(viewRow.row)
+                  : raw === '' || raw == null ? '—' : String(raw);
+                return (
+                  <div key={col.key} className="flex items-start justify-between gap-4 py-3 border-b border-gray-100 last:border-0">
+                    <span className="text-[10px] font-bold text-[#00271D]/45 uppercase tracking-wider shrink-0 pt-0.5">
+                      {col.label}
+                    </span>
+                    <span className="text-xs font-semibold text-[#00271D] text-right break-words">
+                      {content ?? '—'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Modals ── */}

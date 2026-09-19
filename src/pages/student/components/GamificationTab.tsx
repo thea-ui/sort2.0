@@ -29,16 +29,22 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Anonymous API responses omit `email` (RA 10173 data minimisation), so user
+  // identity must fall back to the id. Never call .toLowerCase() on it directly.
+  const identityKey = (u: User) => String(u.email ?? u.id ?? '').toLowerCase();
+  const isSameUser = (a: User, b: User) =>
+    a.id === b.id || (!!a.email && !!b.email && a.email.toLowerCase() === b.email.toLowerCase());
+
   // Compute leaderboard rankings with actual report counts
   const leaderboardEntries = users
     .filter(u => u.role === 'STUDENT')
-    .filter((u, index, self) => index === self.findIndex(t => t.email.toLowerCase() === u.email.toLowerCase()))
+    .filter((u, index, self) => index === self.findIndex(t => identityKey(t) === identityKey(u)))
     .sort((a, b) => b.points - a.points)
     .map((u, index) => {
       const actualCount = reports.filter(r =>
         r.reporterId === u.id ||
         r.reporterName === u.name ||
-        (u.email.toLowerCase() === currentUser.email.toLowerCase() && r.reporterId === currentUser.id)
+        (isSameUser(u, currentUser) && r.reporterId === currentUser.id)
       ).length;
 
       return {
@@ -48,7 +54,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         gradeSection: (u as any).gradeLevel ? `${(u as any).gradeLevel} — ${(u as any).sectionName}` : u.classroomSection || 'N/A',
         pointsBalance: u.points,
         reportsCount: actualCount,
-        isCurrentUser: u.email.toLowerCase() === currentUser.email.toLowerCase()
+        isCurrentUser: isSameUser(u, currentUser)
       };
     });
 

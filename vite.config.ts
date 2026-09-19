@@ -8,5 +8,11 @@ export default defineConfig({
     port: 5174,
     host: '127.0.0.1',
     allowedHosts: ['atheng.buru-degree.ts.net'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
   },
 })

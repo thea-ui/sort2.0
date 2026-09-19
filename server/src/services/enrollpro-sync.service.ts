@@ -121,7 +121,9 @@ function mapRole(roles: string[]): Role {
   if (r.includes('MRF')) {
     return Role.MRF;
   }
-  return Role.ADMIN;
+  // Least privilege: an unrecognised role string must never escalate to ADMIN.
+  // Baseline staff access is TEACHER (same fallback used for staff records above).
+  return Role.TEACHER;
 }
 
 /**
@@ -608,13 +610,22 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       });
     }
 
+    const facultyEmpIds = new Set(facultyResponses.map(f => f.employeeId).filter(Boolean));
+    const staffByEmployeeId = new Map(staffResponses.map(s => [s.employeeId, s]));
+
     for (const f of facultyResponses) {
       const empId = f.employeeId || `EMP-${f.teacherId}`;
       const email = f.email || `faculty-${empId}@sort.local`;
+      // Faculty records carry no `roles` field. When the same employee also
+      // appears in the staff list we mirror the authoritative staff role instead
+      // of silently defaulting to TEACHER (which previously discarded admin /
+      // registrar roles unless a manual ENROLLPRO_ROLE_OVERRIDES entry existed).
+      const staffRoles = staffByEmployeeId.get(empId)?.roles;
       syncEntries.push({
         enrollproId: `faculty-${f.teacherId}`, email: email.toLowerCase(),
         name: buildFullName(f.lastName, f.firstName, f.middleName),
-        employeeId: empId, role: ROLE_OVERRIDES[empId] || Role.TEACHER,
+        employeeId: empId,
+        role: ROLE_OVERRIDES[empId] || (staffRoles && staffRoles.length ? mapRole(staffRoles) : Role.TEACHER),
         gradeLevel: f.advisorySectionGradeLevelName, sectionName: f.advisorySectionName,
         schoolYearId: f.schoolYearId || schoolYearId,
         schoolYearLabel: f.schoolYearLabel || schoolYearLabel,
@@ -622,7 +633,6 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       });
     }
 
-    const facultyEmpIds = new Set(facultyResponses.map(f => f.employeeId).filter(Boolean));
     for (const s of staffResponses) {
       const empId = s.employeeId || `EMP-${s.id}`;
       const email = s.email || `staff-${empId}@sort.local`;

@@ -1,4 +1,5 @@
 import { Prisma, Role, ChallengeType } from '@prisma/client';
+import { resolveChallengeScope, challengeWindowWhere } from './challenge-term.service.js';
 
 export interface ChallengeCompletion {
   userId: string;
@@ -82,16 +83,17 @@ async function handleChallengeCompletion(
 }
 
 async function findActiveChallenges(tx: Prisma.TransactionClient, challengeType: ChallengeType) {
+  const scope = await resolveChallengeScope();
+
+  // The term is over (GRACE/CLOSED) or no scope is available — nothing accrues.
+  if (!scope.canAccrue || scope.visibleQuarterCodes.length === 0) return [];
+
   return tx.challenge.findMany({
     where: {
       isActive: true,
       challengeType,
-      OR: [
-        { startDate: null, endDate: null },
-        { startDate: { lte: new Date() }, endDate: null },
-        { startDate: null, endDate: { gte: new Date() } },
-        { startDate: { lte: new Date() }, endDate: { gte: new Date() } },
-      ],
+      quarterCode: { in: scope.visibleQuarterCodes },
+      ...challengeWindowWhere(),
     },
   });
 }

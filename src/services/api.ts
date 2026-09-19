@@ -1,6 +1,6 @@
 import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult, Certificate, TermStatus, IssueTermResult } from '../types';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || '/api';
 
 /**
  * Helper to retrieve stored Auth JWT Token from sessionStorage
@@ -547,6 +547,46 @@ export const apiService = {
   getAssetScrapSales: async (schoolYearId?: string): Promise<any[]> => {
     const query = schoolYearId ? `?schoolYearId=${schoolYearId}` : '';
     return fetchAPI(`/asset-scrap/sales${query}`);
+  },
+
+  // Asset Scrap Items (per-batch records, incl. unweighed)
+  getAssetScrapItems: async (params?: { status?: string; materialCode?: string; sourceAssetId?: string; sourceReportId?: string; schoolYearId?: string }): Promise<any[]> => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.materialCode) query.set('materialCode', params.materialCode);
+    if (params?.sourceAssetId) query.set('sourceAssetId', params.sourceAssetId);
+    if (params?.sourceReportId) query.set('sourceReportId', params.sourceReportId);
+    if (params?.schoolYearId) query.set('schoolYearId', params.schoolYearId);
+    const qs = query.toString();
+    return fetchAPI(`/asset-scrap/items${qs ? `?${qs}` : ''}`);
+  },
+
+  createAssetScrapItem: async (data: {
+    materialCode: string;
+    weightKg?: number;
+    status?: 'AWAITING_WEIGHT' | 'IN_STOCK';
+    description?: string;
+    sourceAssetId?: string;
+    sourceReportId?: string;
+  }): Promise<any> => {
+    return fetchAPI('/asset-scrap/items', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  weighAssetScrapItem: async (id: string, weightKg: number): Promise<any> => {
+    return fetchAPI(`/asset-scrap/items/${id}/weigh`, {
+      method: 'PATCH',
+      body: JSON.stringify({ weightKg }),
+    });
+  },
+
+  disposeAssetScrapItem: async (id: string, disposalReference?: string): Promise<any> => {
+    return fetchAPI(`/asset-scrap/items/${id}/dispose`, {
+      method: 'PATCH',
+      body: JSON.stringify({ disposalReference }),
+    });
   },
 
   // Challenges API

@@ -74,7 +74,9 @@ export const AdminSyncSettingsTab: React.FC = () => {
     try {
       const users = await apiService.getUsers();
       if (users && Array.isArray(users)) {
-        const students = users.filter((u: any) => u.role === 'STUDENT' && u.syncSource === 'ENROLLPRO');
+        // Only currently-enrolled learners can sign in; archived (ALUMNI) accounts
+    // must not be counted as login-ready.
+    const students = users.filter((u: any) => u.role === 'STUDENT' && u.syncSource === 'ENROLLPRO' && !u.archivedAt);
         const ready = students.filter((u: any) => u.portalAccountActive !== false).length;
         setLoginReadiness({ ready, total: students.length });
       }

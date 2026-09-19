@@ -23,8 +23,8 @@ interface RolloverResult {
  * 3. Tag all null-school-year records to current year
  * 4. Archive old school year
  * 5. Create new school year
- * 6. Carry forward market stock snapshots as opening balances
- * 7. Carry forward unsold market stock (keep kg, clear sale approval)
+ * 6. Carry forward asset scrap stock snapshots as opening balances
+ * 7. Reset recyclable market stock to zero (archive holds the closing balance)
  * 8. Reset user points to 0
  * 9. Archive all students (revoke sessions, keep history)
  * 10. Log in audit
@@ -52,12 +52,15 @@ export async function executeRollover(
     };
   }
 
-  // Idempotency check: if a year with this EnrollPro ID already exists, skip
+  // Idempotency check: only skip when the target year is ALREADY the active one.
+  // The EnrollPro mirror pre-creates the upcoming year as an inactive row, so a
+  // plain "row exists" check would wrongly skip the rollover — the outgoing year
+  // would never close and its points/stock would silently carry over.
   const existingTarget = await prisma.schoolYear.findUnique({
     where: { enrollproId: newEnrollproId },
   });
-  if (existingTarget) {
-    console.log(`[Rollover] School year with EnrollPro ID ${newEnrollproId} already exists (${existingTarget.label}) — skipping`);
+  if (existingTarget?.isActive && !existingTarget.isArchived) {
+    console.log(`[Rollover] School year "${existingTarget.label}" is already active — skipping`);
     return {
       success: true,
       previousSchoolYear: '',
@@ -77,9 +80,11 @@ export async function executeRollover(
   try {
     // Execute all state changes in one transaction
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Find current active school year
+      // 1. Find current active school year (latest start date wins if legacy
+      //    data has more than one active row).
       const currentSY = await tx.schoolYear.findFirst({
         where: { isActive: true, isArchived: false },
+        orderBy: { startDate: 'desc' },
       });
 
       const previousLabel = currentSY?.label || 'Unknown';
@@ -163,6 +168,7 @@ export async function executeRollover(
           tx.offense.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
           tx.recycleSaleTransaction.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
           tx.assetScrapSaleTransaction.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
+          tx.assetScrapItem.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
           tx.auditLog.updateMany({ where: { schoolYearId: null }, data: { schoolYearId: currentSY.id } }),
         ]);
 
@@ -173,40 +179,35 @@ export async function executeRollover(
         });
       }
 
-      // 5. Create new school year
-      const newSY = await tx.schoolYear.create({
-        data: {
-          enrollproId: newEnrollproId,
-          label: newLabel,
-          startDate: newStartDate,
-          endDate: newEndDate,
-          isActive: true,
-          isArchived: false,
-        },
-      });
+      // 5. Activate the target school year. The EnrollPro mirror may have already
+      //    created it as an inactive row, so update it in place instead of
+      //    inserting a duplicate (enrollproId is unique).
+      const newSY = existingTarget
+        ? await tx.schoolYear.update({
+            where: { id: existingTarget.id },
+            data: {
+              label: newLabel,
+              startDate: newStartDate,
+              endDate: newEndDate,
+              isActive: true,
+              isArchived: false,
+              archivedAt: null,
+            },
+          })
+        : await tx.schoolYear.create({
+            data: {
+              enrollproId: newEnrollproId,
+              label: newLabel,
+              startDate: newStartDate,
+              endDate: newEndDate,
+              isActive: true,
+              isArchived: false,
+            },
+          });
 
-      // 6. Carry forward market stock snapshots as opening balances for new SY
-      if (currentSY) {
-        const prevSnapshots = await tx.marketStockSnapshot.findMany({
-          where: { schoolYearId: currentSY.id },
-        });
-        for (const snap of prevSnapshots) {
-          if (snap.closingKg > 0) {
-            await tx.marketStockSnapshot.create({
-              data: {
-                schoolYearId: newSY.id,
-                categoryCode: snap.categoryCode,
-                categoryName: snap.categoryName,
-                closingKg: 0,
-                openingKg: snap.closingKg,
-              },
-            });
-            snapshotsCreated++;
-          }
-        }
-      }
-
-      // 6b. Carry forward asset scrap stock snapshots as opening balances for new SY
+      // 6. Carry forward asset scrap stock snapshots as opening balances for new SY.
+      //    (Recyclable market stock is NOT carried forward — it starts each school
+      //    year empty; the closing balance lives in the old year's snapshot archive.)
       if (currentSY) {
         const prevScrapSnapshots = await tx.assetScrapStockSnapshot.findMany({
           where: { schoolYearId: currentSY.id },
@@ -227,11 +228,12 @@ export async function executeRollover(
         }
       }
 
-      // 7. Carry forward unsold market stock as real, sellable stock.
-      //     Keep accumulatedKg (opening snapshot records the carried balance);
-      //     only clear any pending sale approval from the previous year.
+      // 7. Reset recyclable market stock to zero for the new school year.
+      //     The closing balance was snapshotted above (step 2) and is preserved in
+      //     the archived year's ledger; the live stock starts the new year empty so
+      //     admin dashboards never show last year's carried-over inventory.
       await tx.recycleMarketStock.updateMany({
-        data: { isApprovedForSale: false, approvedAt: null },
+        data: { accumulatedKg: 0, isApprovedForSale: false, approvedAt: null },
       });
 
       // 7b. Scrap stock is a standing MRF inventory carried across years; clear
@@ -309,9 +311,17 @@ export async function executeRollover(
 }
 
 /**
- * Ensure a SchoolYear record exists for the given EnrollPro school year.
- * If it doesn't exist and there's no active SY, create one without rollover.
- * If it doesn't exist but there IS an active SY with a different ID, trigger rollover.
+ * Ensure the SchoolYear record for the given EnrollPro school year exists AND is
+ * the single active year.
+ *
+ * - Same year already active → no-op.
+ * - No active year and no existing row → first-time setup (create + activate).
+ * - Otherwise → run the full rollover, which snapshots the outgoing year, resets
+ *   points/stock, archives it, and activates the target (existing row or new).
+ *
+ * This matters because `mirrorEnrollProSchoolYears()` creates the upcoming year
+ * as an inactive row before this runs. The target row therefore usually already
+ * exists, and the rollover must still execute.
  */
 export async function ensureSchoolYear(
   enrollproId: number,
@@ -319,46 +329,23 @@ export async function ensureSchoolYear(
   startDate?: Date,
   endDate?: Date
 ): Promise<{ schoolYearId: string; rolloverTriggered: boolean }> {
-  // Check if this school year already exists
-  const existing = await prisma.schoolYear.findUnique({
-    where: { enrollproId },
-  });
-
-  if (existing) {
-    if (!existing.isActive && !existing.isArchived) {
-      // Reactivate if somehow deactivated but not archived
-      await prisma.schoolYear.update({
-        where: { id: existing.id },
-        data: { isActive: true },
-      });
-    }
-    return { schoolYearId: existing.id, rolloverTriggered: false };
-  }
-
-  // New school year from EnrollPro that doesn't exist in our DB
   const activeSY = await prisma.schoolYear.findFirst({
     where: { isActive: true, isArchived: false },
+    orderBy: { startDate: 'desc' },
   });
 
-  if (!activeSY) {
-    // No active SY exists — just create the new one (first-time setup)
-    const newSY = await prisma.schoolYear.create({
-      data: {
-        enrollproId,
-        label,
-        startDate: startDate || new Date(),
-        endDate: endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-        isActive: true,
-        isArchived: false,
-      },
-    });
-    console.log(`[SY] Created initial school year "${label}" (${newSY.id})`);
-    return { schoolYearId: newSY.id, rolloverTriggered: false };
+  // Already the active year — nothing to close out.
+  if (activeSY && activeSY.enrollproId === enrollproId) {
+    return { schoolYearId: activeSY.id, rolloverTriggered: false };
   }
 
-  // Active SY exists but EnrollPro returned a different ID — trigger rollover
-  if (activeSY.enrollproId !== enrollproId) {
-    console.log(`[SY] New school year detected: "${activeSY.label}" (ID: ${activeSY.enrollproId}) -> "${label}" (ID: ${enrollproId})`);
+  const existingTarget = await prisma.schoolYear.findUnique({ where: { enrollproId } });
+
+  // Different active year (or none) with a target row present → full rollover.
+  if (activeSY || existingTarget) {
+    console.log(
+      `[SY] School year transition: "${activeSY?.label ?? '(none)'}" -> "${label}" (EnrollPro ID: ${enrollproId})`
+    );
     const result = await executeRollover(
       enrollproId,
       label,
@@ -370,15 +357,23 @@ export async function ensureSchoolYear(
       throw new Error(`Rollover failed: ${result.error}`);
     }
 
-    const newSY = await prisma.schoolYear.findUnique({
-      where: { enrollproId },
-    });
-
+    const newSY = await prisma.schoolYear.findUnique({ where: { enrollproId } });
     return { schoolYearId: newSY!.id, rolloverTriggered: true };
   }
 
-  // Same ID, just return it
-  return { schoolYearId: activeSY.id, rolloverTriggered: false };
+  // First-time setup: no active year and no existing row.
+  const newSY = await prisma.schoolYear.create({
+    data: {
+      enrollproId,
+      label,
+      startDate: startDate || new Date(),
+      endDate: endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      isActive: true,
+      isArchived: false,
+    },
+  });
+  console.log(`[SY] Created initial school year "${label}" (${newSY.id})`);
+  return { schoolYearId: newSY.id, rolloverTriggered: false };
 }
 
 /**
@@ -388,6 +383,7 @@ export async function ensureSchoolYear(
 export async function getActiveSchoolYearId(): Promise<string | null> {
   const sy = await prisma.schoolYear.findFirst({
     where: { isActive: true, isArchived: false },
+    orderBy: { startDate: 'desc' },
     select: { id: true },
   });
   return sy?.id || null;

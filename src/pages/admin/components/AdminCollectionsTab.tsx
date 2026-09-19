@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { residualRecords, sumResidualKg, countUnweighedResidual } from '../../../utils/wasteStreams';
 import {
   Scale,
   Search,
@@ -38,6 +39,19 @@ export interface AdminCollectionsTabProps {
   updateReportStatus?: (reportId: string, status: ReportStatus, weightCollected?: number) => void;
   addOffense?: (userId: string, description: string, severity: 'WARNING' | 'DEDUCT' | 'SUSPENSION') => void;
   deductPoints?: (userId: string, amount: number) => void;
+}
+
+interface KpiCard {
+  key: string;
+  label: string;
+  value: string | number;
+  unit?: string;
+  icon: React.ElementType;
+  iconCls: string;
+  badge: string;
+  badgeCls: string;
+  badgeIcon?: React.ElementType;
+  footer: string;
 }
 
 export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
@@ -94,10 +108,11 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
   const pendingReports = allReportsList.filter((r) => r.status === 'PENDING');
   const pendingCount = pendingReports.length;
 
-  // Residual Waste Tracking (General / Non-Bio / Organic residual)
-  const residualReports = collectedReports.filter((r) => r.category === 'GENERAL' || r.category === 'NON_BIODEGRADABLE' || r.category === 'ORGANIC');
-  const residualWeightKg = residualReports.reduce((sum, r) => sum + (r.weightCollected || 0), 0);
+  // Residual Waste Tracking — single shared definition (see utils/wasteStreams)
+  const residualReports = residualRecords(collectedReports);
+  const residualWeightKg = sumResidualKg(residualReports);
   const residualCount = residualReports.length;
+  const residualUnweighed = countUnweighedResidual(residualReports);
 
   // Itemized MRF Recyclable Collection Logs
   const itemizedRecyclables = [
@@ -148,7 +163,8 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
     category: 'Residual Waste Volume',
     countLabel: `${residualCount} Non-Recyclable Batch${residualCount === 1 ? '' : 'es'}`,
     weightKg: residualWeightKg > 0 ? residualWeightKg : 0.0,
-    disposalRoute: 'Transferred to Municipal Landfill Safety Station',
+    avgKg: residualCount - residualUnweighed > 0 ? residualWeightKg / (residualCount - residualUnweighed) : 0,
+    unweighed: residualUnweighed,
     icon: Trash2,
     color: 'text-rose-600',
     bgColor: 'bg-rose-50',
@@ -263,17 +279,74 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
     }
   };
 
+  const kpiCards: KpiCard[] = [
+    {
+      key: 'rewards-reserve',
+      label: 'MRF Sales Reserved for Rank 1 Rewards',
+      value: `₱${rewardsReservedPhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+      icon: Coins,
+      iconCls: 'bg-amber-50 text-[#C69B26]',
+      badge: `${settings?.rewardsReservePercent ?? 20}% Reserve`,
+      badgeCls: 'bg-amber-50 text-amber-700 border-amber-200',
+      badgeIcon: Award,
+      footer: `Quarter-end pool · from ₱${totalMRFRevenuePhp.toLocaleString()} total revenue`,
+    },
+    {
+      key: 'total-collected',
+      label: 'Total Recyclables Collected',
+      value: totalCollectedWeight.toFixed(1),
+      unit: 'kg',
+      icon: Scale,
+      iconCls: 'bg-emerald-50 text-[#00A77C]',
+      badge: `${completedDispatchesCount} Recorded`,
+      badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      badgeIcon: ArrowUpRight,
+      footer: `Across ${completedDispatchesCount} completed collection${completedDispatchesCount === 1 ? '' : 's'}`,
+    },
+    {
+      key: 'active-dispatches',
+      label: 'Active MRF Dispatches',
+      value: activeDispatchesCount,
+      unit: 'active',
+      icon: Truck,
+      iconCls: 'bg-sky-50 text-[#0091EA]',
+      badge: activeDispatchesCount > 0 ? `${activeDispatchesCount} Active` : 'Queue Clear',
+      badgeCls: 'bg-sky-50 text-sky-700 border-sky-200',
+      footer:
+        activeDispatchesCount > 0
+          ? users
+              .filter((u) => u.role === 'MRF')
+              .map((mrf) => `${mrf.name} (${mrfActiveCountByUser.get(mrf.id) ?? 0})`)
+              .join(' • ') || `${activeDispatchesCount} active dispatches in queue`
+          : `${completedDispatchesCount} collections resolved & logged`,
+    },
+    {
+      key: 'pending-queue',
+      label: 'Pending Action Queue',
+      value: pendingCount,
+      unit: 'reports',
+      icon: AlertTriangle,
+      iconCls: 'bg-rose-50 text-[#FF5722]',
+      badge: pendingCount > 0 ? 'Requires Action' : 'All Verified',
+      badgeCls:
+        pendingCount > 0
+          ? 'bg-rose-50 text-rose-700 border-rose-200'
+          : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      footer:
+        pendingCount > 0
+          ? 'Awaiting admin approval & MRF alert'
+          : 'Queue clear — no pending verification',
+    },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in text-[#00271D]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-3 py-1 rounded-full uppercase tracking-wider">
-              COLLECTIONS & DISPATCH ACTION CENTER
-            </span>
-            <span className="text-xs font-semibold text-[#00271D]/40">• Real-Time Sync Active</span>
-          </div>
+          <span className="text-[10px] font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-3 py-1 rounded-full uppercase tracking-wider">
+            Collections & Dispatch Action Center
+          </span>
           <h2 className="text-2xl font-extrabold text-[#00271D] tracking-tight mt-2">
             Waste Dispatch & Recyclables Management
           </h2>
@@ -282,11 +355,12 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-extrabold flex items-center gap-2">
-            <CheckCircle2 size={15} />
-            Auto-Sync Status
+        <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200/80 self-start sm:self-auto">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
+          <span className="text-xs font-bold text-emerald-700">Auto-Sync Active</span>
         </div>
       </div>
 
@@ -303,99 +377,47 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
         </div>
       )}
 
-      {/* 1. TOP METRIC CARDS ROW INCLUDING REWARDS RESERVE WIDGET */}
+      {/* 1. TOP METRIC CARDS ROW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* REWARDS RESERVE WIDGET (CRITICAL PROMPT REQ 3) */}
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50/80 border border-amber-300/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <div className="p-3 bg-amber-500/20 rounded-xl text-[#C69B26] group-hover:scale-110 transition-transform">
-              <Coins size={22} />
+        {kpiCards.map((card) => {
+          const Icon = card.icon;
+          const BadgeIcon = card.badgeIcon;
+          return (
+            <div
+              key={card.key}
+              className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center justify-between">
+                <div className={`p-2.5 rounded-xl ${card.iconCls}`}>
+                  <Icon size={20} />
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border px-2.5 py-1 rounded-full ${card.badgeCls}`}
+                >
+                  {BadgeIcon && <BadgeIcon size={11} />}
+                  {card.badge}
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-[#00271D]/60 mt-4">
+                {card.label}
+              </p>
+              <p className="text-3xl font-black text-[#00271D] tracking-tight mt-1">
+                {card.value}
+                {card.unit && (
+                  <span className="text-base font-bold text-[#00271D]/40 ml-1.5">{card.unit}</span>
+                )}
+              </p>
+              <p className="text-[11px] font-medium text-[#00271D]/50 mt-4 pt-3 border-t border-[#00271D]/5 truncate" title={card.footer}>
+                {card.footer}
+              </p>
             </div>
-            <span className="text-[10px] font-extrabold text-[#C69B26] bg-amber-100/80 border border-amber-300 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <Award size={12} /> {settings?.rewardsReservePercent ?? 20}% Reserve
-            </span>
-          </div>
-          <p className="text-xs font-bold text-amber-900/70 mt-3">MRF Sales Revenue Reserved for Rank 1 Rewards</p>
-          <p className="text-3xl font-black text-[#00271D] tracking-tight mt-0.5">
-            ₱{rewardsReservedPhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </p>
-          <div className="mt-3 pt-3 border-t border-amber-200/60 flex items-center justify-between text-[11px] text-amber-900/60 font-semibold">
-            <span>Quarter-End Pool</span>
-            <span className="font-extrabold text-amber-700">From ₱{totalMRFRevenuePhp.toLocaleString()} Total</span>
-          </div>
-        </div>
-
-        {/* Card 2: Total Recyclables Collected (kg) */}
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div className="p-3 bg-emerald-50 rounded-xl text-[#00A77C]">
-              <Scale size={22} />
-            </div>
-            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <ArrowUpRight size={12} /> {completedDispatchesCount} Recorded
-            </span>
-          </div>
-          <p className="text-xs font-semibold text-[#00271D]/60 mt-3">Total Recyclables Collected</p>
-          <p className="text-3xl font-black text-[#00271D] tracking-tight mt-0.5">
-            {totalCollectedWeight.toFixed(1)} <span className="text-base font-bold text-[#00271D]/50">kg</span>
-          </p>
-          <p className="text-[11px] font-medium text-[#00271D]/50 mt-3 pt-3 border-t border-[#00271D]/5">
-            Across {completedDispatchesCount} completed collection{completedDispatchesCount === 1 ? '' : 's'}
-          </p>
-        </div>
-
-        {/* Card 3: MRF Tasks Status */}
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div className="p-3 bg-sky-50 rounded-xl text-[#0091EA]">
-              <Truck size={22} />
-            </div>
-            <span className="text-[11px] font-bold text-sky-600 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-full">
-              {activeDispatchesCount > 0 ? `${activeDispatchesCount} Active` : 'Queue Clear'}
-            </span>
-          </div>
-          <p className="text-xs font-semibold text-[#00271D]/60 mt-3">Active MRF Dispatches</p>
-          <p className="text-3xl font-black text-[#00271D] tracking-tight mt-0.5">
-            {activeDispatchesCount} <span className="text-base font-bold text-[#00271D]/50">active</span>
-          </p>
-          <p className="text-[11px] font-medium text-sky-700 mt-3 pt-3 border-t border-[#00271D]/5 font-semibold">
-            {activeDispatchesCount > 0
-              ? (() => {
-                  const mrfUsers = users.filter(u => u.role === 'MRF');
-                  if (mrfUsers.length === 0) {
-                    return `${activeDispatchesCount} active dispatches in queue`;
-                  }
-                  return mrfUsers
-                    .map(mrf => `${mrf.name} (${mrfActiveCountByUser.get(mrf.id) ?? 0})`)
-                    .join(' • ');
-                })()
-              : `${completedDispatchesCount} collections resolved & logged`}
-          </p>
-        </div>
-
-        {/* Card 4: Pending Verification Queue */}
-        <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div className="p-3 bg-amber-50 rounded-xl text-[#FFAB00]">
-              <AlertTriangle size={22} />
-            </div>
-            <span className={`text-[11px] font-bold ${pendingCount > 0 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200'} border px-2.5 py-0.5 rounded-full`}>
-              {pendingCount > 0 ? 'Requires Action' : 'All Verified'}
-            </span>
-          </div>
-          <p className="text-xs font-semibold text-[#00271D]/60 mt-3">Pending Action Queue</p>
-          <p className="text-3xl font-black text-[#00271D] tracking-tight mt-0.5">
-            {pendingCount} <span className="text-base font-bold text-[#00271D]/50">reports</span>
-          </p>
-          <p className="text-[11px] font-medium text-[#00271D]/50 mt-3 pt-3 border-t border-[#00271D]/5">
-            {pendingCount > 0 ? 'Awaiting Admin approval & MRF alert' : 'Queue clear — no pending verification'}
-          </p>
-        </div>
+          );
+        })}
       </div>
 
-      {/* 2. ITEMIZED MRF RECYCLABLES LOG SUMMARY (CRITICAL PROMPT REQ 2) */}
-      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      {/* 2. ITEMIZED MRF RECYCLABLES LOG SUMMARY */}
+      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-extrabold text-[#00271D] flex items-center gap-2">
               <Package size={18} className="text-[#00A77C]" />
@@ -405,13 +427,13 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
               Verified inventory log recorded by MRF staff with unit counts, weights, and market values
             </p>
           </div>
-          <span className="text-xs font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-3 py-1 rounded-full">
+          <span className="text-xs font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-3 py-1.5 rounded-full whitespace-nowrap">
             Total Revenue Generated: ₱{totalMRFRevenuePhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </span>
         </div>
 
         {/* Itemized Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
           {itemizedRecyclables.map((item) => {
             const ItemIcon = item.icon;
             const stock = item.stock;
@@ -426,342 +448,122 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
             return (
               <div
                 key={item.category}
-                className={`p-4 rounded-2xl border ${item.bgColor} transition-all space-y-2.5 relative overflow-hidden ${
+                className={`flex flex-col rounded-2xl border bg-white/90 p-4 transition-all hover:shadow-sm ${
                   isApproved
-                    ? 'border-emerald-500 ring-2 ring-emerald-400/50 shadow-md bg-emerald-50/50'
+                    ? 'border-emerald-300 ring-1 ring-emerald-200'
                     : isThresholdReached
-                    ? 'border-amber-400 ring-2 ring-amber-400/50 shadow-md bg-amber-50/40'
-                    : item.borderColor
+                    ? 'border-amber-300 ring-1 ring-amber-200'
+                    : 'border-[#00271D]/10 hover:border-[#00271D]/20'
                 }`}
               >
-                {isApproved ? (
-                  <div className="bg-[#00A77C] text-white font-black text-[8px] uppercase py-0.5 px-2 text-center font-mono tracking-wider -mx-4 -mt-4 mb-1 flex items-center justify-center gap-1">
-                    <CheckCircle2 size={10} /> AUTHORIZED FOR SALE — DISPATCHED TO MRF
+                {(isApproved || isThresholdReached) && (
+                  <div
+                    className={`-mx-4 -mt-4 mb-3 py-1 px-2 text-center text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 ${
+                      isApproved ? 'bg-[#00A77C] text-white' : 'bg-amber-400 text-amber-950'
+                    }`}
+                  >
+                    {isApproved ? (
+                      <>
+                        <CheckCircle2 size={10} /> Authorized for Sale
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle size={10} /> Ready to Sell
+                      </>
+                    )}
                   </div>
-                ) : isThresholdReached ? (
-                  <div className="bg-amber-400 text-amber-950 font-black text-[8px] uppercase py-0.5 px-2 text-center font-mono tracking-wider -mx-4 -mt-4 mb-1 animate-pulse">
-                    SELLING THRESHOLD REACHED - READY FOR ADMIN SALE APPROVAL
-                  </div>
-                ) : null}
+                )}
 
                 <div className="flex items-center justify-between">
-                  <div className={`p-2 rounded-xl bg-white/80 ${item.color}`}>
+                  <div className={`p-2 rounded-xl ${item.bgColor} ${item.color}`}>
                     <ItemIcon size={18} />
                   </div>
-                  <span className={`text-[10px] font-extrabold ${isApproved ? 'text-emerald-900 bg-emerald-200' : isThresholdReached ? 'text-amber-900 bg-amber-200' : 'text-gray-600 bg-white/80'} px-2 py-0.5 rounded-full uppercase tracking-wider`}>
-                    {pct}% Batch
+                  <span className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">
+                    {accumulatedKg.toFixed(1)} / {thresholdKg} kg
                   </span>
                 </div>
 
-                <div>
-                  <h4 className="text-xs font-bold text-[#00271D] line-clamp-1">{item.category}</h4>
-                  <p className="text-[10px] font-medium text-gray-500 mt-0.5">Rate: ₱{pricePerKg}/kg</p>
+                <div className="mt-3">
+                  <h4 className="text-xs font-bold text-[#00271D] leading-tight">{item.category}</h4>
+                  <p className="text-[10px] font-medium text-[#00271D]/40 mt-0.5">Rate ₱{pricePerKg}/kg</p>
                 </div>
 
-                {/* Batch Weight Progress Bar */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] font-bold">
-                    <span className="text-gray-500">{accumulatedKg.toFixed(1)} / {thresholdKg} kg</span>
-                    <span className={isApproved ? 'text-emerald-700 font-black' : isThresholdReached ? 'text-amber-800 font-extrabold' : 'text-[#00A77C]'}>{pct}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-200/80 rounded-full overflow-hidden">
+                {/* Batch progress */}
+                <div className="mt-3 space-y-1.5">
+                  <div className="h-1.5 w-full bg-[#00271D]/10 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        isApproved ? 'bg-[#00A77C]' : isThresholdReached ? 'bg-amber-500 animate-pulse' : 'bg-[#00A77C]'
+                        isApproved ? 'bg-[#00A77C]' : isThresholdReached ? 'bg-amber-500' : 'bg-[#00A77C]'
                       }`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
+                  <span className="text-[10px] font-bold text-[#00271D]/40">{pct}% of batch</span>
                 </div>
 
-                <div className="pt-2 border-t border-black/5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase block">Sold Revenue</span>
-                      <span className={`text-xs font-black ${item.color}`}>
-                        ₱{catRevenue.toLocaleString()}
-                      </span>
-                    </div>
-
-                    {isApproved ? (
-                      <span className="px-2 py-1 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-[9px] font-black uppercase flex items-center gap-1">
-                        <CheckCircle2 size={10} /> Authorized
-                      </span>
-                    ) : isThresholdReached ? (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await approveSaleBatch(item.code, true);
-                          setToastMessage(`Authorized sale of ${item.shortName} batch! Dispatched notification to MRF.`);
-                          setTimeout(() => setToastMessage(null), 4000);
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-white cursor-pointer transition-all flex items-center gap-1 shadow-xs animate-bounce"
-                      >
-                        <Coins size={12} /> Approve Sale
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled
-                        className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center gap-1 opacity-70"
-                      >
-                        <Coins size={12} /> {accumulatedKg <= 0 ? 'No Payload' : 'Awaiting Threshold'}
-                      </button>
-                    )}
+                <div className="mt-auto pt-3 border-t border-[#00271D]/5 flex items-end justify-between gap-2">
+                  <div>
+                    <span className="text-[9px] font-bold text-[#00271D]/40 uppercase tracking-wider block">
+                      Sold Revenue
+                    </span>
+                    <span className={`text-sm font-black ${item.color}`}>₱{catRevenue.toLocaleString()}</span>
                   </div>
+
+                  {isApproved ? (
+                    <span className="px-2 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-[9px] font-black uppercase flex items-center gap-1">
+                      <CheckCircle2 size={10} /> Authorized
+                    </span>
+                  ) : isThresholdReached ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await approveSaleBatch(item.code, true);
+                        setToastMessage(`Authorized sale of ${item.shortName} batch! Dispatched notification to MRF.`);
+                        setTimeout(() => setToastMessage(null), 4000);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-white cursor-pointer transition-colors flex items-center gap-1 shadow-sm"
+                    >
+                      <Coins size={12} /> Approve Sale
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-[#00271D]/35">Awaiting threshold</span>
+                  )}
                 </div>
               </div>
             );
           })}
 
           {/* Residual Waste Card */}
-          <div className={`p-4 rounded-2xl border ${residualWaste.bgColor} ${residualWaste.borderColor} space-y-2 hover:scale-[1.02] transition-transform`}>
+          <div className="flex flex-col rounded-2xl border border-[#00271D]/10 bg-white/90 p-4 transition-all hover:shadow-sm hover:border-[#00271D]/20">
             <div className="flex items-center justify-between">
-              <div className={`p-2 rounded-xl bg-white/80 ${residualWaste.color}`}>
+              <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
                 <Trash2 size={18} />
               </div>
-              <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
                 Non-Recyclable
               </span>
             </div>
-            <div>
-              <h4 className="text-xs font-bold text-[#00271D]">{residualWaste.category}</h4>
-              <p className="text-[11px] font-semibold text-rose-700 mt-0.5">{residualWaste.countLabel}</p>
+            <div className="mt-3">
+              <h4 className="text-xs font-bold text-[#00271D] leading-tight">{residualWaste.category}</h4>
+              <p className="text-[10px] font-semibold text-rose-700 mt-0.5">{residualWaste.countLabel}</p>
             </div>
-            <div className="pt-2 border-t border-black/5 flex items-baseline justify-between">
-              <span className="text-lg font-black text-[#00271D]">{residualWaste.weightKg.toFixed(1)} kg</span>
-              <span className="text-[10px] font-bold text-rose-700">Landfill Track</span>
+            <div className="mt-auto pt-3 border-t border-[#00271D]/5 space-y-1.5">
+              <span className="text-lg font-black text-[#00271D] block">{residualWaste.weightKg.toFixed(1)} kg</span>
+              <div className="flex items-center justify-between text-[10px] font-semibold">
+                <span className="text-[#00271D]/50">
+                  Avg {residualWaste.avgKg.toFixed(1)} kg / weighed batch
+                </span>
+                {residualWaste.unweighed > 0 && (
+                  <span className="text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                    {residualWaste.unweighed} unweighed
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. DISPATCH & VERIFICATION TASK TABLE (ACTION CENTER) */}
-      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
-        {/* Table Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-base font-extrabold text-[#00271D] flex items-center gap-2">
-              <Truck size={18} className="text-[#0091EA]" />
-              Dispatch & Verification Task Center
-            </h3>
-            <p className="text-xs text-[#00271D]/50 mt-0.5">
-              Review reports, verify coordinates/location type, approve MRF dispatches, or audit collection records
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Filter Tabs */}
-            <div className="bg-[#F9F3F0] p-1 rounded-xl border border-[#00271D]/10 flex items-center gap-1 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setStatusFilter('ALL')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  statusFilter === 'ALL' ? 'bg-[#00A77C] text-white shadow-sm' : 'text-[#00271D]/60 hover:text-[#00271D]'
-                }`}
-              >
-                All ({allReportsList.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('PENDING')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  statusFilter === 'PENDING' ? 'bg-[#00A77C] text-white shadow-sm' : 'text-[#00271D]/60 hover:text-[#00271D]'
-                }`}
-              >
-                Pending ({pendingCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('DISPATCHED')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  statusFilter === 'DISPATCHED' ? 'bg-[#00A77C] text-white shadow-sm' : 'text-[#00271D]/60 hover:text-[#00271D]'
-                }`}
-              >
-                Dispatched ({activeDispatchesCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('COLLECTED')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  statusFilter === 'COLLECTED' ? 'bg-[#00A77C] text-white shadow-sm' : 'text-[#00271D]/60 hover:text-[#00271D]'
-                }`}
-              >
-                Collected ({completedDispatchesCount})
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="relative flex-1 sm:w-56">
-              <Search size={14} className="absolute left-3 top-2.5 text-[#00271D]/40" />
-              <input
-                type="text"
-                placeholder="Search report ID, student..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-[#F9F3F0] border border-[#00271D]/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-[#00271D] outline-none focus:border-[#00A77C]"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Task Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-[#00271D]/8 text-[#00271D]/40 font-bold uppercase tracking-wider bg-gray-50/70">
-                <th className="py-3.5 px-4">Report ID & Time</th>
-                <th className="py-3.5 px-4">Reporter & Role</th>
-                <th className="py-3.5 px-4">Location Type</th>
-                <th className="py-3.5 px-4 text-center">Photo Evidence</th>
-                <th className="py-3.5 px-4">Live Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#00271D]/5 font-medium">
-              {filteredReports.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-[#00271D]/40 font-semibold">
-                    No reports match the current filter or search criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredReports.map((rpt) => {
-                  const isOffGrid = (rpt.locationName || '').includes('Off-Grid Pin') || (rpt.coordinates && rpt.coordinates.lat !== 0);
-                  const isTeacher = rpt.reporterRole === 'teacher';
-                  const matchedUser = users.find(
-                    (u) => u.id === rpt.reporterId || u.name.toLowerCase() === rpt.reporterName?.toLowerCase()
-                  );
-                  const gradeLabel = isTeacher 
-                    ? 'Teacher (Faculty)' 
-                    : matchedUser?.classroomSection 
-                    ? `Student (${matchedUser.classroomSection})`
-                    : matchedUser?.gradeLevel 
-                    ? `Student (${matchedUser.gradeLevel}${matchedUser.sectionName ? ' - ' + matchedUser.sectionName : ''})`
-                    : 'Student';
-
-                  return (
-                    <tr key={rpt.id} className="hover:bg-gray-50/60 transition-colors">
-                      {/* 1. Report ID & Timestamp */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-0.5">
-                          <span className="font-extrabold text-[#00271D] flex items-center gap-1.5">
-                            #{rpt.id}
-                            {rpt.urgency === 'HIGH' && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 uppercase">
-                                High Priority
-                              </span>
-                            )}
-                          </span>
-                          <p className="text-[11px] text-[#00271D]/50 flex items-center gap-1 font-mono">
-                            <Calendar size={11} /> {formatTimestamp(rpt.timestamp)}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* 2. User Role & Grade Level */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-0.5">
-                          <p className="font-bold text-[#00271D] flex items-center gap-1.5">
-                            <UserIcon size={13} className={isTeacher ? 'text-purple-600' : 'text-[#00A77C]'} />
-                            {rpt.reporterName}
-                          </p>
-                          <p className="text-[11px] font-semibold text-[#00271D]/60">{gradeLabel}</p>
-                        </div>
-                      </td>
-
-                      {/* 3. Location Type (Standard Bin vs Off-Grid Pinned) */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-1">
-                          {isOffGrid ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200">
-                              <Navigation size={11} /> Off-Grid Pinned
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
-                              <Building size={11} /> Standard Station
-                            </span>
-                          )}
-                          <p className="text-[11px] font-medium text-[#00271D]/70 line-clamp-1 max-w-xs">
-                            {cleanLocationName(rpt.locationName)}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* 4. Photo Evidence (Thumbnail with Modal View) */}
-                      <td className="py-3.5 px-4 text-center">
-                        {rpt.imageUrl ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPreviewImage({ url: rpt.imageUrl!, title: rpt.title, id: rpt.id })
-                            }
-                            className="relative group inline-block rounded-xl overflow-hidden border border-gray-200 hover:border-[#00A77C] transition-all cursor-pointer"
-                          >
-                            <img
-                              src={rpt.imageUrl}
-                              alt="Evidence"
-                              className="w-12 h-10 object-cover group-hover:scale-105 transition-transform"
-                            />
-                            <div className="absolute inset-0 bg-[#00271D]/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                              <Eye size={14} />
-                            </div>
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-[#00271D]/40 italic">No image</span>
-                        )}
-                      </td>
-
-                      {/* 5. Live Status Badge */}
-                      <td className="py-3.5 px-4">{getStatusBadge(rpt.status)}</td>
-
-                      {/* 6. Action Buttons */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {rpt.status === 'PENDING' && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setDispatchModalReport(rpt)}
-                                className="px-3 py-1.5 bg-[#00A77C] hover:bg-[#008f6a] text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-                              >
-                                <Send size={12} />
-                                <span>Approve & Dispatch</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => setFlagOffenseReport(rpt)}
-                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
-                                title="Flag as false submission and deduct student points"
-                              >
-                                <ShieldAlert size={12} />
-                                <span>Flag Offense</span>
-                              </button>
-                            </>
-                          )}
-
-                          {rpt.status === 'DISPATCHED' && (
-                            <span className="text-[11px] font-semibold text-sky-700 flex items-center gap-1">
-                              <Truck size={12} /> MRF En Route ({rpt.assignedMrfName || 'MRF'})
-                            </span>
-                          )}
-
-                          {(rpt.status === 'COLLECTED' || rpt.status === 'RESOLVED') && (
-                            <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                              <CheckCircle2 size={12} /> Cleared ({rpt.weightCollected ? `${rpt.weightCollected.toFixed(1)} kg` : 'Logged'})
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       {/* MODAL 1: PHOTO EVIDENCE PREVIEW */}
       {previewImage && (

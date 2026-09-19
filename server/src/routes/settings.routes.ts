@@ -2,12 +2,26 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { rescheduleBinReset } from '../services/bin-reset.service.js';
+import { rescheduleSync } from '../services/sync-scheduler.service.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 const prisma = new PrismaClient();
 
+// Sync scheduling is a closed set + bounded interval so a bad value can never
+// break the mirror sync.
+function normalizeSyncMode(value: unknown): string {
+  return String(value ?? '').toUpperCase() === 'AUTO' ? 'AUTO' : 'MANUAL';
+}
+
+function clampSyncInterval(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 60;
+  return Math.min(1440, Math.max(5, Math.round(n)));
+}
+
 // 1. Get System Settings
-router.get('/', async (_req, res) => {
+router.get('/', authenticate, async (_req, res) => {
   try {
     let settings = await prisma.systemSetting.findUnique({
       where: { id: 'default_setting' },
@@ -41,7 +55,7 @@ router.get('/', async (_req, res) => {
 });
 
 // 2. Update System Settings
-router.patch('/', async (req, res) => {
+router.patch('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const {
       pointsPerReport,
@@ -55,6 +69,8 @@ router.patch('/', async (req, res) => {
       certificateAdvocateName,
       quarterGateActive,
       smartSyncEnabled,
+      syncMode,
+      syncIntervalMinutes,
       blueprintPreset,
       blueprintUrl,
       maxUnverifiedReports,
@@ -81,6 +97,8 @@ router.patch('/', async (req, res) => {
         ...(certificateAdvocateName !== undefined && { certificateAdvocateName: String(certificateAdvocateName) }),
         ...(quarterGateActive !== undefined && { quarterGateActive: Boolean(quarterGateActive) }),
         ...(smartSyncEnabled !== undefined && { smartSyncEnabled: Boolean(smartSyncEnabled) }),
+        ...(syncMode !== undefined && { syncMode: normalizeSyncMode(syncMode) }),
+        ...(syncIntervalMinutes !== undefined && { syncIntervalMinutes: clampSyncInterval(syncIntervalMinutes) }),
         ...(blueprintPreset !== undefined && { blueprintPreset: String(blueprintPreset) }),
         ...(blueprintUrl !== undefined && { blueprintUrl: String(blueprintUrl) }),
         ...(maxUnverifiedReports !== undefined && { maxUnverifiedReports: Number(maxUnverifiedReports) }),
@@ -105,6 +123,8 @@ router.patch('/', async (req, res) => {
         certificateAdvocateName: String(certificateAdvocateName || 'Eco-Advocate Certificate'),
         quarterGateActive: Boolean(quarterGateActive || false),
         smartSyncEnabled: Boolean(smartSyncEnabled ?? true),
+        syncMode: normalizeSyncMode(syncMode),
+        syncIntervalMinutes: clampSyncInterval(syncIntervalMinutes),
         blueprintPreset: String(blueprintPreset || 'DEFAULT'),
         blueprintUrl: blueprintUrl ? String(blueprintUrl) : null,
         maxUnverifiedReports: Number(maxUnverifiedReports || 3),
@@ -123,6 +143,12 @@ router.patch('/', async (req, res) => {
       console.error('Failed to re-schedule bin reset:', err.message);
     });
 
+    // Re-schedule the EnrollPro mirror sync if the mode/interval changed.
+    // Without this the scheduler kept reading defaults and never ran automatically.
+    rescheduleSync().catch((err: any) => {
+      console.error('Failed to re-schedule EnrollPro sync:', err.message);
+    });
+
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to update settings' });
@@ -130,7 +156,7 @@ router.patch('/', async (req, res) => {
 });
 
 // 3. Get Asset Categories & Item Presets (Preset Groups)
-router.get('/preset-groups', async (_req, res) => {
+router.get('/preset-groups', authenticate, async (_req, res) => {
   try {
     const categories = await prisma.assetCategory.findMany({
       include: {
@@ -159,7 +185,7 @@ router.get('/preset-groups', async (_req, res) => {
 });
 
 // 4. Add Preset Item
-router.post('/preset-groups/items', async (req, res) => {
+router.post('/preset-groups/items', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { categoryName, name } = req.body;
     if (!categoryName || !name) {
@@ -194,9 +220,9 @@ router.post('/preset-groups/items', async (req, res) => {
 });
 
 // 5. Toggle or Update Preset Item
-router.patch('/preset-groups/items/:id', async (req, res) => {
+router.patch('/preset-groups/items/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { enabled, name } = req.body;
 
     const updatedItem = await prisma.itemPreset.update({
@@ -214,9 +240,9 @@ router.patch('/preset-groups/items/:id', async (req, res) => {
 });
 
 // 6. Delete Preset Item
-router.delete('/preset-groups/items/:id', async (req, res) => {
+router.delete('/preset-groups/items/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     await prisma.itemPreset.delete({ where: { id } });
     res.json({ message: 'Preset item deleted successfully' });
   } catch (error: any) {
@@ -225,7 +251,7 @@ router.delete('/preset-groups/items/:id', async (req, res) => {
 });
 
 // 7. Get Campus Locations
-router.get('/campus-locations', async (_req, res) => {
+router.get('/campus-locations', authenticate, async (_req, res) => {
   try {
     const locations = await prisma.campusLocation.findMany({
       orderBy: { code: 'asc' },
@@ -237,7 +263,7 @@ router.get('/campus-locations', async (_req, res) => {
 });
 
 // 8. Save Campus Locations
-router.post('/campus-locations', async (req, res) => {
+router.post('/campus-locations', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { locations } = req.body;
     if (!Array.isArray(locations)) {
@@ -275,7 +301,7 @@ router.post('/campus-locations', async (req, res) => {
 });
 
 // 9. Get Room Locations
-router.get('/room-locations', async (_req, res) => {
+router.get('/room-locations', authenticate, async (_req, res) => {
   try {
     const rooms = await prisma.roomLocation.findMany({
       where: { enabled: true },
@@ -288,7 +314,7 @@ router.get('/room-locations', async (_req, res) => {
 });
 
 // Asset Categories CRUD
-router.get('/asset-categories', async (_req, res) => {
+router.get('/asset-categories', authenticate, async (_req, res) => {
   try {
     const categories = await prisma.assetCategory.findMany({
       orderBy: { createdAt: 'asc' },
@@ -299,7 +325,7 @@ router.get('/asset-categories', async (_req, res) => {
   }
 });
 
-router.post('/asset-categories', async (req, res) => {
+router.post('/asset-categories', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { name, code } = req.body;
     const catCode = code || name.toLowerCase().replace(/\s+/g, '-');
@@ -312,9 +338,9 @@ router.post('/asset-categories', async (req, res) => {
   }
 });
 
-router.patch('/asset-categories/:id', async (req, res) => {
+router.patch('/asset-categories/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { name, code, enabled } = req.body;
     const updated = await prisma.assetCategory.update({
       where: { id },
@@ -330,9 +356,9 @@ router.patch('/asset-categories/:id', async (req, res) => {
   }
 });
 
-router.delete('/asset-categories/:id', async (req, res) => {
+router.delete('/asset-categories/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     await prisma.assetCategory.delete({ where: { id } });
     res.json({ message: 'Category deleted successfully' });
   } catch (error: any) {
@@ -341,7 +367,7 @@ router.delete('/asset-categories/:id', async (req, res) => {
 });
 
 // 10. Waste Types CRUD
-router.get('/waste-types', async (_req, res) => {
+router.get('/waste-types', authenticate, async (_req, res) => {
   try {
     const wasteTypes = await prisma.wasteType.findMany({
       orderBy: { createdAt: 'asc' },
@@ -352,7 +378,7 @@ router.get('/waste-types', async (_req, res) => {
   }
 });
 
-router.post('/waste-types', async (req, res) => {
+router.post('/waste-types', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { name, code, description, hexColor } = req.body;
     const newType = await prisma.wasteType.create({
@@ -370,9 +396,9 @@ router.post('/waste-types', async (req, res) => {
   }
 });
 
-router.patch('/waste-types/:id', async (req, res) => {
+router.patch('/waste-types/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { name, description, hexColor, enabled } = req.body;
     const updated = await prisma.wasteType.update({
       where: { id },
@@ -389,9 +415,9 @@ router.patch('/waste-types/:id', async (req, res) => {
   }
 });
 
-router.delete('/waste-types/:id', async (req, res) => {
+router.delete('/waste-types/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     await prisma.wasteType.delete({ where: { id } });
     res.json({ message: 'Waste type deleted successfully' });
   } catch (error: any) {
@@ -400,7 +426,7 @@ router.delete('/waste-types/:id', async (req, res) => {
 });
 
 // 11. Urgency Levels CRUD
-router.get('/urgency-levels', async (_req, res) => {
+router.get('/urgency-levels', authenticate, async (_req, res) => {
   try {
     const urgencies = await prisma.urgencyLevel.findMany({
       orderBy: { slaHours: 'desc' },
@@ -411,7 +437,7 @@ router.get('/urgency-levels', async (_req, res) => {
   }
 });
 
-router.post('/urgency-levels', async (req, res) => {
+router.post('/urgency-levels', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { level, code, slaHours, description, badgeStyle } = req.body;
     const newUrgency = await prisma.urgencyLevel.create({
@@ -430,9 +456,9 @@ router.post('/urgency-levels', async (req, res) => {
   }
 });
 
-router.patch('/urgency-levels/:id', async (req, res) => {
+router.patch('/urgency-levels/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { level, slaHours, description, badgeStyle, enabled } = req.body;
     const updated = await prisma.urgencyLevel.update({
       where: { id },
@@ -450,9 +476,9 @@ router.patch('/urgency-levels/:id', async (req, res) => {
   }
 });
 
-router.delete('/urgency-levels/:id', async (req, res) => {
+router.delete('/urgency-levels/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     await prisma.urgencyLevel.delete({ where: { id } });
     res.json({ message: 'Urgency level deleted successfully' });
   } catch (error: any) {
@@ -461,7 +487,7 @@ router.delete('/urgency-levels/:id', async (req, res) => {
 });
 
 // 12. Asset Conditions CRUD
-router.get('/asset-conditions', async (_req, res) => {
+router.get('/asset-conditions', authenticate, async (_req, res) => {
   try {
     const conditions = await prisma.assetCondition.findMany({
       orderBy: { createdAt: 'asc' },
@@ -472,7 +498,7 @@ router.get('/asset-conditions', async (_req, res) => {
   }
 });
 
-router.post('/asset-conditions', async (req, res) => {
+router.post('/asset-conditions', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { name, code, description, badgeStyle } = req.body;
     const newCondition = await prisma.assetCondition.create({
@@ -490,9 +516,9 @@ router.post('/asset-conditions', async (req, res) => {
   }
 });
 
-router.patch('/asset-conditions/:id', async (req, res) => {
+router.patch('/asset-conditions/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { name, description, badgeStyle, enabled } = req.body;
     const updated = await prisma.assetCondition.update({
       where: { id },
@@ -509,9 +535,9 @@ router.patch('/asset-conditions/:id', async (req, res) => {
   }
 });
 
-router.delete('/asset-conditions/:id', async (req, res) => {
+router.delete('/asset-conditions/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     await prisma.assetCondition.delete({ where: { id } });
     res.json({ message: 'Asset condition deleted successfully' });
   } catch (error: any) {
@@ -520,7 +546,7 @@ router.delete('/asset-conditions/:id', async (req, res) => {
 });
 
 // 13. Point Rules CRUD
-router.get('/point-rules', async (_req, res) => {
+router.get('/point-rules', authenticate, async (_req, res) => {
   try {
     const rules = await prisma.pointRule.findMany({
       orderBy: { rank: 'asc' },
@@ -531,9 +557,9 @@ router.get('/point-rules', async (_req, res) => {
   }
 });
 
-router.patch('/point-rules/:id', async (req, res) => {
+router.patch('/point-rules/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { pointsAwarded, title, description } = req.body;
     const updated = await prisma.pointRule.update({
       where: { id },
@@ -550,7 +576,7 @@ router.patch('/point-rules/:id', async (req, res) => {
 });
 
 // 14. Academic Quarters CRUD
-router.get('/academic-quarters', async (_req, res) => {
+router.get('/academic-quarters', authenticate, async (_req, res) => {
   try {
     const quarters = await prisma.academicQuarter.findMany({
       orderBy: { quarterCode: 'asc' },
@@ -561,9 +587,9 @@ router.get('/academic-quarters', async (_req, res) => {
   }
 });
 
-router.patch('/academic-quarters/:id', async (req, res) => {
+router.patch('/academic-quarters/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { startDate, endDate, isActive } = req.body;
 
     if (isActive) {
@@ -588,7 +614,7 @@ router.patch('/academic-quarters/:id', async (req, res) => {
 // ─── Audit Logs ────────────────────────────────────────────────────────
 
 // GET /api/settings/audit-logs
-router.get('/audit-logs', async (req: Request, res: Response): Promise<any> => {
+router.get('/audit-logs', authenticate, async (req: Request, res: Response): Promise<any> => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const { schoolYearId } = req.query;
@@ -609,7 +635,7 @@ router.get('/audit-logs', async (req: Request, res: Response): Promise<any> => {
 });
 
 // POST /api/settings/audit-logs
-router.post('/audit-logs', async (req: Request, res: Response): Promise<any> => {
+router.post('/audit-logs', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
     const { actorName, actorRole, actionType, details, ipAddress } = req.body;
     const log = await prisma.auditLog.create({
@@ -643,7 +669,7 @@ router.get('/campus-news', async (req: Request, res: Response): Promise<any> => 
 });
 
 // POST /api/settings/campus-news
-router.post('/campus-news', async (req: Request, res: Response): Promise<any> => {
+router.post('/campus-news', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
     const { title, body, tag, tagColor, iconColor } = req.body;
     const news = await prisma.campusNews.create({
@@ -662,7 +688,7 @@ router.post('/campus-news', async (req: Request, res: Response): Promise<any> =>
 });
 
 // PATCH /api/settings/campus-news/:id
-router.patch('/campus-news/:id', async (req: Request, res: Response): Promise<any> => {
+router.patch('/campus-news/:id', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
     const id = String(req.params.id);
     const { title, body, tag, tagColor, iconColor, isPublished } = req.body;
@@ -684,7 +710,7 @@ router.patch('/campus-news/:id', async (req: Request, res: Response): Promise<an
 });
 
 // DELETE /api/settings/campus-news/:id
-router.delete('/campus-news/:id', async (req: Request, res: Response): Promise<any> => {
+router.delete('/campus-news/:id', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
     const id = String(req.params.id);
     await prisma.campusNews.delete({ where: { id } });
