@@ -14,8 +14,9 @@ import {
   Truck,
   XCircle
 } from 'lucide-react';
-import { Role } from '../../types';
 import { SortLogo } from '../common/SortLogo';
+import { ProfileMenu } from '../common/ProfileMenu';
+import { filterNotificationsForUser } from '../../utils/notifications';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -32,7 +33,7 @@ const ALL_NAV_ITEMS = [
 ];
 
 export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTab, setActiveTab }) => {
-  const { currentUser, changeRole, logout, reports, notifications, dismissNotification } = useMockData();
+  const { currentUser, logout, reports, notifications, dismissNotification } = useMockData();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -45,13 +46,8 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
     ? ALL_NAV_ITEMS.filter(item => item.id !== 'gamification')
     : ALL_NAV_ITEMS;
 
-  const myNotifications = notifications.filter(n => n.recipientId === currentUser.id || n.recipientId === 'admin');
+  const myNotifications = filterNotificationsForUser(notifications, currentUser);
   const unreadCount = myNotifications.length;
-
-  const handleRoleToggle = (role: Role) => {
-    changeRole(role);
-    setProfileDropdownOpen(false);
-  };
 
   const handleDismissNotification = (notifId: string, reportId: string) => {
     dismissNotification(notifId);
@@ -128,7 +124,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-fade-in">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-fade-in">
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                     <h4 className="font-bold text-xs text-[#00271D] uppercase tracking-wider">My Notifications & Updates</h4>
                     <div className="flex items-center gap-2">
@@ -203,28 +199,12 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
               </button>
 
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50 p-1">
-                  <div className="px-3 py-2 bg-gray-50 rounded-lg mb-1">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Switch Role (Demo)</p>
-                  </div>
-                  <div className="space-y-0.5">
-                    {(['STUDENT', 'TEACHER', 'MRF', 'ADMIN'] as Role[]).map(role => (
-                      <button
-                        key={role}
-                        onClick={() => handleRoleToggle(role)}
-                        className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors ${
-                          currentUser.role === role ? 'bg-[#00A77C]/15 text-[#00A77C]' : 'text-[#00271D] hover:bg-gray-50'
-                        }`}
-                      >
-                        {role}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="pt-1 mt-1 border-t border-gray-100">
-                    <button onClick={() => logout()} className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer">
-                      Sign Out
-                    </button>
-                  </div>
+                <div className="absolute right-0 z-50 mt-2">
+                  <ProfileMenu
+                    user={currentUser}
+                    onClose={() => setProfileDropdownOpen(false)}
+                    onLogout={() => logout()}
+                  />
                 </div>
               )}
             </div>

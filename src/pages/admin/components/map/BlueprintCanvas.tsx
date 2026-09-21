@@ -2,7 +2,7 @@ import React from 'react';
 import { MapPin, Search } from 'lucide-react';
 import { BinLocationItem } from '../../../../types';
 import { BlueprintTransform } from '../../../../services/locationStore';
-import { BlueprintImage } from '../../../../components/map/BlueprintImage';
+import { CampusMapFrame } from '../../../../components/map/CampusMapFrame';
 
 interface BlueprintCanvasProps {
   filteredList: BinLocationItem[];
@@ -21,6 +21,10 @@ interface BlueprintCanvasProps {
   onAdjustPointerMove: (e: React.PointerEvent) => void;
   onAdjustPointerUp: () => void;
   mapContainerRef: React.RefObject<HTMLDivElement | null>;
+  /** Outer canvas element (wheel-to-zoom target while adjusting). */
+  canvasRef?: React.RefObject<HTMLDivElement | null>;
+  /** Show the fallback blueprint while adjusting it (ATLAS stays the live base). */
+  forceBlueprint?: boolean;
   handleMouseDown: (locId: string, e: React.MouseEvent) => void;
   handleMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
   handleMouseUp: () => void;
@@ -43,6 +47,8 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
   onAdjustPointerMove,
   onAdjustPointerUp,
   mapContainerRef,
+  canvasRef,
+  forceBlueprint = false,
   handleMouseDown,
   handleMouseMove,
   handleMouseUp,
@@ -95,33 +101,45 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
     </div>
 
     <div
-      ref={mapContainerRef}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onPointerDown={onAdjustPointerDown}
-      onPointerMove={onAdjustPointerMove}
-      onPointerUp={onAdjustPointerUp}
-      onPointerLeave={onAdjustPointerUp}
-      className={`relative w-full h-[400px] rounded-2xl border border-gray-200 bg-slate-900 overflow-hidden shadow-inner flex items-center justify-center select-none ${
+      ref={canvasRef}
+      data-testid="blueprint-canvas"
+      className={`relative w-full h-[400px] rounded-2xl border border-gray-200 bg-slate-900 shadow-inner flex items-center justify-center select-none ${
         isAdjusting
-          ? 'cursor-grab active:cursor-grabbing border-amber-400 border-2'
+          ? 'border-amber-400 border-2'
           : isEditMode
-            ? 'cursor-crosshair border-amber-400 border-2'
+            ? 'border-amber-400 border-2'
             : ''
       }`}
     >
-      {blueprintUrl ? (
-        <BlueprintImage url={blueprintUrl} transform={blueprintTransform} />
-      ) : (
-        <svg className="absolute inset-0 w-full h-full opacity-40 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="editor-grid-full" width="30" height="30" patternUnits="userSpaceOnUse">
-              <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#334155" strokeWidth="1" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#editor-grid-full)" />
-        </svg>
-      )}
+      <CampusMapFrame
+        blueprintUrl={blueprintUrl}
+        blueprintTransform={blueprintTransform}
+        forceBlueprint={forceBlueprint}
+        contentRef={mapContainerRef}
+        contentProps={{
+          onMouseMove: handleMouseMove,
+          onMouseUp: handleMouseUp,
+          onPointerDown: onAdjustPointerDown,
+          onPointerMove: onAdjustPointerMove,
+          onPointerUp: onAdjustPointerUp,
+          onPointerLeave: onAdjustPointerUp,
+          className: isAdjusting
+            ? 'cursor-grab active:cursor-grabbing'
+            : isEditMode
+              ? 'cursor-crosshair'
+              : '',
+        }}
+        fallback={(
+          <svg className="absolute inset-0 w-full h-full opacity-40 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="editor-grid-full" width="30" height="30" patternUnits="userSpaceOnUse">
+                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#334155" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#editor-grid-full)" />
+          </svg>
+        )}
+      >
 
       {filteredList.map((loc) => {
         const isSelected = selectedLocId === loc.id;
@@ -130,6 +148,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         return (
           <div
             key={loc.id}
+            data-testid="editor-pin"
             onMouseDown={(e) => handleMouseDown(loc.id, e)}
             onClick={() => setSelectedLocId(loc.id)}
             style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
@@ -148,6 +167,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
           </div>
         );
       })}
+      </CampusMapFrame>
     </div>
   </div>
 );

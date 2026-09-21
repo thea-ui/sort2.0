@@ -815,10 +815,37 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       }
     }
 
-    // Purge any leftover LOCAL-synced accounts
-    const localPurge = await prisma.user.deleteMany({ where: { syncSource: 'LOCAL' } });
+    // Purge leftover LOCAL-synced accounts — but NEVER one that owns data
+    // (reports, points, walk-in turnovers, claims, offenses, sessions). Offline
+    // walk-in students earn real points that must survive a future sync.
+    const localAccounts = await prisma.user.findMany({
+      where: { syncSource: 'LOCAL' },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            reports: true,
+            assignedReports: true,
+            pointHistories: true,
+            offenses: true,
+            sessions: true,
+            certificatesIssued: true,
+            walkIns: true,
+            walkInsRecorded: true,
+            rewardClaims: true,
+            rewardReleases: true,
+          },
+        },
+      },
+    });
+    const orphanLocalIds = localAccounts
+      .filter((u) => Object.values(u._count).every((count) => count === 0))
+      .map((u) => u.id);
+    const localPurge = orphanLocalIds.length > 0
+      ? await prisma.user.deleteMany({ where: { id: { in: orphanLocalIds } } })
+      : { count: 0 };
     if (localPurge.count > 0) {
-      console.log(`[Sync] Purged ${localPurge.count} orphaned LOCAL accounts`);
+      console.log(`[Sync] Purged ${localPurge.count} orphaned LOCAL accounts (activity-free only)`);
     }
 
     // 6. Determine accurate status

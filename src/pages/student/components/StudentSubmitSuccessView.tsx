@@ -9,9 +9,11 @@ import {
   AlertTriangle,
   Send,
   FileText,
+  Maximize2,
 } from 'lucide-react';
 import { StudentSubmittedReportDetails } from '../StudentDashboard';
 import { WasteCategory } from '../../../types';
+import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
 
 interface StudentSubmitSuccessViewProps {
   lastSubmittedReport?: StudentSubmittedReportDetails | null;
@@ -33,6 +35,7 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
   onViewHistory,
 }) => {
   const [secondsLeft, setSecondsLeft] = useState(30);
+  const [showPhotoFull, setShowPhotoFull] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -93,12 +96,20 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
 
           {/* Photo preview if present */}
           {lastSubmittedReport?.imageUrl && (
-            <div className="relative h-44 w-full overflow-hidden rounded-xl border border-gray-200 shadow-inner">
+            <button
+              type="button"
+              onClick={() => setShowPhotoFull(true)}
+              aria-label="View submitted photo full screen"
+              className="group relative block h-44 w-full overflow-hidden rounded-xl border border-gray-200 shadow-inner cursor-zoom-in"
+            >
               <img src={lastSubmittedReport.imageUrl} alt="Submitted evidence" className="h-full w-full object-cover" />
               <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] px-2.5 py-0.5 rounded-md font-semibold flex items-center gap-1.5">
                 <Camera size={12} /> Photo Evidence Attached
               </div>
-            </div>
+              <div className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white opacity-90 transition-all group-hover:bg-black/80">
+                <Maximize2 size={13} />
+              </div>
+            </button>
           )}
 
           <div className="grid grid-cols-2 gap-4 text-xs">
@@ -173,6 +184,13 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
         </div>
 
       </div>
+
+      <PhotoLightbox
+        src={showPhotoFull ? lastSubmittedReport?.imageUrl ?? null : null}
+        alt="Submitted evidence full view"
+        caption="Photo Evidence"
+        onClose={() => setShowPhotoFull(false)}
+      />
     </div>
   );
 };

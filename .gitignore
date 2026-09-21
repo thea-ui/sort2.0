@@ -31,3 +31,10 @@ scripts/e2e/credentials.local.json
 # Local scratch / logs
 .tmp-*
 .playwright-mcp/
+
+# ATLAS runtime mirror assets (fonts stay tracked)
+server/assets/atlas/
+
+# Playwright artifacts
+test-results/
+playwright-report/

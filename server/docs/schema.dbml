@@ -1,5 +1,21 @@
-// SORTv2 Database Schema — DBML format for dbdiagram.io
-// Paste entire file into https://dbdiagram.io/d
+// =====================================================================
+// SORTv2 Official Database Schema Specification (DBML for dbdiagram.io)
+// Engine: PostgreSQL 15+ | ORM: Prisma 6.4 | UUIDv4 Primary Keys
+// Paste this complete file directly into: https://dbdiagram.io/d
+// =====================================================================
+
+Project SORTv2 {
+  database_type: 'PostgreSQL'
+  Note: '''
+    # SORTv2 Database Model
+    Smart Operations & Resource Tracking System (Capstone / Thesis Specification)
+    Comprehensive schema covering 5 functional operational domains.
+  '''
+}
+
+// ---------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------
 
 Enum Role {
   STUDENT
@@ -19,6 +35,7 @@ Enum ReportStatus {
   COLLECTED
   RESOLVED
   DISMISSED
+  EXPIRED
 }
 
 Enum WasteCategory {
@@ -68,10 +85,26 @@ Enum ChallengeType {
   HAZARDOUS_REPORT
 }
 
-Table school_years {
+Enum CertificateType {
+  MILESTONE
+  RANK
+}
+
+Enum CertificateTier {
+  MILESTONE
+  CHAMPION
+  LEADER
+  ADVOCATE
+}
+
+// ---------------------------------------------------------------------
+// DOMAIN 1: IDENTITY, AUTHENTICATION & ACADEMIC LIFECYCLE
+// ---------------------------------------------------------------------
+
+Table school_years [headercolor: #00271D] {
   id varchar [pk]
-  enrollpro_id int [unique]
-  label varchar
+  enrollpro_id int [unique, note: 'Corresponds to SIS term ID']
+  label varchar [note: 'Academic Year e.g. 2026-2027']
   start_date timestamp
   end_date timestamp
   is_active boolean [default: true]
@@ -80,91 +113,240 @@ Table school_years {
   created_at timestamp
 }
 
-Table users {
+Table users [headercolor: #00271D] {
   id varchar [pk]
   name varchar
   email varchar [unique]
   password_hash varchar
-  employee_id varchar [unique]
-  role Role
+  employee_id varchar [unique, note: 'LRN for students, Employee No for staff']
+  role Role [default: 'STUDENT']
   points int [default: 0]
   warnings_count int [default: 0]
   account_status AccountStatus [default: 'ACTIVE']
   suspended_until timestamp
   classroom_section varchar
-  certificates varchar
-  created_at timestamp
-  updated_at timestamp
+  certificates text [note: 'Serial identifiers array']
   sync_source SyncSource [default: 'LOCAL']
   enrollpro_id varchar [unique]
   enrollpro_lrn varchar [unique]
   grade_level varchar
   section_name varchar
   academic_program varchar
-  school_year_id int [ref: > school_years.enrollpro_id]
+  school_year_id int
   school_year_label varchar
-  is_temporarily_enrolled boolean
+  is_temporarily_enrolled boolean [default: false]
   enrollment_status varchar
-  portal_account_active boolean
+  portal_account_active boolean [default: true]
+  archived_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    enrollpro_id
+    sync_source
+    role
+    points
+  }
 }
 
-Table reports {
+Table user_sessions [headercolor: #00271D] {
   id varchar [pk]
-  title varchar
-  description varchar
+  user_id varchar [not null]
+  refresh_token varchar [unique]
+  device_info varchar
+  ip_address varchar
+  expires_at timestamp [not null]
+  created_at timestamp
+
+  indexes {
+    user_id
+    expires_at
+  }
+}
+
+Table academic_quarters [headercolor: #00271D] {
+  id varchar [pk]
+  quarter_name varchar
+  quarter_code varchar [unique, note: 'e.g. Q1, Q2, Q3, Q4']
+  start_date varchar
+  end_date varchar
+  is_active boolean [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table term_calendars [headercolor: #00271D] {
+  id varchar [pk]
+  enrollpro_id int [unique]
+  term_name varchar
+  term_code varchar
+  start_date timestamp
+  end_date timestamp
+  school_year_id int
+  school_year_label varchar
+  is_active boolean [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table enrollment_sync_logs [headercolor: #00271D] {
+  id varchar [pk]
+  sync_type varchar
+  status SyncStatus [default: 'SUCCESS']
+  records_pulled int [default: 0]
+  records_created int [default: 0]
+  records_updated int [default: 0]
+  records_deleted int [default: 0]
+  error_message varchar
+  message varchar
+  school_year_id int
+  school_year_label varchar
+  duration_ms int
+  created_at timestamp
+}
+
+// ---------------------------------------------------------------------
+// DOMAIN 2: WASTE OPERATIONS, SMART BINS & CITIZEN REPORTING
+// ---------------------------------------------------------------------
+
+Table reports [headercolor: #FF5722] {
+  id varchar [pk]
+  title varchar [not null]
+  description text [not null]
   status ReportStatus [default: 'PENDING']
   urgency Urgency [default: 'MEDIUM']
   category WasteCategory [default: 'NON_BIODEGRADABLE']
-  lat double
-  lng double
-  location_name varchar
-  location_key varchar
-  reporter_id varchar [ref: > users.id]
+  lat double [not null]
+  lng double [not null]
+  location_name varchar [not null]
+  location_key varchar [not null]
+  reporter_id varchar [not null]
   points_awarded int [default: 0]
   points_awarded_at timestamp
-  image_url varchar
+  image_url text
   weight_collected double
   is_verified boolean [default: false]
   report_type ReportType [default: 'WASTE']
-  assigned_mrf_id varchar [ref: > users.id]
-  waste_bin_id varchar [ref: > waste_bins.id]
+  assigned_mrf_id varchar
   reporter_rank int
   completed_at timestamp
+  school_year_id varchar
   created_at timestamp
   updated_at timestamp
-  school_year_id varchar [ref: > school_years.id]
+
+  indexes {
+    reporter_id
+    status
+    category
+    school_year_id
+    assigned_mrf_id
+  }
 }
 
-Table challenges {
+Table waste_bins [headercolor: #0091EA] {
   id varchar [pk]
-  code varchar [unique]
-  title varchar
-  description varchar
+  name varchar [not null]
+  location_name varchar [not null]
+  fill_level int [default: 0]
+  type WasteCategory [default: 'NON_BIODEGRADABLE']
+  lat double [not null]
+  lng double [not null]
+  active_dispatch boolean [default: false]
+  last_emptied timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table campus_locations [headercolor: #0091EA] {
+  id varchar [pk]
+  code varchar [unique, not null]
+  name varchar [not null]
+  status varchar [default: 'Available']
+  x double [not null]
+  y double [not null]
+  streams json [not null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table room_locations [headercolor: #0091EA] {
+  id varchar [pk]
+  name varchar [unique, not null]
+  building varchar
+  enabled boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table waste_types [headercolor: #00A77C] {
+  id varchar [pk]
+  name varchar [not null]
+  code varchar [unique, not null]
+  description varchar [not null]
+  hex_color varchar [not null]
+  enabled boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table urgency_levels [headercolor: #FF5722] {
+  id varchar [pk]
+  level varchar [not null]
+  code varchar [unique, not null]
+  sla_hours int [not null]
+  description varchar [not null]
+  badge_style varchar [not null]
+  enabled boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ---------------------------------------------------------------------
+// DOMAIN 3: GAMIFICATION, LEDGER, CHALLENGES & DISCIPLINE
+// ---------------------------------------------------------------------
+
+Table point_histories [headercolor: #651FFF] {
+  id varchar [pk]
+  user_id varchar [not null]
+  amount int [not null]
+  reason varchar [not null]
+  report_id varchar [unique]
+  challenge_id varchar
+  school_year_id varchar
+  created_at timestamp
+
+  indexes {
+    user_id
+    school_year_id
+    challenge_id
+  }
+}
+
+Table challenges [headercolor: #651FFF] {
+  id varchar [pk]
+  code varchar [not null]
+  title varchar [not null]
+  description text [not null]
   challenge_type ChallengeType [default: 'REPORT_COUNT']
-  points_awarded int
-  target int
+  points_awarded int [not null]
+  target int [not null]
   is_active boolean [default: true]
-  icon_name varchar
+  icon_name varchar [not null]
+  quarter_code varchar [default: 'GLOBAL']
   start_date timestamp
   end_date timestamp
   created_at timestamp
+
+  indexes {
+    (code, quarter_code) [unique]
+    quarter_code
+  }
 }
 
-Table point_histories {
+Table user_challenge_progress [headercolor: #651FFF] {
   id varchar [pk]
-  user_id varchar [ref: > users.id]
-  amount int
-  reason varchar
-  report_id varchar [unique, ref: > reports.id]
-  challenge_id varchar [ref: > challenges.id]
-  school_year_id varchar [ref: > school_years.id]
-  created_at timestamp
-}
-
-Table user_challenge_progress {
-  id varchar [pk]
-  user_id varchar [ref: > users.id]
-  challenge_id varchar [ref: > challenges.id]
+  user_id varchar [not null]
+  challenge_id varchar [not null]
   current_count int [default: 0]
   completed_at timestamp
   rewarded_at timestamp
@@ -173,62 +355,372 @@ Table user_challenge_progress {
 
   indexes {
     (user_id, challenge_id) [unique]
+    challenge_id
   }
 }
 
-Table challenge_contributions {
+Table challenge_contributions [headercolor: #651FFF] {
   id varchar [pk]
-  user_id varchar [ref: > users.id]
-  challenge_id varchar [ref: > challenges.id]
-  report_id varchar [ref: > reports.id]
+  user_id varchar [not null]
+  challenge_id varchar [not null]
+  report_id varchar [not null]
   value double [default: 1]
   created_at timestamp
 
   indexes {
     (user_id, challenge_id, report_id) [unique]
+    challenge_id
+    report_id
   }
 }
 
-Table offenses {
+Table certificates [headercolor: #C69B26] {
   id varchar [pk]
-  user_id varchar [ref: > users.id]
-  description varchar
+  user_id varchar [not null]
+  serial varchar [unique, not null]
+  type CertificateType [not null]
+  tier CertificateTier [not null]
+  name varchar [not null]
+  rank_at_issue int
+  points_at_issue int [not null]
+  term_code varchar
+  term_name varchar
+  school_year_id varchar
+  school_year_label varchar
+  issued_at timestamp
+  issued_by varchar
+  template_version varchar [default: 'v1']
+
+  indexes {
+    user_id
+    (school_year_id, term_code)
+    type
+  }
+}
+
+Table offenses [headercolor: #FF5722] {
+  id varchar [pk]
+  user_id varchar [not null]
+  description text [not null]
   severity Severity [default: 'WARNING']
   expires_at timestamp
-  school_year_id varchar [ref: > school_years.id]
+  school_year_id varchar
   created_at timestamp
+
+  indexes {
+    user_id
+    school_year_id
+  }
 }
 
-Table user_sessions {
+Table point_rules [headercolor: #651FFF] {
   id varchar [pk]
-  user_id varchar [ref: > users.id]
-  refresh_token varchar [unique]
-  device_info varchar
-  ip_address varchar
-  expires_at timestamp
-  created_at timestamp
-}
-
-Table point_rules {
-  id varchar [pk]
-  rank int [unique]
-  title varchar
-  points_awarded int
-  description varchar
-  school_year_id varchar [ref: > school_years.id]
+  rank int [unique, not null]
+  title varchar [not null]
+  points_awarded int [not null]
+  description text [not null]
   created_at timestamp
   updated_at timestamp
 }
 
-Table system_settings {
+Table user_point_snapshots [headercolor: #651FFF] {
+  id varchar [pk]
+  school_year_id varchar [not null]
+  user_id varchar [not null]
+  closing_points int [not null]
+  rank int
+  created_at timestamp
+
+  indexes {
+    (school_year_id, user_id) [unique]
+  }
+}
+
+// ---------------------------------------------------------------------
+// DOMAIN 4: MRF RECOVERY, RECYCLING COMMODITIES & SCRAP INVENTORY
+// ---------------------------------------------------------------------
+
+Table recycle_market_stocks [headercolor: #00A77C] {
+  id varchar [pk]
+  category_code varchar [unique, not null]
+  category_name varchar [not null]
+  short_name varchar [not null]
+  threshold_limit_kg double [not null]
+  market_price_per_kg double [not null]
+  accumulated_kg double [default: 0.0]
+  is_approved_for_sale boolean [default: false]
+  approved_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table recycle_sale_transactions [headercolor: #00A77C] {
+  id varchar [pk]
+  category_code varchar [not null]
+  category_name varchar [not null]
+  weight_kg double [not null]
+  market_price_kg double [not null]
+  total_revenue double [not null]
+  buyer_name varchar [not null]
+  school_year_id varchar
+  sold_at timestamp
+
+  indexes {
+    school_year_id
+  }
+}
+
+Table market_stock_snapshots [headercolor: #00A77C] {
+  id varchar [pk]
+  school_year_id varchar [not null]
+  category_code varchar [not null]
+  category_name varchar [not null]
+  closing_kg double [not null]
+  opening_kg double [default: 0]
+  created_at timestamp
+
+  indexes {
+    (school_year_id, category_code) [unique]
+  }
+}
+
+Table mrf_asset_records [headercolor: #C69B26] {
+  id varchar [pk]
+  asset_name varchar [not null]
+  category varchar [not null, note: 'Furniture, Electronics, Fixtures, Equipment, Other']
+  action varchar [not null, note: 'RECOVERED, REPAIRED, DISPOSED']
+  disposition varchar
+  quantity double [default: 1]
+  unit varchar [default: 'pcs']
+  condition varchar
+  source_report_id varchar
+  location_name varchar
+  notes text
+  performed_by varchar
+  school_year_id varchar
+  created_at timestamp
+
+  indexes {
+    school_year_id
+    action
+    source_report_id
+  }
+}
+
+Table asset_scrap_stocks [headercolor: #C69B26] {
+  id varchar [pk]
+  material_code varchar [unique, not null]
+  material_name varchar [not null]
+  threshold_limit_kg double [not null]
+  market_price_per_kg double [not null]
+  accumulated_kg double [default: 0.0]
+  is_approved_for_sale boolean [default: false]
+  approval_reference varchar
+  approved_at timestamp
+  hazmat boolean [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table asset_scrap_items [headercolor: #C69B26] {
+  id varchar [pk]
+  material_code varchar [not null]
+  material_name varchar [not null]
+  weight_kg double
+  status varchar [default: 'AWAITING_WEIGHT', note: 'AWAITING_WEIGHT, IN_STOCK, SOLD, DISPOSED']
+  description text
+  source_asset_id varchar
+  source_report_id varchar
+  weighed_by varchar
+  weighed_at timestamp
+  sale_transaction_id varchar
+  disposed_by varchar
+  disposed_at timestamp
+  disposal_reference varchar
+  school_year_id varchar
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    material_code
+    status
+    source_asset_id
+    school_year_id
+  }
+}
+
+Table asset_scrap_sale_transactions [headercolor: #C69B26] {
+  id varchar [pk]
+  material_code varchar [not null]
+  material_name varchar [not null]
+  weight_kg double [not null]
+  market_price_kg double [not null]
+  total_revenue double [not null]
+  buyer_name varchar [not null]
+  approval_reference varchar
+  school_year_id varchar
+  sold_at timestamp
+
+  indexes {
+    school_year_id
+  }
+}
+
+Table asset_scrap_stock_snapshots [headercolor: #C69B26] {
+  id varchar [pk]
+  school_year_id varchar [not null]
+  material_code varchar [not null]
+  material_name varchar [not null]
+  closing_kg double [not null]
+  opening_kg double [default: 0]
+  created_at timestamp
+
+  indexes {
+    (school_year_id, material_code) [unique]
+  }
+}
+
+Table asset_categories [headercolor: #C69B26] {
+  id varchar [pk]
+  name varchar [not null]
+  code varchar [unique, not null]
+  enabled boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table item_presets [headercolor: #C69B26] {
+  id varchar [pk]
+  category_id varchar [not null]
+  name varchar [not null]
+  enabled boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    category_id
+  }
+}
+
+Table asset_conditions [headercolor: #C69B26] {
+  id varchar [pk]
+  name varchar [not null]
+  code varchar [unique, not null]
+  description varchar [not null]
+  badge_style varchar [not null]
+  enabled boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ---------------------------------------------------------------------
+// DOMAIN 5: ATLAS DIGITAL TWIN SPATIAL CAMPUS MIRROR
+// ---------------------------------------------------------------------
+
+Table atlas_map_snapshots [headercolor: #0091EA] {
+  id varchar [pk]
+  school_id int [unique, not null]
+  etag varchar
+  content_hash varchar [not null]
+  building_count int [default: 0]
+  room_count int [default: 0]
+  campus_image_url text
+  campus_image_path text
+  campus_image_hash text
+  fetched_at timestamp
+  changed_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table atlas_buildings [headercolor: #0091EA] {
+  id varchar [pk]
+  atlas_id int [unique, not null]
+  school_id int [not null]
+  name varchar [not null]
+  short_code varchar
+  x double [not null]
+  y double [not null]
+  width double [not null]
+  height double [not null]
+  color varchar
+  rotation double [default: 0]
+  floor_count int [default: 1]
+  is_teaching_building boolean [default: true]
+  grade_scope json
+  isActive boolean [default: true]
+  atlas_updated_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (school_id, isActive)
+  }
+}
+
+Table atlas_rooms [headercolor: #0091EA] {
+  id varchar [pk]
+  atlas_id int [unique, not null]
+  atlas_building_id varchar [not null]
+  name varchar [not null]
+  floor int [default: 1]
+  type varchar [not null]
+  capacity int
+  is_teaching_space boolean [default: false]
+  is_shared_facility boolean [default: false]
+  floor_position int
+  features json
+  isActive boolean [default: true]
+  atlas_updated_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (atlas_building_id, isActive)
+  }
+}
+
+Table atlas_sync_logs [headercolor: #0091EA] {
+  id varchar [pk]
+  school_id int [not null]
+  status SyncStatus [not null]
+  unchanged boolean [default: false]
+  buildings_seen int [default: 0]
+  rooms_seen int [default: 0]
+  inserted int [default: 0]
+  updated int [default: 0]
+  deactivated int [default: 0]
+  image_changed boolean [default: false]
+  error_message text
+  duration_ms int [not null]
+  created_at timestamp
+
+  indexes {
+    (school_id, created_at)
+  }
+}
+
+// ---------------------------------------------------------------------
+// DOMAIN 6: SYSTEM GOVERNANCE, AUDIT & PLATFORM TELEMETRY
+// ---------------------------------------------------------------------
+
+Table system_settings [headercolor: #334155] {
   id varchar [pk, default: 'default_setting']
-  school_year_id varchar [ref: > school_years.id]
   points_per_report int [default: 50]
   points_per_kg_recyclable int [default: 10]
   warning_threshold int [default: 3]
   certificate_point_threshold int [default: 500]
+  certificate_grace_days int [default: 3]
+  certificate_milestone_name varchar
+  certificate_champion_name varchar
+  certificate_leader_name varchar
+  certificate_advocate_name varchar
   quarter_gate_active boolean [default: false]
   smart_sync_enabled boolean [default: true]
+  sync_mode varchar [default: 'MANUAL']
+  sync_interval_minutes int [default: 60]
+  atlas_sync_mode varchar [default: 'AUTO']
+  atlas_sync_interval_minutes int [default: 15]
   blueprint_preset varchar [default: 'DEFAULT']
   blueprint_url varchar
   max_unverified_reports int [default: 3]
@@ -238,250 +730,161 @@ Table system_settings {
   suspension_duration_hours int [default: 24]
   rewards_reserve_percent int [default: 20]
   default_vendor_name varchar
+  bin_reset_enabled boolean [default: true]
+  bin_reset_time varchar [default: '18:00']
   updated_at timestamp
 }
 
-Table waste_bins {
+Table audit_logs [headercolor: #334155] {
   id varchar [pk]
-  name varchar
-  location_name varchar
-  fill_level int [default: 0]
-  type WasteCategory [default: 'NON_BIODEGRADABLE']
-  lat double
-  lng double
-  active_dispatch boolean [default: false]
-  last_emptied timestamp
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table audit_logs {
-  id varchar [pk]
-  actor_name varchar
-  actor_role varchar
-  action_type varchar
-  details varchar
+  actor_name varchar [not null]
+  actor_role varchar [not null]
+  action_type varchar [not null]
+  details text [not null]
   ip_address varchar
-  school_year_id varchar [ref: > school_years.id]
+  school_year_id varchar
   created_at timestamp
+
+  indexes {
+    created_at
+    action_type
+    school_year_id
+  }
 }
 
-Table asset_categories {
+Table calendar_events [headercolor: #334155] {
   id varchar [pk]
-  name varchar
-  code varchar [unique]
-  enabled boolean [default: true]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table item_presets {
-  id varchar [pk]
-  category_id varchar [ref: > asset_categories.id]
-  name varchar
-  enabled boolean [default: true]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table campus_locations {
-  id varchar [pk]
-  code varchar [unique]
-  name varchar
-  status varchar [default: 'Available']
-  x double
-  y double
-  streams jsonb
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table room_locations {
-  id varchar [pk]
-  name varchar [unique]
-  building varchar
-  campus_location_code varchar [ref: > campus_locations.code]
-  enabled boolean [default: true]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table waste_types {
-  id varchar [pk]
-  name varchar
-  code varchar [unique]
-  description varchar
-  hex_color varchar
-  school_year_id varchar [ref: > school_years.id]
-  enabled boolean [default: true]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table urgency_levels {
-  id varchar [pk]
-  level varchar
-  code varchar [unique]
-  sla_hours int
-  description varchar
-  badge_style varchar
-  school_year_id varchar [ref: > school_years.id]
-  enabled boolean [default: true]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table asset_conditions {
-  id varchar [pk]
-  name varchar
-  code varchar [unique]
-  description varchar
-  badge_style varchar
-  school_year_id varchar [ref: > school_years.id]
-  enabled boolean [default: true]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table academic_quarters {
-  id varchar [pk]
-  quarter_name varchar
-  quarter_code varchar [unique]
-  school_year_id varchar [ref: > school_years.id]
-  start_date varchar
-  end_date varchar
-  is_active boolean [default: false]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table recycle_market_stocks {
-  id varchar [pk]
-  category_code varchar [unique]
-  category_name varchar
-  short_name varchar
-  threshold_limit_kg double
-  market_price_per_kg double
-  accumulated_kg double [default: 0.0]
-  is_approved_for_sale boolean [default: false]
-  approved_at timestamp
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table recycle_sale_transactions {
-  id varchar [pk]
-  category_code varchar [ref: > recycle_market_stocks.category_code]
-  category_name varchar
-  weight_kg double
-  market_price_kg double
-  total_revenue double
-  buyer_name varchar
-  school_year_id varchar [ref: > school_years.id]
-  sold_at timestamp
-}
-
-Table calendar_events {
-  id varchar [pk]
-  title varchar
-  date varchar
+  title varchar [not null]
+  date varchar [not null]
   type EventType [default: 'EVENT']
-  school_year_id varchar [ref: > school_years.id]
-  description varchar
+  description text [not null]
   created_at timestamp
 }
 
-Table sync_logs {
+Table sync_logs [headercolor: #334155] {
   id varchar [pk]
-  system varchar
+  system varchar [not null]
   status SyncStatus [default: 'SUCCESS']
   records_synced int [default: 0]
-  school_year_id varchar [ref: > school_years.id]
   created_at timestamp
 }
 
-Table campus_news {
+Table campus_news [headercolor: #334155] {
   id varchar [pk]
-  title varchar
-  body varchar
-  tag varchar
-  tag_color varchar
-  icon_color varchar
-  school_year_id varchar [ref: > school_years.id]
+  title varchar [not null]
+  body text [not null]
+  tag varchar [not null]
+  tag_color varchar [not null]
+  icon_color varchar [not null]
   is_published boolean [default: true]
   created_at timestamp
   updated_at timestamp
-}
-
-Table market_stock_snapshots {
-  id varchar [pk]
-  school_year_id varchar [ref: > school_years.id]
-  category_code varchar [ref: > recycle_market_stocks.category_code]
-  category_name varchar
-  closing_kg double
-  opening_kg double [default: 0]
-  created_at timestamp
 
   indexes {
-    (school_year_id, category_code) [unique]
+    is_published
+    created_at
   }
 }
 
-Table user_point_snapshots {
-  id varchar [pk]
-  school_year_id varchar [ref: > school_years.id]
-  user_id varchar [ref: > users.id]
-  closing_points int
-  rank int
-  created_at timestamp
+// ---------------------------------------------------------------------
+// RELATIONAL INTEGRITY REFERENCES (Foreign Keys)
+// ---------------------------------------------------------------------
 
-  indexes {
-    (school_year_id, user_id) [unique]
-  }
+Ref: reports.reporter_id > users.id [delete: cascade]
+Ref: reports.assigned_mrf_id > users.id [delete: set null]
+Ref: reports.school_year_id > school_years.id [delete: set null]
+
+Ref: point_histories.user_id > users.id [delete: cascade]
+Ref: point_histories.report_id - reports.id [delete: set null]
+Ref: point_histories.challenge_id > challenges.id [delete: set null]
+Ref: point_histories.school_year_id > school_years.id [delete: set null]
+
+Ref: offenses.user_id > users.id [delete: cascade]
+Ref: offenses.school_year_id > school_years.id [delete: set null]
+
+Ref: user_sessions.user_id > users.id [delete: cascade]
+Ref: certificates.user_id > users.id [delete: cascade]
+
+Ref: user_challenge_progress.user_id > users.id [delete: cascade]
+Ref: user_challenge_progress.challenge_id > challenges.id [delete: cascade]
+
+Ref: challenge_contributions.user_id > users.id [delete: cascade]
+Ref: challenge_contributions.challenge_id > challenges.id [delete: cascade]
+Ref: challenge_contributions.report_id > reports.id [delete: cascade]
+
+Ref: user_point_snapshots.school_year_id > school_years.id
+Ref: user_point_snapshots.user_id > users.id
+
+Ref: recycle_sale_transactions.school_year_id > school_years.id [delete: set null]
+Ref: market_stock_snapshots.school_year_id > school_years.id
+
+Ref: mrf_asset_records.school_year_id > school_years.id [delete: set null]
+Ref: asset_scrap_items.school_year_id > school_years.id [delete: set null]
+Ref: asset_scrap_sale_transactions.school_year_id > school_years.id [delete: set null]
+Ref: asset_scrap_stock_snapshots.school_year_id > school_years.id
+
+Ref: item_presets.category_id > asset_categories.id [delete: cascade]
+Ref: atlas_rooms.atlas_building_id > atlas_buildings.id [delete: cascade]
+Ref: audit_logs.school_year_id > school_years.id [delete: set null]
+
+// ---------------------------------------------------------------------
+// TABLE GROUPS (Visual Clustering in dbdiagram.io)
+// ---------------------------------------------------------------------
+
+TableGroup Identity_and_Academic {
+  school_years
+  users
+  user_sessions
+  academic_quarters
+  term_calendars
+  enrollment_sync_logs
 }
 
-Table enrollment_sync_logs {
-  id varchar [pk]
-  sync_type varchar
-  status SyncStatus [default: 'SUCCESS']
-  records_pulled int [default: 0]
-  records_created int [default: 0]
-  records_updated int [default: 0]
-  records_deleted int [default: 0]
-  error_message varchar
-  school_year_id int [ref: > school_years.enrollpro_id]
-  school_year_label varchar
-  duration_ms int
-  created_at timestamp
+TableGroup Waste_and_Facilities {
+  reports
+  waste_bins
+  campus_locations
+  room_locations
+  waste_types
+  urgency_levels
 }
 
-Table term_calendars {
-  id varchar [pk]
-  enrollpro_id int [unique]
-  term_name varchar
-  term_code varchar
-  start_date timestamp
-  end_date timestamp
-  school_year_id int [ref: > school_years.enrollpro_id]
-  school_year_label varchar
-  is_active boolean [default: false]
-  created_at timestamp
-  updated_at timestamp
+TableGroup Gamification_and_Incentives {
+  challenges
+  user_challenge_progress
+  challenge_contributions
+  point_histories
+  point_rules
+  user_point_snapshots
+  certificates
+  offenses
 }
 
-Table mrf_asset_records {
-  id varchar [pk]
-  asset_name varchar
-  category varchar
-  action varchar
-  quantity double [default: 1]
-  unit varchar [default: 'pcs']
-  condition varchar [default: 'GOOD']
-  source_report_id varchar
-  location_name varchar
-  notes varchar
-  performed_by varchar
-  school_year_id varchar [ref: > school_years.id]
-  created_at timestamp
+TableGroup MRF_and_Material_Recovery {
+  recycle_market_stocks
+  recycle_sale_transactions
+  market_stock_snapshots
+  mrf_asset_records
+  asset_scrap_stocks
+  asset_scrap_items
+  asset_scrap_sale_transactions
+  asset_scrap_stock_snapshots
+  asset_categories
+  item_presets
+  asset_conditions
 }
 
+TableGroup ATLAS_Digital_Twin {
+  atlas_map_snapshots
+  atlas_buildings
+  atlas_rooms
+  atlas_sync_logs
+}
+
+TableGroup System_Governance {
+  system_settings
+  audit_logs
+  calendar_events
+  sync_logs
+  campus_news
+}

@@ -351,8 +351,12 @@ router.get('/me', async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Strict guard: only EnrollPro-synced accounts are valid
-    if (user.syncSource !== 'ENROLLPRO') {
+    // Strict guard: only EnrollPro-synced accounts are valid. Exception:
+    // offline walk-in students (syncSource LOCAL) may be served when a valid
+    // signed token is presented (e.g. the documented minted-token contingency
+    // while EnrollPro is down). Login itself stays strictly delegated to
+    // EnrollPro (see POST /login), so this cannot become a local auth bypass.
+    if (user.syncSource !== 'ENROLLPRO' && user.enrollmentStatus !== 'OFFLINE_DEMO') {
       return res.status(401).json({ error: 'Account not provisioned. Contact your administrator.' });
     }
 

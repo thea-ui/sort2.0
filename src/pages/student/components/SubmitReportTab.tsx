@@ -21,7 +21,7 @@ import {
   Map as MapIcon,
 } from 'lucide-react';
 import { User, Bin, SystemSettings, WasteCategory, Report } from '../../../types';
-import { BlueprintImage } from '../../../components/map/BlueprintImage';
+import { CampusMapFrame } from '../../../components/map/CampusMapFrame';
 import { StudentSubmitSuccessView } from './StudentSubmitSuccessView';
 import { StudentSubmittedReportDetails } from '../StudentDashboard';
 import { useSystemPresets } from '../../../hooks/useSystemPresets';
@@ -418,54 +418,58 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             </div>
 
             <div
-              onClick={(e) => {
-                if (!isPinningMode) return;
-                const rect = e.currentTarget.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
-                const pctX = clickX / rect.width;
-                const pctY = clickY / rect.height;
-
-                const minLat = 14.5980, maxLat = 14.6030, minLng = 120.9820, maxLng = 120.9880;
-                const lat = maxLat - pctY * (maxLat - minLat);
-                const lng = minLng + pctX * (maxLng - minLng);
-
-                setGpsCoords({ lat, lng });
-                setBinId(null);
-                setIsScatteredDebris(true);
-                setLocationName('Scattered Debris');
-                setActivePopoverStation(null);
-              }}
-              className={`relative w-full h-[360px] sm:h-[420px] rounded-2xl border border-gray-200 bg-[#f8fafc] overflow-hidden shadow-inner flex items-center justify-center transition-all ${
-                isPinningMode ? 'cursor-crosshair ring-2 ring-[#00A77C]' : 'cursor-default'
+              className={`relative w-full h-[360px] sm:h-[420px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center transition-all ${
+                isPinningMode ? 'ring-2 ring-[#00A77C]' : ''
               }`}
             >
-              {blueprintUrl ? (
-                <BlueprintImage url={blueprintUrl} />
-              ) : (
-                <svg className="absolute inset-0 w-full h-full opacity-50 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <pattern id="campus-grid-clean" width="28" height="28" patternUnits="userSpaceOnUse">
-                      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#campus-grid-clean)" />
-                  <rect x="15%" y="10%" width="20%" height="15%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
+              <CampusMapFrame
+                blueprintUrl={blueprintUrl}
+                contentProps={{
+                  onClick: (e) => {
+                    if (!isPinningMode) return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    const pctX = clickX / rect.width;
+                    const pctY = clickY / rect.height;
 
-                  <rect x="65%" y="12%" width="22%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
+                    const minLat = 14.5980, maxLat = 14.6030, minLng = 120.9820, maxLng = 120.9880;
+                    const lat = maxLat - pctY * (maxLat - minLat);
+                    const lng = minLng + pctX * (maxLng - minLng);
 
-                  <circle cx="50%" cy="50%" r="35" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
+                    setGpsCoords({ lat, lng });
+                    setBinId(null);
+                    setIsScatteredDebris(true);
+                    setLocationName('Scattered Debris');
+                    setActivePopoverStation(null);
+                  },
+                  className: isPinningMode ? 'cursor-crosshair' : 'cursor-default',
+                }}
+                fallback={(
+                  <svg className="absolute inset-0 w-full h-full opacity-50 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <pattern id="campus-grid-clean" width="28" height="28" patternUnits="userSpaceOnUse">
+                        <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#campus-grid-clean)" />
+                    <rect x="15%" y="10%" width="20%" height="15%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
 
-                  <rect x="10%" y="70%" width="25%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
+                    <rect x="65%" y="12%" width="22%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
 
-                  <rect x="60%" y="72%" width="28%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
-                </svg>
-              )}
+                    <circle cx="50%" cy="50%" r="35" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
+
+                    <rect x="10%" y="70%" width="25%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
+
+                    <rect x="60%" y="72%" width="28%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
+                  </svg>
+                )}
+              >
 
               <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
                 <MapIcon size={12} className="text-[#00A77C]" />
@@ -482,7 +486,9 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                 const isPopoverOpen = activePopoverStation === station.locationName;
                 const hasReportedFull = station.slots.some(s => s.statusState === 'REPORTED_FULL' || s.statusState === 'DISPATCHED');
 
-                const isNearTopEdge = pctY < 55;
+                // Popovers hold up to 4 streams (~170px tall): only open below
+                // the pin when the pin is in the top 40% of the map.
+                const isNearTopEdge = pctY < 40;
                 const isNearLeftEdge = pctX < 25;
                 const isNearRightEdge = pctX > 75;
 
@@ -588,12 +594,14 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
 
               {isScatteredDebris && gpsCoords && (
                 <div
+                  data-testid="scattered-pin"
                   style={{ left: `${((gpsCoords.lng - 120.9820) / 0.0060) * 100}%`, top: `${((14.6030 - gpsCoords.lat) / 0.0050) * 100}%` }}
                   className="absolute -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-rose-500 border border-rose-400 text-white shadow-xl animate-bounce z-30 flex items-center justify-center"
                 >
                   <MapPin size={16} className="stroke-[2.5]" />
                 </div>
               )}
+              </CampusMapFrame>
             </div>
 
             {isPinningMode && (

@@ -8,8 +8,12 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "verify": "npm run lint && npm run build && npm --prefix server run build && npm run test:auth",
-    "test:auth": "node scripts/auth-smoke.mjs"
+    "verify": "npm run lint && npm run build && npm run test:unit && npm --prefix server run build && npm --prefix server run test:atlas && npm run test:auth && npm run test:atlas && npm run test:atlas:audit && npm run test:ui",
+    "test:unit": "vitest run",
+    "test:auth": "node scripts/auth-smoke.mjs",
+    "test:atlas": "node scripts/atlas-smoke.mjs",
+    "test:atlas:audit": "node scripts/atlas-audit.mjs",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "lucide-react": "^1.25.0",
@@ -17,6 +21,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
@@ -27,6 +32,7 @@
     "postcss": "^8.5.19",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^5.0.1"
   }
 }

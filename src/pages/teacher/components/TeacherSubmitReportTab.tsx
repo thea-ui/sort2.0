@@ -14,6 +14,8 @@ import {
   SubmittedReportDetails,
 } from './TeacherSubmitSuccessView';
 import { useSystemPresets } from '../../../hooks/useSystemPresets';
+import { useAtlasMap } from '../../../hooks/useAtlasMap';
+import { atlasRoomToLocationString } from '../../../components/atlas/atlasRoomMeta';
 import { TeacherCategorySelector } from './TeacherCategorySelector';
 import { TeacherPhotoEvidence } from './TeacherPhotoEvidence';
 import { TeacherLocationSelector } from './TeacherLocationSelector';
@@ -126,6 +128,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
   );
   const [locationSearch, setLocationSearch] = useState<string>('');
   const [assetRoomList, setAssetRoomList] = useState<string[]>(getAssetRoomLocations);
+  const { buildings: atlasBuildings } = useAtlasMap();
 
   useEffect(() => {
     const handleRoomStorage = () => setAssetRoomList(getAssetRoomLocations());
@@ -294,7 +297,23 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
     return URGENCIES;
   }, [urgencyLevels]);
 
-  const displayLocations = isWasteCategory ? getBinLocations(bins) : assetRoomList;
+  // Asset room suggestions come from the ATLAS mirror when available and
+  // silently fall back to the legacy stored list when it is not (plan §7.13).
+  // Format contract: "<room> – <building>" (split on ' – ' elsewhere).
+  const atlasRoomLocations = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          atlasBuildings.flatMap((building) =>
+            building.rooms.map((room) => atlasRoomToLocationString(room, building.name))
+          )
+        )
+      ),
+    [atlasBuildings]
+  );
+  const assetLocations = atlasRoomLocations.length > 0 ? atlasRoomLocations : assetRoomList;
+
+  const displayLocations = isWasteCategory ? getBinLocations(bins) : assetLocations;
 
   const filteredLocations = displayLocations.filter(loc =>
     loc.toLowerCase().includes(locationSearch.toLowerCase())

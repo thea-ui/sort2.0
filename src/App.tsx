@@ -6,6 +6,7 @@ import { PublicLanding } from './pages/PublicLanding';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { MRFLogin } from './pages/mrf/MRFLogin';
 import { StudentLayout } from './components/layout/StudentLayout';
+import { primeAtlasMapCache } from './hooks/useAtlasMap';
 
 // Route-level code splitting: each role dashboard is loaded on demand so the
 // public landing page never ships the admin/MRF bundles.
@@ -62,6 +63,12 @@ function AppShell({ activeTab, setActiveTab }: { activeTab: string; setActiveTab
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [isAuthenticated, activeTab, currentRoute, currentUser?.role]);
+
+  // Warm the ATLAS mirror cache right after sign-in so map pages open with the
+  // real base map instead of flashing the fallback layer.
+  useEffect(() => {
+    if (isAuthenticated) primeAtlasMapCache();
+  }, [isAuthenticated]);
 
   if (isAuthenticated) {
     if (!currentUser) {

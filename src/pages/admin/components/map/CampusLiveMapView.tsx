@@ -19,7 +19,7 @@ import {
   STORAGE_KEY_BLUEPRINT_URL,
   STORAGE_KEY_LOCATIONS,
 } from '../../../../services/locationStore';
-import { BlueprintImage } from '../../../../components/map/BlueprintImage';
+import { CampusMapFrame } from '../../../../components/map/CampusMapFrame';
 
 interface CampusLiveMapViewProps {
   bins?: BinStatus[];
@@ -175,12 +175,11 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
 
             {/* Map Canvas Frame */}
             <div className="relative w-full h-[380px] sm:h-[430px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center select-none">
-              {/* Clipping layer: keeps blueprint/grid corners rounded without cutting off pin popovers */}
-              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-                {/* Blueprint Image overlay or preset vector grid */}
-                {blueprintUrl ? (
-                  <BlueprintImage url={blueprintUrl} className="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none" />
-                ) : (
+              {/* ATLAS base map (clipped to rounded corners without cutting off pin popovers) */}
+              <CampusMapFrame
+                blueprintUrl={blueprintUrl}
+                blueprintClassName="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none"
+                fallback={(
                   <svg className="absolute inset-0 w-full h-full opacity-50 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                       <pattern id="light-grid-adminview" width="28" height="28" patternUnits="userSpaceOnUse">
@@ -204,7 +203,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                     <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
                   </svg>
                 )}
-              </div>
+              >
 
               <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
                 <MapIcon size={12} className="text-[#0091EA]" />
@@ -225,6 +224,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                   >
                     <button
                       type="button"
+                      data-testid="station-pin"
                       onClick={() => {
                         setSelectedLocId(st.id);
                         setActivePopoverId(isPopoverOpen ? null : st.id);
@@ -273,6 +273,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                   </div>
                 );
               })}
+              </CampusMapFrame>
             </div>
           </div>
         </div>

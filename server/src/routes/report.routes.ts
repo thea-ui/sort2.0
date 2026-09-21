@@ -18,6 +18,10 @@ router.delete('/purge', requireAdmin, async (req: Request, res: Response): Promi
     await prisma.challengeContribution.deleteMany({});
     await prisma.pointHistory.deleteMany({});
     await prisma.userChallengeProgress.deleteMany({});
+    // Walk-in data: claims reference turnovers (SetNull), so delete claims first.
+    await prisma.rewardClaim.deleteMany({});
+    await prisma.walkInTurnoverItem.deleteMany({});
+    await prisma.walkInTurnover.deleteMany({});
     await prisma.report.deleteMany({});
     await prisma.offense.deleteMany({});
     await prisma.user.updateMany({
@@ -122,6 +126,17 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
       return res.status(400).json({ error: 'Title and coordinates are required' });
     }
 
+    // Students may view the campus map but must never file asset reports.
+    // Enforced here (not just in the UI) because reportType can be derived
+    // from pillar markers in the description.
+    const derivedType = deriveReportType(reportType, description);
+    if (derivedType === ReportType.ASSET && (req as AuthenticatedRequest).userRole === 'STUDENT') {
+      return res.status(403).json({
+        error: 'Students cannot file asset reports. Please report waste issues instead.',
+        code: 'FORBIDDEN',
+      });
+    }
+
     const locName = locationName || 'Campus Location';
     const cat = mapWasteCategory(category);
     const locKey = normalizeLocation(locName);
@@ -154,7 +169,7 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
         locationKey: normalizeLocation(cleanLoc),
         reporterId: userId,
         imageUrl: imageUrl || null,
-        reportType: deriveReportType(reportType, description),
+        reportType: derivedType,
         pointsAwarded: 0,
         schoolYearId: await getActiveSchoolYearId(),
       },

@@ -12,10 +12,8 @@ import {
   MapPin,
   CheckCircle2,
   Play,
-  History,
   X,
   Wrench,
-  PackageCheck,
   AlertCircle,
   ArrowRight,
   Activity,
@@ -39,11 +37,15 @@ import {
   Check,
   ShoppingBag,
   Navigation,
+  Maximize2,
 } from 'lucide-react';
 import { MRFDirectPickupTab } from './components/MRFDirectPickupTab';
+import { MRFWalkInTab } from './components/MRFWalkInTab';
 import { MRFMarketTab } from './components/MRFMarketTab';
 import { MRFAssetLedgerPage } from './components/MRFAssetLedgerPage';
 import { AssetScrapStockTab } from './components/AssetScrapStockTab';
+import { MRFHistoryTab } from './components/MRFHistoryTab';
+import { PhotoLightbox } from '../../components/common/PhotoLightbox';
 
 export interface ItemizedRecyclableCategory {
   id: 'pet_plastic' | 'aluminum_cans' | 'cardboard' | 'glass';
@@ -97,6 +99,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
   // Completion & Detail Modal States
   const [completeModalReport, setCompleteModalReport] = useState<Report | null>(null);
   const [mrfDetailReport, setMrfDetailReport] = useState<Report | null>(null);
+  const [mrfPhotoFull, setMrfPhotoFull] = useState(false);
   const [weightKg, setWeightKg] = useState<string>('');
   const [itemWeights, setItemWeights] = useState<Record<string, string>>({
     pet_plastic: '',
@@ -189,10 +192,6 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     return activeDispatchGroups.map(g => g.firstReport);
   }, [activeDispatchGroups]);
 
-  const completedDispatches = reports
-    .filter(r => r.status === 'COLLECTED' || r.status === 'RESOLVED')
-    .sort((a, b) => getTimeMs(b) - getTimeMs(a));
-
   const handleSellBatch = async (cat: ItemizedRecyclableCategory) => {
     const stockItem = stocksRecord[cat.id];
     const currentKg = stockItem ? stockItem.accumulatedKg : 0;
@@ -208,16 +207,6 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
     showToast(`🎉 Sold ${soldKg.toFixed(1)} kg batch of ${cat.shortName} for ₱${revenue.toLocaleString()}! (${remainingKg.toFixed(1)} kg remaining in stock)`);
   };
-
-  // Stats calculation
-  const totalKgCollected = completedDispatches.reduce((sum, r) => sum + (r.weightCollected || 0), 0);
-  const totalAssetsProcessed = completedDispatches.filter(r =>
-    r.reportType === 'ASSET' ||
-    r.description.toUpperCase().includes('FURNITURE') ||
-    r.description.toUpperCase().includes('ELECTRONICS') ||
-    r.description.toUpperCase().includes('FIXTURES') ||
-    r.description.toUpperCase().includes('EQUIPMENT')
-  ).length;
 
   const mrfNeededCount = activeDispatches.length;
   const wasteTaskCount = activeDispatches.filter(r =>
@@ -729,6 +718,11 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
         </div>
       )}
 
+      {/* ── WALK-IN BOTTLE STATION ── */}
+      {activeTab === 'mrf-walkin' && (
+        <MRFWalkInTab showToast={showToast} />
+      )}
+
       {/* ── 4. DIRECT UNSCHEDULED PICKUP PAGE ── */}
       {activeTab === 'mrf-direct' && (
         <MRFDirectPickupTab
@@ -760,72 +754,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
       {/* ── 3. COLLECTION HISTORY VIEW ── */}
       {activeTab === 'mrf-history' && (
-        <div className="space-y-6 animate-fade-in">
-
-          {/* Quick Summary Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1">
-              <div className="flex items-center justify-between text-[#00A77C] mb-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Completed Jobs</span>
-                <PackageCheck size={18} />
-              </div>
-              <p className="text-3xl font-black text-[#00271D]">{completedDispatches.length}</p>
-              <p className="text-[11px] font-semibold text-[#00A77C]">Dispatches finished</p>
-            </div>
-
-            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1">
-              <div className="flex items-center justify-between text-emerald-600 mb-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Recyclables Gathered</span>
-                <Scale size={18} />
-              </div>
-              <p className="text-3xl font-black text-[#00271D]">{totalKgCollected} <span className="text-base font-normal">kg</span></p>
-              <p className="text-[11px] font-semibold text-emerald-600">Total weight logged</p>
-            </div>
-
-            <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1">
-              <div className="flex items-center justify-between text-amber-600 mb-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assets Handled</span>
-                <Wrench size={18} />
-              </div>
-              <p className="text-3xl font-black text-[#00271D]">{totalAssetsProcessed}</p>
-              <p className="text-[11px] font-semibold text-amber-600">Asset tasks processed</p>
-            </div>
-          </div>
-
-          {/* History Log List */}
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
-              <History size={16} className="text-[#00A77C]" />
-              <span>MRF Collection Ledger & Log History</span>
-            </h3>
-
-            {completedDispatches.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-8">No completed collection logs yet.</p>
-            ) : (
-              <div className="divide-y divide-gray-150">
-                {completedDispatches.map(rep => (
-                  <div key={rep.id} className="py-3.5 flex justify-between items-center text-xs">
-                    <div className="space-y-0.5">
-                      <p className="font-bold text-gray-800">{rep.title}</p>
-                      <p className="text-[10px] text-gray-400">
-                        {rep.locationName} · Reporter: {rep.reporterName} · Completed: {rep.timestamp}
-                      </p>
-                    </div>
-                    {rep.weightCollected ? (
-                      <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-black text-[11px]">
-                        <Scale size={11} /> {rep.weightCollected} kg
-                      </span>
-                    ) : (
-                      <span className="px-3 py-1 bg-sky-50 text-sky-700 border border-sky-200 rounded-full font-black text-[10px] uppercase">
-                        Done / Finished
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <MRFHistoryTab reports={reports} />
       )}
 
       {/* ── JOB COMPLETION MODAL (Redesigned) ── */}
@@ -1171,8 +1100,8 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
         const isPending = mrfDetailReport.status === 'PENDING';
 
         return (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
-            <div className="bg-white border border-gray-200 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 relative my-auto max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+            <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl space-y-4 relative my-auto max-h-[92dvh] overflow-y-auto">
               
               {/* Close Button */}
               <button
@@ -1223,12 +1152,21 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               {/* Photo Evidence & Report Description Card */}
               <div className="space-y-2">
                 {mrfDetailReport.imageUrl && (
-                  <div className="rounded-2xl overflow-hidden border border-gray-200 h-44 bg-gray-100 relative shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => setMrfPhotoFull(true)}
+                    className="group relative block w-full rounded-2xl overflow-hidden border border-gray-200 h-44 sm:h-52 bg-gray-100 shadow-inner cursor-zoom-in"
+                  >
                     <img src={mrfDetailReport.imageUrl} alt="Waste report evidence" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg font-mono">
-                      Photo Evidence Attached
+                    <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg font-mono flex items-center gap-1.5">
+                      <Maximize2 size={11} /> Tap to view full screen
                     </span>
-                  </div>
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-black/60 p-2.5 text-white">
+                        <Maximize2 size={18} />
+                      </span>
+                    </span>
+                  </button>
                 )}
 
                 <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 text-xs text-gray-800 space-y-1">
@@ -1266,6 +1204,13 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
           </div>
         );
       })()}
+
+      <PhotoLightbox
+        src={mrfPhotoFull ? mrfDetailReport?.imageUrl ?? null : null}
+        alt="Waste report evidence full view"
+        caption="Photo Evidence"
+        onClose={() => setMrfPhotoFull(false)}
+      />
 
     </div>
   );

@@ -1,4 +1,5 @@
 import { PrismaClient, Role, WasteCategory, Urgency } from '@prisma/client';
+import { seedWalkInRewards } from '../src/services/walk-in-rewards.seed.js';
 
 const prisma = new PrismaClient();
 
@@ -32,6 +33,8 @@ async function main() {
       warningAutoDeductAmount: 10,
       rewardsReservePercent: 20,
       defaultVendorName: 'GreenCycle Recycling Vendor',
+      walkInPointsPer500ml: 1,
+      walkInEnabled: true,
     },
   });
 
@@ -481,6 +484,10 @@ async function main() {
   // 18. Clean initial state for Recycle Sale Transactions (0 sold until MRF closes a sale)
   await prisma.recycleSaleTransaction.deleteMany();
   console.log('✅ Recycle Sales Transactions Cleaned (Ready for live MRF sales)');
+
+  // 19. Seed Walk-in Bottle Milestone Rewards (PLACEHOLDER catalog)
+  const rewardCount = await seedWalkInRewards(prisma);
+  console.log(`✅ Walk-in Milestone Rewards Seeded (${rewardCount} placeholder tiers)`);
 
   console.log('🌱 PostgreSQL Database Seed Completed Successfully!');
 }

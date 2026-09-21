@@ -1,4 +1,4 @@
-import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult, Certificate, TermStatus, IssueTermResult } from '../types';
+import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult, Certificate, TermStatus, IssueTermResult, AtlasMapPayload, WalkInStudentOption, WalkInTurnover, WalkInProgress, RecordWalkInInput, RecordWalkInResult, Reward, RewardClaim } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || '/api';
 
@@ -741,7 +741,95 @@ export const apiService = {
   viewCertificateById: async (certificateId: string): Promise<void> => {
     await fetchCertificateBlob(certificateId, 'view');
   },
+
+  // ATLAS Campus Map (read-only mirror)
+  getAtlasMap: async (): Promise<AtlasMapPayload> => {
+    return fetchAPI<AtlasMapPayload>('/atlas/map');
+  },
+
+  getAtlasStatus: async (): Promise<any> => {
+    return fetchAPI('/atlas/status');
+  },
+
+  triggerAtlasSync: async (): Promise<any> => {
+    return fetchAPI('/atlas/sync', { method: 'POST', body: JSON.stringify({}) });
+  },
+
+  // ─── Walk-in Bottle Turnover API ────────────────────────────────────
+  searchWalkInStudents: async (query: string): Promise<{ students: WalkInStudentOption[] }> => {
+    return fetchAPI(`/walk-ins/students?q=${encodeURIComponent(query)}`);
+  },
+
+  recordWalkIn: async (input: RecordWalkInInput): Promise<RecordWalkInResult> => {
+    return fetchAPI('/walk-ins', { method: 'POST', body: JSON.stringify(input) });
+  },
+
+  getWalkIns: async (params?: { date?: string; studentId?: string; limit?: number }): Promise<{ turnovers: WalkInTurnover[] }> => {
+    const query = new URLSearchParams();
+    if (params?.date) query.set('date', params.date);
+    if (params?.studentId) query.set('studentId', params.studentId);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return fetchAPI(`/walk-ins${qs ? `?${qs}` : ''}`);
+  },
+
+  getMyWalkIns: async (limit = 20): Promise<{ turnovers: WalkInTurnover[]; progress: WalkInProgress | null }> => {
+    return fetchAPI(`/walk-ins/me?limit=${limit}`);
+  },
+
+  getWalkInProgress: async (studentId: string): Promise<{ progress: WalkInProgress }> => {
+    return fetchAPI(`/walk-ins/progress/${encodeURIComponent(studentId)}`);
+  },
+
+  // ─── Rewards & Prize Claims API ─────────────────────────────────────
+  getRewards: async (): Promise<{ schoolYearId: string | null; yearGrams: number; rewards: Reward[] }> => {
+    return fetchAPI('/rewards');
+  },
+
+  requestRewardClaim: async (claimId: string): Promise<{ success: boolean; claim: RewardClaim }> => {
+    return fetchAPI(`/rewards/claims/${claimId}/request`, { method: 'POST', body: JSON.stringify({}) });
+  },
+
+  getRewardClaims: async (status?: string): Promise<{ claims: RewardClaim[] }> => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return fetchAPI(`/rewards/claims${qs}`);
+  },
+
+  releaseRewardClaim: async (claimId: string): Promise<{ success: boolean; claim: RewardClaim; pointsAwarded: number }> => {
+    return fetchAPI(`/rewards/claims/${claimId}/release`, { method: 'POST', body: JSON.stringify({}) });
+  },
+
+  cancelRewardClaim: async (claimId: string, reason?: string): Promise<{ success: boolean; claim: RewardClaim }> => {
+    return fetchAPI(`/rewards/claims/${claimId}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) });
+  },
+
+  getRewardCatalog: async (): Promise<{ rewards: Reward[] }> => {
+    return fetchAPI('/rewards/admin');
+  },
+
+  updateReward: async (id: string, updates: Partial<Reward>): Promise<{ success: boolean; reward: Reward }> => {
+    return fetchAPI(`/rewards/${id}`, { method: 'PATCH', body: JSON.stringify(updates) });
+  },
 };
+
+/**
+ * Fetch the protected campus image as a blob object URL.
+ * Returns null when ATLAS/SORT has no image (404) so callers render a fallback.
+ * The caller owns the object URL and must revoke it on cleanup.
+ */
+export async function fetchAtlasCampusImageObjectUrl(): Promise<string | null> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/atlas/campus-image`, { headers });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Campus image request failed with status ${response.status}`);
+
+  const blob = await response.blob();
+  if (!blob.type.startsWith('image/')) return null;
+  return window.URL.createObjectURL(blob);
+}
 
 async function fetchCertificateBlob(
   certificateId: string,

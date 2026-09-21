@@ -1,6 +1,8 @@
-import React from 'react';
-import { Camera, Video, Upload, RefreshCw, X, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Camera, Video, Upload, RefreshCw, X, CheckCircle, Maximize2 } from 'lucide-react';
 import { useLiveCamera } from '../../../hooks/useLiveCamera';
+import { CameraCaptureOverlay } from '../../../components/common/CameraCaptureOverlay';
+import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
 
 interface StudentPhotoEvidenceProps {
   capturedImage: string | null;
@@ -17,12 +19,13 @@ export const StudentPhotoEvidence: React.FC<StudentPhotoEvidenceProps> = ({
   handleCapture,
   handleFileChange,
 }) => {
+  const [showPreviewFull, setShowPreviewFull] = useState(false);
   const { videoRef, canvasRef, isLiveCameraActive, cameraError, startCamera, stopCamera, snapPhoto, toggleCameraFacing } = useLiveCamera({
     onCapture: setCapturedImage,
   });
 
   return (
-    <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-3">
+    <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
           <Camera size={16} className="text-[#00A77C]" />
@@ -36,42 +39,50 @@ export const StudentPhotoEvidence: React.FC<StudentPhotoEvidenceProps> = ({
         )}
       </div>
 
-      <div className="bg-[#00271D] rounded-2xl overflow-hidden relative min-h-[220px] flex items-center justify-center border border-[#00271D] group">
+      <div className="bg-[#00271D] rounded-2xl overflow-hidden relative min-h-[220px] flex items-center justify-center border border-[#00271D]">
         <canvas ref={canvasRef} className="hidden" />
 
-        {isLiveCameraActive ? (
-          <div className="relative w-full h-64 bg-black flex items-center justify-center">
-            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-center justify-between gap-2">
-              <button type="button" onClick={stopCamera} className="p-2 rounded-xl bg-slate-800/80 text-slate-200 border border-slate-600 cursor-pointer">
-                <X size={16} />
-              </button>
-              <button type="button" onClick={snapPhoto} className="px-4 py-2 bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold text-xs rounded-full shadow-lg flex items-center gap-1.5 cursor-pointer">
-                <Camera size={14} />
-                <span>Snap Photo</span>
-              </button>
-              <button type="button" onClick={toggleCameraFacing} className="p-2 rounded-xl bg-slate-800/80 text-slate-200 border border-slate-600 cursor-pointer">
-                <RefreshCw size={16} />
-              </button>
-            </div>
-          </div>
-        ) : isCapturing ? (
-          <div className="text-center space-y-2 py-8 animate-pulse">
-            <Camera className="mx-auto text-[#00A77C]" size={28} />
-            <p className="text-xs font-bold text-white tracking-wide uppercase">Opening Camera...</p>
-          </div>
-        ) : capturedImage ? (
-          <div className="relative w-full h-64 flex items-center justify-center bg-black/90">
-            <img src={capturedImage} alt="Waste verification evidence" className="max-h-full max-w-full object-contain" />
+        {capturedImage ? (
+          <div className="relative w-full h-64 sm:h-72 flex items-center justify-center bg-black/90">
+            <img
+              src={capturedImage}
+              alt="Waste verification evidence"
+              className="max-h-full max-w-full object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPreviewFull(true)}
+              aria-label="View photo full screen"
+              className="absolute top-2.5 left-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white shadow-lg cursor-pointer transition-all hover:bg-black/80"
+            >
+              <Maximize2 size={13} />
+            </button>
             <div className="absolute bottom-2.5 left-2.5 bg-[#00271D]/90 border border-[#00A77C] text-[#00A77C] text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-md">
               <CheckCircle size={12} />
               <span>Evidence Ready</span>
             </div>
-            {setCapturedImage && (
-              <button type="button" onClick={() => setCapturedImage(null)} title="Remove Photo" className="absolute top-2.5 right-2.5 h-7 w-7 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg cursor-pointer transition-all">
-                <X size={15} strokeWidth={2.5} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => startCamera()}
+              className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 px-3 py-1.5 text-[11px] font-bold text-white shadow-lg cursor-pointer transition-all"
+            >
+              <RefreshCw size={12} />
+              <span>Retake</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCapturedImage(null)}
+              title="Remove Photo"
+              aria-label="Remove photo"
+              className="absolute top-2.5 right-2.5 h-7 w-7 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg cursor-pointer transition-all"
+            >
+              <X size={15} strokeWidth={2.5} />
+            </button>
+          </div>
+        ) : isCapturing && !isLiveCameraActive ? (
+          <div className="text-center space-y-2 py-8 animate-pulse">
+            <Camera className="mx-auto text-[#00A77C]" size={28} />
+            <p className="text-xs font-bold text-white tracking-wide uppercase">Opening Camera...</p>
           </div>
         ) : (
           <div className="text-center space-y-2.5 py-6 px-4 w-full">
@@ -108,6 +119,22 @@ export const StudentPhotoEvidence: React.FC<StudentPhotoEvidenceProps> = ({
           </div>
         )}
       </div>
+
+      <CameraCaptureOverlay
+        isOpen={isLiveCameraActive}
+        videoRef={videoRef}
+        cameraError={cameraError}
+        onSnap={snapPhoto}
+        onClose={stopCamera}
+        onFlip={toggleCameraFacing}
+      />
+
+      <PhotoLightbox
+        src={showPreviewFull ? capturedImage : null}
+        alt="Waste verification evidence preview"
+        caption="Photo Evidence"
+        onClose={() => setShowPreviewFull(false)}
+      />
     </div>
   );
 };

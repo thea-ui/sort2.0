@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { AdminReportsTab } from './components/AdminReportsTab';
+import { AdminRewardsTab } from './components/AdminRewardsTab';
 import { AdminImpactTab } from './components/AdminImpactTab';
 import { AdminLeaderboardTab } from './components/AdminLeaderboardTab';
 import { AdminCollectionsTab } from './components/AdminCollectionsTab';
@@ -405,9 +406,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
         />
       )}
 
+      {/* REWARDS & PRIZE CLAIMS TAB */}
+      {activeTab === 'admin-rewards' && (
+        <AdminRewardsTab showToast={showAdminToast} />
+      )}
+
       {/* BIN MAP MANAGEMENT TAB */}
       {activeTab === 'admin-bin-map' && <AdminBinMapTab bins={bins} reports={reports} />}
-
       {/* CAMPUS NEWS TAB */}
       {activeTab === 'admin-campus-news' && <AdminCampusNewsTab />}
 

@@ -18,7 +18,7 @@ import {
   getStoredLocations,
   STORAGE_KEY_BLUEPRINT_URL,
 } from '../../../services/locationStore';
-import { BlueprintImage } from '../../../components/map/BlueprintImage';
+import { CampusMapFrame } from '../../../components/map/CampusMapFrame';
 import { RECYCLABLE_CATEGORIES, ItemizedRecyclableCategory } from '../MRFDashboard';
 
 interface MRFDirectPickupTabProps {
@@ -184,38 +184,41 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
 
               {/* Map Canvas */}
               <div
-                onClick={handleMapClick}
-                className={`relative w-full h-[300px] lg:h-[380px] rounded-2xl border border-gray-200 bg-[#f8fafc] overflow-hidden shadow-inner flex items-center justify-center transition-all select-none ${
-                  isPinningMode ? 'cursor-crosshair ring-2 ring-[#00A77C]' : 'cursor-default'
+                className={`relative w-full h-[300px] lg:h-[380px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center transition-all select-none ${
+                  isPinningMode ? 'ring-2 ring-[#00A77C]' : ''
                 }`}
               >
-                {/* Admin Blueprint Image or Vector Floorplan */}
-                {blueprintUrl ? (
-                  <BlueprintImage url={blueprintUrl} />
-                ) : (
-                  <svg className="absolute inset-0 w-full h-full opacity-50 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <pattern id="mrf-campus-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-                        <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
-                      </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#mrf-campus-grid)" />
-                    <rect x="15%" y="10%" width="20%" height="15%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                    <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
+                <CampusMapFrame
+                  blueprintUrl={blueprintUrl}
+                  contentProps={{
+                    onClick: handleMapClick,
+                    className: isPinningMode ? 'cursor-crosshair' : 'cursor-default',
+                  }}
+                  fallback={(
+                    <svg className="absolute inset-0 w-full h-full opacity-50 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <pattern id="mrf-campus-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                          <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E2E8F0" strokeWidth="1" />
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#mrf-campus-grid)" />
+                      <rect x="15%" y="10%" width="20%" height="15%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
 
-                    <rect x="65%" y="12%" width="22%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                    <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
+                      <rect x="65%" y="12%" width="22%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
 
-                    <circle cx="50%" cy="50%" r="35" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                    <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
+                      <circle cx="50%" cy="50%" r="35" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
 
-                    <rect x="10%" y="70%" width="25%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                    <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
+                      <rect x="10%" y="70%" width="25%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
 
-                    <rect x="60%" y="72%" width="28%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                    <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
-                  </svg>
-                )}
+                      <rect x="60%" y="72%" width="28%" height="18%" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                      <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
+                    </svg>
+                  )}
+                >
 
                 {/* Floating Legend */}
                 <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] text-[#00271D]/70 border border-white/80 flex items-center gap-2 pointer-events-none z-10">
@@ -256,6 +259,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                       {/* Trash Circle Button */}
                       <button
                         type="button"
+                        data-testid="station-pin"
                         onClick={() => {
                           handleSelectStation(station);
                           setActivePopoverStation(isPopoverOpen ? null : station.name);
@@ -309,6 +313,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                 {/* Custom Dropped Pin */}
                 {isCustomPin && customPinCoords && (
                   <div
+                    data-testid="scattered-pin"
                     style={{ left: `${customPinCoords.x}%`, top: `${customPinCoords.y}%` }}
                     className="absolute -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-rose-500 border-2 border-white text-white shadow-xl animate-bounce z-30 flex items-center justify-center ring-4 ring-rose-400/40"
                     onClick={(e) => e.stopPropagation()}
@@ -324,6 +329,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                     <span>Tap map to pin location</span>
                   </div>
                 )}
+                </CampusMapFrame>
               </div>
 
               {/* Custom Location Name Input */}

@@ -54,6 +54,10 @@ NODE_ENV="development"
 # EnrollPro Integration
 ENROLLPRO_BASE_URL="https://your-enrollpro-instance.com/api"
 ENROLLPRO_SYNC_SECRET="your_integration_key_here"
+
+# ATLAS Campus Map Integration (read-only mirror)
+ATLAS_BASE_URL="http://100.88.55.125:5001/api/v1"
+ATLAS_SCHOOL_ID=1
 ```
 
 ---
@@ -68,10 +72,15 @@ Open a terminal in the `server` directory and execute:
    npm install
    ```
 
-2. **Push Database Schema & Generate Prisma Client:**
+2. **Apply Version-Controlled Migrations & Generate Prisma Client:**
    ```bash
-   npx prisma db push
+   npx prisma migrate dev
    ```
+
+   > If the database was previously managed with `prisma db push`, `migrate dev`
+   > may report drift. Baseline it once with `npx prisma migrate diff` +
+   > `npx prisma migrate resolve --applied <migration>` — never reset a database
+   > that holds data.
 
 3. **Seed Database with System Settings & Sample Data:**
    ```bash
@@ -91,11 +100,19 @@ Open a terminal in the `server` directory and execute:
 - **Bulk sync (CLI):** `npm run sync:enrollpro` — pulls all users and term calendars from EnrollPro
 - **Wipe accounts:** `npm run db:wipe-accounts` — deletes all users, sessions, and user-owned data (keeps bins, settings, inventory)
 - **Fresh start:** Run wipe → then sync:
-  ```bash
-  cd server
-  npm run db:wipe-accounts
-  npm run sync:enrollpro
-  ```
+   ```bash
+   cd server
+   npm run db:wipe-accounts
+   npm run sync:enrollpro
+   ```
+
+---
+
+## 🗺️ 5b. ATLAS Campus Map Sync Commands
+
+- **Manual mirror sync (CLI):** `npm run sync:atlas` — pulls buildings/rooms/campus image into `atlas_*` tables
+- **Auto-sync:** every 15 minutes by default (`system_settings.atlas_sync_mode = AUTO`); failed syncs never wipe the last snapshot
+- **Admin API:** `POST /api/atlas/sync`, `GET /api/atlas/status`, `PATCH /api/atlas/settings`
 
 ---
 

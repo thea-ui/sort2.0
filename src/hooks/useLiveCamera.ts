@@ -41,10 +41,6 @@ export function useLiveCamera({ onCapture }: UseLiveCameraOptions = {}) {
           mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
         }
         setCameraStream(mediaStream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-          videoRef.current.play().catch(() => {});
-        }
       } else {
         throw new Error('MediaDevices API not supported on this browser');
       }
@@ -74,6 +70,14 @@ export function useLiveCamera({ onCapture }: UseLiveCameraOptions = {}) {
     setFacingMode(nextFacing);
     startCamera(nextFacing);
   }, [facingMode, startCamera]);
+
+  useEffect(() => {
+    if (!isLiveCameraActive || !cameraStream) return;
+    const video = videoRef.current;
+    if (!video) return;
+    video.srcObject = cameraStream;
+    video.play().catch(() => {});
+  }, [isLiveCameraActive, cameraStream]);
 
   useEffect(() => {
     return () => {

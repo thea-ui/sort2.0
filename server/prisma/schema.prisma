@@ -87,6 +87,18 @@ enum CertificateTier {
   ADVOCATE
 }
 
+enum RewardType {
+  POINTS
+  PHYSICAL
+}
+
+enum RewardClaimStatus {
+  UNLOCKED
+  REQUESTED
+  RELEASED
+  CANCELLED
+}
+
 model SchoolYear {
   id            String    @id @default(uuid())
   enrollproId   Int?      @unique @map("enrollpro_id")
@@ -109,6 +121,8 @@ model SchoolYear {
   auditLogs            AuditLog[]
   marketStockSnapshots MarketStockSnapshot[]
   pointSnapshots       UserPointSnapshot[]
+  walkInTurnovers      WalkInTurnover[]
+  rewardClaims         RewardClaim[]
 
   @@map("school_years")
 }
@@ -152,6 +166,10 @@ model User {
   challengeProgress    UserChallengeProgress[]
   challengeContributions ChallengeContribution[]
   certificatesIssued   Certificate[]
+  walkIns              WalkInTurnover[] @relation("WalkInStudent")
+  walkInsRecorded      WalkInTurnover[] @relation("WalkInRecorder")
+  rewardClaims         RewardClaim[]
+  rewardReleases       RewardClaim[]    @relation("RewardReleasedBy")
 
   @@index([enrollproId])
   @@index([syncSource])
@@ -242,12 +260,16 @@ model PointHistory {
   reason       String
   reportId     String?   @unique @map("report_id")
   challengeId  String?   @map("challenge_id")
+  walkInTurnoverId String? @unique @map("walk_in_turnover_id")
+  rewardClaimId    String? @unique @map("reward_claim_id")
   schoolYearId String?   @map("school_year_id")
   createdAt    DateTime  @default(now()) @map("created_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   challenge  Challenge?  @relation(fields: [challengeId], references: [id], onDelete: SetNull)
   report     Report?     @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  walkInTurnover WalkInTurnover? @relation(fields: [walkInTurnoverId], references: [id], onDelete: SetNull)
+  rewardClaim    RewardClaim?    @relation(fields: [rewardClaimId], references: [id], onDelete: SetNull)
   schoolYear SchoolYear? @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
 
   @@index([userId])
@@ -332,6 +354,8 @@ model SystemSetting {
   smartSyncEnabled          Boolean  @default(true) @map("smart_sync_enabled")
   syncMode                  String   @default("MANUAL") @map("sync_mode")
   syncIntervalMinutes       Int      @default(60) @map("sync_interval_minutes")
+  atlasSyncMode             String   @default("AUTO") @map("atlas_sync_mode")
+  atlasSyncIntervalMinutes  Int      @default(15) @map("atlas_sync_interval_minutes")
   blueprintPreset           String   @default("DEFAULT") @map("blueprint_preset")
   blueprintUrl              String?  @map("blueprint_url")
   maxUnverifiedReports      Int      @default(3) @map("max_unverified_reports")
@@ -343,6 +367,8 @@ model SystemSetting {
   defaultVendorName         String   @default("GreenCycle Recycling Vendor") @map("default_vendor_name")
   binResetEnabled           Boolean  @default(true) @map("bin_reset_enabled")
   binResetTime              String   @default("18:00") @map("bin_reset_time")
+  walkInPointsPer500ml      Int      @default(1) @map("walk_in_points_per_500ml")
+  walkInEnabled             Boolean  @default(true) @map("walk_in_enabled")
   updatedAt                 DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
@@ -763,4 +789,186 @@ model Certificate {
   @@index([schoolYearId, termCode])
   @@index([type])
   @@map("certificates")
+}
+
+// ─── ATLAS Campus Map Mirror ──────────────────────────────────────────
+
+model AtlasMapSnapshot {
+  id              String    @id @default(uuid())
+  schoolId        Int       @unique @map("school_id")
+  etag            String?
+  contentHash     String    @map("content_hash")
+  buildingCount   Int       @default(0) @map("building_count")
+  roomCount       Int       @default(0) @map("room_count")
+  campusImageUrl  String?   @map("campus_image_url")
+  campusImagePath String?   @map("campus_image_path")
+  campusImageHash String?   @map("campus_image_hash")
+  fetchedAt       DateTime  @default(now()) @map("fetched_at")
+  changedAt       DateTime? @map("changed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("atlas_map_snapshots")
+}
+
+model AtlasBuilding {
+  id                 String    @id @default(uuid())
+  atlasId            Int       @unique @map("atlas_id")
+  schoolId           Int       @map("school_id")
+  name               String
+  shortCode          String?   @map("short_code")
+  x                  Float
+  y                  Float
+  width              Float
+  height             Float
+  color              String?
+  rotation           Float     @default(0)
+  floorCount         Int       @default(1) @map("floor_count")
+  isTeachingBuilding Boolean   @default(true) @map("is_teaching_building")
+  gradeScope         Json?
+  isActive           Boolean   @default(true) @map("is_active")
+  atlasUpdatedAt     DateTime? @map("atlas_updated_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  rooms AtlasRoom[]
+
+  @@index([schoolId, isActive])
+  @@map("atlas_buildings")
+}
+
+model AtlasRoom {
+  id               String        @id @default(uuid())
+  atlasId          Int           @unique @map("atlas_id")
+  atlasBuildingId  String        @map("atlas_building_id")
+  building         AtlasBuilding @relation(fields: [atlasBuildingId], references: [id], onDelete: Cascade)
+  name             String
+  floor            Int           @default(1)
+  type             String
+  capacity         Int?
+  isTeachingSpace  Boolean       @default(false) @map("is_teaching_space")
+  isSharedFacility Boolean       @default(false) @map("is_shared_facility")
+  floorPosition    Int?          @map("floor_position")
+  features         Json?
+  isActive         Boolean       @default(true) @map("is_active")
+  atlasUpdatedAt   DateTime?     @map("atlas_updated_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  @@index([atlasBuildingId, isActive])
+  @@map("atlas_rooms")
+}
+
+model AtlasSyncLog {
+  id            String     @id @default(uuid())
+  schoolId      Int        @map("school_id")
+  status        SyncStatus
+  unchanged     Boolean    @default(false)
+  buildingsSeen Int        @default(0) @map("buildings_seen")
+  roomsSeen     Int        @default(0) @map("rooms_seen")
+  inserted      Int        @default(0)
+  updated       Int        @default(0)
+  deactivated   Int        @default(0)
+  imageChanged  Boolean    @default(false) @map("image_changed")
+  errorMessage  String?    @map("error_message")
+  durationMs    Int        @map("duration_ms")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  @@index([schoolId, createdAt])
+  @@map("atlas_sync_logs")
+}
+
+// ─── Walk-in Bottle Turnovers & Prize Claims ──────────────────────────
+
+model WalkInTurnover {
+  id             String   @id @default(uuid())
+  studentId      String   @map("student_id")
+  recordedById   String?  @map("recorded_by_id")
+  recordedByName String   @map("recorded_by_name")
+  totalMl        Int      @map("total_ml")
+  totalBottles   Int      @map("total_bottles")
+  totalGrams     Int      @map("total_grams")
+  pointsAwarded  Int      @map("points_awarded")
+  ratePer500ml   Int      @map("rate_per_500ml")
+  notes          String?
+  idempotencyKey String   @unique @map("idempotency_key")
+  schoolYearId   String   @map("school_year_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  student      User                 @relation("WalkInStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  recordedBy   User?                @relation("WalkInRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  schoolYear   SchoolYear           @relation(fields: [schoolYearId], references: [id])
+  items        WalkInTurnoverItem[]
+  pointHistory PointHistory?
+  rewardClaims RewardClaim[]
+
+  @@index([studentId, schoolYearId])
+  @@index([studentId, createdAt])
+  @@index([recordedById])
+  @@index([createdAt])
+  @@map("walk_in_turnovers")
+}
+
+model WalkInTurnoverItem {
+  id         String   @id @default(uuid())
+  turnoverId String   @map("turnover_id")
+  bottleMl   Int      @map("bottle_ml")
+  quantity   Int
+  grams      Int
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  turnover WalkInTurnover @relation(fields: [turnoverId], references: [id], onDelete: Cascade)
+
+  @@index([turnoverId])
+  @@map("walk_in_turnover_items")
+}
+
+model Reward {
+  id            String     @id @default(uuid())
+  code          String     @unique
+  title         String
+  description   String
+  iconName      String     @map("icon_name")
+  rewardType    RewardType @default(PHYSICAL) @map("reward_type")
+  requiredGrams Int        @map("required_grams")
+  pointsValue   Int        @default(0) @map("points_value")
+  stock         Int?
+  isActive      Boolean    @default(true) @map("is_active")
+  sortOrder     Int        @default(0) @map("sort_order")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  claims RewardClaim[]
+
+  @@index([isActive, requiredGrams])
+  @@map("rewards")
+}
+
+model RewardClaim {
+  id            String            @id @default(uuid())
+  userId        String            @map("user_id")
+  rewardId      String            @map("reward_id")
+  turnoverId    String?           @map("turnover_id")
+  status        RewardClaimStatus @default(UNLOCKED)
+  claimCode     String            @unique @map("claim_code")
+  gramsAtUnlock Int               @map("grams_at_unlock")
+  unlockedAt    DateTime          @default(now()) @map("unlocked_at")
+  requestedAt   DateTime?         @map("requested_at")
+  releasedAt    DateTime?         @map("released_at")
+  releasedById  String?           @map("released_by_id")
+  schoolYearId  String            @map("school_year_id")
+  notes         String?
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward     Reward          @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  turnover   WalkInTurnover? @relation(fields: [turnoverId], references: [id], onDelete: SetNull)
+  releasedBy User?           @relation("RewardReleasedBy", fields: [releasedById], references: [id], onDelete: SetNull)
+  schoolYear SchoolYear      @relation(fields: [schoolYearId], references: [id])
+  pointHistory PointHistory?
+
+  @@unique([userId, rewardId, schoolYearId])
+  @@index([status, unlockedAt])
+  @@index([userId])
+  @@index([rewardId])
+  @@map("reward_claims")
 }

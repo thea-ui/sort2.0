@@ -1,6 +1,39 @@
-import { Report } from '../types';
+import { Report, ReportStatus } from '../types';
 
 export const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Terminal report statuses are immutable: a completed, resolved, dismissed or
+ * expired report must never be re-opened by optimistic UI updates. The server
+ * enforces the same rule (`INVALID_TRANSITION` in report.routes.ts).
+ */
+export const TERMINAL_REPORT_STATUSES: ReportStatus[] = [
+  'COLLECTED',
+  'RESOLVED',
+  'DISMISSED',
+  'EXPIRED',
+];
+
+export function isTerminalReport(report: Pick<Report, 'status'>): boolean {
+  return TERMINAL_REPORT_STATUSES.includes(report.status);
+}
+
+/**
+ * True when `candidate` may be optimistically marked as DISPATCHED alongside
+ * `target`: it must belong to the same bin stream (location + category) or be
+ * the target itself, and it must not have reached a terminal status yet.
+ */
+export function isDispatchableStreamMember(
+  candidate: Report,
+  target: Pick<Report, 'id' | 'locationName' | 'category'>
+): boolean {
+  if (isTerminalReport(candidate)) return false;
+  if (candidate.id === target.id) return true;
+  return (
+    candidate.locationName.toLowerCase() === target.locationName.toLowerCase() &&
+    candidate.category === target.category
+  );
+}
 
 export function getReportTimestampMs(timestamp?: string): number {
   if (!timestamp) return 0;

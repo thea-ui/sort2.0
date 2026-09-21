@@ -4,6 +4,8 @@ import { apiService, storeRefreshToken, clearRefreshToken } from '../services/ap
 import { getStoredLocations, saveLocations, locationsToBins } from '../services/locationStore';
 import { useAuthState, LoginResult } from './useAuthState';
 import { useNotifications } from './useNotifications';
+import { buildDispatchNotifications, buildVerifiedNotifications, NOTIFICATIONS_STORAGE_KEY } from '../utils/notifications';
+import { isTerminalReport, isDispatchableStreamMember } from '../utils/reportUtils';
 
 
 interface MockDataContextType {
@@ -65,6 +67,8 @@ const DEFAULT_SETTINGS: SystemSettings = {
   defaultVendorName: 'GreenCycle Recycling Vendor',
   binResetEnabled: true,
   binResetTime: '18:00',
+  walkInPointsPer500ml: 1,
+  walkInEnabled: true,
 };
 
 const DEFAULT_USERS: User[] = [];
@@ -115,7 +119,7 @@ const reconcileUsersFromStorage = (prev: User[], next: User[]): User[] => {
 
 export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, setCurrentUser, isAuthenticated, setIsAuthenticated, login: authLogin, logout: authLogout, changeRole: authChangeRole } = useAuthState();
-  const { notifications, setNotifications, addNotification, dismissNotification, clearNotificationsForUser } = useNotifications();
+  const { notifications, setNotifications, addNotification, addNotifications, dismissNotification, clearNotificationsForUser } = useNotifications();
 
   const [users, setUsers] = useState<User[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -204,7 +208,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const loadedOffenses = loadFromStorage('sort_offenses', [] as Offense[]);
     const loadedCalendar = loadFromStorage('sort_calendar', DEFAULT_CALENDAR);
     const loadedSyncLogs = loadFromStorage('sort_sync_logs', [] as SyncLog[]);
-    const loadedNotifications = loadFromStorage('sort_notifications', [] as AppNotification[]);
 
     setSettings(loadedSettings);
     setUsers((prev) => reconcileUsers(prev, loadedUsers));
@@ -215,7 +218,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setOffenses(loadedOffenses);
     setCalendarEvents(loadedCalendar);
     setSyncLogs(loadedSyncLogs);
-    setNotifications(loadedNotifications);
 
     // If a token exists, do NOT set currentUser here — let the /auth/me
     // call in the next useEffect be the single source of truth so we never
@@ -252,7 +254,15 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                  pr.category === sr.category &&
                  pr.reporterId === sr.reporterId)
               );
-              if (localMatch && localMatch.status === 'DISPATCHED' && sr.status !== 'DISPATCHED') {
+              if (
+                localMatch &&
+                localMatch.status === 'DISPATCHED' &&
+                sr.status !== 'DISPATCHED' &&
+                // Never resurrect a report the server has finished: terminal
+                // statuses are immutable and must win over a stale optimistic
+                // DISPATCHED left over from an older session.
+                !isTerminalReport(sr)
+              ) {
                 result[idx] = {
                   ...sr,
                   status: 'DISPATCHED',
@@ -265,6 +275,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 // Retain any pending local optimistic reports not yet returned by backend
             prev.forEach(pr => {
+              // Only locally-minted optimistic reports (id `rep-…`) are retained.
+              // A server-authored report (UUID) missing from the server response
+              // was deleted or scoped out and must not be resurrected from cache.
+              if (!pr.id.startsWith('rep-')) return;
               const matchesServer = result.some(sr =>
                 sr.id === pr.id ||
                 (sr.locationName.toLowerCase() === pr.locationName.toLowerCase() &&
@@ -443,10 +457,6 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (syncLogs.length > 0) localStorage.setItem('sort_sync_logs', JSON.stringify(syncLogs));
   }, [syncLogs]);
 
-  useEffect(() => {
-    localStorage.setItem('sort_notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
   // Keep server-side settings in sync for every signed-in user. Previously the
   // client only read its own localStorage copy, so an admin changing thresholds
   // (e.g. the certificate target) never reached learners' screens.
@@ -488,6 +498,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const logout = () => {
+    // Shared-device hygiene: never leave the signed-out user's personal alerts
+    // behind for the next account that signs in on this browser.
+    if (currentUser) clearNotificationsForUser(currentUser.id);
     authLogout();
   };
 
@@ -558,10 +571,22 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setReports(prev => [newReport, ...prev]);
 
-    // Notify admin/MRF about new report
-    addNotification('REPORT_SUBMITTED', 'New Report Submitted', `${currentUser?.name || 'Someone'} reported ${reportData.title} at ${reportData.locationName}`, newReport.id, 'admin');
+    // Notify the admin review queue (role-scoped, never the legacy 'admin' id)
+    addNotification({
+      type: 'REPORT_SUBMITTED',
+      title: 'New Report Submitted',
+      message: `${currentUser?.name || 'Someone'} reported ${reportData.title} at ${reportData.locationName}`,
+      reportId: newReport.id,
+      recipientRole: 'ADMIN',
+    });
     // Notify the reporter
-    addNotification('REPORT_SUBMITTED', 'Report Submitted', `Your report "${reportData.title}" at ${reportData.locationName} is pending admin review.`, newReport.id, currentUserId);
+    addNotification({
+      type: 'REPORT_SUBMITTED',
+      title: 'Report Submitted',
+      message: `Your report "${reportData.title}" at ${reportData.locationName} is pending admin review.`,
+      reportId: newReport.id,
+      recipientId: currentUserId,
+    });
 
     // Persist new report to PostgreSQL Express API
     apiService.createReport({
@@ -576,6 +601,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }).then(serverRes => {
       if (serverRes && serverRes.id) {
         setReports(prev => prev.map(r => r.id === newReport.id ? { ...r, id: serverRes.id } : r));
+        // Keep notification deep links valid after the temp id is replaced.
+        setNotifications(prev => prev.map(n =>
+          n.reportId === newReport.id ? { ...n, reportId: serverRes.id } : n
+        ));
       }
     }).catch(err => {
       console.warn('PostgreSQL database create report notice:', err);
@@ -603,10 +632,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .filter(r =>
               r.locationName.toLowerCase() === targetReport.locationName.toLowerCase() &&
               r.category === targetReport.category &&
-              r.status !== 'DISMISSED' &&
-              r.status !== 'COLLECTED' &&
-              r.status !== 'RESOLVED' &&
-              r.status !== 'EXPIRED'
+              !isTerminalReport(r)
             )
             .map(r => r.id)
         );
@@ -637,11 +663,23 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } : r);
     });
 
-    // Generate notifications based on status change
+    // Generate notifications based on status change (reporter only)
     if (status === 'COLLECTED' || status === 'RESOLVED') {
-      addNotification('REPORT_COMPLETED', 'Cleanup Completed!', `MRF has completed cleanup at ${targetReport.locationName}.`, reportId, targetReport.reporterId);
+      addNotification({
+        type: 'REPORT_COMPLETED',
+        title: 'Cleanup Completed!',
+        message: `MRF has completed cleanup at ${targetReport.locationName}.`,
+        reportId,
+        recipientId: targetReport.reporterId,
+      });
     } else if (status === 'DISMISSED') {
-      addNotification('REPORT_DISMISSED', 'Report Dismissed', `Your report at ${targetReport.locationName} was dismissed by admin.`, reportId, targetReport.reporterId);
+      addNotification({
+        type: 'REPORT_DISMISSED',
+        title: 'Report Dismissed',
+        message: `Your report at ${targetReport.locationName} was dismissed by admin.`,
+        reportId,
+        recipientId: targetReport.reporterId,
+      });
     }
 
     // Persist status update to PostgreSQL Express backend
@@ -862,7 +900,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.removeItem('sort_offenses');
     localStorage.removeItem('sort_calendar');
     localStorage.removeItem('sort_sync_logs');
-    localStorage.removeItem('sort_notifications');
+    localStorage.removeItem(NOTIFICATIONS_STORAGE_KEY);
     // Reset recycle market local cache so stale inventory does not reappear after a purge
     localStorage.removeItem('sort_market_stocks');
     localStorage.removeItem('sort_market_sales');
@@ -929,15 +967,24 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const targetReport = reports.find(r => r.id === reportId);
     if (!targetReport) return;
 
+    // Reports newly covered by this verification (whole stream, matching the
+    // optimistic update below). Already-verified members are excluded so a
+    // repeat click never double-notifies a reporter.
+    const newlyVerified = reports.filter(r =>
+      !r.isVerified && (
+        r.id === reportId ||
+        (r.locationName.toLowerCase() === targetReport.locationName.toLowerCase() &&
+          r.category === targetReport.category &&
+          !isTerminalReport(r))
+      )
+    );
+
     // Optimistically mark as verified locally (no point calculations client-side)
     setReports(prev => prev.map(r => {
       if (r.id === reportId || (
         r.locationName.toLowerCase() === targetReport.locationName.toLowerCase() &&
         r.category === targetReport.category &&
-        r.status !== 'DISMISSED' &&
-        r.status !== 'COLLECTED' &&
-        r.status !== 'RESOLVED' &&
-        r.status !== 'EXPIRED'
+        !isTerminalReport(r)
       )) {
         return { ...r, isVerified: true };
       }
@@ -945,7 +992,11 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
 
     // Send verification to server — server is the single source of truth for points
-    apiService.verifyReport(reportId).then(async () => {
+    apiService.verifyReport(reportId).then(async (result) => {
+      // Only the first successful verification notifies the reporters.
+      if (result && !result.alreadyProcessed) {
+        addNotifications(buildVerifiedNotifications(newlyVerified));
+      }
       // Full refresh: the server may have awarded points to the entire stream,
       // not just this one report. A full refresh guarantees authoritative data.
       try {
@@ -974,25 +1025,25 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const dispatchReport = (reportId: string, mrfId: string, mrfName: string) => {
     const target = reports.find(r => r.id === reportId);
-    // Skip dismissed or expired reports
-    if (target?.status === 'DISMISSED' || target?.status === 'EXPIRED') return;
+    // Skip terminal reports (completed, resolved, dismissed, expired): the
+    // server rejects re-dispatching them and the UI must not optimistically
+    // "unlock" a finished report either.
+    if (!target || isTerminalReport(target)) return;
+
+    // Collect stream members before updating state: notifications are a side
+    // effect and must never run inside a setState updater (StrictMode would
+    // invoke it twice and duplicate every alert).
+    const streamMembers = reports.filter(r => isDispatchableStreamMember(r, target));
+    const dispatchDrafts = buildDispatchNotifications(streamMembers, mrfName);
 
     // Optimistically update local state
-    setReports(prev => prev.map(r => {
-      const isMatch = r.id === reportId || (target && r.locationName.toLowerCase() === target.locationName.toLowerCase() && r.category === target.category);
-      if (isMatch) {
-        // Notify reporter about dispatch
-        addNotification('REPORT_DISPATCHED', 'MRF Collector Dispatched', `MRF staff ${mrfName} has been assigned to collect waste at ${r.locationName}.`, r.id, r.reporterId);
-        return {
-          ...r,
-          isVerified: true,
-          status: 'DISPATCHED' as ReportStatus,
-          assignedMrfId: mrfId,
-          assignedMrfName: mrfName
-        };
-      }
-      return r;
-    }));
+    setReports(prev => prev.map(r => isDispatchableStreamMember(r, target) ? {
+      ...r,
+      isVerified: true,
+      status: 'DISPATCHED' as ReportStatus,
+      assignedMrfId: mrfId,
+      assignedMrfName: mrfName
+    } : r));
 
     // Approve first, then dispatch. The server rejects dispatch of an unverified
     // report, so this preserves the "verify before dispatch" guarantee.
@@ -1002,6 +1053,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         assignedMrfId: mrfId,
       }))
       .then(async () => {
+        // Only notify reporters once the server has accepted the dispatch.
+        addNotifications(dispatchDrafts);
         // Full refresh to get authoritative server state
         try {
           const serverReports = await apiService.getReports();
@@ -1025,6 +1078,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const verifyReportsBatch = async (reportIds: string[]): Promise<void> => {
+    const newlyVerified = reports.filter(r => reportIds.includes(r.id) && !r.isVerified);
+
     // Optimistically mark all as verified locally
     setReports(prev => prev.map(r => {
       if (reportIds.includes(r.id)) {
@@ -1034,7 +1089,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
 
     try {
-      await apiService.verifyReportsBatch(reportIds);
+      const result = await apiService.verifyReportsBatch(reportIds);
+      if (result && result.summary && result.summary.totalProcessed > 0) {
+        addNotifications(buildVerifiedNotifications(newlyVerified));
+      }
 
       // Full refresh: the server awards points to the entire stream per group,
       // not just the selected reports. A full refresh guarantees authoritative data.

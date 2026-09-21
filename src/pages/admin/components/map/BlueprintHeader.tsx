@@ -14,6 +14,9 @@ interface BlueprintHeaderProps {
   isAdjusting?: boolean;
   onAdjust?: () => void;
   onRemove?: () => void;
+  syncControl?: React.ReactNode;
+  /** Informational status (freshness badge) shown with the stat chips. */
+  statusControl?: React.ReactNode;
 }
 
 export const BlueprintHeader: React.FC<BlueprintHeaderProps> = ({
@@ -29,18 +32,21 @@ export const BlueprintHeader: React.FC<BlueprintHeaderProps> = ({
   isAdjusting = false,
   onAdjust,
   onRemove,
+  syncControl,
+  statusControl,
 }) => (
-  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm">
-    <div className="min-w-0">
+  <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm">
+    <div className="min-w-0 flex-1">
       <span className="text-[10px] font-extrabold text-[#0091EA] bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
         Map & Bin Architecture
       </span>
       <h2 className="text-xl font-black text-[#00271D] tracking-tight mt-1.5 flex items-center gap-2">
-        <Building2 className="text-[#00A77C]" size={22} />
-        Campus Bin Map & Blueprint Editor
+        <Building2 className="text-[#00A77C] shrink-0" size={22} />
+        Campus Bin Map &amp; Blueprint Editor
       </h2>
-      <p className="text-xs text-[#00271D]/50 mt-1">
-        Upload a campus map blueprint, then drag and zoom to align it with the bin pins before saving.
+      <p className="text-xs text-[#00271D]/50 mt-1 max-w-xl">
+        The map is synced from ATLAS. Drag the pins to align stations with the buildings. Upload a
+        custom background only if ATLAS is unavailable.
       </p>
       <div className="flex items-center gap-2 mt-3 flex-wrap">
         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#00271D] bg-[#F9F3F0] border border-[#00271D]/10 px-2.5 py-1 rounded-full">
@@ -57,17 +63,20 @@ export const BlueprintHeader: React.FC<BlueprintHeaderProps> = ({
             {unavailableStationsCount} Unavailable
           </span>
         )}
+        {statusControl}
       </div>
     </div>
 
-    <div className="flex items-center gap-2 flex-wrap shrink-0">
+    <div className="flex items-center gap-2 flex-wrap 2xl:justify-end 2xl:max-w-[520px] min-w-0">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+
+      {syncControl}
 
       {!isAdjusting && (
         <>
           <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3.5 py-2 bg-white text-[#00271D] border border-gray-200 rounded-xl text-xs font-extrabold hover:bg-gray-50 flex items-center gap-1.5 shadow-xs cursor-pointer">
             <Upload size={13} className="text-[#00A77C]" />
-            {hasBlueprint ? 'Replace Blueprint' : 'Upload Blueprint'}
+            {hasBlueprint ? 'Replace Fallback Map' : 'Upload Fallback Map'}
           </button>
 
           {hasBlueprint && (

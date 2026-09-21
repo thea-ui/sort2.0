@@ -18,6 +18,9 @@ import {
 import { BlueprintHeader } from './BlueprintHeader';
 import { BlueprintAdjustControls } from './BlueprintAdjustControls';
 import { BlueprintCanvas } from './BlueprintCanvas';
+import { AtlasSyncButton } from '../../../../components/map/AtlasSyncButton';
+import { AtlasFreshnessBadge } from '../../../../components/atlas/AtlasFreshnessBadge';
+import { useAtlasMap } from '../../../../hooks/useAtlasMap';
 import { StationInspector } from './StationInspector';
 import { StationModals } from './StationModals';
 import { RoomLocationsManager } from './RoomLocationsManager';
@@ -92,6 +95,10 @@ export const CampusBlueprintEditor: React.FC = () => {
 
   const [draggingLocId, setDraggingLocId] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const outerCanvasRef = useRef<HTMLDivElement>(null);
+
+  // ATLAS mirror: powers the base map plus the read-only room directory.
+  const { buildings: atlasBuildings, syncedAt: atlasSyncedAt, stale: atlasStale } = useAtlasMap();
 
   const [blueprintUrl, setBlueprintUrl] = useState<string | null>(getStoredBlueprintUrl);
   const [blueprintTransform, setBlueprintTransform] = useState<BlueprintTransform>(getBlueprintTransform);
@@ -241,7 +248,9 @@ export const CampusBlueprintEditor: React.FC = () => {
 
   React.useEffect(() => {
     if (!isAdjusting) return;
-    const el = mapContainerRef.current;
+    // Listen on the full canvas (not the fitted content box) so wheel-to-zoom
+    // works over the letterbox margins too.
+    const el = outerCanvasRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -277,11 +286,12 @@ export const CampusBlueprintEditor: React.FC = () => {
 
   const handleMouseUp = () => {
     if (draggingLocId) {
+      // Pin moves save silently: the pin itself is the feedback, and the toast
+      // covered the map on every drag.
       saveLocations(locationList);
       const newBins = locationsToBins(locationList);
       setBinsState(newBins);
       setDraggingLocId(null);
-      triggerToast('Station pin position updated!');
     }
   };
 
@@ -303,8 +313,8 @@ export const CampusBlueprintEditor: React.FC = () => {
       return { ...loc, streams: newStreams, status: overallStatus };
     });
 
+    // Bin stream toggles save silently: the dropdown/status text is the feedback.
     updateAndSyncLocations(updated);
-    triggerToast(`Set ${streamType.replace('_', '-')} bin status to ${newStatus}!`);
   };
 
   const handleAddLocationSubmit = (e: React.FormEvent) => {
@@ -384,6 +394,8 @@ export const CampusBlueprintEditor: React.FC = () => {
         isAdjusting={isAdjusting}
         onAdjust={handleAdjustExisting}
         onRemove={handleRemoveBlueprint}
+        statusControl={<AtlasFreshnessBadge syncedAt={atlasSyncedAt} stale={atlasStale} />}
+        syncControl={<AtlasSyncButton />}
       />
 
       {toastMessage && (
@@ -426,6 +438,8 @@ export const CampusBlueprintEditor: React.FC = () => {
           onAdjustPointerMove={handleAdjustPointerMove}
           onAdjustPointerUp={handleAdjustPointerUp}
           mapContainerRef={mapContainerRef}
+          canvasRef={outerCanvasRef}
+          forceBlueprint={isAdjusting}
           handleMouseDown={handleMouseDown}
           handleMouseMove={handleMouseMove}
           handleMouseUp={handleMouseUp}
@@ -473,6 +487,7 @@ export const CampusBlueprintEditor: React.FC = () => {
 
       <RoomLocationsManager
         roomList={roomList}
+        atlasBuildings={atlasBuildings}
         setShowAddRoomModal={setShowAddRoomModal}
         setEditingRoom={setEditingRoom}
         handleDeleteRoom={handleDeleteRoom}

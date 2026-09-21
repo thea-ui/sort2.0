@@ -9,8 +9,12 @@
     "start": "node dist/index.js",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed-walkin": "tsx src/scripts/seed-walk-in-rewards.ts",
+    "db:seed-offline": "tsx prisma/seed-offline-students.ts",
     "db:studio": "prisma studio",
     "sync:enrollpro": "tsx src/scripts/bulk-sync.ts",
+    "sync:atlas": "tsx src/scripts/sync-atlas.ts",
+    "test:atlas": "node --import tsx --test src/services/__tests__/atlas-map.test.ts",
     "db:reset-market": "tsx src/scripts/reset-market-stock.ts",
     "db:wipe-accounts": "tsx prisma/wipe-accounts.ts"
   },

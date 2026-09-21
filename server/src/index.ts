@@ -14,8 +14,12 @@ import challengeRoutes from './routes/challenge.routes.js';
 import certificateRoutes from './routes/certificate.routes.js';
 import assetRoutes from './routes/asset.routes.js';
 import assetScrapRoutes from './routes/asset-scrap.routes.js';
+import atlasRoutes from './routes/atlas.routes.js';
+import walkInRoutes from './routes/walk-in.routes.js';
+import rewardRoutes from './routes/reward.routes.js';
 import { rescheduleSync } from './services/sync-scheduler.service.js';
 import { rescheduleBinReset } from './services/bin-reset.service.js';
+import { rescheduleAtlasSync } from './services/atlas-sync-scheduler.service.js';
 
 // Fail fast: never boot with a missing or insecure JWT secret.
 validateEnv();
@@ -87,6 +91,9 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/asset-scrap', assetScrapRoutes);
+app.use('/api/atlas', atlasRoutes);
+app.use('/api/walk-ins', walkInRoutes);
+app.use('/api/rewards', rewardRoutes);
 
 // Global Error Handler — log the full error, never leak internals to clients
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -113,6 +120,11 @@ rescheduleSync().catch(err => {
 // ─── Daily 6:00 PM Bin Reset Scheduler ─────────────────────────────────
 rescheduleBinReset().catch(err => {
   console.error('[Server] Failed to initialize bin reset scheduler:', err.message);
+});
+
+// ─── ATLAS Campus Map Auto-Sync Scheduler (AUTO, default every 15 min) ──
+rescheduleAtlasSync().catch(err => {
+  console.error('[Server] Failed to initialize ATLAS sync scheduler:', err.message);
 });
 
 app.listen(PORT, () => {

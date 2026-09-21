@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { Role } from '../../types';
 import { SortLogo } from '../common/SortLogo';
+import { ProfileMenu } from '../common/ProfileMenu';
+import { filterNotificationsForUser } from '../../utils/notifications';
 import {
   LayoutDashboard,
   Truck,
@@ -13,13 +15,10 @@ import {
   RefreshCw,
   Bell,
   ChevronDown,
-  ShieldCheck,
   LogOut,
-  Shield,
   ChevronRight,
   Menu,
   X,
-  Wrench,
   Trash2,
   PackageCheck,
   Scale,
@@ -31,6 +30,8 @@ import {
   ClipboardList,
   CalendarClock,
   FileSpreadsheet,
+  Gift,
+  Recycle,
 } from 'lucide-react';
 
 // ── Nav item definitions ──────────────────────────────────────────────────────
@@ -45,6 +46,7 @@ interface NavItem {
 const MRF_NAV_ITEMS: NavItem[] = [
   { id: 'overview',       label: 'Overview',         icon: LayoutDashboard, roles: ['MRF'] },
   { id: 'dispatches',     label: 'Dispatches',       icon: Truck,           roles: ['MRF'] },
+  { id: 'mrf-walkin',     label: 'Walk-in Station',  icon: Recycle,         roles: ['MRF'] },
   { id: 'mrf-direct',     label: 'Direct Pickup',    icon: PackageCheck,    roles: ['MRF'] },
   { id: 'mrf-assets',     label: 'Asset Ledger',     icon: FileSpreadsheet, roles: ['MRF'] },
   { id: 'mrf-scrap',      label: 'Scrap Stock',      icon: Trash2,          roles: ['MRF'] },
@@ -67,6 +69,7 @@ export const ADMIN_SECTIONS = [
     items: [
       { id: 'admin-reports', label: 'Reports', icon: FileText },
       { id: 'admin-collections', label: 'Collections', icon: Scale },
+      { id: 'admin-rewards', label: 'Rewards', icon: Gift },
       { id: 'admin-bin-map', label: 'Bin Map', icon: MapPin },
       { id: 'admin-campus-news', label: 'Campus News', icon: Newspaper },
     ],
@@ -112,7 +115,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { currentUser, changeRole, logout, reports, notifications, dismissNotification } = useMockData();
+  const { currentUser, logout, reports, notifications, dismissNotification } = useMockData();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -129,18 +132,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   const isMRF   = currentUser.role === 'MRF';
   const navItems = isMRF ? MRF_NAV_ITEMS : [];
-  const adminNotifications = notifications.filter(n => n.recipientId === 'admin' || n.recipientId === currentUser.id);
+  const adminNotifications = filterNotificationsForUser(notifications, currentUser);
   const unreadCount = adminNotifications.length;
   const subtitle  = isMRF ? 'MRF Terminal' : 'Admin Console';
   const roleColor = isMRF
     ? 'bg-sky-500 shadow-sky-500/20'
     : 'bg-violet-600 shadow-violet-600/20';
-
-  const handleRoleToggle = (role: Role) => {
-    changeRole(role);
-    setProfileDropdownOpen(false);
-    setActiveTab('overview');
-  };
 
   return (
     <div className="h-screen max-h-screen bg-[#F9F3F0] text-[#00271D] flex flex-col font-sans relative overflow-hidden">
@@ -158,6 +155,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {/* Mobile hamburger */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={sidebarOpen}
             className="p-1.5 rounded-lg text-[#00271D]/50 hover:text-[#00271D] hover:bg-[#00271D]/5 md:hidden transition-colors"
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -183,7 +182,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </button>
 
             {notificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50">
                 <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                   <h4 className="font-bold text-xs text-[#00271D] uppercase tracking-wider">Alerts & Actions</h4>
                   <div className="flex items-center gap-2">
@@ -259,48 +258,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </button>
 
             {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Active Account</p>
-                  <p className="font-bold text-sm text-[#00271D] mt-0.5">{currentUser.name}</p>
-                  <p className="text-[10px] text-gray-400 font-mono">{currentUser.employeeId}</p>
-                </div>
-
-                <div className="p-3">
-                  <p className="flex items-center gap-1.5 text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-2">
-                    <Wrench size={10} /> Demo Role Switcher
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {(['STUDENT', 'TEACHER', 'MRF', 'ADMIN'] as Role[]).map(role => (
-                      <button
-                        key={role}
-                        onClick={() => handleRoleToggle(role)}
-                        className={`text-[10px] font-bold p-1.5 rounded-lg border transition-all cursor-pointer ${
-                          currentUser.role === role
-                            ? 'bg-[#00A77C] text-white border-[#00A77C]'
-                            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        {role}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="px-3 pb-2 flex items-center justify-center gap-1 text-[9px] text-gray-400 font-semibold border-t border-gray-100 pt-2">
-                  <ShieldCheck size={10} className="text-[#00A77C]" />
-                  RBAC Simulation
-                </div>
-
-                <div className="p-1 border-t border-gray-100">
-                  <button
-                    onClick={() => logout()}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
-                  >
-                    <LogOut size={13} />
-                    Sign Out
-                  </button>
-                </div>
+              <div className="absolute right-0 z-50 mt-2">
+                <ProfileMenu
+                  user={currentUser}
+                  onClose={() => setProfileDropdownOpen(false)}
+                  onLogout={() => logout()}
+                />
               </div>
             )}
           </div>

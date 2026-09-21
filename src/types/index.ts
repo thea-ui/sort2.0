@@ -118,6 +118,129 @@ export interface PointHistory {
   timestamp: string;
 }
 
+// ─── Walk-in Bottle Turnovers & Prize Claims ─────────────────────────
+
+export type RewardType = 'POINTS' | 'PHYSICAL';
+export type RewardClaimStatus = 'UNLOCKED' | 'REQUESTED' | 'RELEASED' | 'CANCELLED';
+
+export interface WalkInStudentOption {
+  id: string;
+  name: string;
+  gradeLevel?: string | null;
+  sectionName?: string | null;
+  points: number;
+  syncSource?: string;
+}
+
+export interface WalkInTurnoverItem {
+  bottleMl: number;
+  quantity: number;
+  grams: number;
+}
+
+export interface WalkInTurnover {
+  id: string;
+  studentId: string;
+  recordedByName?: string;
+  totalMl: number;
+  totalBottles: number;
+  totalGrams: number;
+  pointsAwarded: number;
+  ratePer500ml: number;
+  notes?: string | null;
+  createdAt: string;
+  items: WalkInTurnoverItem[];
+  student?: {
+    id: string;
+    name: string;
+    gradeLevel?: string | null;
+    sectionName?: string | null;
+  };
+}
+
+export interface WalkInNextReward {
+  id: string;
+  code: string;
+  title: string;
+  iconName: string;
+  rewardType: RewardType;
+  requiredGrams: number;
+  remainingGrams: number;
+}
+
+export interface WalkInProgress {
+  yearGrams: number;
+  yearMl: number;
+  yearBottles: number;
+  nextReward: WalkInNextReward | null;
+}
+
+export interface UnlockedClaimSummary {
+  claimId: string;
+  claimCode: string;
+  reward: {
+    id: string;
+    code: string;
+    title: string;
+    iconName: string;
+    rewardType: RewardType;
+    requiredGrams: number;
+  };
+}
+
+export interface RecordWalkInInput {
+  studentId: string;
+  items: { bottleMl: number; quantity: number }[];
+  notes?: string;
+  idempotencyKey: string;
+}
+
+export interface RecordWalkInResult {
+  success: boolean;
+  alreadyProcessed: boolean;
+  turnover: WalkInTurnover;
+  student: { id: string; name: string; points: number };
+  progress: WalkInProgress;
+  newlyUnlocked: UnlockedClaimSummary[];
+}
+
+export interface Reward {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  iconName: string;
+  rewardType: RewardType;
+  requiredGrams: number;
+  pointsValue: number;
+  stock: number | null;
+  sortOrder?: number;
+  isActive?: boolean;
+  claimsCount?: number;
+  progressGrams?: number;
+  unlocked?: boolean;
+  claim?: RewardClaim | null;
+}
+
+export interface RewardClaim {
+  id: string;
+  status: RewardClaimStatus;
+  claimCode: string;
+  gramsAtUnlock: number;
+  unlockedAt: string;
+  requestedAt?: string | null;
+  releasedAt?: string | null;
+  notes?: string | null;
+  reward?: Reward;
+  student?: {
+    id: string;
+    name: string;
+    gradeLevel?: string | null;
+    sectionName?: string | null;
+    points?: number;
+  };
+}
+
 export interface Offense {
   id: string;
   userId: string;
@@ -148,6 +271,8 @@ export interface SystemSettings {
   defaultVendorName: string;
   binResetEnabled: boolean;
   binResetTime: string;
+  walkInPointsPer500ml?: number;
+  walkInEnabled?: boolean;
 }
 
 export interface CalendarEvent {
@@ -212,8 +337,21 @@ export interface AppNotification {
   title: string;
   message: string;
   reportId: string;
-  recipientId: string;
+  /** Exact user this notification belongs to. Never use 'admin' or a role name. */
+  recipientId?: string;
+  /** Role-wide delivery (e.g. the ADMIN review queue). Visible only to that role. */
+  recipientRole?: Role;
   timestamp: string;
+}
+
+/** Payload accepted by the notification store before id/timestamp are assigned. */
+export interface NotificationDraft {
+  type: NotificationType;
+  title: string;
+  message: string;
+  reportId: string;
+  recipientId?: string;
+  recipientRole?: Role;
 }
 
 export interface VerifyAward {
@@ -327,6 +465,43 @@ export interface IssueTermResult {
   }[];
   alreadyIssued: number;
   standings: TermStanding[];
+}
+
+// ─── ATLAS campus map mirror ──────────────────────────────────────────
+
+export interface AtlasRoom {
+  atlasId: number;
+  name: string;
+  floor: number;
+  type: string;
+  capacity: number | null;
+  isTeachingSpace: boolean;
+  isSharedFacility: boolean;
+  floorPosition: number | null;
+  features?: unknown;
+}
+
+export interface AtlasBuilding {
+  atlasId: number;
+  name: string;
+  shortCode: string | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string | null;
+  rotation: number;
+  floorCount: number;
+  isTeachingBuilding: boolean;
+  rooms: AtlasRoom[];
+}
+
+export interface AtlasMapPayload {
+  schoolId: number;
+  syncedAt: string | null;
+  stale: boolean;
+  campusImageUrl: string | null;
+  buildings: AtlasBuilding[];
 }
 
 

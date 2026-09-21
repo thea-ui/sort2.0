@@ -14,9 +14,11 @@ import {
   Navigation,
   Target,
   Map as MapIcon,
+  Maximize2,
 } from 'lucide-react';
 import { Report } from '../../../types';
 import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
+import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
 
 interface TeacherReportHistoryTabProps {
   timelineReports: Report[];
@@ -48,6 +50,7 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
   STATUS_LEFT,
 }) => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
@@ -147,9 +150,14 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <span className={`rounded-full border px-3 py-0.5 text-[8px] font-black uppercase tracking-wider ${STATUS_BADGE[ds]}`}>{ds}</span>
                     {rep.imageUrl && (
-                      <div className="h-9 w-14 overflow-hidden rounded-xl border border-[#00271D]/10 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setLightboxSrc(rep.imageUrl ?? null)}
+                        aria-label="View evidence photo full screen"
+                        className="h-9 w-14 overflow-hidden rounded-xl border border-[#00271D]/10 shadow-2xs cursor-zoom-in"
+                      >
                         <img src={rep.imageUrl} alt="Evidence" className="h-full w-full object-cover" />
-                      </div>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -174,8 +182,8 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
           selectedReport.description.toLowerCase().includes('[custom debris pin]');
 
         return (
-          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
-            <div className="bg-white border border-gray-200 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 relative my-auto max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+            <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl space-y-4 relative my-auto max-h-[92dvh] overflow-y-auto">
               
               <button
                 onClick={() => setSelectedReport(null)}
@@ -263,9 +271,21 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
               {/* Photo Evidence & Description */}
               <div className="space-y-2">
                 {selectedReport.imageUrl && (
-                  <div className="rounded-2xl overflow-hidden border border-gray-200 h-44 bg-gray-100 relative shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxSrc(selectedReport.imageUrl ?? null)}
+                    className="group relative block w-full rounded-2xl overflow-hidden border border-gray-200 h-44 sm:h-52 bg-gray-100 shadow-inner cursor-zoom-in"
+                  >
                     <img src={selectedReport.imageUrl} alt="Waste evidence" className="w-full h-full object-cover" />
-                  </div>
+                    <span className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-[10px] font-mono text-white backdrop-blur-xs">
+                      <Maximize2 size={11} /> Tap to view full screen
+                    </span>
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-black/60 p-2.5 text-white">
+                        <Maximize2 size={18} />
+                      </span>
+                    </span>
+                  </button>
                 )}
 
                 <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 text-xs text-gray-800 space-y-1">
@@ -288,6 +308,13 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
           </div>
         );
       })()}
+
+      <PhotoLightbox
+        src={lightboxSrc}
+        alt="Waste report evidence full view"
+        caption="Photo Evidence"
+        onClose={() => setLightboxSrc(null)}
+      />
 
     </div>
   );

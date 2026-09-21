@@ -30,7 +30,10 @@ export const BlueprintAdjustControls: React.FC<BlueprintAdjustControlsProps> = (
     <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 text-xs shadow-sm">
       <div className="flex items-center gap-2 text-amber-800 font-bold min-w-0">
         <Move size={15} className="text-amber-600 shrink-0" />
-        <span className="truncate">Adjust the blueprint: drag to position, scroll or use the slider to zoom, then save.</span>
+        <span className="truncate">
+          Adjusting the fallback background — ATLAS stays the live base after saving. Drag to
+          position, scroll or use the slider to zoom.
+        </span>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -51,7 +54,10 @@ export const BlueprintAdjustControls: React.FC<BlueprintAdjustControlsProps> = (
           <button type="button" onClick={() => zoomBy(0.1)} className="p-1 rounded-lg text-amber-700 hover:bg-amber-100 cursor-pointer" title="Zoom in">
             <ZoomIn size={14} />
           </button>
-          <span className="text-[10px] font-black text-amber-800 w-10 text-center tabular-nums">
+          <span
+            data-testid="blueprint-zoom-level"
+            className="text-[10px] font-black text-amber-800 w-10 text-center tabular-nums"
+          >
             {Math.round(transform.scale * 100)}%
           </span>
         </div>

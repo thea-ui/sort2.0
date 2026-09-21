@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { User, Challenge, Report, SystemSettings } from '../../../types';
 import { CertificateVault } from './CertificateVault';
+import { WalkInActivityCard } from './WalkInActivityCard';
+import { RewardLadderCard } from './RewardLadderCard';
 
 interface GamificationTabProps {
   currentUser: User;
@@ -264,6 +266,10 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
           })}
         </div>
       </div>
+
+      {/* Walk-in Bottle Turn-ins & Milestone Prizes */}
+      <WalkInActivityCard />
+      <RewardLadderCard />
 
     </div>
   );

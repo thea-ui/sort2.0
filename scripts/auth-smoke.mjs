@@ -91,12 +91,29 @@ if (existsSync(localCreds) && cfg.accounts?.student?.identifier && !cfg.accounts
     await check('student cannot mutate market', 'PATCH', '/api/market/stocks/pet_plastic', [403], { token: student.token, body: {} });
     await check('student cannot mutate bins', 'PATCH', '/api/bins/00000000-0000-0000-0000-000000000000', [403], { token: student.token, body: {} });
     await check('student PII-stripped user list', 'GET', '/api/users', [200], { token: student.token, forbidPii: true });
+    // Students may view the campus map but never file asset reports (403, no data written).
+    await check('student cannot file asset reports', 'POST', '/api/reports', [403], {
+      token: student.token,
+      body: {
+        title: 'Broken chair (smoke)',
+        description: '[PILLAR: FURNITURE] Broken chair',
+        coordinates: { lat: 14.6, lng: 120.98 },
+        locationName: 'ATLAS Smoke Room',
+      },
+    });
     } else if (student.status === 403) {
       // Correct rollover behaviour: this credential belongs to a learner who has
       // been archived (ALUMNI / NOT_ENROLLED) and must not be able to sign in.
       warnings.push({
         name: 'student login',
         detail: '403 - archived learner credential (expected after rollover); supply an active student to restore E2E coverage',
+      });
+    } else if (student.status === 429) {
+      // Environmental: the auth login limiter counts failed attempts. Frequent
+      // smoke runs can exhaust the 15-minute budget; this is not a regression.
+      warnings.push({
+        name: 'student login',
+        detail: '429 - login rate limiter active (frequent test runs); role checks degraded to warnings',
       });
     } else {
     // Student login is our known-good reference — a failure here is a real regression.
@@ -138,4 +155,7 @@ for (const w of warnings) {
 console.log('='.repeat(64));
 console.log(`${results.length - failures}/${results.length} checks passed${warnings.length ? `, ${warnings.length} warning(s)` : ''}`);
 
-process.exit(failures > 0 ? 1 : 0);
+// Exit via exitCode (not process.exit) so undici keep-alive sockets can close
+// first; a hard exit races libuv teardown on Windows and aborts with a
+// corrupted exit code.
+process.exitCode = failures > 0 ? 1 : 0;
