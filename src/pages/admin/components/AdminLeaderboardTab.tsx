@@ -1,28 +1,42 @@
-import React, { useState } from 'react';
-import { Trophy, Search, RefreshCw, Flame, Award, Medal } from 'lucide-react';
+import React from 'react';
+import { Award, Flame } from 'lucide-react';
 import { Report, User } from '../../../types';
+import { DataTable } from '../../../components/data-table';
+import type { TableColumn } from '../../../components/data-table';
+import { PageHeader } from '../../../components/layout/PageHeader';
 
 interface AdminLeaderboardTabProps {
   users: User[];
   reports?: Report[];
 }
 
-export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({ users, reports = [] }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+interface LeaderboardRow {
+  id: string;
+  rank: number;
+  name: string;
+  role: string;
+  dept: string;
+  reports: number;
+  points: number;
+}
 
+export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
+  users,
+  reports = [],
+}) => {
   // Sort student users dynamically by points descending
   const studentUsers = [...users]
-    .filter(u => u.role === 'STUDENT')
-    .map(u => {
+    .filter((u) => u.role === 'STUDENT')
+    .map((u) => {
       const userReports = reports.filter(
-        r => r.reporterId === u.id || r.reporterName?.toLowerCase() === u.name?.toLowerCase()
+        (r) => r.reporterId === u.id || r.reporterName?.toLowerCase() === u.name?.toLowerCase(),
       );
       const section = (u as any).sectionName || u.classroomSection || '';
       const grade = (u as any).gradeLevel || '';
       return {
         id: u.id,
         name: u.name,
-        role: grade ? `${grade} - ${section}` : (section || 'Student'),
+        role: grade ? `${grade} - ${section}` : section || 'Student',
         dept: grade && section ? `${grade} — ${section}` : grade || section || 'N/A',
         reports: userReports.length,
         points: u.points || 0,
@@ -30,53 +44,85 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({ users,
     })
     .sort((a, b) => b.points - a.points || b.reports - a.reports);
 
-  const leaderboardData = studentUsers.slice(0, 10).map((item, idx) => ({
-    rank: idx + 1,
-    ...item,
-  }));
-
-  const filtered = leaderboardData.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.dept.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const leaderboardData: LeaderboardRow[] = studentUsers
+    .slice(0, 10)
+    .map((item, idx) => ({ rank: idx + 1, ...item }));
 
   const top1 = leaderboardData[0];
   const top2 = leaderboardData[1];
   const top3 = leaderboardData[2];
 
+  const columns: TableColumn<LeaderboardRow>[] = [
+    {
+      key: 'rank',
+      header: 'Rank',
+      skeleton: 'number',
+      cell: (row) => (
+        <span
+          className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-[11px] font-black ${
+            row.rank === 1
+              ? 'bg-amber-500 text-white'
+              : row.rank === 2
+                ? 'bg-[var(--primary)] text-white'
+                : row.rank === 3
+                  ? 'bg-amber-700 text-white'
+                  : 'bg-[var(--primary)]/10 text-[var(--text-strong)]/60'
+          }`}
+        >
+          {row.rank}
+        </span>
+      ),
+    },
+    {
+      key: 'student',
+      header: 'Student',
+      skeleton: 'name',
+      cell: (row) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] font-bold flex items-center justify-center text-xs">
+            {row.name.charAt(0)}
+          </div>
+          <span className="font-bold text-[var(--text-strong)]">{row.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'dept',
+      header: 'Grade Level',
+      skeleton: 'text',
+      cell: (row) => (
+        <span className="text-[var(--text-strong)]/60 font-medium">{row.dept}</span>
+      ),
+    },
+    {
+      key: 'reports',
+      header: 'Reports',
+      align: 'center',
+      skeleton: 'number',
+      cell: (row) => (
+        <span className="font-semibold text-[var(--text-strong)]/70">{row.reports}</span>
+      ),
+    },
+    {
+      key: 'points',
+      header: 'Points',
+      align: 'right',
+      skeleton: 'number',
+      cell: (row) => (
+        <span className="font-black text-amber-600 inline-flex items-center gap-1">
+          <Flame size={14} fill="currentColor" />
+          {row.points}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-[var(--text-strong)] tracking-tight flex items-center gap-2">
-            <Trophy className="text-amber-500" size={24} />
-            Eco-Points Leaderboard
-          </h2>
-          <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
-            Top student eco-champions ranked by verified report points
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-64">
-            <Search size={14} className="absolute left-3 top-3 text-[var(--text-strong)]/40" />
-            <input
-              type="text"
-              placeholder="Search students..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-white/90 border border-white/80 rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--accent)] shadow-sm"
-            />
-          </div>
-          <button
-            type="button"
-            className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-500 hover:text-[var(--text-strong)] shadow-sm cursor-pointer"
-          >
-            <RefreshCw size={14} />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Eco-Points Leaderboard"
+        description="Top student eco-champions ranked by verified report points"
+      />
 
       {/* Points System Banner */}
       <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex flex-wrap items-center gap-3 text-xs">
@@ -93,14 +139,13 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({ users,
         <span className="px-3 py-1 bg-orange-100 text-orange-800 font-bold rounded-full text-[11px] flex items-center gap-1">
           <Flame size={12} className="text-orange-600 fill-orange-600" /> 5 pts — 3rd reporter
         </span>
-        <span className="px-3 py-1 bg-gray-100 text-gray-600 font-medium rounded-full text-[11px]">
+        <span className="px-3 py-1 bg-[var(--primary)]/5 text-[var(--text-strong)]/60 font-medium rounded-full text-[11px]">
           4th+ reporter — no points
         </span>
       </div>
 
       {/* Podium Cards (Rank 2, Rank 1, Rank 3) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-        {/* Rank 2 */}
         {top2 && (
           <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm text-center space-y-2 relative">
             <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white font-black text-xs flex items-center justify-center mx-auto -mt-8 border-2 border-white shadow-md">
@@ -115,7 +160,6 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({ users,
           </div>
         )}
 
-        {/* Rank 1 Center Podium */}
         {top1 && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 shadow-md text-center space-y-2 relative md:-translate-y-2">
             <div className="w-9 h-9 rounded-full bg-amber-500 text-white font-black text-sm flex items-center justify-center mx-auto -mt-10 border-2 border-white shadow-md">
@@ -130,7 +174,6 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({ users,
           </div>
         )}
 
-        {/* Rank 3 */}
         {top3 && (
           <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm text-center space-y-2 relative">
             <div className="w-8 h-8 rounded-full bg-amber-700 text-white font-black text-xs flex items-center justify-center mx-auto -mt-8 border-2 border-white shadow-md">
@@ -146,52 +189,16 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({ users,
         )}
       </div>
 
-      {/* Leaderboard Table */}
-      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-[var(--primary)]/8 text-[var(--text-strong)]/40 font-bold uppercase tracking-wider bg-gray-50/50">
-                <th className="py-3.5 px-6">Rank</th>
-                <th className="py-3.5 px-6">Student</th>
-                <th className="py-3.5 px-6">Grade Level</th>
-                <th className="py-3.5 px-6 text-center">Reports</th>
-                <th className="py-3.5 px-6 text-right">Points</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--primary)]/5">
-              {filtered.map(row => (
-                <tr key={row.rank} className="hover:bg-amber-500/5 transition-colors">
-                  <td className="py-4 px-6">
-                    <span className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-[11px] font-black ${
-                      row.rank === 1 ? 'bg-amber-500 text-white' :
-                      row.rank === 2 ? 'bg-[var(--primary)] text-white' :
-                      row.rank === 3 ? 'bg-amber-700 text-white' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      {row.rank}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 font-bold text-[var(--text-strong)]">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] font-bold flex items-center justify-center text-xs">
-                        {row.name.charAt(0)}
-                      </div>
-                      <span>{row.name}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 text-[var(--text-strong)]/60 font-medium">{row.dept}</td>
-                  <td className="py-4 px-6 text-center font-semibold text-[var(--text-strong)]/70">{row.reports}</td>
-                  <td className="py-4 px-6 text-right font-black text-amber-600 flex items-center justify-end gap-1">
-                    <Flame size={14} fill="currentColor" />
-                    <span>{row.points}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={leaderboardData}
+        rowKey={(row) => row.id}
+        searchable
+        searchPlaceholder="Search students..."
+        searchText={(row) => `${row.name} ${row.dept}`}
+        emptyTitle="No students on the leaderboard yet"
+        emptyHint="Points appear here once student reports are verified."
+      />
     </div>
   );
 };

@@ -10,10 +10,10 @@ interface RewardClaimQueueProps {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  REQUESTED: 'bg-[var(--gold)]/10 text-[#8a6b12] border-[var(--gold)]/30',
+  REQUESTED: 'bg-[var(--gold)]/10 text-[var(--gold)] border-[var(--gold)]/30',
   UNLOCKED: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25',
   RELEASED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  CANCELLED: 'bg-gray-100 text-gray-500 border-gray-200',
+  CANCELLED: 'bg-[var(--primary)]/5 text-[var(--text-strong)]/40 border-[var(--primary)]/10',
 };
 
 export const RewardClaimQueue: React.FC<RewardClaimQueueProps> = ({ claims, busyId, onRelease, onCancel }) => {

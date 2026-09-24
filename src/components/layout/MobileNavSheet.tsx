@@ -27,7 +27,7 @@ export const MobileNavSheet: React.FC<MobileNavSheetProps> = ({ open, onClose, t
   if (!open) return null;
 
   return (
-    <div className="md:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="lg:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-xs" onClick={onClose} />
 
       <div

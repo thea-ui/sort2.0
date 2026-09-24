@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 @import "tailwindcss";
 
@@ -13,8 +14,8 @@
   --gold: #C69B26;
   --text-primary: #00271D;
   --link: #00A77C;
-  --font-body: 'Tenon', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-heading: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Runtime-overridable brand derivatives (ThemeProvider -> /api/settings/public).
      Static values mirror the default brand exactly so pre-JS paint is unchanged. */
@@ -29,11 +30,24 @@
   --secondary-rgb: 0, 167, 124;
   --accent-rgb: 0, 167, 124;
   --gold-rgb: 198, 155, 38;
+  /* Approved vibrant indicator hues (AGENTS.md) — tokenized so modules stop
+     hardcoding bracket hex. Use only for their designated modules. */
+  --action: #FF5722;
+  --impact: #10B981;
+  --bin-map: #0091EA;
+  /* Static pre-JS focus ring (ThemeProvider re-derives it from the tenant accent). */
+  --ring: #00A77C;
+  /* Static pre-JS shell accent (ThemeProvider overrides both from tenant branding). */
+  --theme-primary: #00271D;
+  --theme-primary-rgb: 0, 39, 29;
   --primary-color: #00271D;
   --secondary-color: #00A77C;
   --accent-color: #00A77C;
   --text-color: #ffffff;
   --bg-color: #F9F3F0;
+  /* Static pre-JS default; ThemeProvider derives the live value from the tenant
+     primary (brand text when dark, neutral near-black when light). See
+     UI_POLISH_PLAN.md §2.4. */
   --text-strong: #111827;
 }
 
@@ -66,7 +80,7 @@
 
 @layer base {
   body {
-    font-family: 'Tenon', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #F9F3F0;
     color: var(--text-strong);
     font-size: 16px;
@@ -75,14 +89,14 @@
   }
 
   h1 {
-    font-family: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 72px;
     line-height: 1.1;
     color: var(--text-strong);
   }
 
   h2 {
-    font-family: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 32px;
     line-height: 1.25;
     color: var(--text-strong);
@@ -156,6 +170,31 @@
   background: rgba(16, 185, 129, 0.55);
 }
 
+/* ── Application shell (sidebar + topbar handoff) ─────────────────────── */
+/* Sidebar nav rail: 4px transparent-track scrollbar instead of the dark
+   global one, which reads as a smudge on the #fafafa surface. */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 /* Calendar styling overrides for standard appearance */
 .custom-calendar-cell {
   aspect-ratio: 1;
@@ -189,8 +228,42 @@
   animation: sheet-up 0.22s ease-out;
 }
 
+/* Entrance motion (SMART parity): these classes were used across the app but
+   had no keyframes, so every entrance animation silently did nothing. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes scale-up {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-scale-up {
+  animation: scale-up 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-sheet-up {
+  .animate-sheet-up,
+  .animate-fade-in,
+  .animate-scale-up {
     animation: none;
   }
 }

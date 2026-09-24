@@ -101,18 +101,28 @@ for (const role of ROLES) {
   await page.waitForSelector('nav', { timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(1200);
 
-  const navCount = await page.locator('nav button').count();
+  const navButtons = page.locator('nav button:visible');
+  const navCount = await navButtons.count();
   const roleReport = { tabs: [], consoleErrors };
+  console.log(`\n${role}: auditing ${navCount} nav destinations`);
 
   for (let i = 0; i < navCount; i++) {
-    const button = page.locator('nav button').nth(i);
-    const label = ((await button.textContent()) || `tab-${i}`).trim().replace(/\s+/g, ' ').slice(0, 40);
+    const button = navButtons.nth(i);
+    let label = `tab-${i}`;
     try {
+      // Both reads and clicks live in the try: a click can re-render the nav
+      // (e.g. Settings expands its submenu), invalidating earlier refs.
+      label = ((await button.textContent({ timeout: 3000 })) || label)
+        .trim()
+        .replace(/\s+/g, ' ')
+        .slice(0, 40);
       await button.click({ timeout: 5000 });
       await page.waitForTimeout(700);
     } catch {
+      console.log(`  [${i}] ${label} - skipped (unstable)`);
       continue;
     }
+    console.log(`  [${i}] ${label}`);
     const slug = `${role.toLowerCase()}-${String(i).padStart(2, '0')}-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
     await page.screenshot({ path: join(OUT_DIR, `${slug}.png`), fullPage: false });
     const analysis = await page.evaluate(ANALYZE, OFF_BRAND_HUES);
@@ -126,6 +136,7 @@ for (const role of ROLES) {
 writeFileSync(join(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
 
 console.log('\nOff-brand color occurrences (blue/violet/purple/pink families):');
+console.log('(whitelisted: Bin Map / Facilities indicator #0091EA and its sky-blue family)');
 let total = 0;
 for (const [role, data] of Object.entries(report)) {
   const counts = {};

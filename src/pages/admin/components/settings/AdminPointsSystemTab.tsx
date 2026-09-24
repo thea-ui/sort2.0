@@ -12,9 +12,9 @@ interface PointRuleItem {
 }
 
 const DEFAULT_POINT_RULES: PointRuleItem[] = [
-  { id: 'p-1', rank: 1, title: '1st Reporter', pointsAwarded: 15, description: '🔥 15 points awarded' },
-  { id: 'p-2', rank: 2, title: '2nd Reporter', pointsAwarded: 10, description: '🔥 10 points awarded' },
-  { id: 'p-3', rank: 3, title: '3rd Reporter', pointsAwarded: 5, description: '🔥 5 points awarded' },
+  { id: 'p-1', rank: 1, title: '1st Reporter', pointsAwarded: 15, description: '15 points awarded' },
+  { id: 'p-2', rank: 2, title: '2nd Reporter', pointsAwarded: 10, description: '10 points awarded' },
+  { id: 'p-3', rank: 3, title: '3rd Reporter', pointsAwarded: 5, description: '5 points awarded' },
   { id: 'p-4', rank: 4, title: '4th+ Reporter', pointsAwarded: 0, description: 'No points awarded' },
 ];
 
@@ -36,7 +36,7 @@ export const AdminPointsSystemTab: React.FC = () => {
 
     const id = editingRule.id;
     const pointsAwarded = Number(editingRule.pointsAwarded);
-    const description = pointsAwarded > 0 ? `🔥 ${pointsAwarded} points awarded` : 'No points awarded';
+    const description = pointsAwarded > 0 ? `${pointsAwarded} points awarded` : 'No points awarded';
 
     setPointRules(prev => prev.map(r => r.id === id ? { ...r, pointsAwarded, description } : r));
     setEditingRule(null);

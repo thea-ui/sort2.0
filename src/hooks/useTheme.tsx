@@ -152,8 +152,10 @@ export function resolveThemeVariables(colors: ThemeColors): Record<string, strin
     '--on-secondary': onSecondary,
     '--on-accent': onAccent,
 
-    // Neutral near-black used for headings/body text so the brand color stays
-    // on surfaces, buttons and active states instead of tinting all copy.
+    // Headings/body copy are always a neutral near-black. Deriving this from
+    // the brand primary made every label inherit the tenant hue (e.g. a red
+    // EnrollPro primary turned the whole console red), which read as errors.
+    // Brand color still drives buttons, links, badges and accents below.
     '--text-strong': '#111827',
 
     // Tailwind-facing aliases

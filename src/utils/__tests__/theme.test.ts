@@ -61,6 +61,13 @@ describe('resolveThemeVariables', () => {
     expect(vars['--accent-dark']).toBe('#dada00');
   });
 
+  it('keeps --text-strong a neutral near-black regardless of the tenant primary', () => {
+    // Regression: a dark red EnrollPro primary used to tint ALL copy red.
+    expect(resolveThemeVariables({ ...defaultColors, primary: '#00271D' })['--text-strong']).toBe('#111827');
+    expect(resolveThemeVariables({ ...defaultColors, primary: '#f1f5f9' })['--text-strong']).toBe('#111827');
+    expect(resolveThemeVariables({ ...defaultColors, primary: '#861313' })['--text-strong']).toBe('#111827');
+  });
+
   it('falls back to the primary brand color when the tenant accent is achromatic', () => {
     const vars = resolveThemeVariables({ ...defaultColors, primary: '#7f1d1d', accent: '#a8a8a8' });
     expect(vars['--accent']).toBe('#7f1d1d');

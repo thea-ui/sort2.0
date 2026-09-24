@@ -49,8 +49,8 @@ const CAT_META: Record<
   { label: string; short: string; bg: string; border: string; text: string; Icon: React.FC<{ size?: number; className?: string }> }
 > = {
   BIODEGRADABLE: { label: 'Biodegradable', short: 'Bio', bg: 'bg-emerald-500', border: 'border-emerald-400', text: 'text-emerald-600', Icon: Droplets },
-  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', short: 'Non', bg: 'bg-rose-500', border: 'border-rose-400', text: 'text-[#FF5722]', Icon: PackageX },
-  RECYCLABLE: { label: 'Recyclable', short: 'Rec', bg: 'bg-sky-500', border: 'border-sky-400', text: 'text-[#0091EA]', Icon: Recycle },
+  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', short: 'Non', bg: 'bg-rose-500', border: 'border-rose-400', text: 'text-[var(--action)]', Icon: PackageX },
+  RECYCLABLE: { label: 'Recyclable', short: 'Rec', bg: 'bg-sky-500', border: 'border-sky-400', text: 'text-[var(--bin-map)]', Icon: Recycle },
 };
 
 export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
@@ -141,7 +141,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
 
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shrink-0">
-            <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-[var(--impact)] animate-pulse" />
             Live Sync Active
           </span>
         </div>

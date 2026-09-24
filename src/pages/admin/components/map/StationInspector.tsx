@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Trash2, SlidersHorizontal, AlertTriangle, Droplets, PackageX, Recycle } from 'lucide-react';
+import { AlertTriangle, Building2, Droplets, Edit2, PackageX, Recycle, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { BinLocationItem, CategoryStreamType, BinStreamState } from '../../../../types';
 
 const CAT_META: Record<CategoryStreamType, { label: string; bg: string; desc: string; Icon: React.FC<{ size?: number; className?: string }> }> = {
@@ -33,8 +33,8 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
 }) => {
   if (!selectedLoc) {
     return (
-      <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm text-center py-12 text-gray-400 space-y-2">
-        <Building2 size={32} className="mx-auto text-gray-300" />
+      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm text-center py-12 text-[var(--text-strong)]/40 space-y-2">
+        <Building2 size={32} className="mx-auto text-[var(--text-strong)]/30" />
         <p className="text-xs font-bold text-[var(--text-strong)]">No Station Selected</p>
         <p className="text-[11px]">Click a pin on the blueprint grid to inspect and manipulate its bins.</p>
       </div>
@@ -154,7 +154,3 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
     </div>
   );
 };
-
-function Building2(props: { size: number; className?: string }) {
-  return <span className={props.className}>🏗️</span>;
-}

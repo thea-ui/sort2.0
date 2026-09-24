@@ -1,5 +1,6 @@
-import React from 'react';
 import {
+  AlertTriangle,
+  Award,
   BarChart2,
   ClipboardList,
   FileSpreadsheet,
@@ -11,6 +12,7 @@ import {
   Newspaper,
   PackageCheck,
   Recycle,
+  RefreshCw,
   Scale,
   Settings,
   Trash2,
@@ -19,35 +21,75 @@ import {
   Truck,
   Users,
 } from 'lucide-react';
+import type { ComponentType } from 'react';
 import type { Role } from '../../types';
+import type { ShellNavGroup } from './AppShell';
 
 export interface NavItem {
   id: string;
   label: string;
-  icon: React.ComponentType<any>;
+  icon: ComponentType<any>;
   roles: Role[];
 }
 
 export interface MobileNavItem {
   id: string;
   label: string;
-  icon: React.ComponentType<any>;
+  icon: ComponentType<any>;
 }
 
-export const MRF_NAV_ITEMS: NavItem[] = [
-  { id: 'overview',       label: 'Overview',         icon: LayoutDashboard, roles: ['MRF'] },
-  { id: 'dispatches',     label: 'Dispatches',       icon: Truck,           roles: ['MRF'] },
-  { id: 'mrf-walkin',     label: 'Walk-in Station',  icon: Recycle,         roles: ['MRF'] },
-  { id: 'mrf-direct',     label: 'Direct Pickup',    icon: PackageCheck,    roles: ['MRF'] },
-  { id: 'mrf-assets',     label: 'Asset Ledger',     icon: FileSpreadsheet, roles: ['MRF'] },
-  { id: 'mrf-scrap',      label: 'Scrap Stock',      icon: Trash2,          roles: ['MRF'] },
-  { id: 'mrf-market',     label: 'Recycle Market',   icon: Scale,           roles: ['MRF'] },
-  { id: 'mrf-history',    label: 'History',          icon: History,         roles: ['MRF'] },
+/**
+ * Settings destinations. Related screens are merged behind one entry with
+ * internal section tabs (13 flat items was too noisy for the sidebar):
+ *   School & Sync    -> Branding, Sync & Integrations, Academic Calendar
+ *   Report Setup     -> Asset Categories, Item Presets, Waste Types,
+ *                       Urgency Levels, Asset Conditions
+ *   Points & Rewards -> Points System, Certificates, Challenges
+ * Legacy ids (e.g. `branding`, `item-presets`) still resolve to the right page
+ * and section in AdminSettingsTab, so old deep links keep working.
+ */
+export const SETTINGS_SUBITEMS = [
+  { id: 'locations', label: 'Locations', icon: MapPin },
+  { id: 'school-sync', label: 'School & Sync', icon: RefreshCw },
+  { id: 'report-setup', label: 'Report Setup', icon: ClipboardList },
+  { id: 'points-rewards', label: 'Points & Rewards', icon: Award },
+  { id: 'danger-zone', label: 'Danger Zone', icon: AlertTriangle },
 ];
 
-export const ADMIN_SECTIONS = [
+/** MRF terminal navigation, grouped for the collapsible sidebar. */
+export const MRF_NAV_GROUPS: ShellNavGroup[] = [
   {
-    group: 'DATA & ANALYTICS',
+    title: 'OPERATIONS',
+    items: [
+      { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+      { id: 'dispatches', label: 'Dispatches', icon: Truck },
+    ],
+  },
+  {
+    title: 'MATERIAL RECOVERY',
+    items: [
+      { id: 'mrf-walkin', label: 'Walk-in Station', icon: Recycle },
+      { id: 'mrf-direct', label: 'Direct Pickup', icon: PackageCheck },
+    ],
+  },
+  {
+    title: 'INVENTORY',
+    items: [
+      { id: 'mrf-assets', label: 'Asset Ledger', icon: FileSpreadsheet },
+      { id: 'mrf-scrap', label: 'Scrap Stock', icon: Trash2 },
+      { id: 'mrf-market', label: 'Recycle Market', icon: Scale },
+    ],
+  },
+  {
+    title: 'RECORDS',
+    items: [{ id: 'mrf-history', label: 'History', icon: History }],
+  },
+];
+
+/** Admin console navigation, grouped for the collapsible sidebar. */
+export const ADMIN_NAV_GROUPS: ShellNavGroup[] = [
+  {
+    title: 'DATA & ANALYTICS',
     items: [
       { id: 'overview', label: 'Overview', icon: BarChart2 },
       { id: 'admin-impact', label: 'Operational Analytics', icon: TrendingUp },
@@ -56,7 +98,7 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    group: 'MANAGEMENT',
+    title: 'MANAGEMENT',
     items: [
       { id: 'admin-reports', label: 'Reports', icon: FileText },
       { id: 'admin-collections', label: 'Collections', icon: Scale },
@@ -66,30 +108,58 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    group: 'ADMINISTRATION',
+    title: 'ADMINISTRATION',
     items: [
       { id: 'admin-users', label: 'Users', icon: Users },
       { id: 'admin-audit-logs', label: 'Audit Logs', icon: ClipboardList },
-      { id: 'admin-settings', label: 'Settings', icon: Settings, hasSubmenu: true },
+      { id: 'admin-settings', label: 'Settings', icon: Settings, children: SETTINGS_SUBITEMS },
     ],
   },
 ];
 
-export const SETTINGS_SUBITEMS = [
-  { id: 'locations', label: 'Locations' },
-  { id: 'academic-calendar', label: 'Academic Calendar' },
-  { id: 'sync-integrations', label: 'Sync & Integrations' },
-  { id: 'branding', label: 'Branding' },
-  { id: 'asset-categories', label: 'Asset Categories' },
-  { id: 'item-presets', label: 'Item Presets' },
-  { id: 'points-system', label: 'Points System' },
-  { id: 'certificates', label: 'Certificates' },
-  { id: 'challenges', label: 'Challenges' },
-  { id: 'waste-types', label: 'Waste Types' },
-  { id: 'urgency-levels', label: 'Urgency Levels' },
-  { id: 'asset-conditions', label: 'Asset Conditions' },
-  { id: 'danger-zone', label: 'Danger Zone' },
-];
+/** Flat MRF item list, kept for callers that only need id/label/icon/roles. */
+export const MRF_NAV_ITEMS: NavItem[] = MRF_NAV_GROUPS.flatMap((group) =>
+  group.items.map((item) => ({
+    id: item.id,
+    label: item.label,
+    icon: item.icon,
+    roles: ['MRF'] as Role[],
+  })),
+);
+
+/** Legacy section shape consumed by older navigation callers. */
+export const ADMIN_SECTIONS = ADMIN_NAV_GROUPS.map((group) => ({
+  group: group.title,
+  items: group.items.map((item) => ({
+    id: item.id,
+    label: item.label,
+    icon: item.icon,
+    hasSubmenu: Boolean(item.children),
+  })),
+}));
+
+/** Tabs that are reachable programmatically but not listed in the sidebar. */
+const PAGE_TITLE_ALIASES: Record<string, string> = {
+  'admin-analytics': 'Overview',
+  'admin-settings': 'Settings',
+  'admin-warnings': 'Warnings & Offenses',
+  'admin-sync': 'Sync Logs',
+};
+
+/** Human-readable page title for the topbar's two-line label stack. */
+export function resolvePageTitle(activeTab: string, isMRF: boolean): string {
+  const groups = isMRF ? MRF_NAV_GROUPS : ADMIN_NAV_GROUPS;
+
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (item.id === activeTab) return item.label;
+      const child = item.children?.find((entry) => entry.id === activeTab);
+      if (child) return child.label;
+    }
+  }
+
+  return PAGE_TITLE_ALIASES[activeTab] ?? (isMRF ? 'MRF Terminal' : 'Admin Console');
+}
 
 /**
  * Bottom-bar destinations per role (short labels for narrow screens). Every

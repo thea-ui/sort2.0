@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Palette, Building2, Save, RefreshCw, Image as ImageIcon, CheckCircle2, AlertTriangle, DownloadCloud } from 'lucide-react';
+import { Palette, Building2, Save, RefreshCw, Image as ImageIcon, DownloadCloud } from 'lucide-react';
 import { apiService } from '../../../../services/api';
-import { useTheme, defaultColors } from '../../../../hooks/useTheme';
+import { useTheme, defaultColors, isAchromaticColor } from '../../../../hooks/useTheme';
 import { SystemSettings } from '../../../../types';
+import { useToast } from '../../../../hooks/useToast';
+import { LoadingState } from '../../../../components/common/LoadingState';
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
@@ -106,11 +108,11 @@ export const AdminBrandingTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pulling, setPulling] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const toast = useToast();
 
   const showToast = (type: 'success' | 'error', message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 4000);
+    if (type === 'success') toast.success(message);
+    else toast.error(message);
   };
 
   const loadSettings = async () => {
@@ -192,29 +194,16 @@ export const AdminBrandingTab: React.FC = () => {
     }
   };
 
+  const previewPrimary = HEX_COLOR.test(form.primaryColor) ? form.primaryColor : defaultColors.primary;
+  const rawAccent = HEX_COLOR.test(form.accentColor) ? form.accentColor : defaultColors.accent;
+  const previewAccent = isAchromaticColor(rawAccent) ? previewPrimary : rawAccent;
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24 text-[var(--text-strong)]/50">
-        <RefreshCw size={20} className="animate-spin mr-2" /> Loading branding...
-      </div>
-    );
+    return <LoadingState label="Loading branding…" />;
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {toast && (
-        <div
-          className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold border ${
-            toast.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-              : 'bg-rose-50 border-rose-200 text-rose-700'
-          }`}
-        >
-          {toast.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-          {toast.message}
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-3">
@@ -310,14 +299,23 @@ export const AdminBrandingTab: React.FC = () => {
             />
           </div>
 
-          <div className="rounded-2xl border border-gray-200 p-5 bg-[var(--background)]">
+          <div className="rounded-2xl border border-[var(--primary)]/10 p-5 bg-[var(--background)]">
             <p className="text-xs font-black text-[var(--text-strong)]/50 uppercase tracking-wider mb-3">Live Preview</p>
             <div className="flex flex-wrap items-center gap-3">
+              {/* Mirrors resolveThemeVariables: a gray/achromatic accent falls
+                  back to the primary brand color, so the preview never shows a
+                  washed-out button that the app would not actually render. */}
               <span
                 className="px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm"
-                style={{ backgroundColor: HEX_COLOR.test(form.accentColor) ? form.accentColor : defaultColors.accent }}
+                style={{ backgroundColor: previewAccent }}
               >
                 Action Button
+              </span>
+              <span
+                className="px-3 py-1.5 rounded-full text-xs font-black text-white shadow-sm"
+                style={{ backgroundColor: previewPrimary }}
+              >
+                PRIMARY
               </span>
               <span
                 className="px-3 py-1.5 rounded-full text-xs font-black border"
@@ -329,10 +327,7 @@ export const AdminBrandingTab: React.FC = () => {
               >
                 GOLD BADGE
               </span>
-              <span
-                className="text-lg font-black"
-                style={{ color: HEX_COLOR.test(form.primaryColor) ? form.primaryColor : defaultColors.primary }}
-              >
+              <span className="text-lg font-black text-[var(--text-strong)]">
                 {form.schoolName || 'School Name'} | SORT
               </span>
             </div>

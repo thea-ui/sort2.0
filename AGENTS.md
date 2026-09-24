@@ -14,7 +14,7 @@ This configuration defines the strict operational rules and engineering guidelin
 ## 3. 🎨 Design & Styling (Official Brand Design Tokens & Guidelines)
 - **STRICT DESIGN TOKENS:**
   - **Background Base:** `#F9F3F0` (with soft organic backdrop waves `#e0f2ec` & `#d1f0e4` for visual depth)
-  - **Main Text / Headings (Primary):** `#00271D` (Rich evergreen)
+  - **Main Text / Headings (Primary):** #111827 (Neutral near-black; fixed regardless of tenant brand - brand color drives buttons/links/badges only. #00271D remains the default brand primary)
   - **Accent / Buttons / Links (Action):** `#00A77C` (Luminous vibrant teal-green)
   - **Secondary / Badges / Ranks (Gold Accent):** `#C69B26` (Saturated green-gold)
   - **Text Primary:** `#00271D` (or `#00A77C` for links/accents)
@@ -33,8 +33,9 @@ This configuration defines the strict operational rules and engineering guidelin
   - **Events:** Vibrant Rose-Pink (`#EC4899`)
   - **Research:** Vibrant Electric Cyan (`#06B6D4`)
 - **TYPOGRAPHY & FONT FAMILY SPECS:**
-  - **Body / Primary Font:** `Tenon` (Fallback: `'Plus Jakarta Sans', sans-serif`)
-  - **Heading Font:** `Korolev` (Fallback: `'Plus Jakarta Sans', sans-serif`)
+  - **Body / Primary Font:** `DM Sans` (Fallback: `system-ui, sans-serif`) — aligned to the SMART design handoff (see `UI_POLISH_PLAN.md` D7)
+  - **Heading Font:** `DM Sans` (Fallback: `system-ui, sans-serif`) — SMART uses one family for both roles
+  - **Mono / Data Font:** `JetBrains Mono` (ledger, timestamps, codes)
   - **Typography Scale:**
     - `h1`: `72px` (line-height 1.1, font-weight 700)
     - `h2`: `32px` (line-height 1.25, font-weight 600)

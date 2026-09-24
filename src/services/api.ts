@@ -300,6 +300,14 @@ export const apiService = {
     });
   },
 
+  syncAcademicTerms: async (): Promise<any> => {
+    return fetchAPI('/sync/terms', { method: 'POST' });
+  },
+
+  getSyncStatus: async (): Promise<any> => {
+    return fetchAPI('/sync/status');
+  },
+
   // Audit Logs
   getAuditLogs: async (limit?: number): Promise<any[]> => {
     return fetchAPI(`/settings/audit-logs${limit ? `?limit=${limit}` : ''}`);

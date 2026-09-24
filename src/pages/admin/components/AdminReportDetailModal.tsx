@@ -108,18 +108,26 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
               <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[var(--primary)] text-white">
                 ID: {report.id}
               </span>
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+              <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                 report.status === 'DISMISSED'
                   ? 'bg-rose-100 text-rose-800 border border-rose-200'
                   : report.isVerified
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     : 'bg-amber-100 text-amber-900 border border-amber-200'
               }`}>
-                {report.status === 'DISMISSED'
-                  ? '✕ Dismissed / Flagged Fake'
-                  : report.isVerified
-                    ? '✓ Verified'
-                    : '⏳ Pending Verification'}
+                {report.status === 'DISMISSED' ? (
+                  <>
+                    <X size={9} /> Dismissed / Flagged Fake
+                  </>
+                ) : report.isVerified ? (
+                  <>
+                    <CheckCircle2 size={9} /> Verified
+                  </>
+                ) : (
+                  <>
+                    <Clock size={9} /> Pending Verification
+                  </>
+                )}
               </span>
               {isScattered && (
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-0.5">

@@ -51,14 +51,10 @@ export const AdminAcademicCalendarTab: React.FC = () => {
   const handleSyncFromEnrollPro = async () => {
     setSyncing(true);
     try {
-      const token = sessionStorage.getItem('sortv2_token');
-      const res = await fetch('http://localhost:5000/api/sync/terms', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) await loadTerms();
+      await apiService.syncAcademicTerms();
+      await loadTerms();
     } catch (err) {
-      console.error('Sync failed:', err);
+      console.warn('Academic term sync failed:', err);
     }
     setSyncing(false);
   };

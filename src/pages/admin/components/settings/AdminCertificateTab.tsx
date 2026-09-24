@@ -147,7 +147,7 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
             type="button"
             onClick={() => handleIssue(false)}
             disabled={issuing}
-            className="px-6 py-3 bg-[var(--gold)] hover:bg-[#b38a20] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+            className="px-6 py-3 bg-[var(--gold)] hover:brightness-95 text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
           >
             {issuing ? <Loader2 size={14} className="animate-spin" /> : <Trophy size={14} />}
             {issuing ? 'Issuing...' : 'Issue Term Awards'}

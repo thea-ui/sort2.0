@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Settings, Clock, CheckCircle2, XCircle, AlertTriangle, Loader2, Users, ShieldCheck, Recycle } from 'lucide-react';
 import { apiService } from '../../../../services/api';
+import { useToast } from '../../../../hooks/useToast';
+import { LoadingState } from '../../../../components/common/LoadingState';
 
 interface SyncStatus {
   lastSync: {
@@ -38,8 +40,8 @@ export const AdminSyncSettingsTab: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [loginReadiness, setLoginReadiness] = useState<{ ready: number; total: number } | null>(null);
+  const toast = useToast();
 
   const loadSettings = async () => {
     try {
@@ -57,14 +59,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
 
   const loadStatus = async () => {
     try {
-      const token = sessionStorage.getItem('sortv2_token');
-      const res = await fetch('http://localhost:5000/api/sync/status', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSyncStatus(data);
-      }
+      setSyncStatus(await apiService.getSyncStatus());
     } catch (err) {
       console.warn('Failed to load sync status:', err);
     }
@@ -90,8 +85,8 @@ export const AdminSyncSettingsTab: React.FC = () => {
   }, []);
 
   const showToast = (type: 'success' | 'error', message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 4000);
+    if (type === 'success') toast.success(message);
+    else toast.error(message);
   };
 
   const handleSaveSettings = async () => {
@@ -158,24 +153,11 @@ export const AdminSyncSettingsTab: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
-      </div>
-    );
+    return <LoadingState label="Loading sync settings…" />;
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-bold ${
-          toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
-        }`}>
-          {toast.message}
-        </div>
-      )}
-
       {/* Header */}
       <div>
         <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">

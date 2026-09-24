@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Target, Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Lock, AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { AdminChallenge, ChallengeType } from '../../../../types';
+import { useToast } from '../../../../hooks/useToast';
+import { LoadingState } from '../../../../components/common/LoadingState';
 
 const CHALLENGE_TYPE_LABELS: Record<ChallengeType, string> = {
   REPORT_COUNT: 'Report Count',
@@ -16,13 +18,13 @@ export const AdminChallengesTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<AdminChallenge | null>(null);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<AdminChallenge | null>(null);
   const [deactivateConfirm, setDeactivateConfirm] = useState<AdminChallenge | null>(null);
+  const toast = useToast();
 
   const showToast = (type: 'success' | 'error', message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 4000);
+    if (type === 'success') toast.success(message);
+    else toast.error(message);
   };
 
   const loadChallenges = async () => {
@@ -83,23 +85,11 @@ export const AdminChallengesTab: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
-      </div>
-    );
+    return <LoadingState label="Loading challenges…" />;
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-bold ${
-          toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
-        }`}>
-          {toast.message}
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">

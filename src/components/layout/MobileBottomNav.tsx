@@ -23,7 +23,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ items, activeT
   const moreActive = !primaryIds.includes(activeTab);
 
   return (
-    <div data-testid="mobile-bottom-nav" className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
+    <div data-testid="mobile-bottom-nav" className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
       <nav className="flex items-center justify-around px-1 py-2">
         {items.map((item) => {
           const isActive = activeTab === item.id;

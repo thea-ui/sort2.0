@@ -6,6 +6,7 @@ import { PublicLanding } from './pages/PublicLanding';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { MRFLogin } from './pages/mrf/MRFLogin';
 import { StudentLayout } from './components/layout/StudentLayout';
+import { ToastViewport } from './components/common/Toast';
 import { primeAtlasMapCache } from './hooks/useAtlasMap';
 
 // Route-level code splitting: each role dashboard is loaded on demand so the
@@ -111,6 +112,7 @@ function App() {
     <MockDataProvider>
       <ErrorBoundary>
         <AppShell activeTab={activeTab} setActiveTab={setActiveTab} />
+        <ToastViewport />
       </ErrorBoundary>
     </MockDataProvider>
   );

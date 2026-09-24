@@ -1,5 +1,6 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { Home, Save } from 'lucide-react';
+import { AppModal } from '../../../../components/common/AppModal';
 
 interface RoomModalsProps {
   showAddRoomModal: boolean;
@@ -12,6 +13,14 @@ interface RoomModalsProps {
   handleSaveEditRoom: (e: React.FormEvent) => void;
 }
 
+const FIELD =
+  'w-full mt-1 p-2.5 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-xs font-semibold outline-none focus:border-[var(--accent)] text-[var(--text-strong)]';
+const LABEL = 'text-[10px] font-bold text-[var(--text-strong)]/50 uppercase';
+const CANCEL_BUTTON =
+  'px-4 py-2 bg-[var(--primary)]/5 text-[var(--text-strong)]/70 font-bold rounded-xl hover:bg-[var(--primary)]/10 cursor-pointer transition-colors';
+const SUBMIT_BUTTON =
+  'px-5 py-2 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer transition-colors';
+
 export const RoomModals: React.FC<RoomModalsProps> = ({
   showAddRoomModal,
   setShowAddRoomModal,
@@ -23,54 +32,71 @@ export const RoomModals: React.FC<RoomModalsProps> = ({
   handleSaveEditRoom,
 }) => (
   <>
-    {showAddRoomModal && (
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-white space-y-4 animate-fade-in">
-          <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-            <h3 className="text-base font-extrabold text-[var(--text-strong)]">Add Room Location</h3>
-            <button type="button" onClick={() => setShowAddRoomModal(false)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)]">
-              <X size={18} />
-            </button>
+    <AppModal
+      open={showAddRoomModal}
+      onOpenChange={setShowAddRoomModal}
+      icon={<Home size={18} />}
+      title="Add Room Location"
+      size="sm"
+      hideFooter
+    >
+      <form onSubmit={handleAddRoom} className="space-y-4 text-xs">
+        <div>
+          <label className={LABEL}>Room &amp; Building Name</label>
+          <input
+            type="text"
+            required
+            placeholder="e.g. Physics Lab 3 – Science Hall"
+            value={newRoomName}
+            onChange={(e) => setNewRoomName(e.target.value)}
+            className={FIELD}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={() => setShowAddRoomModal(false)} className={CANCEL_BUTTON}>
+            Cancel
+          </button>
+          <button type="submit" className={SUBMIT_BUTTON}>
+            Add Room
+          </button>
+        </div>
+      </form>
+    </AppModal>
+
+    <AppModal
+      open={editingRoom !== null}
+      onOpenChange={(open) => {
+        if (!open) setEditingRoom(null);
+      }}
+      icon={<Save size={18} />}
+      title="Edit Room Location"
+      size="sm"
+      hideFooter
+    >
+      {editingRoom && (
+        <form onSubmit={handleSaveEditRoom} className="space-y-4 text-xs">
+          <div>
+            <label className={LABEL}>Room Name</label>
+            <input
+              type="text"
+              required
+              value={editingRoom.name}
+              onChange={(e) => setEditingRoom({ ...editingRoom, name: e.target.value })}
+              className={FIELD}
+            />
           </div>
 
-          <form onSubmit={handleAddRoom} className="space-y-4 text-xs">
-            <div>
-              <label className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase">Room & Building Name</label>
-              <input type="text" required placeholder="e.g. Physics Lab 3 – Science Hall" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} className="w-full mt-1 p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-[var(--accent)]" />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setShowAddRoomModal(false)} className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 cursor-pointer">Cancel</button>
-              <button type="submit" className="px-5 py-2 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer">Add Room</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )}
-
-    {editingRoom && (
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-white space-y-4 animate-fade-in">
-          <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-            <h3 className="text-base font-extrabold text-[var(--text-strong)]">Edit Room Location</h3>
-            <button type="button" onClick={() => setEditingRoom(null)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)]">
-              <X size={18} />
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => setEditingRoom(null)} className={CANCEL_BUTTON}>
+              Cancel
+            </button>
+            <button type="submit" className={SUBMIT_BUTTON}>
+              Save Room
             </button>
           </div>
-
-          <form onSubmit={handleSaveEditRoom} className="space-y-4 text-xs">
-            <div>
-              <label className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase">Room Name</label>
-              <input type="text" required value={editingRoom.name} onChange={(e) => setEditingRoom({ ...editingRoom, name: e.target.value })} className="w-full mt-1 p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-[var(--accent)]" />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setEditingRoom(null)} className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 cursor-pointer">Cancel</button>
-              <button type="submit" className="px-5 py-2 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer">Save Room</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )}
+        </form>
+      )}
+    </AppModal>
   </>
 );

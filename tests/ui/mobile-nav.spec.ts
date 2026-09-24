@@ -55,15 +55,15 @@ test('Admin mobile: Settings expands inline inside the More sheet', async ({ pag
 
   const sheet = page.getByTestId('mobile-nav-sheet');
   await expect(sheet).toBeVisible();
-  await expect(sheet.getByRole('button', { name: 'Branding' })).toHaveCount(0);
+  await expect(sheet.getByRole('button', { name: 'School & Sync' })).toHaveCount(0);
 
   // Settings expands in place instead of navigating away
   await sheet.getByRole('button', { name: 'Settings' }).click();
   await expect(sheet).toBeVisible();
-  await expect(sheet.getByRole('button', { name: 'Branding' })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'School & Sync' })).toBeVisible();
 
-  // A sub-item navigates and closes the sheet
-  await sheet.getByRole('button', { name: 'Branding' }).click();
+  // A merged sub-item navigates, closes the sheet, and opens on Branding
+  await sheet.getByRole('button', { name: 'School & Sync' }).click();
   await expect(sheet).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /school branding/i })).toBeVisible({ timeout: 10_000 });
 });
