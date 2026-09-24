@@ -160,7 +160,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="animate-spin text-[#00A77C]" />
+        <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
       </div>
     );
   }
@@ -178,18 +178,18 @@ export const AdminSyncSettingsTab: React.FC = () => {
 
       {/* Header */}
       <div>
-        <h3 className="text-2xl font-black text-[#00271D] flex items-center gap-2">
-          <Settings size={22} className="text-[#00A77C]" />
+        <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+          <Settings size={22} className="text-[var(--accent)]" />
           Sync & Integrations
         </h3>
-        <p className="text-sm text-[#00271D]/50 mt-0.5">
+        <p className="text-sm text-[var(--text-strong)]/50 mt-0.5">
           Manage EnrollPro synchronization settings and view sync history.
         </p>
       </div>
 
       {/* Sync Mode Card */}
-      <div className="rounded-2xl border border-[#00271D]/10 bg-white p-6 space-y-4">
-        <h4 className="text-lg font-bold text-[#00271D]">Sync Mode</h4>
+      <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">
+        <h4 className="text-lg font-bold text-[var(--text-strong)]">Sync Mode</h4>
 
         <div className="flex gap-3">
           <button
@@ -197,7 +197,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
             onClick={() => setSyncMode('MANUAL')}
             className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
               syncMode === 'MANUAL'
-                ? 'border-[#00A77C] bg-[#00A77C]/5 text-[#00A77C]'
+                ? 'border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)]'
                 : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300'
             }`}
           >
@@ -208,7 +208,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
             onClick={() => setSyncMode('AUTO')}
             className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
               syncMode === 'AUTO'
-                ? 'border-[#00A77C] bg-[#00A77C]/5 text-[#00A77C]'
+                ? 'border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)]'
                 : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300'
             }`}
           >
@@ -218,7 +218,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
 
         {syncMode === 'AUTO' && (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-[#00271D]/50 uppercase tracking-wider">
+            <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">
               Sync Interval (minutes)
             </label>
             <input
@@ -227,9 +227,9 @@ export const AdminSyncSettingsTab: React.FC = () => {
               max={1440}
               value={intervalMinutes}
               onChange={(e) => setIntervalMinutes(Math.max(5, parseInt(e.target.value) || 60))}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-sm text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white transition-all"
             />
-            <p className="text-xs text-[#00271D]/40">
+            <p className="text-xs text-[var(--text-strong)]/40">
               Minimum 5 minutes. Sync will run automatically at this interval.
             </p>
           </div>
@@ -239,7 +239,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
           type="button"
           onClick={handleSaveSettings}
           disabled={saving}
-          className="px-5 py-2.5 bg-[#00A77C] hover:bg-[#008f6a] text-white text-sm font-bold rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+          className="px-5 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Settings size={14} />}
           {saving ? 'Saving...' : 'Save Settings'}
@@ -247,16 +247,16 @@ export const AdminSyncSettingsTab: React.FC = () => {
       </div>
 
       {/* Manual Sync Card */}
-      <div className="rounded-2xl border border-[#00271D]/10 bg-white p-6 space-y-4">
-        <h4 className="text-lg font-bold text-[#00271D]">Run Bulk Sync</h4>
-        <p className="text-sm text-[#00271D]/50">
+      <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">
+        <h4 className="text-lg font-bold text-[var(--text-strong)]">Run Bulk Sync</h4>
+        <p className="text-sm text-[var(--text-strong)]/50">
           Pull all users and term calendars from EnrollPro now. This runs the same sync engine as the CLI command.
         </p>
         <button
           type="button"
           onClick={handleRunSync}
           disabled={syncing}
-          className="px-6 py-3 bg-[#00A77C] hover:bg-[#008f6a] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+          className="px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
         >
           <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
           {syncing ? 'Syncing...' : 'Run Bulk Sync Now'}
@@ -264,35 +264,35 @@ export const AdminSyncSettingsTab: React.FC = () => {
       </div>
 
       {/* Daily Bin Reset Card */}
-      <div className="rounded-2xl border border-[#00271D]/10 bg-white p-6 space-y-4">
-        <h4 className="text-lg font-bold text-[#00271D] flex items-center gap-2">
+      <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">
+        <h4 className="text-lg font-bold text-[var(--text-strong)] flex items-center gap-2">
           <Recycle size={18} className="text-rose-500" />
           Daily Bin Reset
         </h4>
-        <p className="text-sm text-[#00271D]/50">
+        <p className="text-sm text-[var(--text-strong)]/50">
           The school clears all bins at the configured time each day. At reset, bin fill levels return to 0 and
           stale waste reports (pending or dispatched but never collected) are auto-expired — neutral, no penalties,
           no point changes. Asset reports are never touched.
         </p>
 
         <div className="flex flex-wrap items-center gap-5">
-          <label className="flex items-center gap-2 text-sm font-bold text-[#00271D] cursor-pointer">
+          <label className="flex items-center gap-2 text-sm font-bold text-[var(--text-strong)] cursor-pointer">
             <input
               type="checkbox"
               checked={binResetEnabled}
               onChange={(e) => setBinResetEnabled(e.target.checked)}
-              className="h-4 w-4 accent-[#00A77C]"
+              className="h-4 w-4 accent-[var(--accent)]"
             />
             Enable daily bin reset
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-[#00271D]/50 uppercase tracking-wider">Reset Time (24h)</span>
+            <span className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">Reset Time (24h)</span>
             <input
               type="time"
               value={binResetTime}
               onChange={(e) => setBinResetTime(e.target.value)}
-              className="px-3.5 py-2.5 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0]/60 text-sm text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all"
+              className="px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white transition-all"
             />
           </label>
         </div>
@@ -301,7 +301,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
           type="button"
           onClick={handleSaveSettings}
           disabled={saving}
-          className="px-5 py-2.5 bg-[#00A77C] hover:bg-[#008f6a] text-white text-sm font-bold rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+          className="px-5 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Settings size={14} />}
           {saving ? 'Saving...' : 'Save Bin Reset'}
@@ -310,8 +310,8 @@ export const AdminSyncSettingsTab: React.FC = () => {
 
       {/* Last Sync Summary */}
       {syncStatus?.lastSync && (
-        <div className="rounded-2xl border border-[#00271D]/10 bg-white p-6 space-y-4">
-          <h4 className="text-lg font-bold text-[#00271D]">Last Sync</h4>
+        <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">
+          <h4 className="text-lg font-bold text-[var(--text-strong)]">Last Sync</h4>
 
           <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(syncStatus.lastSync.status)}`}>
             {getStatusIcon(syncStatus.lastSync.status)}
@@ -320,24 +320,24 @@ export const AdminSyncSettingsTab: React.FC = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
             <div>
-              <p className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Pulled</p>
-              <p className="text-xl font-black text-[#00271D]">{syncStatus.lastSync.recordsPulled}</p>
+              <p className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">Pulled</p>
+              <p className="text-xl font-black text-[var(--text-strong)]">{syncStatus.lastSync.recordsPulled}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Created</p>
+              <p className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">Created</p>
               <p className="text-xl font-black text-emerald-600">{syncStatus.lastSync.recordsCreated}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Updated</p>
-              <p className="text-xl font-black text-blue-600">{syncStatus.lastSync.recordsUpdated}</p>
+              <p className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">Updated</p>
+              <p className="text-xl font-black text-[var(--text-strong)]">{syncStatus.lastSync.recordsUpdated}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Archived</p>
+              <p className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">Archived</p>
               <p className="text-xl font-black text-rose-600">{syncStatus.lastSync.recordsDeleted}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-[#00271D]/50">
+          <div className="flex items-center gap-4 text-xs text-[var(--text-strong)]/50">
             <span className="flex items-center gap-1">
               <Clock size={12} />
               {formatDate(syncStatus.lastSync.createdAt)}
@@ -347,8 +347,8 @@ export const AdminSyncSettingsTab: React.FC = () => {
           </div>
 
           {syncStatus.lastSync.message && (
-            <div className="mt-2 p-3 bg-sky-50 border border-sky-100 rounded-xl text-xs text-sky-700 font-semibold flex items-start gap-2">
-              <AlertTriangle size={13} className="text-sky-600 shrink-0 mt-0.5" />
+            <div className="mt-2 p-3 bg-[var(--primary)]/10 border border-[var(--primary)]/25 rounded-xl text-xs text-[var(--text-strong)] font-semibold flex items-start gap-2">
+              <AlertTriangle size={13} className="text-[var(--text-strong)] shrink-0 mt-0.5" />
               <span>{syncStatus.lastSync.message}</span>
             </div>
           )}
@@ -363,23 +363,23 @@ export const AdminSyncSettingsTab: React.FC = () => {
 
       {/* Login Readiness Summary */}
       {loginReadiness && (
-        <div className="rounded-2xl border border-[#00271D]/10 bg-white p-6 space-y-4">
-          <h4 className="text-lg font-bold text-[#00271D] flex items-center gap-2">
-            <ShieldCheck size={18} className="text-[#00A77C]" />
+        <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">
+          <h4 className="text-lg font-bold text-[var(--text-strong)] flex items-center gap-2">
+            <ShieldCheck size={18} className="text-[var(--accent)]" />
             Student Login Readiness
           </h4>
-          <p className="text-sm text-[#00271D]/50">
+          <p className="text-sm text-[var(--text-strong)]/50">
             Students with active EnrollPro portal accounts who can log in to SORT.
           </p>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <Users size={20} className="text-[#00A77C]" />
+              <Users size={20} className="text-[var(--accent)]" />
               <div>
-                <p className="text-2xl font-black text-[#00271D]">
+                <p className="text-2xl font-black text-[var(--text-strong)]">
                   {loginReadiness.ready}
-                  <span className="text-base font-bold text-[#00271D]/40"> / {loginReadiness.total}</span>
+                  <span className="text-base font-bold text-[var(--text-strong)]/40"> / {loginReadiness.total}</span>
                 </p>
-                <p className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Students Login-Ready</p>
+                <p className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">Students Login-Ready</p>
               </div>
             </div>
             {loginReadiness.ready < loginReadiness.total && (
@@ -400,23 +400,23 @@ export const AdminSyncSettingsTab: React.FC = () => {
 
       {/* Sync History */}
       {syncStatus?.history && syncStatus.history.length > 0 && (
-        <div className="rounded-2xl border border-[#00271D]/10 bg-white p-6 space-y-4">
-          <h4 className="text-lg font-bold text-[#00271D]">Sync History</h4>
+        <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">
+          <h4 className="text-lg font-bold text-[var(--text-strong)]">Sync History</h4>
 
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {syncStatus.history.map((log) => (
               <div
                 key={log.id}
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#F9F3F0]/60 border border-[#00271D]/5"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--background)]/60 border border-[var(--primary)]/5"
               >
                 <div className="flex items-center gap-3">
                   {getStatusIcon(log.status)}
                   <div>
-                    <p className="text-xs font-bold text-[#00271D]">{log.status}</p>
-                    <p className="text-[10px] text-[#00271D]/40">{formatDate(log.createdAt)}</p>
+                    <p className="text-xs font-bold text-[var(--text-strong)]">{log.status}</p>
+                    <p className="text-[10px] text-[var(--text-strong)]/40">{formatDate(log.createdAt)}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-[#00271D]/50">
+                <div className="flex items-center gap-4 text-xs text-[var(--text-strong)]/50">
                   <span>{log.recordsPulled} pulled</span>
                   <span>{log.recordsCreated} created</span>
                   <span>{log.recordsUpdated} updated</span>

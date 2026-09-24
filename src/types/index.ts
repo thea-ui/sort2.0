@@ -273,6 +273,21 @@ export interface SystemSettings {
   binResetTime: string;
   walkInPointsPer500ml?: number;
   walkInEnabled?: boolean;
+  schoolName?: string;
+  schoolAcronym?: string | null;
+  schoolId?: string | null;
+  division?: string | null;
+  region?: string | null;
+  address?: string | null;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  goldColor?: string;
+  logoUrl?: string | null;
+  enrollproPublicUrl?: string | null;
+  schoolHeadName?: string | null;
+  enrollproUrl?: string | null;
+  enrollproBrandingSyncedAt?: string | null;
 }
 
 export interface CalendarEvent {

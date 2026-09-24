@@ -10,7 +10,7 @@ type FilterKey = 'ALL' | ScrapItemStatus;
 
 const STATUS_META: Record<ScrapItemStatus, { label: string; badge: string }> = {
   AWAITING_WEIGHT: { label: 'Awaiting weight', badge: 'bg-amber-100 text-amber-900 border-amber-300' },
-  IN_STOCK: { label: 'In stock', badge: 'bg-sky-100 text-sky-900 border-sky-300' },
+  IN_STOCK: { label: 'In stock', badge: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25' },
   SOLD: { label: 'Sold', badge: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
   DISPOSED: { label: 'Disposed', badge: 'bg-rose-100 text-rose-900 border-rose-300' },
 };
@@ -30,7 +30,7 @@ function formatHistoryDate(value?: string | null): string {
 }
 
 function StatusIcon({ status }: { status: ScrapItemStatus }) {
-  if (status === 'IN_STOCK') return <PackageCheck size={13} className="text-sky-600" />;
+  if (status === 'IN_STOCK') return <PackageCheck size={13} className="text-[var(--text-strong)]" />;
   if (status === 'SOLD') return <Coins size={13} className="text-emerald-600" />;
   if (status === 'DISPOSED') return <ShieldAlert size={13} className="text-rose-600" />;
   return <Scale size={13} className="text-amber-600" />;
@@ -58,11 +58,11 @@ export const AssetScrapWeighedHistory: React.FC<AssetScrapWeighedHistoryProps> =
   return (
     <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h4 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
-          <History size={16} className="text-[#0091EA]" />
+        <h4 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+          <History size={16} className="text-[var(--text-strong)]" />
           <span>Weighed Scrap History</span>
         </h4>
-        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#0091EA]/15 text-[#0091EA] border border-[#0091EA]/20">
+        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[var(--primary)]/15 text-[var(--text-strong)] border border-[var(--primary)]/20">
           {items.length} weighed · {totalKg.toFixed(1)} kg total
         </span>
       </div>
@@ -75,8 +75,8 @@ export const AssetScrapWeighedHistory: React.FC<AssetScrapWeighedHistoryProps> =
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors cursor-pointer ${
               filter === f.key
-                ? 'bg-[#00271D] text-white border-[#00271D]'
-                : 'bg-white text-[#00271D]/70 border-[#00271D]/10 hover:bg-[#F9F3F0]'
+                ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                : 'bg-white text-[var(--text-strong)]/70 border-[var(--primary)]/10 hover:bg-[var(--background)]'
             }`}
           >
             {f.label}
@@ -99,7 +99,7 @@ export const AssetScrapWeighedHistory: React.FC<AssetScrapWeighedHistoryProps> =
             return (
               <div key={item.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-[#00271D] truncate flex items-center gap-1.5">
+                  <p className="font-bold text-[var(--text-strong)] truncate flex items-center gap-1.5">
                     <StatusIcon status={item.status} />
                     <span className="truncate">{item.description || item.materialName}</span>
                   </p>
@@ -111,7 +111,7 @@ export const AssetScrapWeighedHistory: React.FC<AssetScrapWeighedHistoryProps> =
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="font-black text-[#00271D] text-sm">{(item.weightKg || 0).toFixed(1)} kg</span>
+                  <span className="font-black text-[var(--text-strong)] text-sm">{(item.weightKg || 0).toFixed(1)} kg</span>
                   <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${meta.badge}`}>
                     {meta.label}
                   </span>

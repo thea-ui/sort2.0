@@ -90,7 +90,7 @@ export const BlueprintAdjustControls: React.FC<BlueprintAdjustControlsProps> = (
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="px-4 py-1.5 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white font-extrabold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+          className="px-4 py-1.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white font-extrabold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
         >
           <Check size={13} /> {saving ? 'Saving…' : 'Save Blueprint'}
         </button>

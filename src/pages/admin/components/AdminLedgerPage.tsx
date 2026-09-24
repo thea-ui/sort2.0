@@ -37,8 +37,8 @@ const shortDate = (d: string) =>
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
-  DISPATCHED: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  COLLECTED: 'bg-sky-50 text-sky-700 border-sky-200',
+  DISPATCHED: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25',
+  COLLECTED: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25',
   RESOLVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   DISMISSED: 'bg-gray-100 text-gray-500 border-gray-200',
   EXPIRED: 'bg-rose-50 text-rose-600 border-rose-200',
@@ -56,7 +56,7 @@ const VIEW_COLUMN: SheetColumn<any> = {
   align: 'right',
   width: '52px',
   render: () => (
-    <span className="inline-flex items-center justify-end gap-1 text-[10px] font-bold text-[#00A77C]">
+    <span className="inline-flex items-center justify-end gap-1 text-[10px] font-bold text-[var(--accent)]">
       View <ChevronRight size={13} />
     </span>
   ),
@@ -69,7 +69,7 @@ const MetricCell: React.FC<{ value: number; status: string }> = ({ value, status
     : status === 'DISPATCHED' ? 'In transit'
     : '—';
   return (
-    <span className={`text-[10px] font-bold uppercase tracking-wider ${label === '—' ? 'text-[#00271D]/20' : 'text-[#00271D]/35'}`}>
+    <span className={`text-[10px] font-bold uppercase tracking-wider ${label === '—' ? 'text-[var(--text-strong)]/20' : 'text-[var(--text-strong)]/35'}`}>
       {label}
     </span>
   );
@@ -305,12 +305,12 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
 
   const kpis = ledger
     ? [
-        { label: 'Sales Revenue', value: peso(ledger.market.revenuePhp), icon: Coins, color: 'text-[#C69B26]' },
-        { label: 'Recyclables Sold', value: `${num(ledger.market.soldKg)} kg`, icon: Scale, color: 'text-[#00A77C]' },
+        { label: 'Sales Revenue', value: peso(ledger.market.revenuePhp), icon: Coins, color: 'text-[var(--gold)]' },
+        { label: 'Recyclables Sold', value: `${num(ledger.market.soldKg)} kg`, icon: Scale, color: 'text-[var(--accent)]' },
         { label: 'Collected Weight', value: `${num(ledger.reports.collectedWeightKg)} kg`, icon: Recycle, color: 'text-[#10B981]' },
-        { label: 'Reports', value: num(ledger.reports.total), icon: FileText, color: 'text-[#0091EA]' },
-        { label: 'Points Awarded', value: num(ledger.points.totalAwarded), icon: Trophy, color: 'text-[#FFAB00]' },
-        { label: 'Students Ranked', value: num(ledger.points.topStudents.length), icon: Trophy, color: 'text-[#651FFF]' },
+        { label: 'Reports', value: num(ledger.reports.total), icon: FileText, color: 'text-[var(--text-strong)]' },
+        { label: 'Points Awarded', value: num(ledger.points.totalAwarded), icon: Trophy, color: 'text-[var(--gold)]' },
+        { label: 'Students Ranked', value: num(ledger.points.topStudents.length), icon: Trophy, color: 'text-[var(--gold)]' },
       ]
     : [];
 
@@ -319,14 +319,14 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-bold text-[#C69B26] bg-[#C69B26]/10 border border-[#C69B26]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
             Academic Administration
           </span>
-          <h3 className="text-2xl font-heading font-black text-[#00271D] tracking-tight mt-1.5 flex items-center gap-2">
-            <FileSpreadsheet size={24} className="text-[#C69B26]" />
+          <h3 className="text-2xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-1.5 flex items-center gap-2">
+            <FileSpreadsheet size={24} className="text-[var(--gold)]" />
             School Years
           </h3>
-          <p className="text-xs text-[#00271D]/50 mt-0.5">
+          <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
             Per-year ledger of reports, points, sales, and stock — plus year lifecycle management.
           </p>
         </div>
@@ -334,11 +334,11 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
-            <CalendarClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00271D]/40 pointer-events-none" />
+            <CalendarClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-strong)]/40 pointer-events-none" />
             <select
               value={selectedId || ''}
               onChange={(e) => setSelectedId(e.target.value)}
-              className="pl-8 pr-8 py-2 rounded-xl border border-[#00271D]/10 bg-white text-xs font-bold text-[#00271D] outline-none focus:border-[#00A77C] cursor-pointer appearance-none"
+              className="pl-8 pr-8 py-2 rounded-xl border border-[var(--primary)]/10 bg-white text-xs font-bold text-[var(--text-strong)] outline-none focus:border-[var(--accent)] cursor-pointer appearance-none"
               aria-label="Select school year"
             >
               {allSchoolYears.map((sy) => (
@@ -351,13 +351,13 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
           </div>
 
           <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00271D]/40" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-strong)]/40" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search rows…"
-              className="pl-8 pr-3 py-2 rounded-xl border border-[#00271D]/10 bg-white text-xs text-[#00271D] outline-none focus:border-[#00A77C] w-44"
+              className="pl-8 pr-3 py-2 rounded-xl border border-[var(--primary)]/10 bg-white text-xs text-[var(--text-strong)] outline-none focus:border-[var(--accent)] w-44"
             />
           </div>
 
@@ -365,7 +365,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             type="button"
             onClick={handleImport}
             disabled={importing}
-            className="px-3 py-2 rounded-xl bg-white border border-[#00271D]/10 text-xs font-bold text-[#00271D]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-3 py-2 rounded-xl bg-white border border-[var(--primary)]/10 text-xs font-bold text-[var(--text-strong)]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             title="Fetch all school years from EnrollPro (sync only — never activates or rolls over)"
           >
             <Upload size={13} className={importing ? 'animate-pulse' : ''} /> Sync
@@ -375,7 +375,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             type="button"
             onClick={handleRefreshAll}
             disabled={loading}
-            className="px-3 py-2 rounded-xl bg-white border border-[#00271D]/10 text-xs font-bold text-[#00271D]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-3 py-2 rounded-xl bg-white border border-[var(--primary)]/10 text-xs font-bold text-[var(--text-strong)]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
@@ -384,7 +384,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             type="button"
             onClick={exportCsv}
             disabled={!ledger}
-            className="px-3 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-3 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             <Download size={13} /> Export CSV
           </button>
@@ -393,7 +393,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             <button
               type="button"
               onClick={() => { setEditTarget(selectedYear); setShowEdit(true); }}
-              className="px-3 py-2 rounded-xl bg-white border border-[#00271D]/10 text-xs font-bold text-[#00271D]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-white border border-[var(--primary)]/10 text-xs font-bold text-[var(--text-strong)]/70 hover:bg-gray-50 flex items-center gap-1.5 cursor-pointer"
             >
               <Pencil size={13} /> Edit
             </button>
@@ -404,7 +404,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
               type="button"
               onClick={() => handleActivate(selectedYear)}
               disabled={actionLoading === selectedYear.id}
-              className="px-3 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <Power size={13} /> Activate
             </button>
@@ -414,7 +414,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             type="button"
             onClick={() => selectedYear && setDetailId(selectedYear.id)}
             disabled={!selectedYear}
-            className="px-3 py-2 rounded-xl bg-[#00271D] hover:bg-[#003a2b] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+            className="px-3 py-2 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-light)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
           >
             <FileSpreadsheet size={13} /> Details
           </button>
@@ -446,8 +446,8 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             {kpis.map((k) => (
               <div key={k.label} className="bg-white border border-gray-100 rounded-2xl p-4">
                 <k.icon size={17} className={k.color} />
-                <p className="text-lg font-black text-[#00271D] mt-2 leading-none">{k.value}</p>
-                <p className="text-[10px] font-bold text-[#00271D]/45 uppercase tracking-wider mt-1">{k.label}</p>
+                <p className="text-lg font-black text-[var(--text-strong)] mt-2 leading-none">{k.value}</p>
+                <p className="text-[10px] font-bold text-[var(--text-strong)]/45 uppercase tracking-wider mt-1">{k.label}</p>
               </div>
             ))}
           </div>
@@ -459,18 +459,18 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
                 {status}: {count}
               </span>
             ))}
-            <span className="text-[10px] text-[#00271D]/30 font-bold">|</span>
+            <span className="text-[10px] text-[var(--text-strong)]/30 font-bold">|</span>
             {Object.entries(ledger.reports.byCategory).map(([cat, count]) => (
-              <span key={cat} className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-[#00271D]/60 border border-[#00271D]/10">
+              <span key={cat} className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-[var(--text-strong)]/60 border border-[var(--primary)]/10">
                 {cat}: {count}
               </span>
             ))}
           </div>
 
           {/* Workbook */}
-          <div className="rounded-3xl border border-[#00271D]/10 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-3xl border border-[var(--primary)]/10 bg-white shadow-sm overflow-hidden">
             {/* Sheet tabs */}
-            <div className="flex items-center gap-1 px-3 pt-3 border-b border-[#00271D]/10 overflow-x-auto bg-[#F9F3F0]/50">
+            <div className="flex items-center gap-1 px-3 pt-3 border-b border-[var(--primary)]/10 overflow-x-auto bg-[var(--background)]/50">
               {sheets.map((s) => {
                 const isActive = s.id === activeSheet?.id;
                 const Icon = s.icon;
@@ -481,13 +481,13 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
                     onClick={() => setSheetId(s.id)}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer border-b-2 ${
                       isActive
-                        ? 'bg-white text-[#00271D] border-[#00A77C]'
-                        : 'text-[#00271D]/45 border-transparent hover:text-[#00271D] hover:bg-white/50'
+                        ? 'bg-white text-[var(--text-strong)] border-[var(--accent)]'
+                        : 'text-[var(--text-strong)]/45 border-transparent hover:text-[var(--text-strong)] hover:bg-white/50'
                     }`}
                   >
-                    <Icon size={13} className={isActive ? 'text-[#00A77C]' : ''} />
+                    <Icon size={13} className={isActive ? 'text-[var(--accent)]' : ''} />
                     {s.label}
-                    <span className={`ml-1 px-1.5 rounded-full text-[9px] ${isActive ? 'bg-[#00A77C]/10 text-[#00A77C]' : 'bg-gray-100 text-gray-400'}`}>
+                    <span className={`ml-1 px-1.5 rounded-full text-[9px] ${isActive ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'bg-gray-100 text-gray-400'}`}>
                       {s.rows.length}
                     </span>
                   </button>
@@ -497,7 +497,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
 
             {/* Sheet toolbar */}
             <div className="flex items-center justify-between px-5 py-3 text-xs bg-white border-b border-gray-100">
-              <span className="text-sm font-bold text-[#00271D] flex items-center gap-2">
+              <span className="text-sm font-bold text-[var(--text-strong)] flex items-center gap-2">
                 {activeSheet?.label}
                 <span className="text-xs font-normal text-slate-400">
                   {filteredRows.length} records found
@@ -531,7 +531,7 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
             className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-gradient-to-br from-[#00271D] to-[#003a2b] px-6 py-5 text-white">
+            <div className="bg-gradient-to-br from-[var(--primary)] to-[var(--primary-light)] px-6 py-5 text-white">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
@@ -560,10 +560,10 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
                   : raw === '' || raw == null ? '—' : String(raw);
                 return (
                   <div key={col.key} className="flex items-start justify-between gap-4 py-3 border-b border-gray-100 last:border-0">
-                    <span className="text-[10px] font-bold text-[#00271D]/45 uppercase tracking-wider shrink-0 pt-0.5">
+                    <span className="text-[10px] font-bold text-[var(--text-strong)]/45 uppercase tracking-wider shrink-0 pt-0.5">
                       {col.label}
                     </span>
-                    <span className="text-xs font-semibold text-[#00271D] text-right break-words">
+                    <span className="text-xs font-semibold text-[var(--text-strong)] text-right break-words">
                       {content ?? '—'}
                     </span>
                   </div>

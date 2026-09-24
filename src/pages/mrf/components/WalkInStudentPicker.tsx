@@ -21,20 +21,20 @@ export const WalkInStudentPicker: React.FC<WalkInStudentPickerProps> = ({
 }) => {
   if (selected) {
     return (
-      <div className="bg-white rounded-2xl border border-[#00A77C]/30 ring-2 ring-[#00A77C]/15 p-3.5 flex items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl border border-[var(--accent)]/30 ring-2 ring-[var(--accent)]/15 p-3.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 w-10 rounded-xl bg-[#00A77C] text-white flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
             <User size={18} />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-extrabold text-[#00271D] truncate">{selected.name}</p>
-            <p className="text-[11px] text-[#00271D]/50 font-semibold truncate">
+            <p className="text-sm font-extrabold text-[var(--text-strong)] truncate">{selected.name}</p>
+            <p className="text-[11px] text-[var(--text-strong)]/50 font-semibold truncate">
               {[selected.gradeLevel, selected.sectionName].filter(Boolean).join(' · ') || 'Student'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] font-black text-[#C69B26] bg-[#C69B26]/10 border border-[#C69B26]/25 px-2.5 py-1 rounded-full">
+          <span className="text-[11px] font-black text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/25 px-2.5 py-1 rounded-full">
             {selected.points} pts
           </span>
           <button
@@ -59,15 +59,15 @@ export const WalkInStudentPicker: React.FC<WalkInStudentPickerProps> = ({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search student by name, LRN, or section…"
-          className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-semibold text-[#00271D] outline-none focus:border-[#00A77C] focus:ring-2 focus:ring-[#00A77C]/20 transition-all"
+          className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-semibold text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all"
         />
         {searching && (
-          <Loader2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#00A77C] animate-spin" />
+          <Loader2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--accent)] animate-spin" />
         )}
       </div>
 
       {query.trim().length >= 2 && !searching && results.length === 0 && (
-        <p className="mt-2 text-[11px] text-[#00271D]/40 font-semibold px-1">No students found.</p>
+        <p className="mt-2 text-[11px] text-[var(--text-strong)]/40 font-semibold px-1">No students found.</p>
       )}
 
       {results.length > 0 && (
@@ -77,11 +77,11 @@ export const WalkInStudentPicker: React.FC<WalkInStudentPickerProps> = ({
               key={student.id}
               type="button"
               onClick={() => onSelect(student)}
-              className="w-full text-left px-4 py-2.5 hover:bg-[#00A77C]/5 transition-colors flex items-center justify-between gap-3 border-b border-gray-50 last:border-0 cursor-pointer"
+              className="w-full text-left px-4 py-2.5 hover:bg-[var(--accent)]/5 transition-colors flex items-center justify-between gap-3 border-b border-gray-50 last:border-0 cursor-pointer"
             >
               <div className="min-w-0">
-                <p className="text-xs font-extrabold text-[#00271D] truncate">{student.name}</p>
-                <p className="text-[10px] text-[#00271D]/50 font-semibold truncate">
+                <p className="text-xs font-extrabold text-[var(--text-strong)] truncate">{student.name}</p>
+                <p className="text-[10px] text-[var(--text-strong)]/50 font-semibold truncate">
                   {[student.gradeLevel, student.sectionName].filter(Boolean).join(' · ') || 'Student'}
                 </p>
               </div>
@@ -91,7 +91,7 @@ export const WalkInStudentPicker: React.FC<WalkInStudentPickerProps> = ({
                     <WifiOff size={9} /> Local
                   </span>
                 )}
-                <span className="text-[10px] font-black text-[#C69B26]">{student.points} pts</span>
+                <span className="text-[10px] font-black text-[var(--gold)]">{student.points} pts</span>
               </div>
             </button>
           ))}

@@ -119,13 +119,13 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <span className="text-[10px] font-bold text-[#C69B26] bg-[#C69B26]/10 border border-[#C69B26]/25 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/25 px-2.5 py-1 rounded-full uppercase tracking-wider">
             Milestone Prizes
           </span>
-          <h3 className="text-xl font-heading font-black text-[#00271D] tracking-tight mt-1.5 flex items-center gap-2">
-            <Gift size={20} className="text-[#C69B26]" /> Rewards &amp; Prize Claims
+          <h3 className="text-xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-1.5 flex items-center gap-2">
+            <Gift size={20} className="text-[var(--gold)]" /> Rewards &amp; Prize Claims
           </h3>
-          <p className="text-xs text-[#00271D]/50 mt-0.5">
+          <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
             Release prizes unlocked by student bottle turn-ins. Points rewards credit automatically on release.
           </p>
         </div>
@@ -133,9 +133,9 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
           type="button"
           onClick={refresh}
           disabled={loading}
-          className="self-start sm:self-center px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-[#00271D] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+          className="self-start sm:self-center px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-[var(--text-strong)] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
         >
-          {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} className="text-[#00A77C]" />}
+          {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} className="text-[var(--accent)]" />}
           Refresh
         </button>
       </div>
@@ -143,17 +143,17 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: 'Awaiting release', value: stats.awaiting, icon: Clock3, color: 'text-[#C69B26]', bg: 'bg-[#C69B26]/10' },
-          { label: 'Released (loaded)', value: stats.released, icon: PackageCheck, color: 'text-[#00A77C]', bg: 'bg-[#00A77C]/10' },
-          { label: 'Physical stock left', value: stats.stockLeft, icon: Gift, color: 'text-sky-600', bg: 'bg-sky-50' },
+          { label: 'Awaiting release', value: stats.awaiting, icon: Clock3, color: 'text-[var(--gold)]', bg: 'bg-[var(--gold)]/10' },
+          { label: 'Released (loaded)', value: stats.released, icon: PackageCheck, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/10' },
+          { label: 'Physical stock left', value: stats.stockLeft, icon: Gift, color: 'text-[var(--text-strong)]', bg: 'bg-[var(--primary)]/10' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white/95 border border-white/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
             <div className={`h-9 w-9 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
               <stat.icon size={16} />
             </div>
             <div>
-              <p className="text-lg font-heading font-black text-[#00271D] leading-none">{stat.value}</p>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#00271D]/40 mt-1">{stat.label}</p>
+              <p className="text-lg font-heading font-black text-[var(--text-strong)] leading-none">{stat.value}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/40 mt-1">{stat.label}</p>
             </div>
           </div>
         ))}
@@ -168,8 +168,8 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
             onClick={() => setView(tab)}
             className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
               view === tab
-                ? 'bg-[#00271D] text-white shadow-sm'
-                : 'bg-white text-[#00271D]/60 border border-gray-200 hover:bg-gray-50'
+                ? 'bg-[var(--primary)] text-white shadow-sm'
+                : 'bg-white text-[var(--text-strong)]/60 border border-gray-200 hover:bg-gray-50'
             }`}
           >
             {tab === 'claims' ? `Claims Queue (${claims.length})` : `Prize Catalog (${catalog.length})`}
@@ -185,8 +185,8 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
 
       {loading && claims.length === 0 && catalog.length === 0 ? (
         <div className="bg-white/90 border border-white/80 rounded-3xl p-12 text-center">
-          <Loader2 size={22} className="mx-auto text-[#00A77C] animate-spin" />
-          <p className="text-xs text-[#00271D]/50 font-semibold mt-2">Loading rewards…</p>
+          <Loader2 size={22} className="mx-auto text-[var(--accent)] animate-spin" />
+          <p className="text-xs text-[var(--text-strong)]/50 font-semibold mt-2">Loading rewards…</p>
         </div>
       ) : view === 'claims' ? (
         <RewardClaimQueue

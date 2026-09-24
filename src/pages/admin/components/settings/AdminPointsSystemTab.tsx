@@ -71,7 +71,7 @@ export const AdminPointsSystemTab: React.FC = () => {
             rule.rank === 1
               ? 'border-amber-200'
               : rule.rank === 2
-              ? 'border-sky-200'
+              ? 'border-[var(--primary)]/25'
               : rule.rank === 3
               ? 'border-orange-200'
               : 'border-gray-200 opacity-60';
@@ -80,7 +80,7 @@ export const AdminPointsSystemTab: React.FC = () => {
             rule.rank === 1
               ? 'text-amber-600'
               : rule.rank === 2
-              ? 'text-sky-600'
+              ? 'text-[var(--text-strong)]'
               : rule.rank === 3
               ? 'text-orange-600'
               : 'text-gray-500';
@@ -88,8 +88,8 @@ export const AdminPointsSystemTab: React.FC = () => {
           return (
             <div key={rule.id || rule.rank} className={`p-5 bg-white rounded-2xl border ${borderClass} flex justify-between items-center shadow-xs`}>
               <div>
-                <p className="font-bold text-[#00271D] text-sm">{rule.title}</p>
-                <p className="text-xs text-[#00271D]/50">{rule.description}</p>
+                <p className="font-bold text-[var(--text-strong)] text-sm">{rule.title}</p>
+                <p className="text-xs text-[var(--text-strong)]/50">{rule.description}</p>
               </div>
               <div className="flex items-center gap-4">
                 <span className={`text-xl font-black ${textClass}`}>{rule.pointsAwarded} pts</span>
@@ -111,15 +111,15 @@ export const AdminPointsSystemTab: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl border border-white space-y-5 animate-fade-in">
             <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-              <h3 className="text-2xl font-black text-[#00271D]">Edit Points for {editingRule.title}</h3>
-              <button type="button" onClick={() => setEditingRule(null)} className="text-[#00271D]/40 hover:text-[#00271D]">
+              <h3 className="text-2xl font-black text-[var(--text-strong)]">Edit Points for {editingRule.title}</h3>
+              <button type="button" onClick={() => setEditingRule(null)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)]">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleSavePoints} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Points Awarded</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Points Awarded</label>
                 <input
                   type="number"
                   required

@@ -30,10 +30,10 @@ interface TeacherDashboardProps {
 const BASE_PILLAR_META: Record<InfrastructurePillar, { icon: React.ComponentType<any>; label: string; desc: string; accent: string; iconBg: string; iconText: string; border: string }> = {
   waste:       { icon: Recycle,  label: 'Waste / Bin',  desc: 'Litter issues, overflows',       accent: 'emerald', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', border: 'border-emerald-200' },
   furniture:   { icon: Armchair, label: 'Furniture',    desc: 'Desks, classroom chairs',         accent: 'amber',   iconBg: 'bg-amber-50',   iconText: 'text-amber-600',   border: 'border-amber-200'   },
-  electronics: { icon: Monitor,  label: 'Electronics',  desc: 'Projectors, display screens',     accent: 'sky',     iconBg: 'bg-sky-50',     iconText: 'text-sky-600',     border: 'border-sky-200'     },
-  fixtures:    { icon: Zap,      label: 'Fixtures',     desc: 'AC fans, lights, switches',       accent: 'violet',  iconBg: 'bg-violet-50',  iconText: 'text-violet-600',  border: 'border-violet-200'  },
+  electronics: { icon: Monitor,  label: 'Electronics',  desc: 'Projectors, display screens',     accent: 'sky',     iconBg: 'bg-[var(--primary)]/10',     iconText: 'text-[var(--text-strong)]',     border: 'border-[var(--primary)]/25'     },
+  fixtures:    { icon: Zap,      label: 'Fixtures',     desc: 'AC fans, lights, switches',       accent: 'violet',  iconBg: 'bg-[var(--gold)]/10',  iconText: 'text-[var(--gold)]',  border: 'border-[var(--gold)]/25'  },
   equipment:   { icon: Wrench,   label: 'Equipment',    desc: 'Lab tool, janitorial asset',      accent: 'rose',    iconBg: 'bg-rose-50',    iconText: 'text-rose-600',    border: 'border-rose-200'    },
-  other:       { icon: FileText, label: 'Other',        desc: 'General structural repair',       accent: 'zinc',    iconBg: 'bg-zinc-50',    iconText: 'text-[#00271D]',   border: 'border-zinc-200'    },
+  other:       { icon: FileText, label: 'Other',        desc: 'General structural repair',       accent: 'zinc',    iconBg: 'bg-zinc-50',    iconText: 'text-[var(--text-strong)]',   border: 'border-zinc-200'    },
 };
 
 const OBSERVATION_OPTIONS = [
@@ -274,7 +274,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
 
   const STATUS_BADGE: Record<string, string> = {
     Pending:   'bg-amber-50 text-amber-700 border-amber-200',
-    Verified:  'bg-indigo-50 text-indigo-700 border-indigo-200',
+    Verified:  'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25',
     Resolved:  'bg-emerald-50 text-emerald-700 border-emerald-200',
     Dismissed: 'bg-rose-50 text-rose-700 border-rose-200',
   };

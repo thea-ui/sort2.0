@@ -100,12 +100,12 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
 
         {/* Modal Header */}
         <div className="flex items-start gap-3 border-b border-gray-100 pb-3 pr-8">
-          <div className="h-11 w-11 rounded-2xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center font-bold shrink-0">
+          <div className="h-11 w-11 rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center font-bold shrink-0">
             <Eye size={22} />
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-1.5 mb-1">
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00271D] text-white">
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[var(--primary)] text-white">
                 ID: {report.id}
               </span>
               <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
@@ -127,35 +127,35 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
                 </span>
               )}
             </div>
-            <h3 className="text-base font-heading font-black text-[#00271D] leading-snug">
+            <h3 className="text-base font-heading font-black text-[var(--text-strong)] leading-snug">
               {cleanReportTitle(report.title)}
             </h3>
           </div>
         </div>
 
         {/* Prominent High-Visibility Campus Location Banner */}
-        <div className="bg-[#00A77C]/10 border border-[#00A77C]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
+        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
           <div>
-            <span className="text-[10px] font-black text-[#00A77C] uppercase tracking-wider block">Target Campus Location</span>
-            <h4 className="text-lg font-heading font-black text-[#00271D] leading-tight mt-0.5">{cleanLocationName(report.locationName)}</h4>
+            <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-wider block">Target Campus Location</span>
+            <h4 className="text-lg font-heading font-black text-[var(--text-strong)] leading-tight mt-0.5">{cleanLocationName(report.locationName)}</h4>
             {isScattered && (
-              <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono font-bold text-gray-700 bg-white/90 border border-[#00A77C]/30 px-2.5 py-0.5 rounded-md">
-                <Navigation size={10} className="text-[#00A77C]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+              <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono font-bold text-gray-700 bg-white/90 border border-[var(--accent)]/30 px-2.5 py-0.5 rounded-md">
+                <Navigation size={10} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
               </span>
             )}
           </div>
-          <div className="h-10 w-10 rounded-xl bg-[#00A77C] text-white flex items-center justify-center shrink-0 shadow-xs">
+          <div className="h-10 w-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-xs">
             <MapPin size={22} />
           </div>
         </div>
 
         {/* Reporter Details Card */}
-        <div className={`bg-[#F9F3F0] p-3.5 rounded-2xl border border-[#00271D]/10 grid grid-cols-1 gap-3 text-xs ${isFacultyReporter ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+        <div className={`bg-[var(--background)] p-3.5 rounded-2xl border border-[var(--primary)]/10 grid grid-cols-1 gap-3 text-xs ${isFacultyReporter ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
           <div>
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Reporter Account</span>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="font-extrabold text-[#00271D] flex items-center gap-1.5 text-sm">
-                <User size={15} className="text-[#00A77C]" /> {report.reporterName}
+              <span className="font-extrabold text-[var(--text-strong)] flex items-center gap-1.5 text-sm">
+                <User size={15} className="text-[var(--accent)]" /> {report.reporterName}
               </span>
               <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black uppercase border border-emerald-200">
                 {report.reporterRole || 'Student'}
@@ -164,8 +164,8 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
           </div>
           <div>
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Date & Time Submitted</span>
-            <span className="font-bold text-[#00271D] flex items-center gap-1.5 mt-1 text-xs">
-              <Clock size={14} className="text-[#00A77C]" />
+            <span className="font-bold text-[var(--text-strong)] flex items-center gap-1.5 mt-1 text-xs">
+              <Clock size={14} className="text-[var(--accent)]" />
               {formatTimestamp(report.timestamp)}
             </span>
           </div>
@@ -176,14 +176,14 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
                 report.status === 'DISMISSED'
                   ? 'text-rose-600'
                   : report.pointsAwardedAt
-                    ? (report.pointsAwarded > 0 ? 'text-[#00A77C]' : 'text-gray-500')
+                    ? (report.pointsAwarded > 0 ? 'text-[var(--accent)]' : 'text-gray-500')
                     : 'text-gray-400'
               }`}>
                 <Award size={14} className={
                   report.status === 'DISMISSED'
                     ? 'text-rose-400'
                     : report.pointsAwardedAt && report.pointsAwarded > 0
-                      ? 'text-[#C69B26]'
+                      ? 'text-[var(--gold)]'
                       : 'text-gray-300'
                 } />
                 {report.status === 'DISMISSED'
@@ -192,7 +192,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
                     ? (report.pointsAwarded > 0 ? `+${report.pointsAwarded} pts` : 'No points awarded')
                     : (report.isVerified ? 'Awaiting MRF collection' : 'Pending verification')}
                 {report.reporterRank != null && (
-                  <span className="text-[9px] font-bold text-[#C69B26] bg-[#C69B26]/10 px-1.5 py-0.5 rounded-full">
+                  <span className="text-[9px] font-bold text-[var(--gold)] bg-[var(--gold)]/10 px-1.5 py-0.5 rounded-full">
                     Rank #{report.reporterRank}
                   </span>
                 )}
@@ -204,13 +204,13 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
         {/* Interactive Mini-Map Preview Card (Rendered ONLY when Scattered Trash is reported) */}
         {isScattered && (
           <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-[11px] font-bold text-[#00271D]">
+            <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-strong)]">
               <span className="flex items-center gap-1">
-                <MapIcon size={14} className="text-[#00A77C]" />
+                <MapIcon size={14} className="text-[var(--accent)]" />
                 <span>Scattered Debris Pinned Location Map:</span>
               </span>
               <span className="text-[10px] font-mono text-gray-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
-                <Navigation size={11} className="text-[#00A77C]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                <Navigation size={11} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
               </span>
             </div>
 
@@ -292,31 +292,31 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
 
         {/* MRF Staff Collection Summary (if collected) */}
         {(report.status === 'COLLECTED' || report.status === 'RESOLVED') && (
-          <div className="p-4 rounded-2xl bg-indigo-50/90 border border-indigo-200 text-indigo-950 space-y-2 text-xs">
-            <div className="flex items-center justify-between font-extrabold text-indigo-900">
+          <div className="p-4 rounded-2xl bg-[var(--primary)]/10 border border-[var(--primary)]/25 text-[var(--text-strong)] space-y-2 text-xs">
+            <div className="flex items-center justify-between font-extrabold text-[var(--text-strong)]">
               <span className="flex items-center gap-1.5 uppercase text-[10px] tracking-wider">
-                <Package size={14} className="text-indigo-600" /> MRF Collection Report
+                <Package size={14} className="text-[var(--text-strong)]" /> MRF Collection Report
               </span>
-              <span className="text-[10px] bg-indigo-100 px-2.5 py-0.5 rounded-full text-indigo-800 font-bold">
+              <span className="text-[10px] bg-[var(--primary)]/10 px-2.5 py-0.5 rounded-full text-[var(--text-strong)] font-bold">
                 Collected by: {report.assignedMrfName || 'MRF Staff'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 pt-1">
               {report.weightCollected !== undefined && report.weightCollected !== null && (
-                <div className="bg-white p-2.5 rounded-xl border border-indigo-100">
+                <div className="bg-white p-2.5 rounded-xl border border-[var(--primary)]/25">
                   <span className="text-[10px] text-gray-400 block uppercase font-bold">Payload Weight</span>
-                  <span className="font-black text-[#00A77C] text-sm">{report.weightCollected} kg</span>
+                  <span className="font-black text-[var(--accent)] text-sm">{report.weightCollected} kg</span>
                 </div>
               )}
               {report.collectedOutcome && (
-                <div className="bg-white p-2.5 rounded-xl border border-indigo-100">
+                <div className="bg-white p-2.5 rounded-xl border border-[var(--primary)]/25">
                   <span className="text-[10px] text-gray-400 block uppercase font-bold">Outcome</span>
-                  <span className="font-extrabold text-indigo-900 text-xs">{report.collectedOutcome}</span>
+                  <span className="font-extrabold text-[var(--text-strong)] text-xs">{report.collectedOutcome}</span>
                 </div>
               )}
             </div>
             {report.completionNotes && (
-              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 text-[11px] text-slate-700">
+              <div className="bg-white p-2.5 rounded-xl border border-[var(--primary)]/25 text-[11px] text-slate-700">
                 <span className="font-bold text-slate-900 block mb-0.5">Collector Staff Notes:</span>
                 <p className="italic">"{report.completionNotes}"</p>
               </div>
@@ -338,7 +338,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
             <>
               <button
                 onClick={() => onVerify(report)}
-                className="flex-1 py-3 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold shadow-md shadow-[#00A77C]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-3 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-bold shadow-md shadow-[var(--accent)]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <CheckCircle2 size={15} /> Confirm & Verify Report
               </button>
@@ -357,7 +357,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
               </div>
               <button
                 onClick={() => onDispatch(report)}
-                className="w-full py-3 rounded-xl bg-[#1D61E8] hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary)] text-white text-xs font-bold shadow-md shadow-[var(--primary)]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Send size={15} /> Dispatch Collector Staff
               </button>

@@ -37,27 +37,27 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     if (!this.state.error) return this.props.children;
 
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-[#F9F3F0] px-6 text-[#00271D]">
-        <div className="w-full max-w-md rounded-3xl border border-[#00271D]/10 bg-white p-8 text-center shadow-sm">
+      <div className="flex min-h-screen w-full items-center justify-center bg-[var(--background)] px-6 text-[var(--text-strong)]">
+        <div className="w-full max-w-md rounded-3xl border border-[var(--primary)]/10 bg-white p-8 text-center shadow-sm">
           <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 ring-1 ring-orange-200">
             <AlertTriangle size={22} className="text-orange-500" strokeWidth={2} />
           </div>
           <h2 className="mb-2 text-lg font-bold">Something went wrong on this screen</h2>
-          <p className="mb-6 text-[13px] leading-relaxed text-[#00271D]/70">
+          <p className="mb-6 text-[13px] leading-relaxed text-[var(--text-strong)]/70">
             The rest of SORT is unaffected. You can retry this screen, or reload the app.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             <button
               type="button"
               onClick={this.handleReset}
-              className="rounded-xl border border-[#00271D]/15 px-5 py-2.5 text-sm font-bold text-[#00271D] transition-colors hover:bg-[#00271D]/5"
+              className="rounded-xl border border-[var(--primary)]/15 px-5 py-2.5 text-sm font-bold text-[var(--text-strong)] transition-colors hover:bg-[var(--primary)]/5"
             >
               Try again
             </button>
             <button
               type="button"
               onClick={this.handleReload}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#00A77C] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-[#00A77C]/20 transition-colors hover:bg-[#008f6a]"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-[var(--accent)]/20 transition-colors hover:bg-[var(--accent-dark)]"
             >
               <RotateCcw size={15} strokeWidth={2.5} />
               Reload app

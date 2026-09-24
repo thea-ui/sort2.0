@@ -210,6 +210,23 @@ export const apiService = {
     return fetchAPI('/settings');
   },
 
+  // Public tenant branding (no auth) — also consumed by the ThemeProvider.
+  getPublicSettings: async (): Promise<{ settings: Record<string, any> }> => {
+    return fetchAPI('/settings/public');
+  },
+
+  // Pull branding from EnrollPro (admin). Server-side sync; never called from
+  // the browser against EnrollPro directly.
+  pullEnrollProBranding: async (): Promise<{
+    status: 'synced' | 'failed';
+    colors: { primary: string; secondary: string; accent: string };
+    logoUpdated: boolean;
+    branding: Record<string, any> | null;
+    error?: string;
+  }> => {
+    return fetchAPI('/settings/branding/pull', { method: 'POST', body: JSON.stringify({}) });
+  },
+
   updateSettings: async (settingsData: Record<string, any>): Promise<any> => {
     return fetchAPI('/settings', {
       method: 'PATCH',

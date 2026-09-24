@@ -204,12 +204,12 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
       {/* Header Banner */}
       <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-5 shadow-xs flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0">
             <MapPin size={20} />
           </div>
           <div>
-            <h2 className="font-heading font-bold text-sm text-[#00271D]">Campus Live Bin Map</h2>
-            <p className="text-xs text-[#00271D]/70 font-medium">
+            <h2 className="font-heading font-bold text-sm text-[var(--text-strong)]">Campus Live Bin Map</h2>
+            <p className="text-xs text-[var(--text-strong)]/70 font-medium">
               View real-time station statuses across campus buildings.
             </p>
           </div>
@@ -231,7 +231,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
             placeholder="Search campus station location..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#00271D] font-medium outline-none focus:border-[#00A77C] focus:bg-white transition-all shadow-xs"
+            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[var(--text-strong)] font-medium outline-none focus:border-[var(--accent)] focus:bg-white transition-all shadow-xs"
           />
         </div>
 
@@ -240,7 +240,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
             <span>Campus Map Grid (Tap Pin for Status Details)</span>
             {activeStation && (
-              <span className="text-[#00A77C] normal-case font-bold truncate max-w-[240px]">
+              <span className="text-[var(--accent)] normal-case font-bold truncate max-w-[240px]">
                 Selected: {activeStation.locationName}
               </span>
             )}
@@ -281,8 +281,8 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
               )}
             >
 
-            <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
-              <MapIcon size={12} className="text-[#00A77C]" />
+            <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[var(--text-strong)] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
+              <MapIcon size={12} className="text-[var(--accent)]" />
               <span>Map Pins</span>
             </div>
 
@@ -324,8 +324,8 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                     }}
                     className={`relative -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md border-2 ${
                       isSel
-                        ? 'bg-[#00A77C] border-white text-white ring-4 ring-[#00A77C]/30 scale-110 z-30'
-                        : 'bg-white border-[#00271D]/20 text-[#00271D] hover:border-[#00A77C] hover:text-[#00A77C] hover:scale-110 z-10'
+                        ? 'bg-[var(--accent)] border-white text-white ring-4 ring-[var(--accent)]/30 scale-110 z-30'
+                        : 'bg-white border-[var(--primary)]/20 text-[var(--text-strong)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:scale-110 z-10'
                     }`}
                     title={station.locationName}
                   >
@@ -339,7 +339,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                   {(isPopoverOpen || (isSel && activePopoverStation === station.locationName)) && (
                     <div className={`absolute z-40 bg-white/95 backdrop-blur-md rounded-2xl p-2.5 shadow-xl border border-gray-200 w-56 text-left animate-fade-in ${verticalPosClass} ${horizontalPosClass}`}>
                       <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1.5">
-                        <p className="text-[10px] font-extrabold text-[#00271D] truncate max-w-[150px]">
+                        <p className="text-[10px] font-extrabold text-[var(--text-strong)] truncate max-w-[150px]">
                           {station.locationName}
                         </p>
                         <button
@@ -365,7 +365,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                                 <div className={`h-5 w-5 rounded-lg text-white flex items-center justify-center shrink-0 ${!slot.isAvailable ? 'bg-amber-500' : meta.bg}`}>
                                   <Icon size={11} />
                                 </div>
-                                <span className="text-[10px] font-bold text-[#00271D] truncate">{meta.label}</span>
+                                <span className="text-[10px] font-bold text-[var(--text-strong)] truncate">{meta.label}</span>
                               </div>
                               <span className={`text-[8px] font-black px-2 py-0.5 rounded-md shrink-0 uppercase ${
                                 slot.statusState === 'UNAVAILABLE' || slot.statusState === 'LIMIT_REACHED'
@@ -414,8 +414,8 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
                     isSel
-                      ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-xs'
-                      : 'bg-gray-50 border-gray-200 text-[#00271D]/80 hover:bg-emerald-50 hover:border-emerald-200'
+                      ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-xs'
+                      : 'bg-gray-50 border-gray-200 text-[var(--text-strong)]/80 hover:bg-emerald-50 hover:border-emerald-200'
                   }`}
                 >
                   <span>{station.locationName}</span>
@@ -436,11 +436,11 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
           return (
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-[#00271D] flex items-center gap-1.5">
-                  <MapPin size={14} className="text-[#00A77C]" />
+                <p className="text-xs font-bold text-[var(--text-strong)] flex items-center gap-1.5">
+                  <MapPin size={14} className="text-[var(--accent)]" />
                   <span>Select Waste Category at {activeStation.locationName}:</span>
                 </p>
-                <span className="text-[10px] font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   {visibleSlots.length} Stream{visibleSlots.length !== 1 ? 's' : ''} Installed
                 </span>
               </div>
@@ -465,7 +465,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                     className={`p-4 rounded-3xl border text-left flex flex-col justify-between transition-all cursor-pointer shadow-xs ${
                       !isAvailable
                         ? 'bg-[#fff8f6] border-orange-200 text-gray-700 opacity-85 cursor-not-allowed'
-                        : 'bg-white border-gray-200 text-[#00271D] hover:border-[#00A77C] hover:shadow-md'
+                        : 'bg-white border-gray-200 text-[var(--text-strong)] hover:border-[var(--accent)] hover:shadow-md'
                     }`}
                   >
                     <div>
@@ -496,8 +496,8 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                         </span>
                       </div>
 
-                      <p className="text-sm font-bold text-[#00271D]">{meta.label}</p>
-                      <p className="text-[11px] text-[#00271D]/60 font-medium mt-0.5 leading-snug">{meta.desc}</p>
+                      <p className="text-sm font-bold text-[var(--text-strong)]">{meta.label}</p>
+                      <p className="text-[11px] text-[var(--text-strong)]/60 font-medium mt-0.5 leading-snug">{meta.desc}</p>
                     </div>
 
                     <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px]">
@@ -519,7 +519,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                           <AlertTriangle size={11} /> Reported Full
                         </span>
                       ) : (
-                        <span className="font-bold text-[#00A77C] flex items-center gap-1">
+                        <span className="font-bold text-[var(--accent)] flex items-center gap-1">
                           <Check size={11} /> Available
                         </span>
                       )}

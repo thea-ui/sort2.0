@@ -25,19 +25,19 @@ export const TeacherPhotoEvidence: React.FC<TeacherPhotoEvidenceProps> = ({
   return (
     <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-4 sm:p-6 shadow-xs space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold text-[#00271D] flex items-center gap-2">
-          <Camera size={16} className="text-[#00A77C]" />
+        <h3 className="text-xs font-bold text-[var(--text-strong)] flex items-center gap-2">
+          <Camera size={16} className="text-[var(--accent)]" />
           <span>Photo Evidence</span>
           <span className="text-rose-500">*</span>
         </h3>
         {capturedImage && (
-          <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+          <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
             <CheckCircle size={10} /> Photo Attached
           </span>
         )}
       </div>
 
-      <div className="bg-[#00271D] rounded-2xl overflow-hidden relative min-h-[220px] flex items-center justify-center border border-[#00271D]">
+      <div className="bg-[var(--primary)] rounded-2xl overflow-hidden relative min-h-[220px] flex items-center justify-center border border-[var(--primary)]">
         <canvas ref={canvasRef} className="hidden" />
 
         {capturedImage ? (
@@ -51,7 +51,7 @@ export const TeacherPhotoEvidence: React.FC<TeacherPhotoEvidenceProps> = ({
             >
               <Maximize2 size={13} />
             </button>
-            <div className="absolute bottom-2.5 left-2.5 bg-[#00271D]/90 border border-[#00A77C] text-[#00A77C] text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-md">
+            <div className="absolute bottom-2.5 left-2.5 bg-[var(--primary)]/90 border border-[var(--accent)] text-[var(--on-primary)] text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-md">
               <CheckCircle size={12} />
               <span>Evidence Ready</span>
             </div>
@@ -75,12 +75,12 @@ export const TeacherPhotoEvidence: React.FC<TeacherPhotoEvidenceProps> = ({
           </div>
         ) : isCapturing && !isLiveCameraActive ? (
           <div className="text-center space-y-2 py-8 animate-pulse">
-            <Camera className="mx-auto text-[#00A77C]" size={28} />
+            <Camera className="mx-auto text-[var(--accent)]" size={28} />
             <p className="text-xs font-bold text-white tracking-wide uppercase">Opening Camera...</p>
           </div>
         ) : (
           <div className="text-center space-y-2.5 py-6 px-4 w-full">
-            <div className="h-10 w-10 rounded-xl bg-[#00A77C]/20 text-[#00A77C] flex items-center justify-center mx-auto border border-[#00A77C]/40">
+            <div className="h-10 w-10 rounded-xl bg-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center mx-auto border border-[var(--accent)]/40">
               <Camera size={20} />
             </div>
             <div>
@@ -95,7 +95,7 @@ export const TeacherPhotoEvidence: React.FC<TeacherPhotoEvidenceProps> = ({
             )}
 
             <div className="flex flex-wrap gap-2 justify-center pt-1">
-              <button type="button" onClick={() => startCamera()} className="py-1.5 px-3.5 bg-[#00A77C] hover:bg-[#008f6a] text-white rounded-full text-xs font-bold shadow-xs cursor-pointer transition-all flex items-center gap-1.5">
+              <button type="button" onClick={() => startCamera()} className="py-1.5 px-3.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white rounded-full text-xs font-bold shadow-xs cursor-pointer transition-all flex items-center gap-1.5">
                 <Video size={13} />
                 <span>Live Camera</span>
               </button>

@@ -26,20 +26,20 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
       {/* Market Overview Header */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-[#C69B26]/15 text-[#C69B26] flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-[var(--gold)]/15 text-[var(--gold)] flex items-center justify-center shrink-0">
             <Scale size={24} />
           </div>
           <div>
-            <span className="text-[10px] font-black text-[#C69B26] bg-[#C69B26]/15 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-black text-[var(--gold)] bg-[var(--gold)]/15 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Market Inventory Ledger
             </span>
-            <h3 className="text-xl font-heading font-black text-[#00271D] mt-1">Itemized Recycling Market & Selling Tracker</h3>
-            <p className="text-xs text-[#00271D]/60">Track accumulated recyclable weights toward market selling limit thresholds.</p>
+            <h3 className="text-xl font-heading font-black text-[var(--text-strong)] mt-1">Itemized Recycling Market & Selling Tracker</h3>
+            <p className="text-xs text-[var(--text-strong)]/60">Track accumulated recyclable weights toward market selling limit thresholds.</p>
           </div>
         </div>
-        <div className="bg-[#F9F3F0] p-3 rounded-2xl border border-[#00271D]/10 text-right shrink-0">
+        <div className="bg-[var(--background)] p-3 rounded-2xl border border-[var(--primary)]/10 text-right shrink-0">
           <span className="text-[10px] font-bold text-gray-400 uppercase block">Total Vendor Revenue</span>
-          <span className="text-xl font-heading font-black text-[#00A77C]">
+          <span className="text-xl font-heading font-black text-[var(--accent)]">
             ₱{totalVendorSales.toLocaleString()}
           </span>
         </div>
@@ -68,7 +68,7 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
               }`}
             >
               {isApproved ? (
-                <div className="bg-[#00A77C] text-white font-black text-[9px] uppercase px-3 py-1 text-center font-mono tracking-wider -mx-5 -mt-5 mb-2 flex items-center justify-center gap-1.5 animate-pulse">
+                <div className="bg-[var(--accent)] text-white font-black text-[9px] uppercase px-3 py-1 text-center font-mono tracking-wider -mx-5 -mt-5 mb-2 flex items-center justify-center gap-1.5 animate-pulse">
                   <CheckCircle2 size={12} /> APPROVED BY ADMIN — READY TO COMPLETE VENDOR SALE!
                 </div>
               ) : isThresholdReached ? (
@@ -79,7 +79,7 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
 
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-extrabold text-[#00271D]">{cat.name}</h4>
+                  <h4 className="text-sm font-extrabold text-[var(--text-strong)]">{cat.name}</h4>
                   <p className="text-[11px] text-gray-400 font-medium">Market rate: ₱{pricePerKg} / kg</p>
                 </div>
                 <span className={`text-xs font-black px-2.5 py-1 rounded-full ${
@@ -97,12 +97,12 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] font-bold">
                   <span className="text-gray-400">Target Market Batch</span>
-                  <span className={isApproved ? 'text-[#00A77C] font-black' : isThresholdReached ? 'text-amber-700 font-black' : 'text-[#00A77C]'}>{pct}% Full</span>
+                  <span className={isApproved ? 'text-[var(--accent)] font-black' : isThresholdReached ? 'text-amber-700 font-black' : 'text-[var(--accent)]'}>{pct}% Full</span>
                 </div>
                 <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      isApproved ? 'bg-[#00A77C]' : isThresholdReached ? 'bg-amber-400' : 'bg-[#00A77C]'
+                      isApproved ? 'bg-[var(--accent)]' : isThresholdReached ? 'bg-amber-400' : 'bg-[var(--accent)]'
                     }`}
                     style={{ width: `${pct}%` }}
                   />
@@ -112,14 +112,14 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
               {/* Action to Sell Batch */}
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[11px] text-gray-500 font-medium">
-                  Est. Batch Value: <strong className="text-[#00271D]">₱{Math.round(currentKg * pricePerKg).toLocaleString()}</strong>
+                  Est. Batch Value: <strong className="text-[var(--text-strong)]">₱{Math.round(currentKg * pricePerKg).toLocaleString()}</strong>
                 </span>
 
                 {isApproved ? (
                   <button
                     type="button"
                     onClick={() => handleSellBatch(cat)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 bg-[#C69B26] hover:bg-[#b0881e] text-white shadow-md shadow-amber-500/20 animate-bounce"
+                    className="px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 bg-[var(--gold)] hover:bg-[#b0881e] text-white shadow-md shadow-amber-500/20 animate-bounce"
                   >
                     <Coins size={15} /> Complete Vendor Sale
                   </button>
@@ -148,8 +148,8 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
 
       {/* Sales Ledger History */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
-        <h4 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
-          <Coins size={16} className="text-[#C69B26]" />
+        <h4 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+          <Coins size={16} className="text-[var(--gold)]" />
           <span>Recycling Market Vendor Sales Ledger</span>
         </h4>
 
@@ -160,13 +160,13 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
             {salesHistory.map(sale => (
               <div key={sale.id} className="py-3 flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-[#00271D]">{sale.categoryName}</p>
+                  <p className="font-bold text-[var(--text-strong)]">{sale.categoryName}</p>
                   <p className="text-[10px] text-gray-400">
                     {sale.buyerName} · {sale.soldAt}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="font-black text-[#00A77C] block text-sm">₱{sale.totalRevenue.toLocaleString()}</span>
+                  <span className="font-black text-[var(--accent)] block text-sm">₱{sale.totalRevenue.toLocaleString()}</span>
                   <span className="text-[10px] text-gray-400 font-semibold">{sale.weightKg} kg batch sold</span>
                 </div>
               </div>

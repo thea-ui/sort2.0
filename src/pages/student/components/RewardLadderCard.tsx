@@ -4,8 +4,8 @@ import { apiService } from '../../../services/api';
 import { Reward, RewardClaim } from '../../../types';
 
 const CLAIM_STATE: Record<string, { label: string; className: string }> = {
-  UNLOCKED: { label: 'Ready to claim', className: 'bg-[#C69B26]/10 text-[#8a6b12] border-[#C69B26]/30' },
-  REQUESTED: { label: 'Waiting for release', className: 'bg-sky-50 text-sky-700 border-sky-200' },
+  UNLOCKED: { label: 'Ready to claim', className: 'bg-[var(--gold)]/10 text-[#8a6b12] border-[var(--gold)]/30' },
+  REQUESTED: { label: 'Waiting for release', className: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25' },
   RELEASED: { label: 'Claimed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   CANCELLED: { label: 'Cancelled', className: 'bg-gray-100 text-gray-500 border-gray-200' },
 };
@@ -50,7 +50,7 @@ export const RewardLadderCard: React.FC = () => {
   if (loading) {
     return (
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm text-center">
-        <Loader2 size={18} className="mx-auto text-[#C69B26] animate-spin" />
+        <Loader2 size={18} className="mx-auto text-[var(--gold)] animate-spin" />
       </div>
     );
   }
@@ -63,27 +63,27 @@ export const RewardLadderCard: React.FC = () => {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold text-[#00271D]/50 uppercase tracking-widest flex items-center gap-2">
-          <Gift size={14} className="text-[#C69B26]" />
+        <h3 className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-widest flex items-center gap-2">
+          <Gift size={14} className="text-[var(--gold)]" />
           <span>Milestone Prizes</span>
         </h3>
-        <span className="text-[10px] font-black text-[#00271D]/60 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-full">
+        <span className="text-[10px] font-black text-[var(--text-strong)]/60 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-full">
           {(yearGrams / 1000).toFixed(2)} kg collected
         </span>
       </div>
 
       <div className="space-y-1">
-        <div className="w-full bg-[#00271D]/10 h-2 rounded-full overflow-hidden">
+        <div className="w-full bg-[var(--primary)]/10 h-2 rounded-full overflow-hidden">
           <div
-            className="bg-gradient-to-r from-[#C69B26] to-[#FFAB00] h-full rounded-full transition-all duration-500"
+            className="bg-gradient-to-r from-[var(--gold)] to-[var(--gold)] h-full rounded-full transition-all duration-500"
             style={{ width: `${overallPct}%` }}
           />
         </div>
-        <p className="text-[10px] font-semibold text-[#00271D]/40 text-right">{overallPct}% to the top tier</p>
+        <p className="text-[10px] font-semibold text-[var(--text-strong)]/40 text-right">{overallPct}% to the top tier</p>
       </div>
 
       {message && (
-        <p className="text-[11px] font-bold text-[#00A77C] bg-[#00A77C]/5 border border-[#00A77C]/20 rounded-xl px-3 py-2">
+        <p className="text-[11px] font-bold text-[var(--accent)] bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-xl px-3 py-2">
           {message}
         </p>
       )}
@@ -100,24 +100,24 @@ export const RewardLadderCard: React.FC = () => {
             <div
               key={reward.id}
               className={`rounded-xl border p-3.5 space-y-2 ${
-                unlocked ? 'border-[#C69B26]/30 bg-[#C69B26]/5' : 'border-gray-100 bg-gray-50'
+                unlocked ? 'border-[var(--gold)]/30 bg-[var(--gold)]/5' : 'border-gray-100 bg-gray-50'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-2.5 min-w-0">
                   <div
                     className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
-                      unlocked ? 'bg-[#C69B26]/15 text-[#C69B26]' : 'bg-gray-200 text-gray-400'
+                      unlocked ? 'bg-[var(--gold)]/15 text-[var(--gold)]' : 'bg-gray-200 text-gray-400'
                     }`}
                   >
                     {unlocked ? <Gift size={15} /> : <Lock size={14} />}
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-xs font-extrabold ${unlocked ? 'text-[#00271D]' : 'text-[#00271D]/60'}`}>
+                    <p className={`text-xs font-extrabold ${unlocked ? 'text-[var(--text-strong)]' : 'text-[var(--text-strong)]/60'}`}>
                       {reward.title}
                     </p>
-                    <p className="text-[10px] text-[#00271D]/50 font-semibold leading-snug">{reward.description}</p>
-                    <p className="text-[10px] font-bold text-[#00271D]/40 mt-0.5 flex items-center gap-1">
+                    <p className="text-[10px] text-[var(--text-strong)]/50 font-semibold leading-snug">{reward.description}</p>
+                    <p className="text-[10px] font-bold text-[var(--text-strong)]/40 mt-0.5 flex items-center gap-1">
                       {reward.rewardType === 'PHYSICAL' ? <Package size={10} /> : <Coins size={10} />}
                       {(reward.requiredGrams / 1000).toFixed(0)} kg tier
                       {reward.rewardType === 'POINTS' && reward.pointsValue > 0
@@ -135,15 +135,15 @@ export const RewardLadderCard: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <div className="w-full bg-[#00271D]/10 h-1.5 rounded-full overflow-hidden">
+                <div className="w-full bg-[var(--primary)]/10 h-1.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      unlocked ? 'bg-[#C69B26]' : 'bg-[#00A77C]/60'
+                      unlocked ? 'bg-[var(--gold)]' : 'bg-[var(--primary)]/15'
                     }`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[10px] font-semibold text-[#00271D]/50">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-[var(--text-strong)]/50">
                   <span>{pct}%</span>
                   {!unlocked && <span>{(remaining / 1000).toFixed(2)} kg to go</span>}
                 </div>
@@ -151,14 +151,14 @@ export const RewardLadderCard: React.FC = () => {
 
               {claim && claim.status === 'UNLOCKED' && (
                 <div className="flex items-center justify-between gap-2 pt-0.5">
-                  <span className="text-[10px] font-black font-mono text-[#00271D] bg-white border border-[#C69B26]/30 px-2 py-1 rounded-lg">
+                  <span className="text-[10px] font-black font-mono text-[var(--text-strong)] bg-white border border-[var(--gold)]/30 px-2 py-1 rounded-lg">
                     {claim.claimCode}
                   </span>
                   <button
                     type="button"
                     disabled={busyId === claim.id}
                     onClick={() => reserve(claim)}
-                    className="px-3.5 py-1.5 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-[10px] font-extrabold transition-all flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-[10px] font-extrabold transition-all flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                   >
                     {busyId === claim.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
                     I&apos;ll claim this
@@ -167,9 +167,9 @@ export const RewardLadderCard: React.FC = () => {
               )}
 
               {claim && claim.status === 'REQUESTED' && (
-                <p className="text-[10px] font-bold text-sky-700 flex items-center gap-1">
+                <p className="text-[10px] font-bold text-[var(--text-strong)] flex items-center gap-1">
                   <Clock3 size={11} /> Show code{' '}
-                  <span className="font-mono bg-white border border-sky-200 px-1.5 py-0.5 rounded">{claim.claimCode}</span>{' '}
+                  <span className="font-mono bg-white border border-[var(--primary)]/25 px-1.5 py-0.5 rounded">{claim.claimCode}</span>{' '}
                   at the MRF/Admin office.
                 </p>
               )}

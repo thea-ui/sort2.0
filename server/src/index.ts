@@ -20,6 +20,9 @@ import rewardRoutes from './routes/reward.routes.js';
 import { rescheduleSync } from './services/sync-scheduler.service.js';
 import { rescheduleBinReset } from './services/bin-reset.service.js';
 import { rescheduleAtlasSync } from './services/atlas-sync-scheduler.service.js';
+import { startBrandingSyncScheduler } from './services/branding-sync-scheduler.service.js';
+import { UPLOADS_DIR } from './services/enrollpro-branding.service.js';
+import { mkdirSync } from 'node:fs';
 
 // Fail fast: never boot with a missing or insecure JWT secret.
 validateEnv();
@@ -72,6 +75,10 @@ app.use(
 );
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Synced tenant assets (EnrollPro logo) are served from SORT's own origin.
+mkdirSync(UPLOADS_DIR, { recursive: true });
+app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '1h' }));
 
 // Health Check Endpoint
 app.get('/health', (_req, res) => {
@@ -126,6 +133,9 @@ rescheduleBinReset().catch(err => {
 rescheduleAtlasSync().catch(err => {
   console.error('[Server] Failed to initialize ATLAS sync scheduler:', err.message);
 });
+
+// ─── EnrollPro Branding Sync (boot + every 60 minutes) ─────────────────
+startBrandingSyncScheduler();
 
 app.listen(PORT, () => {
   console.log(`SORTv2 PostgreSQL Express Server listening on http://localhost:${PORT}`);

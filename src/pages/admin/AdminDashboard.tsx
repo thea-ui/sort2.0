@@ -127,10 +127,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
   const peakDispatchTime = peakHour ? `${String(Math.min(peakHourNum + 2, 23)).padStart(2, '0')}:15` : '2:15 PM';
 
   // Grade level distribution dynamically from reports — Students only, derived from EnrollPro-synced gradeLevel
-  const gradeColors = ['bg-emerald-500', 'bg-sky-500', 'bg-amber-500', 'bg-purple-500', 'bg-rose-500', 'bg-indigo-500', 'bg-teal-500', 'bg-pink-500'];
-  const gradeBgColors = ['bg-emerald-50/60', 'bg-sky-50/60', 'bg-amber-50/60', 'bg-purple-50/60', 'bg-rose-50/60', 'bg-indigo-50/60', 'bg-teal-50/60', 'bg-pink-50/60'];
-  const gradeTextColors = ['text-emerald-700', 'text-sky-700', 'text-amber-700', 'text-purple-700', 'text-rose-700', 'text-indigo-700', 'text-teal-700', 'text-pink-700'];
-  const gradeBorderColors = ['border-emerald-100', 'border-sky-100', 'border-amber-100', 'border-purple-100', 'border-rose-100', 'border-indigo-100', 'border-teal-100', 'border-pink-100'];
+  const gradeColors = ['bg-emerald-500', 'bg-[var(--primary)]', 'bg-amber-500', 'bg-[var(--gold)]', 'bg-rose-500', 'bg-[var(--primary)]', 'bg-emerald-500', 'bg-amber-500'];
+  const gradeBgColors = ['bg-emerald-50/60', 'bg-[var(--primary)]/10', 'bg-amber-50/60', 'bg-[var(--gold)]/10', 'bg-rose-50/60', 'bg-[var(--primary)]/10', 'bg-emerald-50/60', 'bg-rose-50/60'];
+  const gradeTextColors = ['text-emerald-700', 'text-[var(--text-strong)]', 'text-amber-700', 'text-[var(--gold)]', 'text-rose-700', 'text-[var(--text-strong)]', 'text-emerald-700', 'text-amber-700'];
+  const gradeBorderColors = ['border-emerald-100', 'border-[var(--primary)]/25', 'border-amber-100', 'border-[var(--gold)]/25', 'border-rose-100', 'border-[var(--primary)]/25', 'border-emerald-100', 'border-amber-100'];
 
   const gradeCountMap: Record<string, number> = {};
   reports.forEach((r) => {
@@ -162,9 +162,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
   const materialBreakdownList = [
     { name: 'Plastic Bottles', count: plasticCount, Icon: Droplets, barBg: 'bg-emerald-500', bg: 'bg-emerald-50/60', text: 'text-emerald-700', border: 'border-emerald-100', iconColor: 'text-emerald-600' },
-    { name: 'Aluminum Cans', count: canCount, Icon: Layers, barBg: 'bg-sky-500', bg: 'bg-sky-50/60', text: 'text-sky-700', border: 'border-sky-100', iconColor: 'text-sky-600' },
+    { name: 'Aluminum Cans', count: canCount, Icon: Layers, barBg: 'bg-[var(--primary)]', bg: 'bg-[var(--primary)]/10', text: 'text-[var(--text-strong)]', border: 'border-[var(--primary)]/25', iconColor: 'text-[var(--text-strong)]' },
     { name: 'Paper / Cardboard', count: paperCount, Icon: FileText, barBg: 'bg-amber-500', bg: 'bg-amber-50/60', text: 'text-amber-700', border: 'border-amber-100', iconColor: 'text-amber-600' },
-    { name: 'Glass / Beverage Bottles', count: glassCount, Icon: Package, barBg: 'bg-purple-500', bg: 'bg-purple-50/60', text: 'text-purple-700', border: 'border-purple-100', iconColor: 'text-purple-600' },
+    { name: 'Glass / Beverage Bottles', count: glassCount, Icon: Package, barBg: 'bg-[var(--gold)]', bg: 'bg-[var(--gold)]/10', text: 'text-[var(--gold)]', border: 'border-[var(--gold)]/25', iconColor: 'text-[var(--gold)]' },
   ].map(item => ({
     ...item,
     pct: totalMaterialReports > 0 ? Math.round((item.count / totalMaterialReports) * 100) : 0,
@@ -234,8 +234,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
       {/* Toast Notification */}
       {adminToast && (
-        <div className="fixed top-20 right-6 z-50 bg-[#00271D] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-[#00A77C]/40 flex items-center gap-3 animate-pulse">
-          <CheckCircle size={18} className="text-[#00A77C]" />
+        <div className="fixed top-20 right-6 z-50 bg-[var(--primary)] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-[var(--accent)]/40 flex items-center gap-3 animate-pulse">
+          <CheckCircle size={18} className="text-[var(--accent)]" />
           <span className="text-xs font-bold">{adminToast}</span>
         </div>
       )}
@@ -246,14 +246,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
           {/* Section Header */}
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
                 Operational Telemetry
               </span>
-              <h2 className="text-xl font-extrabold text-[#00271D] tracking-tight mt-1.5">Campus Operational Analytics</h2>
-              <p className="text-xs text-[#00271D]/50 mt-0.5">Real-time reporting frequency, grade level distribution, and material breakdowns.</p>
+              <h2 className="text-xl font-extrabold text-[var(--text-strong)] tracking-tight mt-1.5">Campus Operational Analytics</h2>
+              <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">Real-time reporting frequency, grade level distribution, and material breakdowns.</p>
             </div>
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-[#00271D] bg-white border border-[#00271D]/10 px-3 py-1.5 rounded-xl shadow-sm">
-              <BarChart2 size={13} className="text-[#00A77C]" /> Live Status Hub
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-strong)] bg-white border border-[var(--primary)]/10 px-3 py-1.5 rounded-xl shadow-sm">
+              <BarChart2 size={13} className="text-[var(--accent)]" /> Live Status Hub
             </span>
           </div>
 
@@ -264,29 +264,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
               onClick={() => setActiveTab?.('admin-reports')}
               className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-emerald-300"
             >
-              <div className="flex items-center justify-between text-[#00A77C] mb-1">
-                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider group-hover:text-[#00A77C] transition-colors">Reports Today</span>
-                <div className="p-1.5 bg-[#00A77C]/10 rounded-lg text-[#00A77C] group-hover:scale-105 transition-transform">
+              <div className="flex items-center justify-between text-[var(--accent)] mb-1">
+                <span className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors">Reports Today</span>
+                <div className="p-1.5 bg-[var(--accent)]/10 rounded-lg text-[var(--accent)] group-hover:scale-105 transition-transform">
                   <BarChart2 size={15} />
                 </div>
               </div>
-              <p className="text-3xl font-black text-[#00271D]">{reportsToday}</p>
-              <p className="text-[11px] font-semibold text-[#00A77C]">Active verified incidents</p>
+              <p className="text-3xl font-black text-[var(--text-strong)]">{reportsToday}</p>
+              <p className="text-[11px] font-semibold text-[var(--accent)]">Active verified incidents</p>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab?.('admin-reports')}
-              className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-sky-300"
+              className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-[var(--primary)]/25"
             >
-              <div className="flex items-center justify-between text-sky-600 mb-1">
-                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider group-hover:text-sky-600 transition-colors">This Week</span>
-                <div className="p-1.5 bg-sky-50 rounded-lg text-sky-500 group-hover:scale-105 transition-transform">
+              <div className="flex items-center justify-between text-[var(--text-strong)] mb-1">
+                <span className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider group-hover:text-[var(--text-strong)] transition-colors">This Week</span>
+                <div className="p-1.5 bg-[var(--primary)]/10 rounded-lg text-[var(--text-strong)] group-hover:scale-105 transition-transform">
                   <CalendarDays size={15} />
                 </div>
               </div>
-              <p className="text-3xl font-black text-[#00271D]">{reportsThisWeek}</p>
-              <p className="text-[11px] font-semibold text-sky-600">Active campus submissions</p>
+              <p className="text-3xl font-black text-[var(--text-strong)]">{reportsThisWeek}</p>
+              <p className="text-[11px] font-semibold text-[var(--text-strong)]">Active campus submissions</p>
             </button>
 
             <button
@@ -295,12 +295,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
               className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-amber-300"
             >
               <div className="flex items-center justify-between text-amber-600 mb-1">
-                <span className="text-[10px] font-bold text-[#00271D]/50 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Peak Activity Time</span>
+                <span className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Peak Activity Time</span>
                 <div className="p-1.5 bg-amber-50 rounded-lg text-amber-500 group-hover:scale-105 transition-transform">
                   <Clock size={15} />
                 </div>
               </div>
-              <p className="text-xl font-black text-[#00271D] mt-1">{peakTimeStr}</p>
+              <p className="text-xl font-black text-[var(--text-strong)] mt-1">{peakTimeStr}</p>
               <p className="text-[11px] font-semibold text-amber-600">Highest daily traffic window</p>
               <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-xl">
                 <Clock size={11} className="text-amber-500 shrink-0" />
@@ -314,11 +314,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
             <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
               <div>
-                <h4 className="text-xs font-extrabold text-[#00271D] flex items-center gap-2">
+                <h4 className="text-xs font-extrabold text-[var(--text-strong)] flex items-center gap-2">
                   <GraduationCap size={14} className="text-emerald-500" />
                   <span>Reports by Grade Level</span>
                 </h4>
-                <p className="text-[11px] text-[#00271D]/40 font-medium mt-0.5">
+                <p className="text-[11px] text-[var(--text-strong)]/40 font-medium mt-0.5">
                   Report distribution volume across academic grade levels
                 </p>
               </div>
@@ -341,11 +341,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
             {/* Module 3: TOP RECYCLED MATERIALS */}
             <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
               <div>
-                <h4 className="text-xs font-extrabold text-[#00271D] flex items-center gap-2">
+                <h4 className="text-xs font-extrabold text-[var(--text-strong)] flex items-center gap-2">
                   <Recycle size={14} className="text-emerald-500" />
                   <span>Most Reported Materials</span>
                 </h4>
-                <p className="text-[11px] text-[#00271D]/40 font-medium mt-0.5">
+                <p className="text-[11px] text-[var(--text-strong)]/40 font-medium mt-0.5">
                   Item categories submitted by students across campus
                 </p>
               </div>
@@ -437,21 +437,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
             <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
               Sanctions Desk
             </span>
-            <h3 className="text-xl font-heading font-black text-[#00271D] tracking-tight mt-1.5">Offenses & Warnings</h3>
-            <p className="text-xs text-[#00271D]/50 mt-0.5">Register improper sorting offenses and manage sanction notices.</p>
+            <h3 className="text-xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-1.5">Offenses & Warnings</h3>
+            <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">Register improper sorting offenses and manage sanction notices.</p>
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
             {/* File Warning Form */}
             <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm self-start">
-              <h4 className="text-sm font-heading font-bold text-[#00271D] mb-4 flex items-center gap-2">
+              <h4 className="text-sm font-heading font-bold text-[var(--text-strong)] mb-4 flex items-center gap-2">
                 <AlertOctagon size={16} className="text-rose-500" />
                 Log Warning Offense
               </h4>
 
               {warningSuccess && (
-                <div className="p-3 bg-[#00A77C]/10 border border-[#00A77C]/20 text-[#00A77C] rounded-xl text-xs flex gap-2 mb-4">
+                <div className="p-3 bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] rounded-xl text-xs flex gap-2 mb-4">
                   <CheckCircle size={16} className="shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold">Sanction Registered!</p>
@@ -462,12 +462,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
               <form onSubmit={handleWarningSubmit} className="space-y-4 text-xs">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Target User Account</label>
+                  <label className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">Target User Account</label>
                   <select
                     value={targetUserId}
                     onChange={e => setTargetUserId(e.target.value)}
                     required
-                    className="w-full rounded-xl border border-[#00271D]/10 bg-[#F9F3F0] px-3.5 py-2.5 text-xs text-[#00271D] outline-none cursor-pointer focus:border-[#00A77C] focus:bg-white transition-colors"
+                    className="w-full rounded-xl border border-[var(--primary)]/10 bg-[var(--background)] px-3.5 py-2.5 text-xs text-[var(--text-strong)] outline-none cursor-pointer focus:border-[var(--accent)] focus:bg-white transition-colors"
                   >
                     <option value="">-- Choose account --</option>
                     {users.filter(u => u.role === 'STUDENT' || u.role === 'TEACHER').map(u => (
@@ -479,19 +479,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Notice Offense Description</label>
+                  <label className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">Notice Offense Description</label>
                   <textarea
                     required
                     rows={3}
                     placeholder="e.g. Mixed food scraps inside plastic sorting containers..."
                     value={warnDesc}
                     onChange={e => setWarnDesc(e.target.value)}
-                    className="w-full rounded-xl border border-[#00271D]/10 bg-[#F9F3F0] px-3.5 py-2.5 text-xs text-[#00271D] outline-none resize-none focus:border-[#00A77C] focus:bg-white transition-colors"
+                    className="w-full rounded-xl border border-[var(--primary)]/10 bg-[var(--background)] px-3.5 py-2.5 text-xs text-[var(--text-strong)] outline-none resize-none focus:border-[var(--accent)] focus:bg-white transition-colors"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">Offense Level (Auto-determined)</label>
+                  <label className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">Offense Level (Auto-determined)</label>
                   <div className="flex gap-2">
                     {(['WARNING', 'DEDUCT', 'SUSPENSION'] as const).map((sev, i) => {
                       const targetUser = users.find(u => u.id === targetUserId);
@@ -526,7 +526,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
             {/* Offense Logs List */}
             <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm lg:col-span-2">
-              <h4 className="text-sm font-heading font-bold text-[#00271D] mb-4 flex items-center gap-2">
+              <h4 className="text-sm font-heading font-bold text-[var(--text-strong)] mb-4 flex items-center gap-2">
                 <AlertOctagon size={15} className="text-rose-500" />
                 Recent Sanction Incidents
               </h4>
@@ -536,16 +536,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
                   <div className="h-12 w-12 mx-auto rounded-2xl bg-rose-50 text-rose-400 flex items-center justify-center">
                     <AlertOctagon size={24} />
                   </div>
-                  <p className="text-sm font-bold text-[#00271D]">No warning incidents on record.</p>
-                  <p className="text-xs text-[#00271D]/40">All clear — no sanctions have been filed yet.</p>
+                  <p className="text-sm font-bold text-[var(--text-strong)]">No warning incidents on record.</p>
+                  <p className="text-xs text-[var(--text-strong)]/40">All clear — no sanctions have been filed yet.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-[#00271D]/5">
+                <div className="divide-y divide-[var(--primary)]/5">
                   {offenses.map(off => (
                     <div key={off.id} className="flex justify-between items-start py-3.5 first:pt-0 last:pb-0 gap-3">
                       <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-[#00271D]">{off.description}</p>
-                        <p className="text-[10px] text-[#00271D]/50 font-semibold">User: {off.userName} · {off.timestamp}</p>
+                        <p className="text-xs font-bold text-[var(--text-strong)]">{off.description}</p>
+                        <p className="text-[10px] text-[var(--text-strong)]/50 font-semibold">User: {off.userName} · {off.timestamp}</p>
                       </div>
                       <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase shrink-0 ${
                         off.severity === 'SUSPENSION' ? 'bg-rose-100 border border-rose-300 text-rose-700' :
@@ -578,25 +578,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
       {activeTab === 'admin-sync' && (
         <div className="space-y-4 animate-fade-in">
           <div>
-            <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
               Sync Logs
             </span>
-            <h3 className="text-xl font-heading font-black text-[#00271D] tracking-tight mt-1.5">Simulated Sync Transmissions</h3>
-            <p className="text-xs text-[#00271D]/50 mt-0.5">Monitor and trigger data synchronization between campus systems and the main server.</p>
+            <h3 className="text-xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-1.5">Simulated Sync Transmissions</h3>
+            <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">Monitor and trigger data synchronization between campus systems and the main server.</p>
           </div>
 
           <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <Activity size={16} className="text-[#00A77C]" />
-                <h4 className="text-sm font-heading font-bold text-[#00271D]">Database Transmissions Log</h4>
+                <Activity size={16} className="text-[var(--accent)]" />
+                <h4 className="text-sm font-heading font-bold text-[var(--text-strong)]">Database Transmissions Log</h4>
               </div>
 
               <button
                 type="button"
                 onClick={handleSyncClick}
                 disabled={syncing}
-                className="px-4 py-2 bg-[#00A77C] hover:bg-[#008f6a] disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-md shadow-[#00A77C]/20 flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-dark)] disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-md shadow-[var(--accent)]/20 flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
                 {syncing ? 'Syncing...' : 'Simulate Synchronization'}
@@ -606,34 +606,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-[#00271D]/8 text-[#00271D]/40 font-bold uppercase tracking-wider bg-[#00A77C]/5">
+                  <tr className="border-b border-[var(--primary)]/8 text-[var(--text-strong)]/40 font-bold uppercase tracking-wider bg-[var(--accent)]/5">
                     <th className="py-3 px-4">Timestamp</th>
                     <th className="py-3 px-4">Target System</th>
                     <th className="py-3 px-4">Records Synced</th>
                     <th className="py-3 px-4 text-right">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#00271D]/5">
+                <tbody className="divide-y divide-[var(--primary)]/5">
                   {syncLogs.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="py-10 text-center">
                         <div className="space-y-2">
-                          <div className="h-10 w-10 mx-auto rounded-xl bg-[#00A77C]/10 text-[#00A77C] flex items-center justify-center">
+                          <div className="h-10 w-10 mx-auto rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center">
                             <RefreshCw size={20} />
                           </div>
-                          <p className="text-sm font-bold text-[#00271D]">No sync tasks logged yet.</p>
-                          <p className="text-xs text-[#00271D]/40">Trigger a sync above to see logs appear here.</p>
+                          <p className="text-sm font-bold text-[var(--text-strong)]">No sync tasks logged yet.</p>
+                          <p className="text-xs text-[var(--text-strong)]/40">Trigger a sync above to see logs appear here.</p>
                         </div>
                       </td>
                     </tr>
                   ) : (
                     syncLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-[#00A77C]/5 transition-colors">
-                        <td className="py-3 px-4 font-mono text-[#00271D]/60 text-[11px]">{log.timestamp}</td>
-                        <td className="py-3 px-4 font-bold text-[#00271D]">{log.system}</td>
-                        <td className="py-3 px-4 font-mono text-[#00271D]/70">{log.recordsSynced}</td>
+                      <tr key={log.id} className="hover:bg-[var(--accent)]/5 transition-colors">
+                        <td className="py-3 px-4 font-mono text-[var(--text-strong)]/60 text-[11px]">{log.timestamp}</td>
+                        <td className="py-3 px-4 font-bold text-[var(--text-strong)]">{log.system}</td>
+                        <td className="py-3 px-4 font-mono text-[var(--text-strong)]/70">{log.recordsSynced}</td>
                         <td className="py-3 px-4 text-right">
-                          <span className="rounded-full bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-0.5 text-[9px] font-black uppercase text-[#00A77C]">
+                          <span className="rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-0.5 text-[9px] font-black uppercase text-[var(--accent)]">
                             {log.status}
                           </span>
                         </td>

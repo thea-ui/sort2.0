@@ -3,10 +3,88 @@ import { PrismaClient } from '@prisma/client';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { rescheduleBinReset } from '../services/bin-reset.service.js';
 import { rescheduleSync } from '../services/sync-scheduler.service.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js';
+import {
+  getPublicBranding,
+  sanitizeBrandingPatch,
+  toPublicBranding,
+  broadcastBranding,
+  addBrandingStreamClient,
+  removeBrandingStreamClient,
+} from '../services/branding.service.js';
+import { syncEnrollProBranding } from '../services/enrollpro-branding.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// ─── Public branding (no auth) ─────────────────────────────────────────
+// Whitelisted payload consumed by the client ThemeProvider: fetch → cache →
+// apply → SSE. Never expose integration secrets or admin-only settings here.
+
+router.get('/public', async (_req, res) => {
+  try {
+    const branding = await getPublicBranding();
+    res.set('Cache-Control', 'no-store');
+    res.json({ settings: branding });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch public settings' });
+  }
+});
+
+router.get('/public/stream', (req: Request, res: Response) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.flushHeaders();
+  res.write(': connected\n\n');
+
+  addBrandingStreamClient(res);
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(': heartbeat\n\n');
+    } catch {
+      // Client vanished between checks; the close handler cleans up.
+    }
+  }, 30000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    removeBrandingStreamClient(res);
+    res.end();
+  });
+});
+
+// Pull branding from EnrollPro on demand (admin). The scheduler runs this
+// hourly; failures keep the last-known branding and are reported as 502.
+router.post('/branding/pull', requireAdmin, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const result = await syncEnrollProBranding();
+    const actor = req as AuthenticatedRequest;
+
+    await prisma.auditLog.create({
+      data: {
+        actorName: actor.userName || 'Admin',
+        actorRole: actor.userRole || 'ADMIN',
+        actionType: 'BRANDING_SYNC',
+        details:
+          result.status === 'synced'
+            ? `EnrollPro branding synced (${result.colors.primary}/${result.colors.secondary}/${result.colors.accent})${result.logoUpdated ? ' + logo' : ''}`
+            : `EnrollPro branding sync failed: ${result.error}`,
+        schoolYearId: await getActiveSchoolYearId(),
+      },
+    });
+
+    if (result.status !== 'synced') {
+      return res.status(502).json(result);
+    }
+    return res.json(result);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'EnrollPro branding sync failed' });
+  }
+});
 
 // Sync scheduling is a closed set + bounded interval so a bad value can never
 // break the mirror sync.
@@ -83,6 +161,9 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
       binResetTime,
     } = req.body;
 
+    // Branding fields are whitelisted + normalised before touching the row.
+    const brandingPatch = sanitizeBrandingPatch(req.body ?? {});
+
     const updated = await prisma.systemSetting.upsert({
       where: { id: 'default_setting' },
       update: {
@@ -109,6 +190,7 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
         ...(defaultVendorName !== undefined && { defaultVendorName: String(defaultVendorName) }),
         ...(binResetEnabled !== undefined && { binResetEnabled: Boolean(binResetEnabled) }),
         ...(binResetTime !== undefined && { binResetTime: String(binResetTime) }),
+        ...brandingPatch,
       },
       create: {
         id: 'default_setting',
@@ -135,8 +217,14 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
         defaultVendorName: String(defaultVendorName || 'GreenCycle Recycling Vendor'),
         binResetEnabled: Boolean(binResetEnabled ?? true),
         binResetTime: String(binResetTime || '18:00'),
+        ...brandingPatch,
       },
     });
+
+    // Push branding changes to every open settings stream.
+    if (Object.keys(brandingPatch).length > 0) {
+      broadcastBranding(toPublicBranding(updated));
+    }
 
     // Re-schedule the daily reset if the time/flag changed
     rescheduleBinReset().catch((err: any) => {

@@ -40,8 +40,7 @@ test('admin: report evidence opens fullscreen photo viewer @mobile', async ({ pa
   test.skip(!seeded, 'no admin identity');
 
   await page.goto('/');
-  await page.getByRole('button', { name: 'Open navigation menu' }).click();
-  await page.getByRole('button', { name: 'Reports', exact: true }).first().click();
+  await page.getByTestId('mobile-bottom-nav').getByRole('button', { name: 'Reports' }).click();
 
   const eyeButton = page.locator('button[title="Inspect details"]').first();
   const hasReports = await eyeButton.count();

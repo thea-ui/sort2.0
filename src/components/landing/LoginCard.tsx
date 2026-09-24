@@ -45,13 +45,13 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
   return (
     <div id="login-card" className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
       {/* Top accent bar */}
-      <div className="h-[3px] w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300" />
+        <div className="h-[3px] w-full bg-gradient-to-r from-[var(--primary)] via-[var(--accent)] to-[var(--gold)]" />
 
       <div className="p-7">
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 ring-1 ring-emerald-200">
-            <Lock size={17} className="text-emerald-600" strokeWidth={2} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]/20">
+            <Lock size={17} className="text-[var(--accent)]" strokeWidth={2} />
           </div>
           <div>
             <h2 className="text-base font-extrabold tracking-tight text-gray-900">SORT Login</h2>
@@ -109,7 +109,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
           <button
             type="submit"
             disabled={loading}
-            className="group mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-white shadow-md shadow-emerald-100 transition-all hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="group mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] py-3 text-sm font-bold text-[var(--on-accent)] shadow-md shadow-[var(--accent)]/25 transition-all hover:bg-[var(--accent-dark)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? (
               <>
@@ -126,9 +126,9 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
         </form>
 
         {/* Data privacy notice (RA 10173) */}
-        <div className="mt-5 flex items-start gap-2 rounded-xl border border-[#00271D]/10 bg-[#F9F3F0] px-3.5 py-3">
-          <ShieldCheck size={14} className="mt-0.5 shrink-0 text-[#00A77C]" strokeWidth={2} />
-          <p className="text-[10px] leading-relaxed text-[#00271D]/70">
+        <div className="mt-5 flex items-start gap-2 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)] px-3.5 py-3">
+          <ShieldCheck size={14} className="mt-0.5 shrink-0 text-[var(--accent)]" strokeWidth={2} />
+          <p className="text-[10px] leading-relaxed text-[var(--text-strong)]/70">
             Your credentials are verified by <span className="font-semibold">EnrollPro</span>. SORT never stores
             passwords. Learner and staff records are processed in line with RA 10173 (Data Privacy Act of 2012) and
             are visible only to authorised school personnel.

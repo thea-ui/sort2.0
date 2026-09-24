@@ -46,9 +46,9 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       category: 'Volume & Cohorts',
       title: 'Total Campus Submissions & Grade Distribution',
       icon: Layers,
-      color: 'text-sky-600',
-      bgColor: 'bg-sky-50',
-      borderColor: 'border-sky-200',
+      color: 'text-[var(--text-strong)]',
+      bgColor: 'bg-[var(--primary)]/10',
+      borderColor: 'border-[var(--primary)]/25',
       formula: 'N_total = N_student + N_teacher',
       subFormula: 'Grade_Share (%) = (N_grade / N_total) × 100%',
       description: 'Calculates the cumulative report count across student and faculty cohorts, and measures relative grade-level participation density.',
@@ -64,8 +64,8 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       category: 'MRF Efficiency',
       title: 'Dispatch & Collection Resolution Rate',
       icon: TrendingUp,
-      color: 'text-[#00A77C]',
-      bgColor: 'bg-emerald-50',
+      color: 'text-[var(--accent)]',
+      bgColor: 'bg-[var(--primary)]/10',
       borderColor: 'border-emerald-200',
       formula: 'Resolution Rate (%) = (N_collected / N_total) × 100%',
       subFormula: 'Pending_Rate (%) = 100% - Resolution Rate (%)',
@@ -101,7 +101,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       category: 'Incentives Pool',
       title: 'Quarter-End Rank 1 Rewards Reserve (20% Rule)',
       icon: Coins,
-      color: 'text-[#C69B26]',
+      color: 'text-[var(--gold)]',
       bgColor: 'bg-amber-50/80',
       borderColor: 'border-amber-300',
       formula: 'Reserve_Fund (₱) = Total_MRF_Sales × Reserve_Rate',
@@ -118,9 +118,9 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       category: 'Gamification',
       title: 'Reporter Rank Points Allocation & Sanctions',
       icon: Award,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
+      color: 'text-[var(--gold)]',
+      bgColor: 'bg-[var(--gold)]/10',
+      borderColor: 'border-[var(--gold)]/25',
       formula: 'User_Points = Σ (Reporter_Rank_Bonus) - Σ (Offense_Penalties)',
       subFormula: 'Rank_Bonus = Dynamic from PointRule table | Penalties = Configurable in Settings',
       description: 'Awards points dynamically according to submission order when duplicate reports cluster around an overflowing bin, and applies configurable sanctions for false reports.',
@@ -141,22 +141,22 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
   return (
     <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
       {/* Header with toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#00271D]/10 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--primary)]/10 pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-[#00A77C]/10 text-[#00A77C]">
+          <div className="p-2.5 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)]">
             <Calculator size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 MATHEMATICAL FORMULATIONS & TELEMETRY EQUATIONS
               </span>
-              <span className="text-xs font-semibold text-[#00271D]/40">• System Synchronized</span>
+              <span className="text-xs font-semibold text-[var(--text-strong)]/40">• System Synchronized</span>
             </div>
-            <h3 className="text-lg font-extrabold text-[#00271D] tracking-tight mt-1">
+            <h3 className="text-lg font-extrabold text-[var(--text-strong)] tracking-tight mt-1">
               Analytics Governance & Calculation Formulas
             </h3>
-            <p className="text-xs text-[#00271D]/50 mt-0.5">
+            <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
               Formal equations and real-time parameter substitutions governing operational metrics across SORTv2
             </p>
           </div>
@@ -166,7 +166,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="px-3.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-bold text-[#00271D] flex items-center gap-1.5 cursor-pointer transition-colors"
+            className="px-3.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-xs font-bold text-[var(--text-strong)] flex items-center gap-1.5 cursor-pointer transition-colors"
           >
             <span>{isExpanded ? 'Collapse Formulas' : 'View Equations'}</span>
             {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -177,7 +177,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       {isExpanded && (
         <div className="space-y-4 animate-fade-in pt-1">
           {/* Category Filter Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-[#F9F3F0] p-1 rounded-xl border border-[#00271D]/10 text-xs font-bold">
+          <div className="flex flex-wrap items-center gap-1.5 bg-[var(--background)] p-1 rounded-xl border border-[var(--primary)]/10 text-xs font-bold">
             {[
               { id: 'ALL', label: 'All Equations' },
               { id: 'VOLUME', label: 'Volume & Cohorts' },
@@ -192,8 +192,8 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === tab.id
-                    ? 'bg-[#00A77C] text-white shadow-sm'
-                    : 'text-[#00271D]/60 hover:text-[#00271D]'
+                    ? 'bg-[var(--accent)] text-white shadow-sm'
+                    : 'text-[var(--text-strong)]/60 hover:text-[var(--text-strong)]'
                 }`}
               >
                 {tab.label}
@@ -217,21 +217,21 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
                         <div className={`p-1.5 rounded-xl bg-white shadow-xs ${eq.color}`}>
                           <Icon size={16} />
                         </div>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/60">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-strong)]/60">
                           {eq.category}
                         </span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-white/80 border border-black/5 text-[#00271D]">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-white/80 border border-black/5 text-[var(--text-strong)]">
                         Active Rule
                       </span>
                     </div>
 
-                    <h4 className="text-sm font-extrabold text-[#00271D]">{eq.title}</h4>
-                    <p className="text-[11px] text-[#00271D]/70 leading-relaxed">{eq.description}</p>
+                    <h4 className="text-sm font-extrabold text-[var(--text-strong)]">{eq.title}</h4>
+                    <p className="text-[11px] text-[var(--text-strong)]/70 leading-relaxed">{eq.description}</p>
                   </div>
 
                   {/* Mathematical Code Block */}
-                  <div className="p-3 bg-[#00271D] text-white rounded-xl font-mono text-xs space-y-1 shadow-inner">
+                  <div className="p-3 bg-[var(--primary)] text-white rounded-xl font-mono text-xs space-y-1 shadow-inner">
                     <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
                       <span className="text-[10px] uppercase tracking-wider opacity-70">Primary:</span>
                       <span>{eq.formula}</span>
@@ -246,14 +246,14 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
 
                   {/* Parameters Table */}
                   <div className="space-y-1.5 pt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#00271D]/50 block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/50 block">
                       Parameter Values & State:
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {eq.parameters.map((p, idx) => (
                         <div key={idx} className="p-2 rounded-xl bg-white/80 border border-black/5 flex flex-col justify-between">
                           <span className="text-[10px] font-mono text-gray-500 font-semibold">{p.symbol} ({p.label})</span>
-                          <span className="text-xs font-black text-[#00271D] mt-0.5">{p.value}</span>
+                          <span className="text-xs font-black text-[var(--text-strong)] mt-0.5">{p.value}</span>
                         </div>
                       ))}
                     </div>
@@ -261,7 +261,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
 
                   {/* Live Calculation Output */}
                   <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 text-xs font-bold flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-[#00A77C] shrink-0" />
+                    <CheckCircle2 size={14} className="text-[var(--accent)] shrink-0" />
                     <span className="text-[11px] font-medium leading-tight">
                       <strong className="text-emerald-950">Live Output: </strong>
                       {eq.liveCalculation}

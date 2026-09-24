@@ -19,8 +19,8 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
 
   return (
     <div className="space-y-2.5">
-      <div className="bg-[#C69B26]/5 border border-[#C69B26]/25 rounded-2xl px-4 py-3">
-        <p className="text-[11px] font-bold text-[#00271D]/70">
+      <div className="bg-[var(--gold)]/5 border border-[var(--gold)]/25 rounded-2xl px-4 py-3">
+        <p className="text-[11px] font-bold text-[var(--text-strong)]/70">
           Placeholder prize tiers — replace titles, values, and stock after the student/professor interview.
           Changes apply to future unlocks only; existing claims keep their snapshot.
         </p>
@@ -41,20 +41,20 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
             <div className="flex items-start gap-3 min-w-0">
               <div
                 className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isPhysical ? 'bg-[#C69B26]/10 text-[#C69B26]' : 'bg-[#00A77C]/10 text-[#00A77C]'
+                  isPhysical ? 'bg-[var(--gold)]/10 text-[var(--gold)]' : 'bg-[var(--accent)]/10 text-[var(--accent)]'
                 }`}
               >
                 {isPhysical ? <Package size={17} /> : <Coins size={17} />}
               </div>
               <div className="min-w-0 space-y-0.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-extrabold text-[#00271D]">{reward.title}</p>
+                  <p className="text-sm font-extrabold text-[var(--text-strong)]">{reward.title}</p>
                   <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500">
                     {reward.code}
                   </span>
                 </div>
-                <p className="text-[11px] text-[#00271D]/50 font-semibold">{reward.description}</p>
-                <p className="text-[10px] font-bold text-[#00271D]/40">
+                <p className="text-[11px] text-[var(--text-strong)]/50 font-semibold">{reward.description}</p>
+                <p className="text-[10px] font-bold text-[var(--text-strong)]/40">
                   {(reward.requiredGrams / 1000).toFixed(0)} kg tier · {reward.claimsCount ?? 0} claim(s)
                   {!isPhysical && reward.pointsValue > 0 ? ` · +${reward.pointsValue} pts on release` : ''}
                 </p>
@@ -70,7 +70,7 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
                     value={draft}
                     onChange={(e) => setStockDrafts((prev) => ({ ...prev, [reward.id]: e.target.value }))}
                     placeholder="∞"
-                    className="w-20 px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs font-bold text-[#00271D] outline-none focus:border-[#C69B26]"
+                    className="w-20 px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs font-bold text-[var(--text-strong)] outline-none focus:border-[var(--gold)]"
                     aria-label={`Stock for ${reward.title}`}
                   />
                   <button
@@ -86,7 +86,7 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
                         return next;
                       });
                     }}
-                    className="p-2 rounded-xl border border-gray-200 text-[#00271D] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="p-2 rounded-xl border border-gray-200 text-[var(--text-strong)] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
                     aria-label={`Save stock for ${reward.title}`}
                   >
                     <Save size={14} />
@@ -113,9 +113,9 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
 
       {rewards.length === 0 && (
         <div className="bg-white/90 border border-white/80 rounded-3xl p-12 text-center space-y-2">
-          <Gift size={22} className="mx-auto text-[#C69B26]" />
-          <p className="text-sm font-bold text-[#00271D]">No rewards configured</p>
-          <p className="text-xs text-[#00271D]/50">Run the reward seed to install placeholder tiers.</p>
+          <Gift size={22} className="mx-auto text-[var(--gold)]" />
+          <p className="text-sm font-bold text-[var(--text-strong)]">No rewards configured</p>
+          <p className="text-xs text-[var(--text-strong)]/50">Run the reward seed to install placeholder tiers.</p>
         </div>
       )}
     </div>

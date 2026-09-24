@@ -22,10 +22,10 @@ const ROW2 = [
 ];
 
 const ACCENT_STYLES: Record<string, { bg: string; icon: string; ring: string }> = {
-  emerald: { bg: 'bg-emerald-50', icon: 'text-emerald-600', ring: 'ring-emerald-100' },
+  emerald: { bg: 'bg-[var(--primary)]/10', icon: 'text-[var(--primary)]', ring: 'ring-[var(--primary)]/25' },
   amber:   { bg: 'bg-amber-50',   icon: 'text-amber-600',   ring: 'ring-amber-100' },
-  violet:  { bg: 'bg-violet-50',  icon: 'text-violet-600',  ring: 'ring-violet-100' },
-  sky:     { bg: 'bg-sky-50',     icon: 'text-sky-600',     ring: 'ring-sky-100' },
+  violet:  { bg: 'bg-[var(--gold)]/10',  icon: 'text-[var(--gold)]',  ring: 'ring-[var(--gold)]/30' },
+  sky:     { bg: 'bg-[var(--primary)]/10',     icon: 'text-[var(--text-strong)]',     ring: 'ring-[var(--primary)]/30' },
   rose:    { bg: 'bg-rose-50',    icon: 'text-rose-600',    ring: 'ring-rose-100' },
 };
 
@@ -49,7 +49,7 @@ export const FeaturesSection: React.FC = () => {
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
         {/* Section header */}
         <div className="mb-14 max-w-lg">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[var(--accent)]">
             Platform Capabilities
           </p>
           <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">

@@ -25,9 +25,9 @@ const AdminDashboard = lazy(() =>
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-[60vh] w-full items-center justify-center bg-[#F9F3F0] text-[#00271D]">
+    <div className="flex min-h-[60vh] w-full items-center justify-center bg-[var(--background)] text-[var(--text-strong)]">
       <div className="flex flex-col items-center space-y-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#00A77C] border-t-transparent"></div>
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--accent)] border-t-transparent"></div>
         <p className="text-sm font-semibold tracking-wide">Loading workspace...</p>
       </div>
     </div>

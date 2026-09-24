@@ -68,12 +68,12 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
       {termStatus && termStatus.state !== 'NO_TERM' && (
         <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[#0091EA]/10 text-[#0091EA] border border-[#0091EA]/20 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/20 flex items-center justify-center shrink-0">
               <Calendar size={18} />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-[#00271D]">{termStatus.quarterName || 'Academic Term'}</p>
-              <p className="text-[11px] text-[#00271D]/55 font-medium">
+              <p className="text-xs font-extrabold text-[var(--text-strong)]">{termStatus.quarterName || 'Academic Term'}</p>
+              <p className="text-[11px] text-[var(--text-strong)]/55 font-medium">
                 {termStatus.state === 'IN_TERM' &&
                   `${termStatus.daysRemaining} day${termStatus.daysRemaining === 1 ? '' : 's'} left · Top-3 awards finalize after the term closes.`}
                 {termStatus.state === 'GRACE' &&
@@ -88,7 +88,7 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold border shrink-0 ${
               termStatus.state === 'IN_TERM'
-                ? 'bg-[#00A77C]/10 text-[#00A77C] border-[#00A77C]/25'
+                ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/25'
                 : termStatus.state === 'GRACE'
                 ? 'bg-amber-50 text-amber-700 border-amber-200'
                 : 'bg-slate-100 text-slate-600 border-slate-200'
@@ -101,27 +101,27 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
       )}
 
       {notice && (
-        <div className="p-3.5 rounded-2xl bg-[#00A77C]/10 border border-[#00A77C]/25 text-[#00271D] text-xs font-semibold">
+        <div className="p-3.5 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-[var(--text-strong)] text-xs font-semibold">
           {notice}
         </div>
       )}
 
       {/* Milestone claim */}
-      <div className="bg-gradient-to-br from-[#C69B26]/5 to-amber-50/50 border border-[#C69B26]/20 rounded-2xl p-5 shadow-sm">
+      <div className="bg-gradient-to-br from-[var(--gold)]/5 to-amber-50/50 border border-[var(--gold)]/20 rounded-2xl p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[#C69B26]/15 text-[#C69B26] border border-[#C69B26]/25 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-[var(--gold)]/15 text-[var(--gold)] border border-[var(--gold)]/25 flex items-center justify-center shrink-0">
               <Sparkles size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-[#00271D]">Eco-Milestone Certificate</h3>
-              <p className="text-[11px] text-[#00271D]/55 font-medium">
+              <h3 className="text-sm font-extrabold text-[var(--text-strong)]">Eco-Milestone Certificate</h3>
+              <p className="text-[11px] text-[var(--text-strong)]/55 font-medium">
                 Reach {threshold} eco-points to claim instantly — no need to wait for the term to end.
               </p>
             </div>
           </div>
           {milestoneEarned ? (
-            <span className="px-3 py-1.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[10px] font-extrabold shrink-0">
+            <span className="px-3 py-1.5 rounded-full bg-[var(--gold)]/15 border border-[var(--gold)]/30 text-[var(--gold)] text-[10px] font-extrabold shrink-0">
               Claimed
             </span>
           ) : (
@@ -129,7 +129,7 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
               type="button"
               onClick={handleClaimMilestone}
               disabled={!eligibleMilestone || claiming}
-              className="px-4 py-2 rounded-xl bg-[#C69B26] text-white text-[11px] font-extrabold shadow-sm hover:bg-[#b38a20] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-[var(--gold)] text-white text-[11px] font-extrabold shadow-sm hover:bg-[#b38a20] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5"
             >
               {claiming ? <Loader2 size={13} className="animate-spin" /> : <Award size={13} />}
               {eligibleMilestone ? 'Claim' : `${Math.max(0, threshold - currentUser.points)} pts to go`}
@@ -139,7 +139,7 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-[#00271D]/40">
+        <div className="flex items-center justify-center py-8 text-[var(--text-strong)]/40">
           <Loader2 size={18} className="animate-spin" />
         </div>
       ) : (
@@ -147,11 +147,11 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
           {/* Ranked certificates */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-3">
             <div className="flex items-center gap-2">
-              <Trophy size={16} className="text-[#C69B26]" />
-              <h3 className="text-sm font-extrabold text-[#00271D]">Term Ranked Awards</h3>
+              <Trophy size={16} className="text-[var(--gold)]" />
+              <h3 className="text-sm font-extrabold text-[var(--text-strong)]">Term Ranked Awards</h3>
             </div>
             {ranked.length === 0 ? (
-              <p className="text-[11px] text-[#00271D]/50 font-medium">
+              <p className="text-[11px] text-[var(--text-strong)]/50 font-medium">
                 {termStatus?.state === 'CLOSED'
                   ? 'No ranked award was issued to you for the last term.'
                   : 'Top 3 finishers receive Eco-Champion, Eco-Leader, and Eco-Advocate certificates once the term ends.'}
@@ -176,8 +176,8 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
           {milestones.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-3">
               <div className="flex items-center gap-2">
-                <Award size={16} className="text-emerald-600" />
-                <h3 className="text-sm font-extrabold text-[#00271D]">Milestone Certificates</h3>
+                <Award size={16} className="text-[var(--gold)]" />
+                <h3 className="text-sm font-extrabold text-[var(--text-strong)]">Milestone Certificates</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {milestones.map((cert) => (

@@ -72,7 +72,7 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
         label: 'Item',
         value: (r) => cleanReportTitle(r.title),
         render: (r) => (
-          <span className="font-bold text-[#00271D]">{cleanReportTitle(r.title)}</span>
+          <span className="font-bold text-[var(--text-strong)]">{cleanReportTitle(r.title)}</span>
         ),
       },
       {
@@ -80,14 +80,14 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
         label: 'Location',
         value: (r) => cleanLocationName(r.locationName),
         render: (r) => (
-          <span className="text-[#00271D]/70 font-medium">{cleanLocationName(r.locationName)}</span>
+          <span className="text-[var(--text-strong)]/70 font-medium">{cleanLocationName(r.locationName)}</span>
         ),
       },
       {
         key: 'reporter',
         label: 'Reporter',
         value: (r) => r.reporterName || '—',
-        render: (r) => <span className="text-[#00271D]/70 font-medium">{r.reporterName || '—'}</span>,
+        render: (r) => <span className="text-[var(--text-strong)]/70 font-medium">{r.reporterName || '—'}</span>,
       },
       {
         key: 'type',
@@ -108,7 +108,7 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
         key: 'completed',
         label: 'Completed',
         value: (r) => getCompletedMs(r),
-        render: (r) => <span className="text-[#00271D]/60 font-medium whitespace-nowrap">{formatCompleted(r)}</span>,
+        render: (r) => <span className="text-[var(--text-strong)]/60 font-medium whitespace-nowrap">{formatCompleted(r)}</span>,
       },
       {
         key: 'weight',
@@ -121,7 +121,7 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
               <Scale size={11} /> {r.weightCollected} kg
             </span>
           ) : (
-            <span className="inline-flex px-3 py-1 bg-sky-50 text-sky-700 border border-sky-200 rounded-full font-black text-[10px] uppercase whitespace-nowrap">
+            <span className="inline-flex px-3 py-1 bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/25 rounded-full font-black text-[10px] uppercase whitespace-nowrap">
               Done / Finished
             </span>
           ),
@@ -141,12 +141,12 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
       {/* Quick Summary Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[#00A77C] mb-1">
+          <div className="flex items-center justify-between text-[var(--accent)] mb-1">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Completed Jobs</span>
             <PackageCheck size={18} />
           </div>
-          <p className="text-3xl font-black text-[#00271D]">{completedDispatches.length}</p>
-          <p className="text-[11px] font-semibold text-[#00A77C]">Dispatches finished</p>
+          <p className="text-3xl font-black text-[var(--text-strong)]">{completedDispatches.length}</p>
+          <p className="text-[11px] font-semibold text-[var(--accent)]">Dispatches finished</p>
         </div>
 
         <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm space-y-1">
@@ -154,7 +154,7 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Recyclables Gathered</span>
             <Scale size={18} />
           </div>
-          <p className="text-3xl font-black text-[#00271D]">
+          <p className="text-3xl font-black text-[var(--text-strong)]">
             {totalKgCollected} <span className="text-base font-normal">kg</span>
           </p>
           <p className="text-[11px] font-semibold text-emerald-600">Total weight logged</p>
@@ -165,7 +165,7 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assets Handled</span>
             <Wrench size={18} />
           </div>
-          <p className="text-3xl font-black text-[#00271D]">{totalAssetsProcessed}</p>
+          <p className="text-3xl font-black text-[var(--text-strong)]">{totalAssetsProcessed}</p>
           <p className="text-[11px] font-semibold text-amber-600">Asset tasks processed</p>
         </div>
       </div>
@@ -173,8 +173,8 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
       {/* History Log Table */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
-            <History size={16} className="text-[#00A77C]" />
+          <h3 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+            <History size={16} className="text-[var(--accent)]" />
             <span>MRF Collection Ledger &amp; Log History</span>
           </h3>
           <span className="text-[11px] font-medium text-slate-400">Click a column header to sort</span>
@@ -188,8 +188,8 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
               onClick={() => setTypeFilter(f.key)}
               className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors cursor-pointer ${
                 typeFilter === f.key
-                  ? 'bg-[#00271D] text-white border-[#00271D]'
-                  : 'bg-white text-[#00271D]/70 border-[#00271D]/10 hover:bg-[#F9F3F0]'
+                  ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                  : 'bg-white text-[var(--text-strong)]/70 border-[var(--primary)]/10 hover:bg-[var(--background)]'
               }`}
             >
               {f.label}
@@ -204,7 +204,7 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
             <p className="text-xs text-gray-400">No completed collection logs yet.</p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-[#00271D]/10 overflow-hidden">
+          <div className="rounded-2xl border border-[var(--primary)]/10 overflow-hidden">
             <LedgerSheetTable
               columns={columns}
               rows={filtered}

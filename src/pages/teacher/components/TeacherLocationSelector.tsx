@@ -81,8 +81,8 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
   return (
     <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-base font-heading font-bold text-[#00271D] flex items-center gap-2">
-          <MapPin size={18} className="text-[#00A77C]" />
+        <h3 className="text-base font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+          <MapPin size={18} className="text-[var(--accent)]" />
           <span>{isWasteCategory ? 'Waste Bin Location' : 'Asset Room Location'}</span>
           <span className="text-rose-500">*</span>
         </h3>
@@ -93,8 +93,8 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
             onClick={() => setIsPinningMode(!isPinningMode)}
             className={`px-4 py-2 text-xs font-bold rounded-full border transition-all flex items-center gap-1.5 cursor-pointer ${
               isPinningMode
-                ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-sm'
-                : 'bg-[#F9F3F0] border-[#00271D]/15 text-[#00271D] hover:bg-[#00271D]/10'
+                ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-sm'
+                : 'bg-[var(--background)] border-[var(--primary)]/15 text-[var(--text-strong)] hover:bg-[var(--primary)]/10'
             }`}
           >
             <Compass size={14} className={isPinningMode ? 'animate-spin' : ''} />
@@ -109,7 +109,7 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
             <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
               <span>Interactive Campus Map (Tap Circular Trash Pin)</span>
               {selectedLocation && (
-                <span className="text-[#00A77C] normal-case font-bold truncate max-w-[240px]">
+                <span className="text-[var(--accent)] normal-case font-bold truncate max-w-[240px]">
                   Selected: {selectedLocation}
                 </span>
               )}
@@ -117,7 +117,7 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
 
             <div
               className={`relative w-full h-[360px] sm:h-[420px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center transition-all ${
-                isPinningMode ? 'ring-2 ring-[#00A77C]' : ''
+                isPinningMode ? 'ring-2 ring-[var(--accent)]' : ''
               }`}
             >
               <CampusMapFrame
@@ -165,8 +165,8 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                 )}
               >
 
-              <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
-                <MapIcon size={12} className="text-[#00A77C]" />
+              <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[var(--text-strong)] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
+                <MapIcon size={12} className="text-[var(--accent)]" />
                 <span>Map Pins</span>
               </div>
 
@@ -205,10 +205,10 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                       }}
                       className={`relative -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md border-2 ${
                         isSel
-                          ? 'bg-[#00A77C] text-white border-white scale-110 ring-4 ring-[#00A77C]/30 z-20'
+                          ? 'bg-[var(--accent)] text-white border-white scale-110 ring-4 ring-[var(--accent)]/30 z-20'
                           : hasReportedFull
                           ? 'bg-[#FF5722] text-white border-white hover:scale-105'
-                          : 'bg-white text-[#00271D] border-gray-200 hover:border-[#00A77C] hover:scale-105'
+                          : 'bg-white text-[var(--text-strong)] border-gray-200 hover:border-[var(--accent)] hover:scale-105'
                       }`}
                       title={`${station.locationName} (${visiblePopoverSlots.length} Streams)`}
                     >
@@ -222,7 +222,7 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                       <div className={`absolute ${verticalPosClass} ${horizontalPosClass} z-40 min-w-[210px] bg-white/95 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-gray-200/90 animate-fade-in`}>
                         <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-2">
                           <div>
-                            <p className="text-[11px] font-extrabold text-[#00271D]">{station.locationName}</p>
+                            <p className="text-[11px] font-extrabold text-[var(--text-strong)]">{station.locationName}</p>
                             <p className="text-[9px] text-gray-400 font-medium">{visiblePopoverSlots.length} Waste Stream{visiblePopoverSlots.length !== 1 ? 's' : ''}</p>
                           </div>
                           <button type="button" onClick={(e) => { e.stopPropagation(); setActivePopoverStation(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -254,7 +254,7 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                                   <div className={`h-5 w-5 rounded-lg text-white flex items-center justify-center shrink-0 ${!slot.isAvailable ? 'bg-gray-400' : meta.bg}`}>
                                     <Icon size={11} />
                                   </div>
-                                  <span className="text-[10px] font-bold text-[#00271D] truncate">{meta.label}</span>
+                                  <span className="text-[10px] font-bold text-[var(--text-strong)] truncate">{meta.label}</span>
                                 </div>
                                 <span className={`text-[8px] font-black px-2 py-0.5 rounded-md shrink-0 uppercase ${
                                   slot.statusState === 'UNAVAILABLE' || slot.statusState === 'LIMIT_REACHED'
@@ -296,7 +296,7 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
             </div>
 
             {isPinningMode && (
-              <p className="text-xs text-[#00A77C] font-semibold text-center mt-1 animate-pulse flex items-center justify-center gap-1">
+              <p className="text-xs text-[var(--accent)] font-semibold text-center mt-1 animate-pulse flex items-center justify-center gap-1">
                 <Target size={13} />
                 <span>Tap anywhere on the map to pin scattered trash!</span>
               </p>
@@ -318,8 +318,8 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                       }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
                         isSel
-                          ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-xs'
-                          : 'bg-gray-50 border-gray-200 text-[#00271D]/80 hover:bg-emerald-50 hover:border-emerald-200'
+                          ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-xs'
+                          : 'bg-gray-50 border-gray-200 text-[var(--text-strong)]/80 hover:bg-emerald-50 hover:border-emerald-200'
                       }`}
                     >
                       <span>{station.locationName}</span>
@@ -337,11 +337,11 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
               return (
                 <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-[#00271D] flex items-center gap-1.5">
-                      <Tag size={14} className="text-[#00A77C]" />
+                    <p className="text-xs font-bold text-[var(--text-strong)] flex items-center gap-1.5">
+                      <Tag size={14} className="text-[var(--accent)]" />
                       <span>Select Waste Category at {activeStation.locationName}:</span>
                     </p>
-                    <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-full">
                       {visibleSlots.length} Bin Stream{visibleSlots.length !== 1 ? 's' : ''} Configured
                     </span>
                   </div>
@@ -366,9 +366,9 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                             onClick={() => slot.isAvailable && handleSelectWasteCategory(slot.type, slot.bin?.id)}
                             className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between select-none relative overflow-hidden ${
                               isSelectedCategory && slot.isAvailable
-                                ? 'bg-[#00A77C]/15 border-[#00A77C] text-[#00271D] font-bold ring-2 ring-[#00A77C]/40 shadow-xs cursor-pointer'
+                                ? 'bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--text-strong)] font-bold ring-2 ring-[var(--accent)]/40 shadow-xs cursor-pointer'
                                 : slot.isAvailable
-                                ? 'bg-white border-gray-200 text-[#00271D]/70 hover:bg-gray-50 hover:border-[#00A77C]/40 cursor-pointer'
+                                ? 'bg-white border-gray-200 text-[var(--text-strong)]/70 hover:bg-gray-50 hover:border-[var(--accent)]/40 cursor-pointer'
                                 : 'bg-gray-100/90 border-gray-200 text-gray-400 opacity-60 cursor-not-allowed'
                             }`}
                           >
@@ -390,7 +390,7 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                                   <AlertTriangle size={9} /> Reported Full
                                 </span>
                               ) : isSelectedCategory ? (
-                                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00A77C] text-white">
+                                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-[var(--accent)] text-white">
                                   Selected
                                 </span>
                               ) : (
@@ -401,10 +401,10 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                             </div>
 
                             <div>
-                              <p className={`text-xs font-bold ${isSelectedCategory && slot.isAvailable ? 'text-[#00A77C]' : 'text-[#00271D]'}`}>
+                              <p className={`text-xs font-bold ${isSelectedCategory && slot.isAvailable ? 'text-[var(--accent)]' : 'text-[var(--text-strong)]'}`}>
                                 {meta.label}
                               </p>
-                              <p className="text-[10px] text-[#00271D]/60 font-medium mt-0.5 leading-snug">
+                              <p className="text-[10px] text-[var(--text-strong)]/60 font-medium mt-0.5 leading-snug">
                                 {meta.desc}
                               </p>
                             </div>
@@ -424,7 +424,7 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                                   <AlertTriangle size={10} /> Reported Full
                                 </span>
                               ) : (
-                                <span className="font-bold text-[#00A77C] flex items-center gap-1">
+                                <span className="font-bold text-[var(--accent)] flex items-center gap-1">
                                   <Check size={10} /> Available
                                 </span>
                               )}
@@ -449,11 +449,11 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                 placeholder="Search room or building (e.g. Room 101 - Science Hall)..."
                 value={locationSearch}
                 onChange={e => setLocationSearch(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-[#F8FAFC] pl-9 pr-4 py-2.5 text-xs text-[#00271D] outline-none transition-all focus:border-[#00A77C] focus:bg-white font-medium"
+                className="w-full rounded-2xl border border-gray-200 bg-[#F8FAFC] pl-9 pr-4 py-2.5 text-xs text-[var(--text-strong)] outline-none transition-all focus:border-[var(--accent)] focus:bg-white font-medium"
               />
             </div>
 
-            <div className="border border-[#00271D]/10 rounded-2xl overflow-hidden divide-y divide-[#00271D]/10 max-h-44 overflow-y-auto bg-white">
+            <div className="border border-[var(--primary)]/10 rounded-2xl overflow-hidden divide-y divide-[var(--primary)]/10 max-h-44 overflow-y-auto bg-white">
               {filteredLocations.map(loc => {
                 const isSelected = selectedLocation === loc;
                 return (
@@ -461,16 +461,16 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                     key={loc}
                     onClick={() => handleLocationSelect(loc)}
                     className={`px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${
-                      isSelected ? 'bg-[#00A77C]/15 font-semibold' : 'hover:bg-[#F9F3F0]'
+                      isSelected ? 'bg-[var(--accent)]/15 font-semibold' : 'hover:bg-[var(--background)]'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#00A77C]" />
-                      <span className={`text-xs ${isSelected ? 'text-[#00271D] font-bold' : 'text-[#00271D]/80 font-medium'}`}>
+                      <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />
+                      <span className={`text-xs ${isSelected ? 'text-[var(--text-strong)] font-bold' : 'text-[var(--text-strong)]/80 font-medium'}`}>
                         {loc}
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold px-3 py-0.5 rounded-full border bg-[#00A77C]/20 text-[#00A77C] border-[#00A77C]/40">
+                    <span className="text-[11px] font-bold px-3 py-0.5 rounded-full border bg-[var(--accent)]/20 text-[var(--accent)] border-[var(--accent)]/40">
                       Available
                     </span>
                   </div>
@@ -489,11 +489,11 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                 placeholder="Search bin location or building..."
                 value={locationSearch}
                 onChange={e => setLocationSearch(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-[#F8FAFC] pl-9 pr-4 py-2.5 text-xs text-[#00271D] outline-none transition-all focus:border-[#00A77C] focus:bg-white font-medium"
+                className="w-full rounded-2xl border border-gray-200 bg-[#F8FAFC] pl-9 pr-4 py-2.5 text-xs text-[var(--text-strong)] outline-none transition-all focus:border-[var(--accent)] focus:bg-white font-medium"
               />
             </div>
 
-            <div className="border border-[#00271D]/10 rounded-2xl overflow-hidden divide-y divide-[#00271D]/10 max-h-44 overflow-y-auto bg-white">
+            <div className="border border-[var(--primary)]/10 rounded-2xl overflow-hidden divide-y divide-[var(--primary)]/10 max-h-44 overflow-y-auto bg-white">
               {filteredLocations.map(loc => {
                 const isSelected = selectedLocation === loc;
                 return (
@@ -501,16 +501,16 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                     key={loc}
                     onClick={() => handleLocationSelect(loc)}
                     className={`px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${
-                      isSelected ? 'bg-[#00A77C]/15 font-semibold' : 'hover:bg-[#F9F3F0]'
+                      isSelected ? 'bg-[var(--accent)]/15 font-semibold' : 'hover:bg-[var(--background)]'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#00A77C]" />
-                      <span className={`text-xs ${isSelected ? 'text-[#00271D] font-bold' : 'text-[#00271D]/80 font-medium'}`}>
+                      <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />
+                      <span className={`text-xs ${isSelected ? 'text-[var(--text-strong)] font-bold' : 'text-[var(--text-strong)]/80 font-medium'}`}>
                         {loc}
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold px-3 py-0.5 rounded-full border bg-[#00A77C]/20 text-[#00A77C] border-[#00A77C]/40">
+                    <span className="text-[11px] font-bold px-3 py-0.5 rounded-full border bg-[var(--accent)]/20 text-[var(--accent)] border-[var(--accent)]/40">
                       Available
                     </span>
                   </div>

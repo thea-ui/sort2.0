@@ -15,13 +15,13 @@ export const TeacherAssetItemGrid: React.FC<TeacherAssetItemGridProps> = ({ acti
     <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Package size={16} className="text-[#00271D]/60" />
-          <h3 className="text-xs font-bold text-[#00271D]">
+          <Package size={16} className="text-[var(--text-strong)]/60" />
+          <h3 className="text-xs font-bold text-[var(--text-strong)]">
             {activeMeta.itemsLabel} <span className="text-rose-500">*</span>
           </h3>
         </div>
         {selectedItem && (
-          <span className="text-[10px] font-extrabold text-[#00A77C] bg-[#00A77C]/15 border border-[#00A77C]/30 px-3 py-0.5 rounded-full">
+          <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/15 border border-[var(--accent)]/30 px-3 py-0.5 rounded-full">
             Selected: {selectedItem}
           </span>
         )}
@@ -38,18 +38,18 @@ export const TeacherAssetItemGrid: React.FC<TeacherAssetItemGridProps> = ({ acti
               onClick={() => handleItemSelect(item.label)}
               className={`flex items-center justify-between rounded-2xl border p-3.5 text-left text-xs transition-all cursor-pointer ${
                 isSelected
-                  ? 'bg-[#00A77C]/15 border-2 border-[#00A77C] text-[#00271D] font-extrabold shadow-sm ring-2 ring-[#00A77C]/20'
-                  : 'bg-white border-gray-200/80 text-gray-700 hover:border-[#00A77C]/50 hover:bg-emerald-50/30'
+                  ? 'bg-[var(--accent)]/15 border-2 border-[var(--accent)] text-[var(--text-strong)] font-extrabold shadow-sm ring-2 ring-[var(--accent)]/20'
+                  : 'bg-white border-gray-200/80 text-gray-700 hover:border-[var(--accent)]/50 hover:bg-emerald-50/30'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-[#00A77C] text-white shadow-xs' : 'bg-[#00A77C]/10 text-[#00A77C]'}`}>
+                <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-[var(--accent)] text-white shadow-xs' : 'bg-[var(--accent)]/10 text-[var(--accent)]'}`}>
                   {IconComponent && <IconComponent size={16} />}
                 </div>
                 <span className="font-bold text-xs">{item.label}</span>
               </div>
               {isSelected && (
-                <span className="h-2 w-2 rounded-full bg-[#00A77C] animate-pulse shrink-0" />
+                <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse shrink-0" />
               )}
             </button>
           );

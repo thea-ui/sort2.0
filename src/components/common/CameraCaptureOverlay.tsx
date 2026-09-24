@@ -71,7 +71,7 @@ export const CameraCaptureOverlay: React.FC<CameraCaptureOverlayProps> = ({
 
       {!isVideoReady && !cameraError && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/80 text-white">
-          <Loader2 size={30} className="animate-spin text-[#00A77C]" />
+          <Loader2 size={30} className="animate-spin text-[var(--accent)]" />
           <p className="text-xs font-bold tracking-widest uppercase">Opening Camera...</p>
         </div>
       )}
@@ -117,7 +117,7 @@ export const CameraCaptureOverlay: React.FC<CameraCaptureOverlayProps> = ({
           onClick={onSnap}
           disabled={!isVideoReady}
           aria-label="Snap photo"
-          className="group flex h-[74px] w-[74px] cursor-pointer items-center justify-center rounded-full border-4 border-white bg-[#00A77C] text-white shadow-2xl shadow-[#00A77C]/40 transition-all hover:bg-[#008f6a] active:scale-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="group flex h-[74px] w-[74px] cursor-pointer items-center justify-center rounded-full border-4 border-white bg-[var(--accent)] text-white shadow-2xl shadow-[var(--accent)]/40 transition-all hover:bg-[var(--accent-dark)] active:scale-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Camera size={30} className="transition-transform group-active:scale-90" />
         </button>

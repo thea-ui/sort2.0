@@ -70,14 +70,14 @@ export const AtlasRoomDirectory: React.FC<AtlasRoomDirectoryProps> = ({ building
     <div data-testid="atlas-room-directory" className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
         <div>
-          <span className="text-[10px] font-extrabold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-extrabold text-[var(--text-strong)] bg-[var(--primary)]/10 border border-[var(--primary)]/25 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
             Synced from ATLAS
           </span>
-          <h3 className="text-base font-extrabold text-[#00271D] mt-1 flex items-center gap-2">
-            <Building2 size={18} className="text-sky-600" />
+          <h3 className="text-base font-extrabold text-[var(--text-strong)] mt-1 flex items-center gap-2">
+            <Building2 size={18} className="text-[var(--text-strong)]" />
             ATLAS Rooms ({totalRooms})
           </h3>
-          <p className="text-xs text-[#00271D]/50 mt-0.5 font-medium">
+          <p className="text-xs text-[var(--text-strong)]/50 mt-0.5 font-medium">
             These are the rooms teachers see when filing asset reports. Synced automatically; read-only.
           </p>
         </div>
@@ -90,13 +90,13 @@ export const AtlasRoomDirectory: React.FC<AtlasRoomDirectoryProps> = ({ building
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search ATLAS rooms..."
             data-testid="atlas-room-search"
-            className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-[#00A77C]"
+            className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-[var(--accent)]"
           />
         </div>
       </div>
 
       {groups.length === 0 && (
-        <p className="text-xs font-semibold text-[#00271D]/50 py-4 text-center">
+        <p className="text-xs font-semibold text-[var(--text-strong)]/50 py-4 text-center">
           No rooms match “{query}”.
         </p>
       )}
@@ -104,14 +104,14 @@ export const AtlasRoomDirectory: React.FC<AtlasRoomDirectoryProps> = ({ building
       <div className="space-y-4">
         {groups.map(({ building, floors }) => (
           <div key={building.atlasId}>
-            <p className="text-[11px] font-black uppercase tracking-wider text-[#00271D]/60 mb-2">
+            <p className="text-[11px] font-black uppercase tracking-wider text-[var(--text-strong)]/60 mb-2">
               {building.name}
               {building.shortCode ? ` · ${building.shortCode}` : ''}
             </p>
             <div className="space-y-2">
               {floors.map((floor) => (
                 <div key={floor.floor}>
-                  <p className="text-[10px] font-bold text-[#00271D]/40 mb-1">
+                  <p className="text-[10px] font-bold text-[var(--text-strong)]/40 mb-1">
                     Floor {floor.floor} · {floor.rooms.length} room{floor.rooms.length !== 1 ? 's' : ''}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -129,10 +129,10 @@ export const AtlasRoomDirectory: React.FC<AtlasRoomDirectoryProps> = ({ building
                               <Icon size={12} />
                             </span>
                             <span className="min-w-0">
-                              <span className="block truncate text-xs font-bold text-[#00271D]" title={room.name}>
+                              <span className="block truncate text-xs font-bold text-[var(--text-strong)]" title={room.name}>
                                 {room.name}
                               </span>
-                              <span className="block text-[10px] font-medium text-[#00271D]/50">
+                              <span className="block text-[10px] font-medium text-[var(--text-strong)]/50">
                                 {meta.label}
                                 {room.capacity !== null ? ` · ${room.capacity} seats` : ''}
                               </span>

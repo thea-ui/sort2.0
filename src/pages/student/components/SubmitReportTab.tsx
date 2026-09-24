@@ -334,17 +334,17 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
     <div className="max-w-3xl mx-auto space-y-5 animate-fade-in pb-12">
       <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0">
             <Sparkles size={20} />
           </div>
           <div>
-            <h2 className="font-heading font-bold text-sm text-[#00271D]">Report Campus Waste</h2>
-            <p className="text-xs text-[#00271D]/70 font-medium">
+            <h2 className="font-heading font-bold text-sm text-[var(--text-strong)]">Report Campus Waste</h2>
+            <p className="text-xs text-[var(--text-strong)]/70 font-medium">
               Snap photo → Tap map pin → Submit. Points awarded upon MRF resolution!
             </p>
           </div>
         </div>
-        <div className="hidden sm:flex items-center gap-1 bg-[#C69B26]/10 border border-[#C69B26]/30 text-[#C69B26] px-3 py-1.5 rounded-full text-xs font-bold shrink-0">
+        <div className="hidden sm:flex items-center gap-1 bg-[var(--gold)]/10 border border-[var(--gold)]/30 text-[var(--gold)] px-3 py-1.5 rounded-full text-xs font-bold shrink-0">
           <span>1st: 15pts · 2nd: 10pts · 3rd: 5pts</span>
         </div>
       </div>
@@ -373,10 +373,10 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
         <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center">
+              <div className="h-7 w-7 rounded-xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center">
                 <MapPin size={15} />
               </div>
-              <h3 className="text-sm font-heading font-bold text-[#00271D]">
+              <h3 className="text-sm font-heading font-bold text-[var(--text-strong)]">
                 2. Location & Waste Category
                 <span className="text-rose-500 ml-1">*</span>
               </h3>
@@ -387,7 +387,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
               onClick={() => setIsPinningMode(!isPinningMode)}
               className={`px-3 py-1 text-xs font-bold rounded-full border transition-all flex items-center gap-1.5 cursor-pointer w-fit ${
                 isPinningMode
-                  ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-xs'
+                  ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-xs'
                   : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
               }`}
             >
@@ -403,7 +403,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
               placeholder="Search campus location or building..."
               value={searchLocation}
               onChange={(e) => setSearchLocation(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#00271D] font-medium outline-none focus:border-[#00A77C] focus:bg-white transition-all shadow-xs"
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[var(--text-strong)] font-medium outline-none focus:border-[var(--accent)] focus:bg-white transition-all shadow-xs"
             />
           </div>
 
@@ -411,7 +411,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
               <span>Interactive Campus Map (Tap Circular Trash Pin)</span>
               {locationName && (
-                <span className="text-[#00A77C] normal-case font-bold truncate max-w-[240px]">
+                <span className="text-[var(--accent)] normal-case font-bold truncate max-w-[240px]">
                   Selected: {locationName}
                 </span>
               )}
@@ -419,7 +419,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
 
             <div
               className={`relative w-full h-[360px] sm:h-[420px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center transition-all ${
-                isPinningMode ? 'ring-2 ring-[#00A77C]' : ''
+                isPinningMode ? 'ring-2 ring-[var(--accent)]' : ''
               }`}
             >
               <CampusMapFrame
@@ -471,8 +471,8 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                 )}
               >
 
-              <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
-                <MapIcon size={12} className="text-[#00A77C]" />
+              <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[var(--text-strong)] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
+                <MapIcon size={12} className="text-[var(--accent)]" />
                 <span>Map Pins</span>
               </div>
 
@@ -511,10 +511,10 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                       }}
                       className={`relative -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md border-2 ${
                         isSel
-                          ? 'bg-[#00A77C] text-white border-white scale-110 ring-4 ring-[#00A77C]/30 z-20'
+                          ? 'bg-[var(--accent)] text-white border-white scale-110 ring-4 ring-[var(--accent)]/30 z-20'
                           : hasReportedFull
                           ? 'bg-[#FF5722] text-white border-white hover:scale-105'
-                          : 'bg-white text-[#00271D] border-gray-200 hover:border-[#00A77C] hover:scale-105'
+                          : 'bg-white text-[var(--text-strong)] border-gray-200 hover:border-[var(--accent)] hover:scale-105'
                       }`}
                       title={`${station.locationName} (${visiblePopoverSlots.length} Streams)`}
                     >
@@ -528,7 +528,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                       <div className={`absolute ${verticalPosClass} ${horizontalPosClass} z-40 min-w-[210px] bg-white/95 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-gray-200/90 animate-fade-in`}>
                         <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-2">
                           <div>
-                            <p className="text-[11px] font-extrabold text-[#00271D]">{station.locationName}</p>
+                            <p className="text-[11px] font-extrabold text-[var(--text-strong)]">{station.locationName}</p>
                             <p className="text-[9px] text-gray-400 font-medium">{visiblePopoverSlots.length} Waste Stream{visiblePopoverSlots.length !== 1 ? 's' : ''}</p>
                           </div>
                           <button type="button" onClick={(e) => { e.stopPropagation(); setActivePopoverStation(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -555,7 +555,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                                 }}
                                 className={`w-full flex items-center justify-between p-1.5 rounded-xl transition-all cursor-pointer text-left border ${
                                   category === slot.type
-                                    ? 'bg-[#00A77C]/15 border-[#00A77C]/40'
+                                    ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40'
                                     : 'hover:bg-gray-50 border-transparent'
                                 }`}
                               >
@@ -563,7 +563,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                                   <div className={`h-5 w-5 rounded-lg text-white flex items-center justify-center shrink-0 ${!slot.isAvailable ? 'bg-gray-400' : meta.bg}`}>
                                     <Icon size={11} />
                                   </div>
-                                  <span className="text-[10px] font-bold text-[#00271D] truncate">{meta.label}</span>
+                                  <span className="text-[10px] font-bold text-[var(--text-strong)] truncate">{meta.label}</span>
                                 </div>
                                 <span className={`text-[8px] font-black px-2 py-0.5 rounded-md shrink-0 uppercase ${
                                   slot.statusState === 'UNAVAILABLE' || slot.statusState === 'LIMIT_REACHED'
@@ -605,7 +605,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             </div>
 
             {isPinningMode && (
-              <p className="text-xs text-[#00A77C] font-semibold text-center mt-1 animate-pulse flex items-center justify-center gap-1">
+              <p className="text-xs text-[var(--accent)] font-semibold text-center mt-1 animate-pulse flex items-center justify-center gap-1">
                 <Target size={13} />
                 <span>Tap anywhere on the map to pin scattered trash!</span>
               </p>
@@ -628,8 +628,8 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
                       isSel
-                        ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-xs'
-                        : 'bg-gray-50 border-gray-200 text-[#00271D]/80 hover:bg-emerald-50 hover:border-emerald-200'
+                        ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-xs'
+                        : 'bg-gray-50 border-gray-200 text-[var(--text-strong)]/80 hover:bg-emerald-50 hover:border-emerald-200'
                     }`}
                   >
                     <span>{station.locationName}</span>
@@ -647,11 +647,11 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             return (
               <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-[#00271D] flex items-center gap-1.5">
-                    <Tag size={14} className="text-[#00A77C]" />
+                  <p className="text-xs font-bold text-[var(--text-strong)] flex items-center gap-1.5">
+                    <Tag size={14} className="text-[var(--accent)]" />
                     <span>Select Waste Category at {activeStation.locationName}:</span>
                   </p>
-                  <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-full">
                     {visibleSlots.length} Bin Stream{visibleSlots.length !== 1 ? 's' : ''} Configured
                   </span>
                 </div>
@@ -675,9 +675,9 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                       onClick={() => slot.isAvailable && handleSelectCategoryAndBin(slot.type, slot.bin?.id)}
                       className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between select-none relative overflow-hidden ${
                         isSelectedCategory && slot.isAvailable
-                          ? 'bg-[#00A77C]/15 border-[#00A77C] text-[#00271D] font-bold ring-2 ring-[#00A77C]/40 shadow-xs cursor-pointer'
+                          ? 'bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--text-strong)] font-bold ring-2 ring-[var(--accent)]/40 shadow-xs cursor-pointer'
                           : slot.isAvailable
-                          ? 'bg-white border-gray-200 text-[#00271D]/70 hover:bg-gray-50 hover:border-[#00A77C]/40 cursor-pointer'
+                          ? 'bg-white border-gray-200 text-[var(--text-strong)]/70 hover:bg-gray-50 hover:border-[var(--accent)]/40 cursor-pointer'
                           : 'bg-gray-100/90 border-gray-200 text-gray-400 opacity-60 cursor-not-allowed'
                       }`}
                     >
@@ -703,21 +703,21 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                             <AlertTriangle size={9} /> Reported Full
                           </span>
                         ) : isSelectedCategory ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00A77C] text-white">
+                          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-[var(--accent)] text-white">
                             Selected
                           </span>
                         ) : (
-                          <span className="px-[#00A77C] py-0.5 rounded-full text-[9px] font-bold bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
+                          <span className="px-[var(--accent)] py-0.5 rounded-full text-[9px] font-bold bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
                             Available
                           </span>
                         )}
                       </div>
 
                       <div>
-                        <p className={`text-xs font-bold ${isSelectedCategory && slot.isAvailable ? 'text-[#00A77C]' : 'text-[#00271D]'}`}>
+                        <p className={`text-xs font-bold ${isSelectedCategory && slot.isAvailable ? 'text-[var(--accent)]' : 'text-[var(--text-strong)]'}`}>
                           {meta.label}
                         </p>
-                        <p className="text-[10px] text-[#00271D]/60 font-medium mt-0.5 leading-snug">
+                        <p className="text-[10px] text-[var(--text-strong)]/60 font-medium mt-0.5 leading-snug">
                           {meta.desc}
                         </p>
 
@@ -740,7 +740,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                               <AlertTriangle size={10} /> Reported Full
                             </span>
                           ) : (
-                            <span className="font-bold text-[#00A77C] flex items-center gap-1">
+                            <span className="font-bold text-[var(--accent)] flex items-center gap-1">
                               <Check size={10} /> Available
                             </span>
                           )}
@@ -776,7 +776,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
           <button
             type="submit"
             disabled={isSubmitting || !capturedImage || !locationName || isDuplicateActiveReport}
-            className="w-full py-4 bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold text-sm rounded-full shadow-md shadow-[#00A77C]/25 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white font-bold text-sm rounded-full shadow-md shadow-[var(--accent)]/25 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>

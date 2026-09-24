@@ -95,7 +95,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#00271D]/40 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-[var(--primary)]/40 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -105,9 +105,9 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
         aria-modal="true"
         aria-label="Edit School Year"
       >
-        <div className="bg-gradient-to-br from-[#00271D] to-[#003a2b] px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-br from-[var(--primary)] to-[var(--primary-light)] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Pencil size={18} className="text-[#00A77C]" />
+            <Pencil size={18} className="text-[var(--accent)]" />
             <div>
               <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Edit School Year</span>
               <h3 className="text-base font-bold text-white">SY {schoolYear.label}</h3>
@@ -126,13 +126,13 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
           )}
 
           {schoolYear.enrollproId && (
-            <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 text-xs text-sky-700">
+            <div className="bg-[var(--primary)]/10 border border-[var(--primary)]/25 rounded-xl p-3 text-xs text-[var(--text-strong)]">
               Linked to EnrollPro ID: <strong>{schoolYear.enrollproId}</strong>. The EnrollPro link cannot be changed.
             </div>
           )}
 
           <div>
-            <label htmlFor="edit-sy-label" className="text-xs font-bold text-[#00271D] block mb-1">
+            <label htmlFor="edit-sy-label" className="text-xs font-bold text-[var(--text-strong)] block mb-1">
               Label <span className="text-rose-500">*</span>
             </label>
             <input
@@ -143,7 +143,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
               onChange={(e) => { setLabel(e.target.value); setFieldErrors((p) => ({ ...p, label: '' })); }}
               placeholder="2026-2027"
               className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-colors ${
-                fieldErrors.label ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-gray-200 focus:border-[#00A77C] focus:ring-1 focus:ring-[#00A77C]'
+                fieldErrors.label ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-gray-200 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]'
               }`}
               aria-invalid={!!fieldErrors.label}
               aria-describedby={fieldErrors.label ? 'edit-sy-label-error' : undefined}
@@ -155,7 +155,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="edit-sy-start" className="text-xs font-bold text-[#00271D] block mb-1">
+              <label htmlFor="edit-sy-start" className="text-xs font-bold text-[var(--text-strong)] block mb-1">
                 Start Date <span className="text-rose-500">*</span>
               </label>
               <input
@@ -164,7 +164,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); setFieldErrors((p) => ({ ...p, startDate: '' })); }}
                 className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-colors ${
-                  fieldErrors.startDate ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-gray-200 focus:border-[#00A77C] focus:ring-1 focus:ring-[#00A77C]'
+                  fieldErrors.startDate ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-gray-200 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]'
                 }`}
                 aria-invalid={!!fieldErrors.startDate}
               />
@@ -173,7 +173,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
               )}
             </div>
             <div>
-              <label htmlFor="edit-sy-end" className="text-xs font-bold text-[#00271D] block mb-1">
+              <label htmlFor="edit-sy-end" className="text-xs font-bold text-[var(--text-strong)] block mb-1">
                 End Date <span className="text-rose-500">*</span>
               </label>
               <input
@@ -182,7 +182,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); setFieldErrors((p) => ({ ...p, endDate: '' })); }}
                 className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-colors ${
-                  fieldErrors.endDate ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-gray-200 focus:border-[#00A77C] focus:ring-1 focus:ring-[#00A77C]'
+                  fieldErrors.endDate ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-gray-200 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]'
                 }`}
                 aria-invalid={!!fieldErrors.endDate}
               />
@@ -204,7 +204,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold cursor-pointer transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-bold cursor-pointer transition-colors disabled:opacity-50 flex items-center gap-1.5"
             >
               {submitting ? <Loader2 size={13} className="animate-spin" /> : <Pencil size={13} />}
               {submitting ? 'Saving...' : 'Save Changes'}

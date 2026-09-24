@@ -122,9 +122,9 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
       shortName: 'PET Bottles',
       stock: stocksRecord['pet_plastic'],
       icon: Package,
-      color: 'text-sky-600',
-      bgColor: 'bg-sky-50',
-      borderColor: 'border-sky-200',
+      color: 'text-[var(--text-strong)]',
+      bgColor: 'bg-[var(--primary)]/10',
+      borderColor: 'border-[var(--primary)]/25',
     },
     {
       code: 'glass',
@@ -132,8 +132,8 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
       shortName: 'Glass Bottles',
       stock: stocksRecord['glass'],
       icon: Wine,
-      color: 'text-[#00A77C]',
-      bgColor: 'bg-emerald-50',
+      color: 'text-[var(--accent)]',
+      bgColor: 'bg-[var(--primary)]/10',
       borderColor: 'border-emerald-200',
     },
     {
@@ -152,9 +152,9 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
       shortName: 'Cardboard',
       stock: stocksRecord['cardboard'],
       icon: FileText,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
+      color: 'text-[var(--gold)]',
+      bgColor: 'bg-[var(--gold)]/10',
+      borderColor: 'border-[var(--gold)]/25',
     },
   ];
 
@@ -235,7 +235,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
         );
       case 'DISPATCHED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-sky-50 text-sky-700 border border-sky-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/25">
             <Truck size={11} /> Dispatched to MRF
           </span>
         );
@@ -285,7 +285,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
       label: 'MRF Sales Reserved for Rank 1 Rewards',
       value: `₱${rewardsReservedPhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
       icon: Coins,
-      iconCls: 'bg-amber-50 text-[#C69B26]',
+      iconCls: 'bg-amber-50 text-[var(--gold)]',
       badge: `${settings?.rewardsReservePercent ?? 20}% Reserve`,
       badgeCls: 'bg-amber-50 text-amber-700 border-amber-200',
       badgeIcon: Award,
@@ -297,7 +297,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
       value: totalCollectedWeight.toFixed(1),
       unit: 'kg',
       icon: Scale,
-      iconCls: 'bg-emerald-50 text-[#00A77C]',
+      iconCls: 'bg-[var(--primary)]/10 text-[var(--accent)]',
       badge: `${completedDispatchesCount} Recorded`,
       badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       badgeIcon: ArrowUpRight,
@@ -309,9 +309,9 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
       value: activeDispatchesCount,
       unit: 'active',
       icon: Truck,
-      iconCls: 'bg-sky-50 text-[#0091EA]',
+      iconCls: 'bg-[var(--primary)]/10 text-[var(--text-strong)]',
       badge: activeDispatchesCount > 0 ? `${activeDispatchesCount} Active` : 'Queue Clear',
-      badgeCls: 'bg-sky-50 text-sky-700 border-sky-200',
+      badgeCls: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25',
       footer:
         activeDispatchesCount > 0
           ? users
@@ -340,17 +340,17 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in text-[#00271D]">
+    <div className="space-y-6 animate-fade-in text-[var(--text-strong)]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm">
         <div>
-          <span className="text-[10px] font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-3 py-1 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-3 py-1 rounded-full uppercase tracking-wider">
             Collections & Dispatch Action Center
           </span>
-          <h2 className="text-2xl font-extrabold text-[#00271D] tracking-tight mt-2">
+          <h2 className="text-2xl font-extrabold text-[var(--text-strong)] tracking-tight mt-2">
             Waste Dispatch & Recyclables Management
           </h2>
-          <p className="text-xs text-[#00271D]/60 mt-1 max-w-xl">
+          <p className="text-xs text-[var(--text-strong)]/60 mt-1 max-w-xl">
             Verify incoming student/teacher submissions, dispatch collection alerts to MRF staff, and audit itemized recyclable revenues.
           </p>
         </div>
@@ -366,9 +366,9 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
 
       {/* Toast Feedback */}
       {toastMessage && (
-        <div className="bg-[#00271D] text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-lg flex items-center justify-between animate-fade-in border border-[#00A77C]/30">
+        <div className="bg-[var(--primary)] text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-lg flex items-center justify-between animate-fade-in border border-[var(--accent)]/30">
           <span className="flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-[#00A77C]" />
+            <CheckCircle2 size={16} className="text-[var(--accent)]" />
             {toastMessage}
           </span>
           <button type="button" onClick={() => setToastMessage(null)} className="opacity-80 hover:opacity-100">
@@ -398,16 +398,16 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
                   {card.badge}
                 </span>
               </div>
-              <p className="text-xs font-semibold text-[#00271D]/60 mt-4">
+              <p className="text-xs font-semibold text-[var(--text-strong)]/60 mt-4">
                 {card.label}
               </p>
-              <p className="text-3xl font-black text-[#00271D] tracking-tight mt-1">
+              <p className="text-3xl font-black text-[var(--text-strong)] tracking-tight mt-1">
                 {card.value}
                 {card.unit && (
-                  <span className="text-base font-bold text-[#00271D]/40 ml-1.5">{card.unit}</span>
+                  <span className="text-base font-bold text-[var(--text-strong)]/40 ml-1.5">{card.unit}</span>
                 )}
               </p>
-              <p className="text-[11px] font-medium text-[#00271D]/50 mt-4 pt-3 border-t border-[#00271D]/5 truncate" title={card.footer}>
+              <p className="text-[11px] font-medium text-[var(--text-strong)]/50 mt-4 pt-3 border-t border-[var(--primary)]/5 truncate" title={card.footer}>
                 {card.footer}
               </p>
             </div>
@@ -419,15 +419,15 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-extrabold text-[#00271D] flex items-center gap-2">
-              <Package size={18} className="text-[#00A77C]" />
+            <h3 className="text-base font-extrabold text-[var(--text-strong)] flex items-center gap-2">
+              <Package size={18} className="text-[var(--accent)]" />
               Itemized MRF Recyclables Collection Summary
             </h3>
-            <p className="text-xs text-[#00271D]/50 mt-0.5">
+            <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
               Verified inventory log recorded by MRF staff with unit counts, weights, and market values
             </p>
           </div>
-          <span className="text-xs font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-3 py-1.5 rounded-full whitespace-nowrap">
+          <span className="text-xs font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-3 py-1.5 rounded-full whitespace-nowrap">
             Total Revenue Generated: ₱{totalMRFRevenuePhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </span>
         </div>
@@ -453,13 +453,13 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
                     ? 'border-emerald-300 ring-1 ring-emerald-200'
                     : isThresholdReached
                     ? 'border-amber-300 ring-1 ring-amber-200'
-                    : 'border-[#00271D]/10 hover:border-[#00271D]/20'
+                    : 'border-[var(--primary)]/10 hover:border-[var(--primary)]/20'
                 }`}
               >
                 {(isApproved || isThresholdReached) && (
                   <div
                     className={`-mx-4 -mt-4 mb-3 py-1 px-2 text-center text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 ${
-                      isApproved ? 'bg-[#00A77C] text-white' : 'bg-amber-400 text-amber-950'
+                      isApproved ? 'bg-[var(--accent)] text-white' : 'bg-amber-400 text-amber-950'
                     }`}
                   >
                     {isApproved ? (
@@ -478,32 +478,32 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
                   <div className={`p-2 rounded-xl ${item.bgColor} ${item.color}`}>
                     <ItemIcon size={18} />
                   </div>
-                  <span className="text-[10px] font-bold text-[#00271D]/40 uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">
                     {accumulatedKg.toFixed(1)} / {thresholdKg} kg
                   </span>
                 </div>
 
                 <div className="mt-3">
-                  <h4 className="text-xs font-bold text-[#00271D] leading-tight">{item.category}</h4>
-                  <p className="text-[10px] font-medium text-[#00271D]/40 mt-0.5">Rate ₱{pricePerKg}/kg</p>
+                  <h4 className="text-xs font-bold text-[var(--text-strong)] leading-tight">{item.category}</h4>
+                  <p className="text-[10px] font-medium text-[var(--text-strong)]/40 mt-0.5">Rate ₱{pricePerKg}/kg</p>
                 </div>
 
                 {/* Batch progress */}
                 <div className="mt-3 space-y-1.5">
-                  <div className="h-1.5 w-full bg-[#00271D]/10 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-[var(--primary)]/10 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        isApproved ? 'bg-[#00A77C]' : isThresholdReached ? 'bg-amber-500' : 'bg-[#00A77C]'
+                        isApproved ? 'bg-[var(--accent)]' : isThresholdReached ? 'bg-amber-500' : 'bg-[var(--accent)]'
                       }`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-[10px] font-bold text-[#00271D]/40">{pct}% of batch</span>
+                  <span className="text-[10px] font-bold text-[var(--text-strong)]/40">{pct}% of batch</span>
                 </div>
 
-                <div className="mt-auto pt-3 border-t border-[#00271D]/5 flex items-end justify-between gap-2">
+                <div className="mt-auto pt-3 border-t border-[var(--primary)]/5 flex items-end justify-between gap-2">
                   <div>
-                    <span className="text-[9px] font-bold text-[#00271D]/40 uppercase tracking-wider block">
+                    <span className="text-[9px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider block">
                       Sold Revenue
                     </span>
                     <span className={`text-sm font-black ${item.color}`}>₱{catRevenue.toLocaleString()}</span>
@@ -526,7 +526,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
                       <Coins size={12} /> Approve Sale
                     </button>
                   ) : (
-                    <span className="text-[10px] font-semibold text-[#00271D]/35">Awaiting threshold</span>
+                    <span className="text-[10px] font-semibold text-[var(--text-strong)]/35">Awaiting threshold</span>
                   )}
                 </div>
               </div>
@@ -534,7 +534,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
           })}
 
           {/* Residual Waste Card */}
-          <div className="flex flex-col rounded-2xl border border-[#00271D]/10 bg-white/90 p-4 transition-all hover:shadow-sm hover:border-[#00271D]/20">
+          <div className="flex flex-col rounded-2xl border border-[var(--primary)]/10 bg-white/90 p-4 transition-all hover:shadow-sm hover:border-[var(--primary)]/20">
             <div className="flex items-center justify-between">
               <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
                 <Trash2 size={18} />
@@ -544,13 +544,13 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
               </span>
             </div>
             <div className="mt-3">
-              <h4 className="text-xs font-bold text-[#00271D] leading-tight">{residualWaste.category}</h4>
+              <h4 className="text-xs font-bold text-[var(--text-strong)] leading-tight">{residualWaste.category}</h4>
               <p className="text-[10px] font-semibold text-rose-700 mt-0.5">{residualWaste.countLabel}</p>
             </div>
-            <div className="mt-auto pt-3 border-t border-[#00271D]/5 space-y-1.5">
-              <span className="text-lg font-black text-[#00271D] block">{residualWaste.weightKg.toFixed(1)} kg</span>
+            <div className="mt-auto pt-3 border-t border-[var(--primary)]/5 space-y-1.5">
+              <span className="text-lg font-black text-[var(--text-strong)] block">{residualWaste.weightKg.toFixed(1)} kg</span>
               <div className="flex items-center justify-between text-[10px] font-semibold">
-                <span className="text-[#00271D]/50">
+                <span className="text-[var(--text-strong)]/50">
                   Avg {residualWaste.avgKg.toFixed(1)} kg / weighed batch
                 </span>
                 {residualWaste.unweighed > 0 && (
@@ -567,12 +567,12 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
 
       {/* MODAL 1: PHOTO EVIDENCE PREVIEW */}
       {previewImage && (
-        <div className="fixed inset-0 bg-[#00271D]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[var(--primary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-scale-in">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
-                <h4 className="text-base font-extrabold text-[#00271D]">Photo Evidence Preview</h4>
-                <p className="text-xs text-[#00271D]/50">Report #{previewImage.id} • {previewImage.title}</p>
+                <h4 className="text-base font-extrabold text-[var(--text-strong)]">Photo Evidence Preview</h4>
+                <p className="text-xs text-[var(--text-strong)]/50">Report #{previewImage.id} • {previewImage.title}</p>
               </div>
               <button
                 type="button"
@@ -600,15 +600,15 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
 
       {/* MODAL 2: APPROVE & DISPATCH TO MRF STAFF */}
       {dispatchModalReport && (
-        <div className="fixed inset-0 bg-[#00271D]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[var(--primary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scale-in">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
-                <h4 className="text-base font-extrabold text-[#00271D] flex items-center gap-2">
-                  <Send size={18} className="text-[#00A77C]" />
+                <h4 className="text-base font-extrabold text-[var(--text-strong)] flex items-center gap-2">
+                  <Send size={18} className="text-[var(--accent)]" />
                   Approve & Dispatch to MRF
                 </h4>
-                <p className="text-xs text-[#00271D]/50">Assign collection task for Report #{dispatchModalReport.id}</p>
+                <p className="text-xs text-[var(--text-strong)]/50">Assign collection task for Report #{dispatchModalReport.id}</p>
               </div>
               <button
                 type="button"
@@ -620,24 +620,24 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
             </div>
 
             <form onSubmit={handleConfirmDispatch} className="space-y-4 text-xs">
-              <div className="p-3 bg-[#F9F3F0] rounded-2xl space-y-1">
-                <p className="font-bold text-[#00271D]">{cleanReportTitle(dispatchModalReport.title)}</p>
-                <p className="text-[11px] text-[#00271D]/60">Location: {cleanLocationName(dispatchModalReport.locationName)}</p>
+              <div className="p-3 bg-[var(--background)] rounded-2xl space-y-1">
+                <p className="font-bold text-[var(--text-strong)]">{cleanReportTitle(dispatchModalReport.title)}</p>
+                <p className="text-[11px] text-[var(--text-strong)]/60">Location: {cleanLocationName(dispatchModalReport.locationName)}</p>
                 {dispatchModalReport.coordinates && (
-                  <p className="text-[11px] font-mono text-[#00A77C] font-semibold flex items-center gap-1">
+                  <p className="text-[11px] font-mono text-[var(--accent)] font-semibold flex items-center gap-1">
                     <Navigation size={11} /> Grid [{dispatchModalReport.coordinates.lat.toFixed(4)}, {dispatchModalReport.coordinates.lng.toFixed(4)}]
                   </p>
                 )}
-                <p className="text-[11px] text-[#00271D]/60">Reporter: {dispatchModalReport.reporterName}</p>
+                <p className="text-[11px] text-[var(--text-strong)]/60">Reporter: {dispatchModalReport.reporterName}</p>
               </div>
 
               <div>
-                <label className="font-bold text-[#00271D] block mb-1.5">Assign MRF Logistics Specialist</label>
+                <label className="font-bold text-[var(--text-strong)] block mb-1.5">Assign MRF Logistics Specialist</label>
                 <select
                   value={selectedMrfId}
                   onChange={(e) => setSelectedMrfId(e.target.value)}
                   required
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-[#00A77C] outline-none font-medium cursor-pointer"
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-[var(--accent)] outline-none font-medium cursor-pointer"
                 >
                   <option value="">-- Pick MRF Personnel --</option>
                   {users.filter(u => u.role === 'MRF').map(mrf => (
@@ -661,7 +661,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white font-bold cursor-pointer shadow-md shadow-[#00A77C]/20 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white font-bold cursor-pointer shadow-md shadow-[var(--accent)]/20 flex items-center gap-1.5"
                 >
                   <Send size={14} />
                   <span>Dispatch Alert Now</span>
@@ -674,7 +674,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
 
       {/* MODAL 3: FLAG FALSE OFFENSE & PENALTY */}
       {flagOffenseReport && (
-        <div className="fixed inset-0 bg-[#00271D]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[var(--primary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scale-in">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
@@ -682,7 +682,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
                   <ShieldAlert size={18} />
                   Flag False Offense & Penalty
                 </h4>
-                <p className="text-xs text-[#00271D]/50">Report #{flagOffenseReport.id} by {flagOffenseReport.reporterName}</p>
+                <p className="text-xs text-[var(--text-strong)]/50">Report #{flagOffenseReport.id} by {flagOffenseReport.reporterName}</p>
               </div>
               <button
                 type="button"
@@ -701,7 +701,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
               </div>
 
               <div>
-                <label className="font-bold text-[#00271D] block mb-1">Offense Justification Note</label>
+                <label className="font-bold text-[var(--text-strong)] block mb-1">Offense Justification Note</label>
                 <textarea
                   value={flagReason}
                   onChange={(e) => setFlagReason(e.target.value)}

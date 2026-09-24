@@ -9,8 +9,8 @@ interface StudentUrgencySelectorProps {
 export const StudentUrgencySelector: React.FC<StudentUrgencySelectorProps> = ({ urgency, setUrgency }) => (
   <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-2.5">
     <div className="flex items-center justify-between">
-      <h3 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
-        <AlertTriangle size={16} className="text-[#00A77C]" />
+      <h3 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+        <AlertTriangle size={16} className="text-[var(--accent)]" />
         <span>3. Urgency Level</span>
       </h3>
       <span className="text-[10px] font-medium text-gray-400">Defaults to Normal</span>
@@ -32,8 +32,8 @@ export const StudentUrgencySelector: React.FC<StudentUrgencySelectorProps> = ({ 
               isSelected
                 ? item.level === 'HIGH'
                   ? 'bg-rose-500 text-white font-bold shadow-xs'
-                  : 'bg-[#00A77C] text-white font-bold shadow-xs'
-                : 'text-gray-600 hover:text-[#00271D]'
+                  : 'bg-[var(--accent)] text-white font-bold shadow-xs'
+                : 'text-gray-600 hover:text-[var(--text-strong)]'
             }`}
           >
             <p className="text-xs font-bold leading-tight">{item.label}</p>

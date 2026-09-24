@@ -1,5 +1,7 @@
 # S.O.R.T. Admin Console UI/UX Refinement & Overhaul Plan
 
+> **SUPERSEDED**: This plan is largely implemented. Remaining unshipped deltas are folded into `UI_POLISH_PLAN.md` (Admin Console UI Polish & Modularization Plan).
+
 > **Scope**: UI & Visual Aesthetics Optimization for the Admin Console (Operational & Collection Performance Tab & Dashboard Shell)  
 > **Status**: Planning & Architecture Phase (No Code Modifications)  
 > **Target Date**: September 2026

@@ -6,7 +6,7 @@ const CAT_META: Record<CategoryStreamType, { label: string; bg: string; desc: st
   // DO 5 s. 2014 colour coding: green/yellow, black/blue, red/orange.
   BIODEGRADABLE: { label: 'Biodegradable Bin', bg: 'bg-emerald-500', desc: 'Food scraps, organic waste & plant leaves', Icon: Droplets },
   NON_BIODEGRADABLE: { label: 'Non-Biodegradable Bin', bg: 'bg-slate-800', desc: 'Wrappers, plastic films & residual waste (black/blue)', Icon: PackageX },
-  RECYCLABLE: { label: 'Recyclable Bin', bg: 'bg-sky-500', desc: 'PET bottles, aluminum cans, glass & cardboard', Icon: Recycle },
+  RECYCLABLE: { label: 'Recyclable Bin', bg: 'bg-[var(--primary)]', desc: 'PET bottles, aluminum cans, glass & cardboard', Icon: Recycle },
   HAZARDOUS: { label: 'Hazardous Bin', bg: 'bg-orange-500', desc: 'Batteries, bulbs, chemicals, sharps & e-waste (red/orange)', Icon: AlertTriangle },
 };
 
@@ -35,7 +35,7 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
     return (
       <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm text-center py-12 text-gray-400 space-y-2">
         <Building2 size={32} className="mx-auto text-gray-300" />
-        <p className="text-xs font-bold text-[#00271D]">No Station Selected</p>
+        <p className="text-xs font-bold text-[var(--text-strong)]">No Station Selected</p>
         <p className="text-[11px]">Click a pin on the blueprint grid to inspect and manipulate its bins.</p>
       </div>
     );
@@ -53,12 +53,12 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
               {selectedLoc.status}
             </span>
           </div>
-          <h3 className="text-base font-black text-[#00271D] mt-0.5">{selectedLoc.name}</h3>
+          <h3 className="text-base font-black text-[var(--text-strong)] mt-0.5">{selectedLoc.name}</h3>
           <p className="text-[11px] text-gray-400 font-medium">Grid Position: X: {selectedLoc.x}% · Y: {selectedLoc.y}%</p>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button type="button" onClick={() => setEditingLoc(selectedLoc)} className="p-2 text-gray-500 hover:text-[#00A77C] hover:bg-emerald-50 rounded-xl transition-all cursor-pointer" title="Edit Station Details">
+          <button type="button" onClick={() => setEditingLoc(selectedLoc)} className="p-2 text-gray-500 hover:text-[var(--accent)] hover:bg-emerald-50 rounded-xl transition-all cursor-pointer" title="Edit Station Details">
             <Edit2 size={15} />
           </button>
           <button type="button" onClick={() => setDeletingLoc(selectedLoc)} className="p-2 text-gray-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer" title="Delete Station">
@@ -69,8 +69,8 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
 
       <div className="space-y-3">
         <div className="flex justify-between items-center">
-          <h4 className="text-xs font-black text-[#00271D] uppercase tracking-wider flex items-center gap-1.5">
-            <SlidersHorizontal size={14} className="text-[#00A77C]" />
+          <h4 className="text-xs font-black text-[var(--text-strong)] uppercase tracking-wider flex items-center gap-1.5">
+            <SlidersHorizontal size={14} className="text-[var(--accent)]" />
             Waste Stream Bins at Station
           </h4>
           <span className="text-[10px] text-gray-400 font-semibold">Click button to toggle each bin</span>
@@ -103,7 +103,7 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <h5 className="font-extrabold text-xs text-[#00271D]">{meta.label}</h5>
+                      <h5 className="font-extrabold text-xs text-[var(--text-strong)]">{meta.label}</h5>
                       <span className={`text-[9px] font-black uppercase px-2 py-0.2 rounded-full border ${
                         isAvailable ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : activeReport ? 'bg-amber-100 border-amber-300 text-amber-900' : streamStatus === 'No Bin' ? 'bg-gray-200 border-gray-300 text-gray-700' : 'bg-rose-100 border-rose-300 text-rose-800'
                       }`}>
@@ -124,7 +124,7 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
                   <select
                     value={streamStatus}
                     onChange={(e) => handleSetStreamStatus(selectedLoc.id, streamType, e.target.value as BinStreamState)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer border transition-all focus:outline-none focus:ring-2 focus:ring-[#00A77C]/40 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 ${
                       streamStatus === 'Available' ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100' : streamStatus === 'Unavailable' ? 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
                     }`}
                   >
@@ -144,7 +144,7 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
         <div className="flex flex-wrap gap-1.5">
           {filteredList.map((loc) => (
             <button key={loc.id} type="button" onClick={() => setSelectedLocId(loc.id)} className={`px-2.5 py-1 rounded-xl text-[11px] font-bold cursor-pointer transition-all border ${
-              selectedLocId === loc.id ? 'bg-[#00271D] text-white border-[#00271D]' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+              selectedLocId === loc.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
             }`}>
               {loc.name}
             </button>

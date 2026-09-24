@@ -67,18 +67,18 @@ export const AtlasSyncButton: React.FC<AtlasSyncButtonProps> = ({ onSynced, clas
         title="Fetch the latest buildings and rooms from ATLAS"
         className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-xs border transition-all cursor-pointer ${
           state === 'syncing'
-            ? 'bg-sky-50 text-sky-700 border-sky-200 opacity-80 cursor-wait'
-            : 'bg-white text-[#00271D] border-gray-200 hover:bg-gray-50'
+            ? 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25 opacity-80 cursor-wait'
+            : 'bg-white text-[var(--text-strong)] border-gray-200 hover:bg-gray-50'
         }`}
       >
-        <RefreshCw size={13} className={`text-[#0091EA] ${state === 'syncing' ? 'animate-spin' : ''}`} />
+        <RefreshCw size={13} className={`text-[var(--text-strong)] ${state === 'syncing' ? 'animate-spin' : ''}`} />
         {state === 'syncing' ? 'Syncing…' : 'Sync from ATLAS'}
       </button>
       {message && (
         <span
           data-testid="atlas-sync-message"
           className={`text-[10px] font-bold ${
-            state === 'error' ? 'text-rose-600' : state === 'done' ? 'text-emerald-700' : 'text-sky-700'
+            state === 'error' ? 'text-rose-600' : state === 'done' ? 'text-emerald-700' : 'text-[var(--text-strong)]'
           }`}
         >
           {message}

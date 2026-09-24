@@ -46,7 +46,7 @@ for (const { role, existingTab } of ROLES) {
   });
 }
 
-test('profile menu keeps the demo role switcher out and exposes Change Password + Sign Out', async ({ page }) => {
+test('profile menu keeps the demo role switcher out and exposes Sign Out only', async ({ page }) => {
   const seeded = await seedSession(page, 'STUDENT');
   test.skip(!seeded, 'no STUDENT test identity');
 
@@ -55,11 +55,7 @@ test('profile menu keeps the demo role switcher out and exposes Change Password 
 
   await expect(page.getByText('Switch Role (Demo)')).toHaveCount(0);
   await expect(page.getByText('Demo Role Switcher')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Change Password' })).toBeVisible();
+  // Passwords are managed by EnrollPro: no change-password entry point in SORT.
+  await expect(page.getByRole('button', { name: 'Change Password' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
-
-  await page.getByRole('button', { name: 'Change Password' }).click();
-  await expect(page.getByRole('dialog', { name: 'Change password information' })).toBeVisible();
-  await page.getByRole('button', { name: 'Got it' }).click();
-  await expect(page.getByRole('dialog', { name: 'Change password information' })).toHaveCount(0);
 });

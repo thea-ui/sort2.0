@@ -8,7 +8,7 @@ const RANK_CONFIGS = [
   { icon: Medal, badge: 'bg-gradient-to-br from-amber-600 to-amber-800 text-white', ring: 'ring-amber-400', glow: 'shadow-amber-300/50', bar: 'bg-gradient-to-b from-amber-500 to-amber-700' },
 ];
 
-const AVATAR_COLORS = ['bg-emerald-500', 'bg-violet-500', 'bg-sky-500', 'bg-amber-500', 'bg-rose-500'];
+const AVATAR_COLORS = ['bg-[var(--primary)]', 'bg-[var(--gold)]', 'bg-[var(--accent)]', 'bg-amber-500', 'bg-rose-500'];
 const getAvatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 
 const DEPARTMENTS = ['BS Biology', 'BS Computer Science', 'AB Political Science', 'BS Engineering', 'BS Education'];

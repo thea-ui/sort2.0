@@ -128,12 +128,12 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
       {/* Header Banner (Identical Visual Structure to Student View) */}
       <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[#0091EA]/15 text-[#0091EA] flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-[var(--primary)]/10 text-[var(--text-strong)] flex items-center justify-center shrink-0">
             <Building2 size={20} />
           </div>
           <div>
-            <h2 className="font-heading font-extrabold text-[#00271D] text-base">Campus Bin Map (Live View)</h2>
-            <p className="text-xs text-[#00271D]/60 font-medium">
+            <h2 className="font-heading font-extrabold text-[var(--text-strong)] text-base">Campus Bin Map (Live View)</h2>
+            <p className="text-xs text-[var(--text-strong)]/60 font-medium">
               Real-time monitoring of campus waste stations, stream availability, and coordinates.
             </p>
           </div>
@@ -159,7 +159,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
               placeholder="Search campus bin location or building..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[#00271D] font-medium outline-none focus:border-[#00A77C] focus:bg-white transition-all shadow-xs"
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[var(--text-strong)] font-medium outline-none focus:border-[var(--accent)] focus:bg-white transition-all shadow-xs"
             />
           </div>
 
@@ -167,7 +167,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
             <div className="flex justify-between items-center text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
               <span>Campus Map Grid (Click Pin for Details)</span>
               {activeStation && (
-                <span className="text-[#00A77C] normal-case font-bold truncate max-w-[240px]">
+                <span className="text-[var(--accent)] normal-case font-bold truncate max-w-[240px]">
                   Selected: {activeStation.name}
                 </span>
               )}
@@ -205,8 +205,8 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                 )}
               >
 
-              <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
-                <MapIcon size={12} className="text-[#0091EA]" />
+              <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[var(--text-strong)] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
+                <MapIcon size={12} className="text-[var(--text-strong)]" />
                 <span>Station Map Pins</span>
               </div>
 
@@ -232,7 +232,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                       className={`relative flex items-center justify-center h-9 w-9 rounded-full border-2 transition-transform duration-200 cursor-pointer shadow-md ${
                         hasUnavailable
                           ? 'bg-rose-500 border-white text-white'
-                          : 'bg-[#00A77C] border-white text-white'
+                          : 'bg-[var(--accent)] border-white text-white'
                       } ${isSelected ? 'scale-125 ring-4 ring-amber-400 z-30' : 'hover:scale-110'}`}
                     >
                       <Trash2 size={16} />
@@ -244,7 +244,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                         <div className="flex justify-between items-start mb-1.5 border-b border-gray-100 pb-1">
                           <div>
                             <p className="text-[10px] font-bold text-gray-400 font-mono">{st.code}</p>
-                            <h4 className="text-xs font-black text-[#00271D] leading-tight">{st.name}</h4>
+                            <h4 className="text-xs font-black text-[var(--text-strong)] leading-tight">{st.name}</h4>
                           </div>
                         </div>
 
@@ -253,7 +253,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                             const meta = CAT_META[slot.type];
                             return (
                               <div key={slot.type} className="flex items-center justify-between py-0.5">
-                                <span className="flex items-center gap-1 font-bold text-[#00271D]">
+                                <span className="flex items-center gap-1 font-bold text-[var(--text-strong)]">
                                   <meta.Icon size={11} className={meta.text} />
                                   {meta.short}
                                 </span>
@@ -282,7 +282,7 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
         <div className="lg:col-span-5 bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-sm font-extrabold text-[#00271D]">Campus Stations ({filteredStations.length})</h3>
+              <h3 className="text-sm font-extrabold text-[var(--text-strong)]">Campus Stations ({filteredStations.length})</h3>
               <p className="text-[11px] text-gray-400">Click a card to highlight its pin on the map grid</p>
             </div>
           </div>
@@ -300,14 +300,14 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                   }}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-50/80 border-[#00A77C] shadow-md ring-2 ring-[#00A77C]/20'
-                      : 'bg-[#F9F3F0]/60 border-gray-200/80 hover:bg-gray-100/80'
+                      ? 'bg-emerald-50/80 border-[var(--accent)] shadow-md ring-2 ring-[var(--accent)]/20'
+                      : 'bg-[var(--background)]/60 border-gray-200/80 hover:bg-gray-100/80'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <span className="text-[10px] font-mono font-bold text-gray-400 uppercase">{st.code}</span>
-                      <h4 className="font-extrabold text-xs text-[#00271D]">{st.name}</h4>
+                      <h4 className="font-extrabold text-xs text-[var(--text-strong)]">{st.name}</h4>
                     </div>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${

@@ -2,17 +2,27 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { requireAdmin } from '../middleware/auth.js';
 import { runEnrollProSync, syncTermCalendar, mirrorEnrollProSchoolYears } from '../services/enrollpro-sync.service.js';
+import { syncEnrollProBranding } from '../services/enrollpro-branding.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Branding rides along with admin-triggered sync runs; failures never fail the
+// sync itself (the branding scheduler also refreshes it hourly).
+async function pullBrandingBestEffort(): Promise<boolean> {
+  const result = await syncEnrollProBranding();
+  return result.status === 'synced';
+}
 
 // POST /api/sync/enrollpro — trigger full sync manually
 router.post('/enrollpro', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
   try {
     const result = await runEnrollProSync();
+    const brandingUpdated = await pullBrandingBestEffort();
     return res.json({
       message: 'Sync completed',
       ...result,
+      brandingUpdated,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
@@ -55,11 +65,13 @@ router.post('/all', requireAdmin, async (_req: Request, res: Response): Promise<
       runEnrollProSync(),
       syncTermCalendar(),
     ]);
+    const brandingUpdated = await pullBrandingBestEffort();
 
     return res.json({
       message: 'Full sync completed',
       users: syncResult,
       terms: termResult,
+      brandingUpdated,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });

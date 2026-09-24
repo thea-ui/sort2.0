@@ -136,28 +136,28 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-[#0091EA]/15 text-[#0091EA] flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-[var(--primary)]/15 text-[var(--text-strong)] flex items-center justify-center shrink-0">
             <Scale size={24} />
           </div>
           <div>
-            <span className="text-[10px] font-black text-[#0091EA] bg-[#0091EA]/15 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-black text-[var(--text-strong)] bg-[var(--primary)]/15 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Asset Scrap Recovery Stock
             </span>
-            <h3 className="text-xl font-heading font-black text-[#00271D] mt-1">Unserviceable Asset Scrap & Junk Sale Tracker</h3>
-            <p className="text-xs text-[#00271D]/60">Weigh unserviceable assets, store at the MRF, and sell each material once the threshold is reached.</p>
+            <h3 className="text-xl font-heading font-black text-[var(--text-strong)] mt-1">Unserviceable Asset Scrap & Junk Sale Tracker</h3>
+            <p className="text-xs text-[var(--text-strong)]/60">Weigh unserviceable assets, store at the MRF, and sell each material once the threshold is reached.</p>
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <button
             type="button"
             onClick={() => openWeigh(NEW_ENTRY)}
-            className="px-4 py-2.5 rounded-xl bg-[#00271D] hover:bg-[#003a2b] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
+            className="px-4 py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-light)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
           >
             <Plus size={14} /> Weigh Scrap
           </button>
-          <div className="bg-[#F9F3F0] p-3 rounded-2xl border border-[#00271D]/10 text-right">
+          <div className="bg-[var(--background)] p-3 rounded-2xl border border-[var(--primary)]/10 text-right">
             <span className="text-[10px] font-bold text-gray-400 uppercase block">Total Scrap Revenue</span>
-            <span className="text-xl font-heading font-black text-[#00A77C]">₱{totalScrapSales.toLocaleString()}</span>
+            <span className="text-xl font-heading font-black text-[var(--accent)]">₱{totalScrapSales.toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -165,8 +165,8 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
       {/* Unweighed queue */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <h4 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
-            <Inbox size={16} className="text-[#0091EA]" />
+          <h4 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+            <Inbox size={16} className="text-[var(--text-strong)]" />
             <span>Awaiting Weighing</span>
           </h4>
           <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
@@ -186,7 +186,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
             {pendingItems.map((item) => (
               <div key={item.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-[#00271D] truncate">{item.description || item.materialName}</p>
+                  <p className="font-bold text-[var(--text-strong)] truncate">{item.description || item.materialName}</p>
                   <p className="text-[10px] text-gray-400">
                     {item.materialName}
                     {item.sourceAssetId ? ' · from asset ledger' : ''}
@@ -198,7 +198,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                     type="button"
                     onClick={() => openWeigh(item.id)}
                     disabled={busy === item.id}
-                    className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-[#00A77C] hover:bg-[#008f6a] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     <Scale size={13} /> Weigh
                   </button>
@@ -241,7 +241,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                   <ShieldAlert size={12} /> HAZARDOUS — ACCREDITED HANDLER ONLY (NOT SOLD AS JUNK)
                 </div>
               ) : isApproved ? (
-                <div className="bg-[#00A77C] text-white font-black text-[9px] uppercase px-3 py-1 text-center tracking-wider -mx-5 -mt-5 mb-2 flex items-center justify-center gap-1.5 animate-pulse">
+                <div className="bg-[var(--accent)] text-white font-black text-[9px] uppercase px-3 py-1 text-center tracking-wider -mx-5 -mt-5 mb-2 flex items-center justify-center gap-1.5 animate-pulse">
                   <CheckCircle2 size={12} /> APPROVED — READY FOR SCRAP SALE
                 </div>
               ) : isThresholdReached ? (
@@ -252,7 +252,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
 
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
-                  <h4 className="text-sm font-extrabold text-[#00271D] truncate">{mat.materialName}</h4>
+                  <h4 className="text-sm font-extrabold text-[var(--text-strong)] truncate">{mat.materialName}</h4>
                   <p className="text-[11px] text-gray-400 font-medium">Est. rate: ₱{mat.marketPricePerKg} / kg</p>
                 </div>
                 <span className={`text-xs font-black px-2.5 py-1 rounded-full shrink-0 ${
@@ -267,11 +267,11 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] font-bold">
                   <span className="text-gray-400">Scrap Batch Target</span>
-                  <span className={isApproved ? 'text-[#00A77C] font-black' : isThresholdReached ? 'text-amber-700 font-black' : 'text-[#00A77C]'}>{pct}%</span>
+                  <span className={isApproved ? 'text-[var(--accent)] font-black' : isThresholdReached ? 'text-amber-700 font-black' : 'text-[var(--accent)]'}>{pct}%</span>
                 </div>
                 <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${isApproved ? 'bg-[#00A77C]' : isThresholdReached ? 'bg-amber-400' : 'bg-[#0091EA]'}`}
+                    className={`h-full rounded-full transition-all duration-500 ${isApproved ? 'bg-[var(--accent)]' : isThresholdReached ? 'bg-amber-400' : 'bg-[var(--primary)]'}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -279,7 +279,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
 
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
                 <span className="text-[11px] text-gray-500 font-medium truncate">
-                  Est. value: <strong className="text-[#00271D]">₱{Math.round(currentKg * mat.marketPricePerKg).toLocaleString()}</strong>
+                  Est. value: <strong className="text-[var(--text-strong)]">₱{Math.round(currentKg * mat.marketPricePerKg).toLocaleString()}</strong>
                 </span>
 
                 {hazmat ? (
@@ -291,7 +291,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                     type="button"
                     onClick={() => handleSell(mat.materialCode, mat.materialName, currentKg, thresholdKg)}
                     disabled={busy === mat.materialCode}
-                    className="px-4 py-2 rounded-xl text-xs font-black bg-[#C69B26] hover:bg-[#b0881e] text-white shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+                    className="px-4 py-2 rounded-xl text-xs font-black bg-[var(--gold)] hover:bg-[#b0881e] text-white shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
                   >
                     {busy === mat.materialCode ? <Loader2 size={14} className="animate-spin" /> : <Coins size={14} />} Sell Scrap
                   </button>
@@ -300,7 +300,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                     <button
                       type="button"
                       onClick={() => { setApproveFor(mat.materialCode); setApprovalRef(''); }}
-                      className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-[#00A77C] hover:bg-[#008f6a] text-white flex items-center gap-1.5 cursor-pointer shrink-0"
+                      className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white flex items-center gap-1.5 cursor-pointer shrink-0"
                     >
                       <CheckCircle2 size={13} /> Approve Sale
                     </button>
@@ -325,8 +325,8 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
 
       {/* Sales ledger */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
-        <h4 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
-          <Coins size={16} className="text-[#C69B26]" />
+        <h4 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+          <Coins size={16} className="text-[var(--gold)]" />
           <span>Asset Scrap / Junk Sales Ledger</span>
         </h4>
 
@@ -340,14 +340,14 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
             {salesHistory.map((sale) => (
               <div key={sale.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-[#00271D] truncate">{sale.materialName}</p>
+                  <p className="font-bold text-[var(--text-strong)] truncate">{sale.materialName}</p>
                   <p className="text-[10px] text-gray-400">
                     {sale.buyerName} · {sale.soldAt}
                     {sale.approvalReference ? ` · Ref: ${sale.approvalReference}` : ''}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="font-black text-[#00A77C] block text-sm">₱{sale.totalRevenue.toLocaleString()}</span>
+                  <span className="font-black text-[var(--accent)] block text-sm">₱{sale.totalRevenue.toLocaleString()}</span>
                   <span className="text-[10px] text-gray-400 font-semibold">{sale.weightKg} kg sold</span>
                 </div>
               </div>
@@ -360,12 +360,12 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
       {approveFor && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setApproveFor(null); }}>
           <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-br from-[#00271D] to-[#003a2b] px-6 py-4">
+            <div className="bg-gradient-to-br from-[var(--primary)] to-[var(--primary-light)] px-6 py-4">
               <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Disposal Committee Approval</span>
               <h3 className="text-base font-bold text-white">Approve Scrap Batch Sale</h3>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-xs text-[#00271D]/70">
+              <p className="text-xs text-[var(--text-strong)]/70">
                 Record the approval reference (WMR / IIRUP / PTR / Disposal Committee minutes) before the batch can be sold.
               </p>
               <div>
@@ -375,7 +375,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                   value={approvalRef}
                   onChange={(e) => setApprovalRef(e.target.value)}
                   placeholder="e.g. WMR-2026-014"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs outline-none focus:border-[#00A77C]"
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs outline-none focus:border-[var(--accent)]"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-1">
@@ -384,7 +384,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                   type="button"
                   onClick={handleConfirmApprove}
                   disabled={busy === approveFor}
-                  className="px-4 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {busy === approveFor ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Approve
                 </button>
@@ -398,12 +398,12 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
       {showWeigh && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowWeigh(false); }}>
           <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-br from-[#00271D] to-[#003a2b] px-6 py-4">
+            <div className="bg-gradient-to-br from-[var(--primary)] to-[var(--primary-light)] px-6 py-4">
               <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Scrap Recovery</span>
               <h3 className="text-base font-bold text-white">Weigh Scrap</h3>
             </div>
             <form onSubmit={handleWeighSubmit} className="p-6 space-y-4">
-              <p className="text-xs text-[#00271D]/70">
+              <p className="text-xs text-[var(--text-strong)]/70">
                 {selectedPending
                   ? 'Record the weight of this logged item. It is added to that material\'s scrap stock.'
                   : 'Record the weight of an unserviceable item brought to the MRF. It is added to that material\'s scrap stock.'}
@@ -414,7 +414,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                 <select
                   value={weighTarget}
                   onChange={(e) => setWeighTarget(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-bold outline-none focus:border-[#00A77C] cursor-pointer"
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-bold outline-none focus:border-[var(--accent)] cursor-pointer"
                 >
                   <option value={NEW_ENTRY}>New weighed entry…</option>
                   {pendingItems.map((item) => (
@@ -431,7 +431,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                   <select
                     value={weighMaterial}
                     onChange={(e) => setWeighMaterial(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-bold outline-none focus:border-[#00A77C] cursor-pointer"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-bold outline-none focus:border-[var(--accent)] cursor-pointer"
                   >
                     {materials.map((m) => (
                       <option key={m.materialCode} value={m.materialCode}>{m.materialName}</option>
@@ -447,7 +447,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                   value={weighKg}
                   onChange={(e) => setWeighKg(e.target.value)}
                   placeholder="0.0"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-bold outline-none focus:border-[#00A77C]"
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-bold outline-none focus:border-[var(--accent)]"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-1">
@@ -455,7 +455,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                 <button
                   type="submit"
                   disabled={weighing}
-                  className="px-4 py-2 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {weighing ? <Loader2 size={13} className="animate-spin" /> : <Scale size={13} />} Add to Scrap Stock
                 </button>

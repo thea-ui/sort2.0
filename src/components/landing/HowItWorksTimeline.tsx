@@ -3,8 +3,8 @@ import { Camera, MapPin, Truck, Award, ArrowRight } from 'lucide-react';
 
 const STEPS = [
   { icon: Camera, color: 'bg-rose-500', title: 'Capture & Report', desc: 'Snap a photo of overflowing waste and submit a quick mobile report.' },
-  { icon: MapPin, color: 'bg-sky-500', title: 'Pin on Campus Map', desc: 'Tag your exact campus bin location so MRF teams know where to go.' },
-  { icon: Truck, color: 'bg-violet-500', title: 'MRF Dispatch Action', desc: 'Staff receive real-time alerts and dispatch collectors for clearance.' },
+  { icon: MapPin, color: 'bg-[var(--primary)]', title: 'Pin on Campus Map', desc: 'Tag your exact campus bin location so MRF teams know where to go.' },
+  { icon: Truck, color: 'bg-[var(--gold)]', title: 'MRF Dispatch Action', desc: 'Staff receive real-time alerts and dispatch collectors for clearance.' },
   { icon: Award, color: 'bg-amber-500', title: 'Claim Eco-Points', desc: 'Earn non-redeemable participation points and unlock certificates.' },
 ];
 
@@ -14,7 +14,7 @@ export const HowItWorksTimeline: React.FC = () => {
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
         {/* Section header */}
         <div className="mb-14 text-center">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[var(--accent)]">
             Simple4-Step Process
           </p>
           <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">

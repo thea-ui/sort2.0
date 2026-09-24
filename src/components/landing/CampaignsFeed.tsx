@@ -8,7 +8,7 @@ const TYPE_CONFIG: Record<
 > = {
   COLLECTION: { icon: Leaf,      bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100', label: 'Collection' },
   MAINTENANCE: { icon: Wrench,   bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-100',   label: 'Maintenance' },
-  EVENT:       { icon: Megaphone, bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-100',  label: 'Event' },
+  EVENT:       { icon: Megaphone, bg: 'bg-[var(--gold)]/10',  text: 'text-[var(--gold)]',  border: 'border-[var(--gold)]/25',  label: 'Event' },
 };
 
 export const CampaignsFeed: React.FC = () => {

@@ -9,7 +9,7 @@ const FILL_CONFIG = (level: number) => {
 };
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  RECYCLABLE: { label: 'Recyclable', color: 'text-sky-600' },
+  RECYCLABLE: { label: 'Recyclable', color: 'text-[var(--text-strong)]' },
   ORGANIC:    { label: 'Organic',    color: 'text-green-600' },
   HAZARDOUS:  { label: 'Hazardous',  color: 'text-red-600' },
   GENERAL:    { label: 'General',    color: 'text-gray-500' },
@@ -44,7 +44,7 @@ export const BinStatusWidget: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {bin.activeDispatch && (
-                    <span className="rounded-full border border-violet-100 bg-violet-50 px-1.5 py-0.5 text-[8px] font-bold text-violet-700">
+                    <span className="rounded-full border border-[var(--gold)]/25 bg-[var(--gold)]/10 px-1.5 py-0.5 text-[8px] font-bold text-[var(--gold)]">
                       Dispatched
                     </span>
                   )}

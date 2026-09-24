@@ -8,8 +8,8 @@ interface StudentNotesSectionProps {
 
 export const StudentNotesSection: React.FC<StudentNotesSectionProps> = ({ reportDesc, setReportDesc }) => (
   <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-2">
-    <h3 className="text-sm font-heading font-bold text-[#00271D] flex items-center gap-2">
-      <MessageSquare size={16} className="text-[#00A77C]" />
+    <h3 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+      <MessageSquare size={16} className="text-[var(--accent)]" />
       <span>4. Additional Notes</span>
       <span className="text-gray-400 font-normal text-xs">(optional)</span>
     </h3>
@@ -19,7 +19,7 @@ export const StudentNotesSection: React.FC<StudentNotesSectionProps> = ({ report
       placeholder="e.g. 'Bin overflowing with plastic cups since morning'"
       value={reportDesc}
       onChange={e => setReportDesc(e.target.value)}
-      className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs text-[#00271D] outline-none focus:border-[#00A77C] focus:bg-white transition-all resize-none"
+      className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white transition-all resize-none"
     />
   </div>
 );

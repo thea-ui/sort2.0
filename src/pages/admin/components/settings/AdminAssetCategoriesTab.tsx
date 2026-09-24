@@ -119,16 +119,16 @@ export const AdminAssetCategoriesTab: React.FC = () => {
     <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-8 shadow-sm space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-[#00271D] flex items-center gap-2">
-            <Layers size={22} className="text-[#00A77C]" />
+          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+            <Layers size={22} className="text-[var(--accent)]" />
             Asset Categories
           </h3>
-          <p className="text-sm text-[#00271D]/50 mt-1">Manage asset classification categories across the system</p>
+          <p className="text-sm text-[var(--text-strong)]/50 mt-1">Manage asset classification categories across the system</p>
         </div>
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
-          className="px-5 py-2.5 bg-[#00A77C] hover:bg-[#008f6a] text-white rounded-xl text-sm font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all"
+          className="px-5 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white rounded-xl text-sm font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all"
         >
           <Plus size={16} /> Add Category
         </button>
@@ -136,10 +136,10 @@ export const AdminAssetCategoriesTab: React.FC = () => {
 
       <div className="space-y-2.5">
         {categories.map((cat) => (
-          <div key={cat.id || cat.code} className="p-4 bg-[#F9F3F0] rounded-2xl flex items-center justify-between text-sm border border-gray-200/50">
+          <div key={cat.id || cat.code} className="p-4 bg-[var(--background)] rounded-2xl flex items-center justify-between text-sm border border-gray-200/50">
             <div>
-              <p className={`font-bold ${cat.enabled ? 'text-[#00271D]' : 'text-[#00271D]/40 line-through'}`}>{cat.name}</p>
-              <p className="text-xs text-[#00271D]/40 font-mono">{cat.code}</p>
+              <p className={`font-bold ${cat.enabled ? 'text-[var(--text-strong)]' : 'text-[var(--text-strong)]/40 line-through'}`}>{cat.name}</p>
+              <p className="text-xs text-[var(--text-strong)]/40 font-mono">{cat.code}</p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -156,7 +156,7 @@ export const AdminAssetCategoriesTab: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setEditingCategory(cat)}
-                className="text-[#00271D]/40 hover:text-blue-600 cursor-pointer p-1.5"
+                className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] cursor-pointer p-1.5"
                 title="Edit Category"
               >
                 <Edit2 size={15} />
@@ -164,7 +164,7 @@ export const AdminAssetCategoriesTab: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDeleteCategory(cat.id)}
-                className="text-[#00271D]/40 hover:text-rose-600 cursor-pointer p-1.5"
+                className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5"
                 title="Delete Category"
               >
                 <Trash2 size={15} />
@@ -179,33 +179,33 @@ export const AdminAssetCategoriesTab: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl border border-white space-y-5 animate-fade-in">
             <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-              <h3 className="text-2xl font-black text-[#00271D]">Add Asset Category</h3>
-              <button type="button" onClick={() => setShowAddModal(false)} className="text-[#00271D]/40 hover:text-[#00271D]">
+              <h3 className="text-2xl font-black text-[var(--text-strong)]">Add Asset Category</h3>
+              <button type="button" onClick={() => setShowAddModal(false)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)]">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleAddCategory} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Category Name</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Category Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Appliances"
                   value={catName}
                   onChange={(e) => setCatName(e.target.value)}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Code Identifier (Optional)</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Code Identifier (Optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. appliances"
                   value={catCode}
                   onChange={(e) => setCatCode(e.target.value)}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
@@ -219,7 +219,7 @@ export const AdminAssetCategoriesTab: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#00A77C] text-white font-extrabold rounded-xl shadow-md hover:bg-[#008f6a] cursor-pointer text-sm"
+                  className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm"
                 >
                   Add Category
                 </button>
@@ -234,32 +234,32 @@ export const AdminAssetCategoriesTab: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl border border-white space-y-5 animate-fade-in">
             <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-              <h3 className="text-2xl font-black text-[#00271D]">Edit Category</h3>
-              <button type="button" onClick={() => setEditingCategory(null)} className="text-[#00271D]/40 hover:text-[#00271D]">
+              <h3 className="text-2xl font-black text-[var(--text-strong)]">Edit Category</h3>
+              <button type="button" onClick={() => setEditingCategory(null)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)]">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleSaveEditCategory} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Category Name</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Category Name</label>
                 <input
                   type="text"
                   required
                   value={editingCategory.name}
                   onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Code Identifier</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Code Identifier</label>
                 <input
                   type="text"
                   required
                   value={editingCategory.code}
                   onChange={(e) => setEditingCategory({ ...editingCategory, code: e.target.value })}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
@@ -273,7 +273,7 @@ export const AdminAssetCategoriesTab: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#00A77C] text-white font-extrabold rounded-xl shadow-md hover:bg-[#008f6a] cursor-pointer text-sm"
+                  className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm"
                 >
                   Save Category
                 </button>

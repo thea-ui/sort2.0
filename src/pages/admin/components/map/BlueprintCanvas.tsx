@@ -62,7 +62,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
           placeholder="Search campus station name or code..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-[#00A77C]"
+          className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-[var(--accent)]"
         />
       </div>
 
@@ -73,7 +73,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
             type="button"
             onClick={() => setFilter(f)}
             className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
-              filter === f ? 'bg-[#00271D] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
+              filter === f ? 'bg-[var(--primary)] text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'
             }`}
           >
             {f}
@@ -82,9 +82,9 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       </div>
     </div>
 
-    <div className="flex items-center justify-between text-xs font-extrabold text-[#00271D]">
+    <div className="flex items-center justify-between text-xs font-extrabold text-[var(--text-strong)]">
       <span className="flex items-center gap-1.5">
-        <MapPin size={15} className="text-sky-600" />
+        <MapPin size={15} className="text-[var(--text-strong)]" />
         Blueprint Grid Editor
       </span>
       {isAdjusting ? (
@@ -96,7 +96,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
           DRAG PINS TO RE-POSITION (0-100%)
         </span>
       ) : (
-        <span className="text-[#00271D]/40 text-[11px] font-medium">Click pin to inspect bins</span>
+        <span className="text-[var(--text-strong)]/40 text-[11px] font-medium">Click pin to inspect bins</span>
       )}
     </div>
 
@@ -157,7 +157,7 @@ export const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
             } ${isDragging ? 'scale-125 z-30' : isSelected ? 'scale-110 z-20' : 'z-10 hover:scale-105'}`}
           >
             <div className={`h-9 w-9 rounded-full flex items-center justify-center border-2 shadow-lg ${
-              loc.status === 'Unavailable' ? 'bg-rose-500 border-white text-white' : 'bg-[#00A77C] border-white text-white'
+              loc.status === 'Unavailable' ? 'bg-rose-500 border-white text-white' : 'bg-[var(--accent)] border-white text-white'
             } ${isSelected ? 'ring-4 ring-amber-400' : ''}`}>
               <MapPin size={18} />
             </div>

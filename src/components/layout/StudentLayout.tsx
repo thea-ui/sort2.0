@@ -17,6 +17,7 @@ import {
 import { SortLogo } from '../common/SortLogo';
 import { ProfileMenu } from '../common/ProfileMenu';
 import { filterNotificationsForUser } from '../../utils/notifications';
+import { getInitials } from '../../utils/userDisplay';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -60,30 +61,10 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F3F0] text-[#00271D] flex flex-col font-sans relative overflow-hidden">
-
-      {/* Organic Background Waves & Pattern Grid (Matches Design Specs & Image 2) */}
-      <div className="absolute top-0 left-0 w-full h-[60vh] pointer-events-none overflow-hidden z-0">
-        <svg 
-          viewBox="0 0 1440 320" 
-          className="absolute top-0 left-0 w-full object-cover opacity-75"
-          style={{ height: '420px' }}
-          preserveAspectRatio="none"
-        >
-          <path fill="#e0f2ec" fillOpacity="1" d="M0,192L48,202.7C96,213,192,235,288,229.3C384,224,480,192,576,192C672,192,768,224,864,240C960,256,1056,256,1152,240C1248,224,1344,192,1392,176L1440,160L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
-        </svg>
-        <svg 
-          viewBox="0 0 1440 320" 
-          className="absolute top-0 left-0 w-full object-cover opacity-45"
-          style={{ height: '500px' }}
-          preserveAspectRatio="none"
-        >
-          <path fill="#d1f0e4" fillOpacity="1" d="M0,256L48,261.3C96,267,192,277,288,256C384,235,480,181,576,170.7C672,160,768,192,864,213.3C960,235,1056,245,1152,234.7C1248,224,1344,192,1392,176L1440,160L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
-        </svg>
-      </div>
+    <div className="min-h-screen bg-[var(--background)] text-[var(--text-strong)] flex flex-col font-sans relative overflow-hidden">
 
       {/* Global Header */}
-      <header className="sticky top-0 z-50 border-b border-[#00271D]/10 bg-white/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-[var(--primary)]/10 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
 
           {/* Brand */}
@@ -96,14 +77,14 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
           <div className="flex items-center gap-2">
 
             {!isTeacher && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-[#00A77C]/30 bg-[#00A77C]/10 text-[#00A77C]">
+              <div className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]">
                 <Flame size={13} />
                 <span>{currentUser.points} pts</span>
               </div>
             )}
 
             {isTeacher && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#00A77C]/10 text-[#00A77C] border border-[#00A77C]/30 text-xs font-bold">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 text-xs font-bold">
                 <GraduationCap size={13} />
                 Faculty Staff
               </span>
@@ -113,7 +94,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
             <div className="relative">
               <button
                 onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileDropdownOpen(false); }}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-[#00271D] transition-colors relative cursor-pointer"
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-[var(--text-strong)] transition-colors relative cursor-pointer"
               >
                 <Bell size={16} />
                 {unreadCount > 0 && (
@@ -126,17 +107,17 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
               {notificationsOpen && (
                 <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-fade-in">
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                    <h4 className="font-bold text-xs text-[#00271D] uppercase tracking-wider">My Notifications & Updates</h4>
+                    <h4 className="font-bold text-xs text-[var(--text-strong)] uppercase tracking-wider">My Notifications & Updates</h4>
                     <div className="flex items-center gap-2">
                       {unreadCount > 0 && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleClearAll(); }}
-                          className="text-[9px] text-[#00A77C] font-bold hover:underline cursor-pointer"
+                          className="text-[9px] text-[var(--accent)] font-bold hover:underline cursor-pointer"
                         >
                           Clear all
                         </button>
                       )}
-                      <span className="text-[10px] px-2 py-0.5 bg-[#00A77C]/10 text-[#00A77C] rounded-full font-bold border border-[#00A77C]/20">
+                      <span className="text-[10px] px-2 py-0.5 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full font-bold border border-[var(--accent)]/20">
                         Live Feed
                       </span>
                     </div>
@@ -149,7 +130,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                       const isDismissed = notif.type === 'REPORT_DISMISSED';
 
                       const Icon = isCompleted ? CheckCircle2 : isVerified ? Zap : isDispatched ? Truck : isDismissed ? XCircle : Clock;
-                      const color = isCompleted ? 'text-emerald-700' : isVerified ? 'text-amber-700' : isDispatched ? 'text-indigo-700' : isDismissed ? 'text-rose-600' : 'text-amber-700';
+                      const color = isCompleted ? 'text-emerald-700' : isVerified ? 'text-amber-700' : isDispatched ? 'text-[var(--text-strong)]' : isDismissed ? 'text-rose-600' : 'text-amber-700';
                       const label = isCompleted ? 'MRF Completed Cleanup' : isVerified ? 'Report Verified + Points' : isDispatched ? 'MRF Collector Dispatched' : isDismissed ? 'Report Dismissed' : 'Update';
 
                       return (
@@ -176,7 +157,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                   <div className="p-2.5 bg-gray-50 border-t border-gray-100 text-center">
                     <button
                       onClick={() => { setNotificationsOpen(false); setActiveTab('report-history'); }}
-                      className="text-xs text-[#00A77C] font-bold hover:underline cursor-pointer"
+                      className="text-xs text-[var(--accent)] font-bold hover:underline cursor-pointer"
                     >
                       View Full Activity History →
                     </button>
@@ -189,12 +170,12 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2 border border-gray-200 bg-white rounded-full pr-3 pl-1 py-1 hover:border-[#00A77C] transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-2 border border-gray-200 bg-white rounded-full pr-3 pl-1 py-1 hover:border-[var(--accent)] transition-all cursor-pointer shadow-sm"
               >
-                <div className="h-6 w-6 rounded-full bg-[#00A77C] text-white font-bold flex items-center justify-center text-[10px]">
-                  {currentUser.name.split(' ').map(n => n[0]).join('')}
+                <div className="h-6 w-6 rounded-full bg-[var(--accent)] text-white font-bold flex items-center justify-center text-[10px]">
+                  {getInitials(currentUser.name)}
                 </div>
-                <span className="text-xs font-semibold text-[#00271D] hidden sm:block">{currentUser.name.split(' ')[0]}</span>
+                <span className="text-xs font-semibold text-[var(--text-strong)] hidden sm:block">{currentUser.name.split(' ')[0]}</span>
                 <ChevronDown size={13} className="text-gray-400" />
               </button>
 
@@ -215,7 +196,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
 
       {/* Desktop Navigation — 2026 Floating Pill Capsule */}
       <div className="hidden md:flex relative z-10 w-full justify-center pt-5 pb-2">
-        <nav className="flex items-center gap-1.5 bg-white/85 backdrop-blur-xl border border-white/80 p-1.5 rounded-full shadow-lg shadow-[#00271D]/5">
+        <nav className="flex items-center gap-1.5 bg-white/85 backdrop-blur-xl border border-white/80 p-1.5 rounded-full shadow-lg shadow-[var(--primary)]/5">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             const Icon = item.icon;
@@ -226,8 +207,8 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                 className={`
                   flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer select-none
                   ${isActive
-                    ? 'bg-[#00A77C] text-white shadow-md shadow-[#00A77C]/25'
-                    : 'text-[#00271D]/70 hover:bg-[#00271D]/5 hover:text-[#00271D]'}
+                    ? 'bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/25'
+                    : 'text-[var(--text-strong)]/70 hover:bg-[var(--primary)]/5 hover:text-[var(--text-strong)]'}
                 `}
               >
                 <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />
@@ -266,12 +247,12 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                 className="relative flex flex-col items-center justify-center w-full py-1 gap-1 cursor-pointer"
               >
                 <div className={`flex items-center justify-center p-1.5 rounded-lg transition-colors ${
-                  isActive ? 'bg-[#00A77C]/15 text-[#00A77C]' : 'text-gray-400'
+                  isActive ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'text-gray-400'
                 }`}>
                   <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
                 <span className={`text-[10px] font-semibold transition-colors ${
-                  isActive ? 'text-[#00A77C]' : 'text-gray-400'
+                  isActive ? 'text-[var(--accent)]' : 'text-gray-400'
                 }`}>
                   {item.label}
                 </span>

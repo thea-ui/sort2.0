@@ -69,6 +69,18 @@ const DEFAULT_SETTINGS: SystemSettings = {
   binResetTime: '18:00',
   walkInPointsPer500ml: 1,
   walkInEnabled: true,
+  schoolName: 'School Name',
+  schoolAcronym: null,
+  schoolId: null,
+  division: null,
+  region: null,
+  address: null,
+  primaryColor: '#00271D',
+  secondaryColor: '#00A77C',
+  accentColor: '#00A77C',
+  goldColor: '#C69B26',
+  logoUrl: null,
+  enrollproPublicUrl: null,
 };
 
 const DEFAULT_USERS: User[] = [];
@@ -947,14 +959,14 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#F9F3F0] text-[#00271D]">
+      <div className="flex h-screen w-screen items-center justify-center bg-[var(--background)] text-[var(--text-strong)]">
         <div className="flex flex-col items-center space-y-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#00A77C] border-t-transparent"></div>
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[var(--accent)] border-t-transparent"></div>
           <p className="text-lg font-semibold tracking-wider animate-pulse">Restoring session...</p>
           <button
             type="button"
             onClick={handleRecovery}
-            className="mt-6 px-4 py-2 rounded-xl border border-[#00A77C]/40 text-[#00A77C] text-xs font-bold hover:bg-[#00A77C]/10 transition-colors"
+            className="mt-6 px-4 py-2 rounded-xl border border-[var(--accent)]/40 text-[var(--accent)] text-xs font-bold hover:bg-[var(--accent)]/10 transition-colors"
           >
             Stuck? Reset session & retry
           </button>

@@ -8,38 +8,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#F9F3F0',
-        bg: '#F9F3F0',
+        background: 'var(--background)',
+        bg: 'var(--background)',
         primary: {
-          DEFAULT: '#00271D',
+          DEFAULT: 'var(--primary)',
           dark: '#001a13',
-          light: '#00A77C',
+          light: 'var(--accent)',
         },
         secondary: {
-          DEFAULT: '#00A77C',
+          DEFAULT: 'var(--accent)',
           light: '#33b996',
           dark: '#008563',
         },
         accent: {
-          DEFAULT: '#00A77C',
-          hover: '#008b67',
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-dark)',
         },
         gold: {
-          DEFAULT: '#C69B26',
+          DEFAULT: 'var(--gold)',
           light: '#d6b14d',
           dark: '#a17e1e',
         },
-        mainText: '#00271D',
-        textPrimary: '#00271D',
-        link: '#00A77C',
+        mainText: 'var(--primary)',
+        textPrimary: 'var(--primary)',
+        link: 'var(--accent)',
         brand: {
-          primary: '#00271D',
-          secondary: '#00A77C',
-          accent: '#00A77C',
-          gold: '#C69B26',
-          bg: '#F9F3F0',
-          text: '#00271D',
-          link: '#00A77C',
+          primary: 'var(--primary)',
+          secondary: 'var(--accent)',
+          accent: 'var(--accent)',
+          gold: 'var(--gold)',
+          bg: 'var(--background)',
+          text: 'var(--primary)',
+          link: 'var(--accent)',
         },
         emerald: {
           50: '#e0f2ec',
@@ -55,7 +55,7 @@ export default {
           950: '#00150f',
         },
         slate: {
-          950: '#00271D',
+          950: 'var(--primary)',
         }
       },
       fontFamily: {

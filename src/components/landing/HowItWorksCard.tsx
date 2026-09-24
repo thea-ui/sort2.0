@@ -3,8 +3,8 @@ import { Camera, MapPin, Truck, Award } from 'lucide-react';
 
 const STEPS = [
   { icon: Camera, color: 'bg-rose-500', title: 'Report', desc: 'Snap a photo and tap the bin location' },
-  { icon: MapPin, color: 'bg-sky-500', title: 'Pin It', desc: 'Drop a pin on the campus bin map' },
-  { icon: Truck, color: 'bg-violet-500', title: 'MRF Responds', desc: 'Staff dispatches and collects waste' },
+  { icon: MapPin, color: 'bg-[var(--primary)]', title: 'Pin It', desc: 'Drop a pin on the campus bin map' },
+  { icon: Truck, color: 'bg-[var(--gold)]', title: 'MRF Responds', desc: 'Staff dispatches and collects waste' },
   { icon: Award, color: 'bg-amber-500', title: 'Earn Points', desc: 'Get eco-points for every verified report' },
 ];
 

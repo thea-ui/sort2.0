@@ -5,6 +5,11 @@ const prisma = new PrismaClient();
 // ── Concurrency Guard ──────────────────────────────────────────────────────
 let rolloverInProgress = false;
 
+/** Low-priority background jobs (e.g. branding sync) defer during a rollover. */
+export function isRolloverInProgress(): boolean {
+  return rolloverInProgress;
+}
+
 interface RolloverResult {
   success: boolean;
   previousSchoolYear: string;

@@ -52,9 +52,9 @@ export const AdminAuditLogsTab: React.FC = () => {
       case 'AUTH': return 'bg-amber-100/80 text-amber-800 border-amber-200';
       case 'DISMISSAL': return 'bg-gray-100 text-gray-600 border-gray-200';
       case 'VERIFICATION': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'DISPATCH': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'SYNC': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'REPORT': return 'bg-sky-100 text-sky-800 border-sky-200';
+      case 'DISPATCH': return 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25';
+      case 'SYNC': return 'bg-[var(--gold)]/10 text-[var(--gold)] border-[var(--gold)]/25';
+      case 'REPORT': return 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
@@ -63,11 +63,11 @@ export const AdminAuditLogsTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-[#00271D] tracking-tight flex items-center gap-2">
-            <ClipboardList className="text-[#00A77C]" size={24} />
+          <h2 className="text-2xl font-extrabold text-[var(--text-strong)] tracking-tight flex items-center gap-2">
+            <ClipboardList className="text-[var(--accent)]" size={24} />
             Audit Logs
           </h2>
-          <p className="text-sm text-[#00271D]/50 mt-0.5">
+          <p className="text-sm text-[var(--text-strong)]/50 mt-0.5">
             Monitor all system activities and administrative changes
           </p>
         </div>
@@ -82,19 +82,19 @@ export const AdminAuditLogsTab: React.FC = () => {
 
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-3 text-[#00271D]/40" />
+          <Search size={14} className="absolute left-3 top-3 text-[var(--text-strong)]/40" />
           <input
             type="text"
             placeholder="Search by actor name or details..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-white border border-[#00271D]/10 rounded-2xl pl-9 pr-3 py-2.5 text-sm text-[#00271D] outline-none focus:border-[#00A77C]"
+            className="w-full bg-white border border-[var(--primary)]/10 rounded-2xl pl-9 pr-3 py-2.5 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]"
           />
         </div>
         <select
           value={actionFilter}
           onChange={e => setActionFilter(e.target.value)}
-          className="bg-white border border-[#00271D]/10 rounded-2xl px-4 py-2.5 text-sm text-[#00271D] outline-none cursor-pointer"
+          className="bg-white border border-[var(--primary)]/10 rounded-2xl px-4 py-2.5 text-sm text-[var(--text-strong)] outline-none cursor-pointer"
         >
           <option value="ALL">All Actions</option>
           <option value="AUTH">Login / Auth</option>
@@ -108,31 +108,31 @@ export const AdminAuditLogsTab: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="border-b border-[#00271D]/8 text-[#00271D]/40 font-bold uppercase tracking-wider bg-gray-50/50">
+              <tr className="border-b border-[var(--primary)]/8 text-[var(--text-strong)]/40 font-bold uppercase tracking-wider bg-gray-50/50">
                 <th className="py-3.5 px-6">Timestamp</th>
                 <th className="py-3.5 px-6">Actor</th>
                 <th className="py-3.5 px-6">Action</th>
                 <th className="py-3.5 px-6">Details</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#00271D]/5">
+            <tbody className="divide-y divide-[var(--primary)]/5">
               {loading ? (
-                <tr><td colSpan={4} className="py-12 text-center text-[#00271D]/40">Loading...</td></tr>
+                <tr><td colSpan={4} className="py-12 text-center text-[var(--text-strong)]/40">Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={4} className="py-12 text-center text-[#00271D]/40">No audit logs found</td></tr>
+                <tr><td colSpan={4} className="py-12 text-center text-[var(--text-strong)]/40">No audit logs found</td></tr>
               ) : filtered.map(log => (
                 <tr key={log.id} className="hover:bg-gray-50/80 transition-colors">
-                  <td className="py-4 px-6 font-mono text-xs font-bold text-[#00271D]/60 whitespace-nowrap">
+                  <td className="py-4 px-6 font-mono text-xs font-bold text-[var(--text-strong)]/60 whitespace-nowrap">
                     {log.timestamp}
                   </td>
-                  <td className="py-4 px-6 font-bold text-[#00271D]">
+                  <td className="py-4 px-6 font-bold text-[var(--text-strong)]">
                     <div className="flex items-center gap-2.5">
                       <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center">
                         <UserIcon size={14} />
                       </div>
                       <div>
                         <p className="leading-tight">{log.actorName}</p>
-                        <p className="text-[10px] text-[#00271D]/40 font-black uppercase">{log.actorRole}</p>
+                        <p className="text-[10px] text-[var(--text-strong)]/40 font-black uppercase">{log.actorRole}</p>
                       </div>
                     </div>
                   </td>
@@ -141,7 +141,7 @@ export const AdminAuditLogsTab: React.FC = () => {
                       {log.actionType}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-[#00271D]/70 font-medium">{log.details}</td>
+                  <td className="py-4 px-6 text-[var(--text-strong)]/70 font-medium">{log.details}</td>
                 </tr>
               ))}
             </tbody>

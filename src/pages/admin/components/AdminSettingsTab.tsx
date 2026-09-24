@@ -28,6 +28,7 @@ import { AdminPointsSystemTab } from './settings/AdminPointsSystemTab';
 import { AdminCertificateTab } from './settings/AdminCertificateTab';
 import { AdminAcademicCalendarTab } from './settings/AdminAcademicCalendarTab';
 import { AdminSyncSettingsTab } from './settings/AdminSyncSettingsTab';
+import { AdminBrandingTab } from './settings/AdminBrandingTab';
 import { AdminChallengesTab } from './settings/AdminChallengesTab';
 
 const DEFAULT_PRESET_GROUPS = [
@@ -258,6 +259,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
       {/* SUB-PAGE: SYNC & INTEGRATIONS */}
       {activeSubTab === 'sync-integrations' && <AdminSyncSettingsTab />}
 
+      {/* SUB-PAGE: BRANDING */}
+      {activeSubTab === 'branding' && <AdminBrandingTab />}
+
       {/* SUB-PAGE 2: ASSET CATEGORIES */}
       {activeSubTab === 'asset-categories' && <AdminAssetCategoriesTab />}
 
@@ -270,16 +274,16 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black text-[#00271D] flex items-center gap-3">
-                <Package size={28} className="text-[#00A77C]" />
+              <h2 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-3">
+                <Package size={28} className="text-[var(--accent)]" />
                 Asset Item Presets
               </h2>
-              <p className="text-sm text-[#00271D]/50 mt-1">Manage default reportable items under each asset category</p>
+              <p className="text-sm text-[var(--text-strong)]/50 mt-1">Manage default reportable items under each asset category</p>
             </div>
             <button
               type="button"
               onClick={() => setShowAddItemModal(true)}
-              className="px-5 py-2.5 bg-[#00A77C] text-white rounded-2xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-[#00A77C]/20 hover:bg-[#008f6a] cursor-pointer"
+              className="px-5 py-2.5 bg-[var(--accent)] text-white rounded-2xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-dark)] cursor-pointer"
             >
               <Plus size={16} /> Add Preset Item
             </button>
@@ -289,14 +293,14 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
             {presetGroups.map((group: any) => (
               <div key={group.category} className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-black text-[#00271D] uppercase tracking-wider">{group.category}</p>
-                  <span className="text-xs text-[#00271D]/40 font-bold">{group.items.length} items</span>
+                  <p className="text-sm font-black text-[var(--text-strong)] uppercase tracking-wider">{group.category}</p>
+                  <span className="text-xs text-[var(--text-strong)]/40 font-bold">{group.items.length} items</span>
                 </div>
 
                 <div className="space-y-2">
                   {group.items.map((item: any) => (
-                    <div key={item.id} className="p-4 bg-[#F9F3F0] rounded-2xl flex items-center justify-between text-sm">
-                      <span className={`font-bold ${item.enabled ? 'text-[#00271D]' : 'text-[#00271D]/40 line-through'}`}>
+                    <div key={item.id} className="p-4 bg-[var(--background)] rounded-2xl flex items-center justify-between text-sm">
+                      <span className={`font-bold ${item.enabled ? 'text-[var(--text-strong)]' : 'text-[var(--text-strong)]/40 line-through'}`}>
                         {item.name}
                       </span>
                       <div className="flex items-center gap-3">
@@ -314,7 +318,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                         <button
                           type="button"
                           onClick={() => setEditingPreset({ groupCat: group.category, id: item.id, name: item.name })}
-                          className="text-[#00271D]/40 hover:text-blue-600 cursor-pointer p-1.5 rounded-xl hover:bg-blue-50 transition-all"
+                          className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] cursor-pointer p-1.5 rounded-xl hover:bg-[var(--primary)]/10 transition-all"
                           title="Edit Item Name"
                         >
                           <Edit2 size={14} />
@@ -322,7 +326,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                         <button
                           type="button"
                           onClick={() => handleDeletePreset(group.category, item.id)}
-                          className="text-[#00271D]/40 hover:text-rose-600 cursor-pointer p-1.5 rounded-xl hover:bg-rose-50 transition-all"
+                          className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5 rounded-xl hover:bg-rose-50 transition-all"
                           title="Delete Preset Item"
                         >
                           <Trash2 size={14} />
@@ -342,7 +346,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl space-y-5 animate-fade-in">
             <div className="flex justify-between items-center">
-              <h3 className="text-xl font-black text-[#00271D]">Add Preset Item</h3>
+              <h3 className="text-xl font-black text-[var(--text-strong)]">Add Preset Item</h3>
               <button type="button" onClick={() => setShowAddItemModal(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
@@ -350,11 +354,11 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
 
             <form onSubmit={handleAddItemPreset} className="space-y-4">
               <div>
-                <label className="text-sm font-bold text-[#00271D]/60">Asset Category</label>
+                <label className="text-sm font-bold text-[var(--text-strong)]/60">Asset Category</label>
                 <select
                   value={newItemCategory}
                   onChange={(e) => setNewItemCategory(e.target.value)}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold outline-none cursor-pointer focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold outline-none cursor-pointer focus:border-[var(--accent)]"
                 >
                   {presetGroups.map((g: any) => (
                     <option key={g.category} value={g.category}>{g.category}</option>
@@ -363,14 +367,14 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               </div>
 
               <div>
-                <label className="text-sm font-bold text-[#00271D]/60">Item Name</label>
+                <label className="text-sm font-bold text-[var(--text-strong)]/60">Item Name</label>
                 <input type="text" required placeholder="e.g. Science Microscope" value={newItemName} onChange={(e) => setNewItemName(e.target.value)}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold outline-none focus:border-[#00A77C] focus:ring-2 focus:ring-[#00A77C]/20" />
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20" />
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddItemModal(false)} className="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 cursor-pointer">Cancel</button>
-                <button type="submit" className="px-6 py-2.5 bg-[#00A77C] text-white font-extrabold rounded-2xl shadow-lg shadow-[#00A77C]/20 hover:bg-[#008f6a] cursor-pointer">Add Item</button>
+                <button type="submit" className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-2xl shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-dark)] cursor-pointer">Add Item</button>
               </div>
             </form>
           </div>
@@ -382,7 +386,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl space-y-5 animate-fade-in">
             <div className="flex justify-between items-center">
-              <h3 className="text-xl font-black text-[#00271D]">Edit Preset Item</h3>
+              <h3 className="text-xl font-black text-[var(--text-strong)]">Edit Preset Item</h3>
               <button type="button" onClick={() => setEditingPreset(null)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
@@ -390,20 +394,20 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
 
             <form onSubmit={handleSaveEditPreset} className="space-y-4">
               <div>
-                <label className="text-sm font-bold text-[#00271D]/60">Category</label>
+                <label className="text-sm font-bold text-[var(--text-strong)]/60">Category</label>
                 <input type="text" disabled value={editingPreset.groupCat}
                   className="w-full mt-1.5 p-3 bg-gray-100 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-500" />
               </div>
 
               <div>
-                <label className="text-sm font-bold text-[#00271D]/60">Item Name</label>
+                <label className="text-sm font-bold text-[var(--text-strong)]/60">Item Name</label>
                 <input type="text" required value={editingPreset.name} onChange={(e) => setEditingPreset({ ...editingPreset, name: e.target.value })}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold outline-none focus:border-[#00A77C] focus:ring-2 focus:ring-[#00A77C]/20" />
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20" />
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setEditingPreset(null)} className="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 cursor-pointer">Cancel</button>
-                <button type="submit" className="px-6 py-2.5 bg-[#00A77C] text-white font-extrabold rounded-2xl shadow-lg shadow-[#00A77C]/20 hover:bg-[#008f6a] cursor-pointer">Save Changes</button>
+                <button type="submit" className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-2xl shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-dark)] cursor-pointer">Save Changes</button>
               </div>
             </form>
           </div>
@@ -445,8 +449,8 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
 
           <div className="p-5 bg-white border border-rose-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <p className="font-extrabold text-sm text-[#00271D]">Reset All App Data</p>
-              <p className="text-xs text-[#00271D]/60 mt-0.5">
+              <p className="font-extrabold text-sm text-[var(--text-strong)]">Reset All App Data</p>
+              <p className="text-xs text-[var(--text-strong)]/60 mt-0.5">
                 Wipe all reports, points, history, and challenges. Every student and reporter will start from 0.
               </p>
             </div>

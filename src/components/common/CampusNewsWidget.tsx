@@ -16,7 +16,7 @@ export const CampusNewsWidget: React.FC = () => {
   return (
     <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
-        <Newspaper size={16} className="text-[#00A77C]" />
+        <Newspaper size={16} className="text-[var(--accent)]" />
         <h3 className="text-sm font-bold text-gray-800">Campus News</h3>
       </div>
       <div className="space-y-3">

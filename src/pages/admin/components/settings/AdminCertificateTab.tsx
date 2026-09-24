@@ -30,8 +30,8 @@ interface FormState {
 
 const TIER_META = [
   { key: 'certificateChampionName' as const, label: 'Rank 1', Icon: Trophy, color: 'text-amber-600' },
-  { key: 'certificateLeaderName' as const, label: 'Rank 2', Icon: Award, color: 'text-sky-600' },
-  { key: 'certificateAdvocateName' as const, label: 'Rank 3', Icon: Medal, color: 'text-violet-600' },
+  { key: 'certificateLeaderName' as const, label: 'Rank 2', Icon: Award, color: 'text-[var(--text-strong)]' },
+  { key: 'certificateAdvocateName' as const, label: 'Rank 3', Icon: Medal, color: 'text-[var(--gold)]' },
 ];
 
 export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settings, updateSettings }) => {
@@ -103,14 +103,14 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Term status + issuance */}
-      <div className="bg-[#0091EA]/10 border border-[#0091EA]/30 rounded-3xl p-8 shadow-sm space-y-5">
+      <div className="bg-[var(--primary)]/10 border border-[var(--primary)]/30 rounded-3xl p-8 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            <h3 className="text-2xl font-black text-[#00271D] flex items-center gap-2">
-              <Calendar size={22} className="text-[#0091EA]" />
+            <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+              <Calendar size={22} className="text-[var(--text-strong)]" />
               Term-End Ranked Awards
             </h3>
-            <p className="text-sm text-[#00271D]/50 mt-1">
+            <p className="text-sm text-[var(--text-strong)]/50 mt-1">
               Top 3 students by term eco-points receive Eco-Champion, Eco-Leader, and Eco-Advocate
               certificates. Awards are issued only after the term ends and the grace window closes.
             </p>
@@ -119,7 +119,7 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
             type="button"
             onClick={loadData}
             disabled={refreshing}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-500 hover:text-[#00A77C] text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-500 hover:text-[var(--accent)] text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
           >
             {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
             Refresh
@@ -128,16 +128,16 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
 
         {termStatus ? (
           <div className="p-4 bg-white rounded-2xl border border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
-            <span className="font-extrabold text-[#00271D]">{termStatus.quarterName || 'No active term'}</span>
-            <span className="text-[#00271D]/50">
+            <span className="font-extrabold text-[var(--text-strong)]">{termStatus.quarterName || 'No active term'}</span>
+            <span className="text-[var(--text-strong)]/50">
               {termStatus.startDate} → {termStatus.endDate}
             </span>
-            <span className="font-bold text-[#00A77C]">State: {termStatus.state}</span>
-            <span className="text-[#00271D]/50">Grace: {termStatus.graceDays} days</span>
-            <span className="text-[#00271D]/50">Issued: {termStatus.awardedCount}</span>
+            <span className="font-bold text-[var(--accent)]">State: {termStatus.state}</span>
+            <span className="text-[var(--text-strong)]/50">Grace: {termStatus.graceDays} days</span>
+            <span className="text-[var(--text-strong)]/50">Issued: {termStatus.awardedCount}</span>
           </div>
         ) : (
-          <div className="p-4 bg-white rounded-2xl border border-gray-200 text-xs text-[#00271D]/50 font-medium">
+          <div className="p-4 bg-white rounded-2xl border border-gray-200 text-xs text-[var(--text-strong)]/50 font-medium">
             No academic term configured. Set one in Academic Calendar.
           </div>
         )}
@@ -147,7 +147,7 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
             type="button"
             onClick={() => handleIssue(false)}
             disabled={issuing}
-            className="px-6 py-3 bg-[#C69B26] hover:bg-[#b38a20] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+            className="px-6 py-3 bg-[var(--gold)] hover:bg-[#b38a20] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
           >
             {issuing ? <Loader2 size={14} className="animate-spin" /> : <Trophy size={14} />}
             {issuing ? 'Issuing...' : 'Issue Term Awards'}
@@ -177,17 +177,17 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
 
         {standings.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <p className="px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-[#00271D]/40 bg-gray-50 border-b border-gray-100">
+            <p className="px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-strong)]/40 bg-gray-50 border-b border-gray-100">
               Term Standings (Top 10)
             </p>
             <div className="divide-y divide-gray-50">
               {standings.map((s, i) => (
                 <div key={s.userId} className="px-4 py-2.5 flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#00271D]">
-                    <span className="text-[#00271D]/40 mr-2">#{i + 1}</span>
+                  <span className="font-bold text-[var(--text-strong)]">
+                    <span className="text-[var(--text-strong)]/40 mr-2">#{i + 1}</span>
                     {s.name}
                   </span>
-                  <span className="font-extrabold text-[#00A77C]">{s.termPoints} pts</span>
+                  <span className="font-extrabold text-[var(--accent)]">{s.termPoints} pts</span>
                 </div>
               ))}
             </div>
@@ -196,47 +196,47 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
       </div>
 
       {/* Settings */}
-      <form onSubmit={handleSave} className="bg-[#C69B26]/10 border border-[#C69B26]/30 rounded-3xl p-8 shadow-sm space-y-5">
+      <form onSubmit={handleSave} className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-3xl p-8 shadow-sm space-y-5">
         <div>
-          <h3 className="text-2xl font-black text-[#00271D] flex items-center gap-2">
+          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
             <Leaf size={22} className="text-emerald-600" />
             Certificate Configuration
           </h3>
-          <p className="text-sm text-[#00271D]/50 mt-1">
+          <p className="text-sm text-[var(--text-strong)]/50 mt-1">
             Milestone certificates are instant. Ranked certificates use distinct names per rank.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-bold text-[#00271D]/50 uppercase">Milestone Point Threshold</label>
+            <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Milestone Point Threshold</label>
             <input
               type="number"
               min={0}
               value={form.certificatePointThreshold}
               onChange={(e) => setForm({ ...form, certificatePointThreshold: Number(e.target.value) })}
-              className="w-full mt-1.5 p-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#C69B26]"
+              className="w-full mt-1.5 p-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--gold)]"
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-[#00271D]/50 uppercase">Grace Window (days after term end)</label>
+            <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Grace Window (days after term end)</label>
             <input
               type="number"
               min={0}
               value={form.certificateGraceDays}
               onChange={(e) => setForm({ ...form, certificateGraceDays: Number(e.target.value) })}
-              className="w-full mt-1.5 p-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#C69B26]"
+              className="w-full mt-1.5 p-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--gold)]"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-bold text-[#00271D]/50 uppercase">Milestone Certificate Name</label>
+          <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Milestone Certificate Name</label>
           <input
             type="text"
             value={form.certificateMilestoneName}
             onChange={(e) => setForm({ ...form, certificateMilestoneName: e.target.value })}
-            className="w-full mt-1.5 p-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#C69B26]"
+            className="w-full mt-1.5 p-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--gold)]"
           />
         </div>
 
@@ -250,7 +250,7 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
                 type="text"
                 value={form[key]}
                 onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                className="w-full mt-1.5 p-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#C69B26]"
+                className="w-full mt-1.5 p-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--gold)]"
               />
             </div>
           ))}
@@ -259,7 +259,7 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            className="px-6 py-3 bg-[#00A77C] hover:bg-[#008f6a] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all"
+            className="px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all"
           >
             <Save size={14} />
             Save Certificate Settings
@@ -270,17 +270,17 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
 
       {/* History */}
       <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm space-y-4">
-        <h3 className="text-xl font-black text-[#00271D] flex items-center gap-2">
-          <History size={20} className="text-[#00271D]/50" />
+        <h3 className="text-xl font-black text-[var(--text-strong)] flex items-center gap-2">
+          <History size={20} className="text-[var(--text-strong)]/50" />
           Issuance History
         </h3>
         {history.length === 0 ? (
-          <p className="text-xs text-[#00271D]/50 font-medium">No certificates issued yet.</p>
+          <p className="text-xs text-[var(--text-strong)]/50 font-medium">No certificates issued yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-[#00271D]/40 border-b border-gray-100">
+                <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--text-strong)]/40 border-b border-gray-100">
                   <th className="py-2 pr-4">Student</th>
                   <th className="py-2 pr-4">Certificate</th>
                   <th className="py-2 pr-4">Rank</th>
@@ -292,14 +292,14 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {history.map((c) => (
-                  <tr key={c.id} className="text-[#00271D]">
+                  <tr key={c.id} className="text-[var(--text-strong)]">
                     <td className="py-2 pr-4 font-bold">{c.studentName}</td>
                     <td className="py-2 pr-4">{c.name}</td>
                     <td className="py-2 pr-4">{c.rankAtIssue ?? '—'}</td>
                     <td className="py-2 pr-4">{c.pointsAtIssue}</td>
                     <td className="py-2 pr-4">{c.termName || '—'}</td>
-                    <td className="py-2 pr-4 font-mono text-[10px] text-[#00271D]/50">{c.serial}</td>
-                    <td className="py-2 text-[#00271D]/50">{new Date(c.issuedAt).toLocaleDateString()}</td>
+                    <td className="py-2 pr-4 font-mono text-[10px] text-[var(--text-strong)]/50">{c.serial}</td>
+                    <td className="py-2 text-[var(--text-strong)]/50">{new Date(c.issuedAt).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>

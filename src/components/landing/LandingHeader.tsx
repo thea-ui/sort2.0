@@ -34,7 +34,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onNavigate }) => {
             onClick={() =>
               document.getElementById('login-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
             }
-            className="rounded-lg bg-emerald-500 px-4 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-emerald-600"
+            className="rounded-lg bg-[var(--accent)] px-4 py-1.5 text-[11px] font-bold text-[var(--on-accent)] shadow-sm transition-all hover:bg-[var(--accent-dark)]"
           >
             Sign In
           </button>

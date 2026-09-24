@@ -171,9 +171,9 @@ export function LedgerSheetTable<T = any>({
                       {c.value &&
                         (isSorted ? (
                           sort!.dir === 'asc' ? (
-                            <ArrowUp size={12} className="text-[#00A77C]" />
+                            <ArrowUp size={12} className="text-[var(--accent)]" />
                           ) : (
-                            <ArrowDown size={12} className="text-[#00A77C]" />
+                            <ArrowDown size={12} className="text-[var(--accent)]" />
                           )
                         ) : (
                           <ChevronsUpDown size={12} className="opacity-30" />
@@ -211,7 +211,7 @@ export function LedgerSheetTable<T = any>({
                     {columns.map((c) => (
                       <td
                         key={c.key}
-                        className={`px-4 py-3.5 text-xs text-[#00271D] ${alignClass(
+                        className={`px-4 py-3.5 text-xs text-[var(--text-strong)] ${alignClass(
                           c.align
                         )} ${c.align === 'right' ? 'tabular-nums font-mono' : ''}`}
                       >
@@ -234,7 +234,7 @@ export function LedgerSheetTable<T = any>({
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={`px-4 py-3 font-bold text-xs text-[#00271D] ${alignClass(
+                    className={`px-4 py-3 font-bold text-xs text-[var(--text-strong)] ${alignClass(
                       c.totalAlign ?? c.align
                     )} ${(c.totalAlign ?? c.align) === 'right' ? 'tabular-nums font-mono' : ''}`}
                   >
@@ -317,7 +317,7 @@ export function LedgerSheetTable<T = any>({
                     onClick={() => setCurrentPage(Number(p))}
                     className={`min-w-[28px] h-7 text-xs font-bold rounded-lg transition-colors flex items-center justify-center cursor-pointer ${
                       currentPage === p
-                        ? 'bg-[#00271D] text-white shadow-2xs'
+                        ? 'bg-[var(--primary)] text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >

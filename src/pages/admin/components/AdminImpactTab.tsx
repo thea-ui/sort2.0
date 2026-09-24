@@ -90,10 +90,10 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
       weightKg: plasticKg,
       estValuePhp: Math.round(plasticKg * pricePet),
       icon: Package,
-      color: '#0091EA',
-      bgColor: 'bg-sky-50',
-      textColor: 'text-sky-600',
-      barColor: 'bg-sky-500',
+      color: 'var(--primary)',
+      bgColor: 'bg-[var(--primary)]/10',
+      textColor: 'text-[var(--text-strong)]',
+      barColor: 'bg-[var(--primary)]',
     },
     {
       id: 'glass',
@@ -103,7 +103,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
       estValuePhp: Math.round(glassKg * priceGlass),
       icon: Wine,
       color: '#10B981',
-      bgColor: 'bg-emerald-50',
+      bgColor: 'bg-[var(--primary)]/10',
       textColor: 'text-emerald-600',
       barColor: 'bg-emerald-500',
     },
@@ -114,7 +114,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
       weightKg: aluminumKg,
       estValuePhp: Math.round(aluminumKg * priceAluminum),
       icon: Sparkles,
-      color: '#FFAB00',
+      color: 'var(--gold)',
       bgColor: 'bg-amber-50',
       textColor: 'text-amber-600',
       barColor: 'bg-amber-500',
@@ -126,10 +126,10 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
       weightKg: paperKg,
       estValuePhp: Math.round(paperKg * pricePaper),
       icon: FileText,
-      color: '#651FFF',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-600',
-      barColor: 'bg-purple-500',
+      color: 'var(--gold)',
+      bgColor: 'bg-[var(--gold)]/10',
+      textColor: 'text-[var(--gold)]',
+      barColor: 'bg-[var(--gold)]',
     },
     {
       id: 'residual',
@@ -154,12 +154,12 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
   );
   const totalStudentReports = studentReports.length;
   const gradeColorPalette = [
-    { color: 'bg-[#00A77C]', lightBg: 'bg-[#00A77C]/10', border: 'border-[#00A77C]/30' },
-    { color: 'bg-sky-500', lightBg: 'bg-sky-50', border: 'border-sky-200' },
-    { color: 'bg-purple-600', lightBg: 'bg-purple-50', border: 'border-purple-300' },
+    { color: 'bg-[var(--accent)]', lightBg: 'bg-[var(--accent)]/10', border: 'border-[var(--accent)]/30' },
+    { color: 'bg-[var(--primary)]', lightBg: 'bg-[var(--primary)]/10', border: 'border-[var(--primary)]/25' },
+    { color: 'bg-[var(--gold)]', lightBg: 'bg-[var(--gold)]/10', border: 'border-[var(--gold)]/25' },
     { color: 'bg-amber-500', lightBg: 'bg-amber-50', border: 'border-amber-200' },
     { color: 'bg-rose-500', lightBg: 'bg-rose-50', border: 'border-rose-200' },
-    { color: 'bg-indigo-500', lightBg: 'bg-indigo-50', border: 'border-indigo-200' },
+    { color: 'bg-[var(--primary)]', lightBg: 'bg-[var(--primary)]/10', border: 'border-[var(--primary)]/25' },
   ];
 
   const gradeCountMap: Record<string, number> = {};
@@ -241,20 +241,20 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
   const totalHighPriority = hotspotZones.reduce((sum, z) => sum + z.highPriority, 0);
 
   return (
-    <div className="space-y-6 animate-fade-in text-[#00271D]">
+    <div className="space-y-6 animate-fade-in text-[var(--text-strong)]">
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-3 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-3 py-1 rounded-full uppercase tracking-wider">
               OPERATIONAL ANALYTICS
             </span>
-            <span className="text-xs font-semibold text-[#00271D]/40">• Updated live</span>
+            <span className="text-xs font-semibold text-[var(--text-strong)]/40">• Updated live</span>
           </div>
-          <h2 className="text-2xl font-extrabold text-[#00271D] tracking-tight mt-2">
+          <h2 className="text-2xl font-extrabold text-[var(--text-strong)] tracking-tight mt-2">
             Operational & Collection Performance
           </h2>
-          <p className="text-xs text-[#00271D]/60 mt-1 max-w-xl">
+          <p className="text-xs text-[var(--text-strong)]/60 mt-1 max-w-xl">
             Real-time monitoring of campus report submissions, MRF task dispatches, grade-level participation, and recyclable revenue.
           </p>
         </div>
@@ -274,12 +274,12 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00271D]/60">Total Campus Reports</p>
-            <p className="text-3xl font-extrabold tracking-tight text-[#00271D] mt-0.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-strong)]/60">Total Campus Reports</p>
+            <p className="text-3xl font-extrabold tracking-tight text-[var(--text-strong)] mt-0.5">
               {totalReportsCount}
             </p>
           </div>
-          <div className="mt-3 pt-3 border-t border-[#00271D]/5 flex items-center justify-between text-[11px] text-[#00271D]/60 font-medium">
+          <div className="mt-3 pt-3 border-t border-[var(--primary)]/5 flex items-center justify-between text-[11px] text-[var(--text-strong)]/60 font-medium">
             <span>{studentReportsCount} Student</span>
             <span>•</span>
             <span>{teacherReportsCount} Teacher</span>
@@ -289,51 +289,51 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
         {/* Card 2: Dispatched & Collected Tasks */}
         <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="p-3 bg-sky-50 rounded-xl text-[#0091EA] group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-[var(--primary)]/10 rounded-xl text-[var(--text-strong)] group-hover:scale-110 transition-transform">
               <Truck size={22} />
             </div>
-            <span className="text-[11px] font-medium text-sky-700 bg-sky-50/80 px-2 py-0.5 rounded-full border border-sky-200/60">
+            <span className="text-[11px] font-medium text-[var(--text-strong)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full border border-[var(--primary)]/60">
               {dispatchResolutionRate}%
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00271D]/60">Dispatched & Collected</p>
-            <p className="text-3xl font-extrabold tracking-tight text-[#00271D] mt-0.5">
-              {collectedReports.length} <span className="text-sm font-bold text-[#00271D]/40">/ {totalReportsCount}</span>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-strong)]/60">Dispatched & Collected</p>
+            <p className="text-3xl font-extrabold tracking-tight text-[var(--text-strong)] mt-0.5">
+              {collectedReports.length} <span className="text-sm font-bold text-[var(--text-strong)]/40">/ {totalReportsCount}</span>
             </p>
           </div>
-          <div className="mt-3 pt-3 border-t border-[#00271D]/5 flex items-center justify-between text-[11px] text-[#00271D]/60 font-medium">
+          <div className="mt-3 pt-3 border-t border-[var(--primary)]/5 flex items-center justify-between text-[11px] text-[var(--text-strong)]/60 font-medium">
             <span>MRF Tasks Resolved</span>
-            <span className="font-bold text-[#0091EA]">{pendingReports.length} pending</span>
+            <span className="font-bold text-[var(--text-strong)]">{pendingReports.length} pending</span>
           </div>
         </div>
 
         {/* Card 3: Most Active Grade Level */}
         <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="p-3 bg-purple-50 rounded-xl text-[#651FFF] group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-[var(--gold)]/10 rounded-xl text-[var(--gold)] group-hover:scale-110 transition-transform">
               <GraduationCap size={22} />
             </div>
-            <span className="text-[11px] font-medium text-[#C69B26] bg-amber-50/80 px-2 py-0.5 rounded-full border border-amber-200/60">
+            <span className="text-[11px] font-medium text-[var(--gold)] bg-amber-50/80 px-2 py-0.5 rounded-full border border-amber-200/60">
               Top Grade
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00271D]/60">Most Active Grade Level</p>
-            <p className="text-3xl font-extrabold tracking-tight text-[#00271D] mt-0.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-strong)]/60">Most Active Grade Level</p>
+            <p className="text-3xl font-extrabold tracking-tight text-[var(--text-strong)] mt-0.5">
               {topGradeKey}
             </p>
           </div>
-          <div className="mt-3 pt-3 border-t border-[#00271D]/5 flex items-center justify-between text-[11px] text-[#00271D]/60 font-medium">
+          <div className="mt-3 pt-3 border-t border-[var(--primary)]/5 flex items-center justify-between text-[11px] text-[var(--text-strong)]/60 font-medium">
             <span>{topGradeSubmissions} Submission{topGradeSubmissions === 1 ? '' : 's'}</span>
-            <span className="font-bold text-purple-600">{topGradeShare}% Share</span>
+            <span className="font-bold text-[var(--gold)]">{topGradeShare}% Share</span>
           </div>
         </div>
 
         {/* Card 4: Total Recyclable Value (PHP) */}
         <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="p-3 bg-amber-50 rounded-xl text-[#FFAB00] group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-amber-50 rounded-xl text-[var(--gold)] group-hover:scale-110 transition-transform">
               <Coins size={22} />
             </div>
             <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-full border border-emerald-200/60">
@@ -341,12 +341,12 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
             </span>
           </div>
           <div className="mt-4">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00271D]/60">Total Recyclable Value</p>
-            <p className="text-3xl font-extrabold tracking-tight text-[#00271D] mt-0.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-strong)]/60">Total Recyclable Value</p>
+            <p className="text-3xl font-extrabold tracking-tight text-[var(--text-strong)] mt-0.5">
               ₱{totalValuePhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="mt-3 pt-3 border-t border-[#00271D]/5 flex items-center justify-between text-[11px] text-[#00271D]/60 font-medium">
+          <div className="mt-3 pt-3 border-t border-[var(--primary)]/5 flex items-center justify-between text-[11px] text-[var(--text-strong)]/60 font-medium">
             <span>Est. Revenue</span>
             <span className="font-bold text-amber-600">{totalCollectedKg.toFixed(1)} kg processed</span>
           </div>
@@ -360,15 +360,15 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-purple-50 rounded-xl text-[#651FFF]">
+                <div className="p-2 bg-[var(--gold)]/10 rounded-xl text-[var(--gold)]">
                   <BarChart2 size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[#00271D]">Participation by Grade Level</h3>
-                  <p className="text-xs text-[#00271D]/50">Reporting activity and engagement across all grade levels</p>
+                  <h3 className="text-base font-extrabold text-[var(--text-strong)]">Participation by Grade Level</h3>
+                  <p className="text-xs text-[var(--text-strong)]/50">Reporting activity and engagement across all grade levels</p>
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-purple-700 bg-purple-50/80 px-2 py-0.5 rounded-full border border-purple-200/60">
+              <span className="text-[11px] font-medium text-[var(--gold)] bg-[var(--gold)]/10 px-2 py-0.5 rounded-full border border-[var(--gold)]/60">
                 {activeUsers.filter(u => u.role === 'STUDENT').length} Student Profiles
               </span>
             </div>
@@ -380,17 +380,17 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                   key={item.grade}
                   className={`p-4 rounded-2xl border transition-all ${
                     item.isTop
-                      ? `${item.lightBg} ${item.border} ring-2 ring-purple-400/30 shadow-sm`
+                      ? `${item.lightBg} ${item.border} ring-2 ring-[var(--gold)]/30 shadow-sm`
                       : 'bg-gray-50/70 border-gray-200/80 hover:bg-white'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#00271D] flex items-center gap-1.5">
-                      <GraduationCap size={15} className={item.isTop ? 'text-purple-600' : 'text-[#00271D]/50'} />
+                    <span className="text-xs font-bold text-[var(--text-strong)] flex items-center gap-1.5">
+                      <GraduationCap size={15} className={item.isTop ? 'text-[var(--gold)]' : 'text-[var(--text-strong)]/50'} />
                       {item.label}
                     </span>
                     {item.isTop && (
-                      <span className="text-[10px] font-extrabold text-[#C69B26] bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="text-[10px] font-extrabold text-[var(--gold)] bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                         <Award size={11} /> Top Leader
                       </span>
                     )}
@@ -398,10 +398,10 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
 
                   <div className="mt-3 flex items-baseline justify-between">
                     <div>
-                      <span className="text-2xl font-black text-[#00271D]">{item.reports}</span>
-                      <span className="text-xs font-bold text-[#00271D]/50 ml-1.5">reports</span>
+                      <span className="text-2xl font-black text-[var(--text-strong)]">{item.reports}</span>
+                      <span className="text-xs font-bold text-[var(--text-strong)]/50 ml-1.5">reports</span>
                     </div>
-                    <span className="text-xs font-extrabold text-[#00271D]/70">{item.pct}%</span>
+                    <span className="text-xs font-extrabold text-[var(--text-strong)]/70">{item.pct}%</span>
                   </div>
 
                   {/* Progress Bar */}
@@ -412,7 +412,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                     />
                   </div>
 
-                  <p className="text-[11px] font-medium text-[#00271D]/50 mt-2">
+                  <p className="text-[11px] font-medium text-[var(--text-strong)]/50 mt-2">
                     {item.activeStudents} registered student{item.activeStudents === 1 ? '' : 's'}
                   </p>
                 </div>
@@ -421,12 +421,12 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
           </div>
 
           {/* Grade Level Summary Footer */}
-          <div className="p-3.5 bg-[#F9F3F0] rounded-2xl border border-[#00271D]/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <span className="font-semibold text-[#00271D]/70 flex items-center gap-2">
-              <Users size={14} className="text-[#00A77C]" />
-              Active Campus Grade Cohorts: <strong className="text-[#00271D]">{gradeParticipation.length} Grade{gradeParticipation.length === 1 ? '' : 's'} Configured</strong>
+          <div className="p-3.5 bg-[var(--background)] rounded-2xl border border-[var(--primary)]/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <span className="font-semibold text-[var(--text-strong)]/70 flex items-center gap-2">
+              <Users size={14} className="text-[var(--accent)]" />
+              Active Campus Grade Cohorts: <strong className="text-[var(--text-strong)]">{gradeParticipation.length} Grade{gradeParticipation.length === 1 ? '' : 's'} Configured</strong>
             </span>
-            <span className="text-[11px] font-medium text-[#00A77C] bg-[#00A77C]/10 px-2.5 py-0.5 rounded-full border border-[#00A77C]/20">
+            <span className="text-[11px] font-medium text-[var(--accent)] bg-[var(--accent)]/10 px-2.5 py-0.5 rounded-full border border-[var(--accent)]/20">
               {topGradeKey} ({topGradeSubmissions} report{topGradeSubmissions === 1 ? '' : 's'})
             </span>
           </div>
@@ -437,12 +437,12 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-sky-50 rounded-xl text-[#0091EA]">
+                <div className="p-2 bg-[var(--primary)]/10 rounded-xl text-[var(--text-strong)]">
                   <Layers size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[#00271D]">Recyclable Waste Composition</h3>
-                  <p className="text-xs text-[#00271D]/50">Itemized breakdown by material volume & value</p>
+                  <h3 className="text-base font-extrabold text-[var(--text-strong)]">Recyclable Waste Composition</h3>
+                  <p className="text-xs text-[var(--text-strong)]/50">Itemized breakdown by material volume & value</p>
                 </div>
               </div>
             </div>
@@ -451,7 +451,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
             <div className="mt-5 space-y-2">
               <div className="flex justify-between text-xs font-bold">
                 <span>Material Distribution</span>
-                <span className="text-[#00A77C]">{totalCollectedKg.toFixed(1)} kg Total</span>
+                <span className="text-[var(--accent)]">{totalCollectedKg.toFixed(1)} kg Total</span>
               </div>
               <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden flex gap-0.5 p-0.5">
                 {wasteComposition.map((item) => (
@@ -479,16 +479,16 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                         <ItemIcon size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-[#00271D]">{item.name}</p>
-                        <p className="text-[11px] text-[#00271D]/50 font-medium">
+                        <p className="text-xs font-bold text-[var(--text-strong)]">{item.name}</p>
+                        <p className="text-[11px] text-[var(--text-strong)]/50 font-medium">
                           {item.weightKg.toFixed(1)} kg collected
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <p className="text-xs font-black text-[#00271D]">{item.pct}%</p>
-                      <p className="text-[11px] font-bold text-[#00A77C]">
+                      <p className="text-xs font-black text-[var(--text-strong)]">{item.pct}%</p>
+                      <p className="text-[11px] font-bold text-[var(--accent)]">
                         ₱{item.estValuePhp.toLocaleString()}
                       </p>
                     </div>
@@ -498,9 +498,9 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
             </div>
           </div>
 
-          <div className="pt-3 border-t border-[#00271D]/10 flex items-center justify-between text-xs">
-            <span className="text-[#00271D]/60 font-semibold">Total Estimated Value</span>
-            <span className="font-extrabold text-[#00271D] text-sm">
+          <div className="pt-3 border-t border-[var(--primary)]/10 flex items-center justify-between text-xs">
+            <span className="text-[var(--text-strong)]/60 font-semibold">Total Estimated Value</span>
+            <span className="font-extrabold text-[var(--text-strong)] text-sm">
               ₱{totalValuePhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </span>
           </div>
@@ -513,12 +513,12 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
         <div className="lg:col-span-7 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-emerald-50 rounded-xl text-[#00A77C]">
+              <div className="p-2 bg-[var(--primary)]/10 rounded-xl text-[var(--accent)]">
                 <Calendar size={18} />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-[#00271D]">Monthly Collection Volume</h3>
-                <p className="text-xs text-[#00271D]/50">Actual weight (kg) and item count per month</p>
+                <h3 className="text-base font-extrabold text-[var(--text-strong)]">Monthly Collection Volume</h3>
+                <p className="text-xs text-[var(--text-strong)]/50">Actual weight (kg) and item count per month</p>
               </div>
             </div>
 
@@ -526,28 +526,28 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
               <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {totalCollectedKg.toFixed(1)} kg Collected
               </span>
-              <span className="px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+              <span className="px-2.5 py-1 rounded-full bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/25">
                 {collectedReports.length} Verified Reports
               </span>
             </div>
           </div>
 
           {/* Bar Chart */}
-          <div className="h-52 flex items-end justify-between gap-3 pt-8 pb-2 border-b border-[#00271D]/10">
+          <div className="h-52 flex items-end justify-between gap-3 pt-8 pb-2 border-b border-[var(--primary)]/10">
             {monthlyData.map((m) => {
               const heightPct = Math.min(100, Math.round((m.weight / 250) * 100));
               const hasData = m.weight > 0;
               return (
                 <div key={m.month} className="flex-1 flex flex-col items-center gap-2 group relative">
                   {/* Tooltip on hover */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 bg-[#00271D] text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md pointer-events-none whitespace-nowrap z-10">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 bg-[var(--primary)] text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md pointer-events-none whitespace-nowrap z-10">
                     {m.weight} kg • {m.items} items
                   </div>
 
                   {hasData ? (
                     <div className="w-full flex items-end justify-center" style={{ height: '140px' }}>
                       <div
-                        className="w-7 bg-[#00A77C] group-hover:bg-[#008f6a] rounded-t-md transition-all duration-500 shadow-sm"
+                        className="w-7 bg-[var(--accent)] group-hover:bg-[var(--accent-dark)] rounded-t-md transition-all duration-500 shadow-sm"
                         style={{ height: `${Math.max(heightPct, 8)}%` }}
                       />
                     </div>
@@ -556,15 +556,15 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                       <div className="h-1 w-7 bg-gray-200 rounded-full" />
                     </div>
                   )}
-                  <span className="text-xs font-bold text-[#00271D]/70">{m.month}</span>
+                  <span className="text-xs font-bold text-[var(--text-strong)]/70">{m.month}</span>
                 </div>
               );
             })}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-[#00271D]/60 pt-1 font-medium">
+          <div className="flex items-center justify-between text-xs text-[var(--text-strong)]/60 pt-1 font-medium">
             <span>Current Collection: <strong>{totalCollectedKg.toFixed(1)} kg</strong></span>
-            <span className="text-[#00A77C] font-bold">Total Processed: {totalCollectedKg.toFixed(1)} kg</span>
+            <span className="text-[var(--accent)] font-bold">Total Processed: {totalCollectedKg.toFixed(1)} kg</span>
           </div>
         </div>
 
@@ -577,8 +577,8 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                   <MapPin size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[#00271D]">Campus Waste Hotspots</h3>
-                  <p className="text-xs text-[#00271D]/50">High-frequency report zones requiring MRF attention</p>
+                  <h3 className="text-base font-extrabold text-[var(--text-strong)]">Campus Waste Hotspots</h3>
+                  <p className="text-xs text-[var(--text-strong)]/50">High-frequency report zones requiring MRF attention</p>
                 </div>
               </div>
             </div>
@@ -592,12 +592,12 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                     className="p-3 bg-gray-50/80 hover:bg-white rounded-2xl border border-gray-100 transition-all flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${zone.isOverdue ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'}`}>
+                      <div className={`p-2 rounded-xl ${zone.isOverdue ? 'bg-rose-50 text-rose-600' : 'bg-[var(--primary)]/10 text-[var(--text-strong)]'}`}>
                         <MapPin size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-[#00271D]">{zone.name}</p>
-                        <p className="text-[11px] text-[#00271D]/50 font-medium">
+                        <p className="text-xs font-bold text-[var(--text-strong)]">{zone.name}</p>
+                        <p className="text-[11px] text-[var(--text-strong)]/50 font-medium">
                           {zone.reportCount} open report{zone.reportCount === 1 ? '' : 's'}
                         </p>
                       </div>
@@ -608,7 +608,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                           High Priority
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
+                        <span className="text-[10px] font-bold text-[var(--text-strong)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full border border-[var(--primary)]/25">
                           Normal
                         </span>
                       )}
@@ -616,7 +616,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
                   </div>
                 ))
               ) : (
-                <div className="p-4 text-center text-xs text-[#00271D]/50 font-medium bg-gray-50/70 rounded-2xl border border-gray-100">
+                <div className="p-4 text-center text-xs text-[var(--text-strong)]/50 font-medium bg-gray-50/70 rounded-2xl border border-gray-100">
                   No active hotspots — all zones clear
                 </div>
               )}
@@ -624,14 +624,14 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({ reports = [], us
           </div>
 
           {/* Action Footer linking to Bin Map */}
-          <div className="pt-3 border-t border-[#00271D]/10 flex items-center justify-between text-xs mt-5">
-            <span className="text-[#00271D]/60 font-semibold">
+          <div className="pt-3 border-t border-[var(--primary)]/10 flex items-center justify-between text-xs mt-5">
+            <span className="text-[var(--text-strong)]/60 font-semibold">
               {totalOpenReports} open report{totalOpenReports === 1 ? '' : 's'} across {hotspotZones.length} zone{hotspotZones.length === 1 ? '' : 's'}
               {totalHighPriority > 0 && (
                 <span className="text-rose-600 ml-1">• {totalHighPriority} high priority</span>
               )}
             </span>
-            <span className="text-[11px] font-bold text-[#00A77C] bg-[#00A77C]/10 px-2.5 py-1 rounded-full border border-[#00A77C]/20 flex items-center gap-1">
+            <span className="text-[11px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2.5 py-1 rounded-full border border-[var(--accent)]/20 flex items-center gap-1">
               <ExternalLink size={11} />
               View Bin Map
             </span>

@@ -15,6 +15,26 @@
   --link: #00A77C;
   --font-body: 'Tenon', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-heading: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Runtime-overridable brand derivatives (ThemeProvider -> /api/settings/public).
+     Static values mirror the default brand exactly so pre-JS paint is unchanged. */
+  --primary-light: #003A2B;
+  --accent-light: #00C491;
+  --accent-dark: #008F6A;
+  --accent-darker: #007B5B;
+  --on-primary: #ffffff;
+  --on-secondary: #ffffff;
+  --on-accent: #ffffff;
+  --primary-rgb: 0, 39, 29;
+  --secondary-rgb: 0, 167, 124;
+  --accent-rgb: 0, 167, 124;
+  --gold-rgb: 198, 155, 38;
+  --primary-color: #00271D;
+  --secondary-color: #00A77C;
+  --accent-color: #00A77C;
+  --text-color: #ffffff;
+  --bg-color: #F9F3F0;
+  --text-strong: #111827;
 }
 
 @theme {
@@ -48,7 +68,7 @@
   body {
     font-family: 'Tenon', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #F9F3F0;
-    color: #012625;
+    color: var(--text-strong);
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -58,14 +78,14 @@
     font-family: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 72px;
     line-height: 1.1;
-    color: #012625;
+    color: var(--text-strong);
   }
 
   h2 {
     font-family: 'Korolev', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 32px;
     line-height: 1.25;
-    color: #012625;
+    color: var(--text-strong);
   }
   
   code {
@@ -151,4 +171,26 @@
 .custom-calendar-cell:hover:not(.empty) {
   background-color: rgba(16, 185, 129, 0.15);
   color: #34d399;
+}
+
+/* Mobile bottom-sheet entrance (nav "More" surface) */
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-up {
+    animation: none;
+  }
 }

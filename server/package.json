@@ -15,6 +15,7 @@
     "sync:enrollpro": "tsx src/scripts/bulk-sync.ts",
     "sync:atlas": "tsx src/scripts/sync-atlas.ts",
     "test:atlas": "node --import tsx --test src/services/__tests__/atlas-map.test.ts",
+    "test:branding": "node --import tsx --test src/services/__tests__/branding.test.ts",
     "db:reset-market": "tsx src/scripts/reset-market-stock.ts",
     "db:wipe-accounts": "tsx prisma/wipe-accounts.ts"
   },

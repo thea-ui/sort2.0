@@ -35,6 +35,9 @@ scripts/e2e/credentials.local.json
 # ATLAS runtime mirror assets (fonts stay tracked)
 server/assets/atlas/
 
+# EnrollPro-synced tenant assets (logo downloads at runtime)
+server/uploads/
+
 # Playwright artifacts
 test-results/
 playwright-report/

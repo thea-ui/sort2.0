@@ -13,7 +13,7 @@ interface PublicLandingProps {
 
 export const PublicLanding: React.FC<PublicLandingProps> = ({ onNavigate }) => {
   return (
-    <div className="min-h-screen bg-[#F9F3F0] font-sans text-[#012625]">
+    <div className="min-h-screen bg-[var(--background)] font-sans text-[#012625]">
       <LandingHeader onNavigate={onNavigate} />
 
       {/* TIER 1: THE COMMAND HERO (60/40 Split) */}
@@ -23,7 +23,7 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({ onNavigate }) => {
       <FeaturesSection />
 
       {/* TIER 3: THE COMMUNITY & LOGISTICS HUB (60/40 Split) */}
-      <section className="bg-[#F9F3F0]">
+      <section className="bg-[var(--background)]">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
             {/* LEFT: Campus Hall of Fame (60%) */}

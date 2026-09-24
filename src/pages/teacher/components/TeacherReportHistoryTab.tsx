@@ -56,13 +56,13 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
 
       {/* Header */}
-      <div className="bg-gradient-to-br from-white/95 via-white/90 to-[#e0f2ec]/60 border border-white/90 rounded-3xl p-7 shadow-xl shadow-[#00271D]/5 backdrop-blur-md">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00A77C]/40 bg-[#00A77C]/15 px-3.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest text-[#00A77C]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#00A77C] animate-pulse" />
+      <div className="bg-gradient-to-br from-white/95 via-white/90 to-[var(--primary)]/5 border border-white/90 rounded-3xl p-7 shadow-xl shadow-[var(--primary)]/5 backdrop-blur-md">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-3.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest text-[var(--accent)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
           Ledger Log
         </span>
-        <h2 className="mt-2 text-2xl font-heading font-black tracking-tight text-[#00271D]">Activity & Incident History</h2>
-        <p className="mt-1 text-xs text-[#00271D]/60 font-medium">All submitted maintenance, asset repair, and waste recovery tickets. Click any card to inspect full details.</p>
+        <h2 className="mt-2 text-2xl font-heading font-black tracking-tight text-[var(--text-strong)]">Activity & Incident History</h2>
+        <p className="mt-1 text-xs text-[var(--text-strong)]/60 font-medium">All submitted maintenance, asset repair, and waste recovery tickets. Click any card to inspect full details.</p>
       </div>
 
       {/* Pill filter toggles */}
@@ -74,15 +74,15 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
             onClick={() => setStatusFilter(s)}
             className={`rounded-full border px-4 py-1.5 text-[10px] font-extrabold transition-all cursor-pointer ${
               statusFilter === s
-                ? 'border-[#00A77C] bg-[#00A77C] text-white shadow-md shadow-[#00A77C]/25'
-                : 'border-[#00271D]/15 bg-white/90 text-[#00271D]/70 hover:border-[#00A77C]'
+                ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-md shadow-[var(--accent)]/25'
+                : 'border-[var(--primary)]/15 bg-white/90 text-[var(--text-strong)]/70 hover:border-[var(--accent)]'
             }`}
           >
             {s}
           </button>
         ))}
 
-        <div className="mx-1 h-6 w-px bg-[#00271D]/15 self-center" />
+        <div className="mx-1 h-6 w-px bg-[var(--primary)]/15 self-center" />
 
         {/* Category pills */}
         {['All', 'Waste/Bin', 'Furniture', 'Electronics', 'Fixtures', 'Equipment', 'Other'].map(c => (
@@ -91,8 +91,8 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
             onClick={() => setCategoryFilter(c)}
             className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition-all cursor-pointer ${
               categoryFilter === c
-                ? 'border-[#00271D] bg-[#00271D] text-white shadow-xs'
-                : 'border-[#00271D]/15 bg-white/90 text-[#00271D]/60 hover:border-[#00271D]/40'
+                ? 'border-[var(--primary)] bg-[var(--primary)] text-white shadow-xs'
+                : 'border-[var(--primary)]/15 bg-white/90 text-[var(--text-strong)]/60 hover:border-[var(--primary)]/40'
             }`}
           >
             {c}
@@ -111,8 +111,8 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
         if (filtered.length === 0) {
           return (
             <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-white/80 p-10 text-center shadow-sm">
-              <AlertTriangle className="mx-auto mb-2 text-[#00271D]/30" size={28} />
-              <p className="text-xs font-bold text-[#00271D]/50">No reports match your filters.</p>
+              <AlertTriangle className="mx-auto mb-2 text-[var(--text-strong)]/30" size={28} />
+              <p className="text-xs font-bold text-[var(--text-strong)]/50">No reports match your filters.</p>
             </div>
           );
         }
@@ -131,15 +131,15 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
                   {(() => {
                     const IconComp = CAT_ICON[dc] || FileText;
                     return (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00271D]/5 text-[#00A77C]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary)]/5 text-[var(--accent)]">
                         <IconComp size={22} />
                       </div>
                     );
                   })()}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-extrabold text-[#00271D]">{cleanReportTitle(rep.title)}</p>
-                    <p className="mt-0.5 text-[10px] text-[#00271D]/60 leading-relaxed line-clamp-1 font-medium">{rep.description.replace(/\[.*?\]/g, '').trim()}</p>
-                    <div className="mt-1.5 flex items-center gap-2 text-[9px] font-bold text-[#00271D]/50">
+                    <p className="truncate text-xs font-extrabold text-[var(--text-strong)]">{cleanReportTitle(rep.title)}</p>
+                    <p className="mt-0.5 text-[10px] text-[var(--text-strong)]/60 leading-relaxed line-clamp-1 font-medium">{rep.description.replace(/\[.*?\]/g, '').trim()}</p>
+                    <div className="mt-1.5 flex items-center gap-2 text-[9px] font-bold text-[var(--text-strong)]/50">
                       <Clock size={10} />
                       <span>{rep.timestamp}</span>
                       <span>•</span>
@@ -154,7 +154,7 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
                         type="button"
                         onClick={() => setLightboxSrc(rep.imageUrl ?? null)}
                         aria-label="View evidence photo full screen"
-                        className="h-9 w-14 overflow-hidden rounded-xl border border-[#00271D]/10 shadow-2xs cursor-zoom-in"
+                        className="h-9 w-14 overflow-hidden rounded-xl border border-[var(--primary)]/10 shadow-2xs cursor-zoom-in"
                       >
                         <img src={rep.imageUrl} alt="Evidence" className="h-full w-full object-cover" />
                       </button>
@@ -193,12 +193,12 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
               </button>
 
               <div className="flex items-start gap-3 border-b border-gray-100 pb-3 pr-8">
-                <div className="h-11 w-11 rounded-2xl bg-[#00A77C]/15 text-[#00A77C] flex items-center justify-center font-bold shrink-0">
+                <div className="h-11 w-11 rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center font-bold shrink-0">
                   <Eye size={22} />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00271D] text-white">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[var(--primary)] text-white">
                       ID: {selectedReport.id}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
@@ -209,24 +209,24 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
                       {selectedReport.isVerified ? 'Verified' : 'Pending Verification'}
                     </span>
                   </div>
-                  <h3 className="text-base font-heading font-black text-[#00271D] leading-snug">
+                  <h3 className="text-base font-heading font-black text-[var(--text-strong)] leading-snug">
                     {cleanReportTitle(selectedReport.title)}
                   </h3>
                 </div>
               </div>
 
               {/* Location Banner */}
-              <div className="bg-[#00A77C]/10 border border-[#00A77C]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
+              <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
                 <div>
-                  <span className="text-[10px] font-black text-[#00A77C] uppercase tracking-wider block">Target Location</span>
-                  <h4 className="text-lg font-heading font-black text-[#00271D] leading-tight mt-0.5">{cleanLocationName(selectedReport.locationName)}</h4>
+                  <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-wider block">Target Location</span>
+                  <h4 className="text-lg font-heading font-black text-[var(--text-strong)] leading-tight mt-0.5">{cleanLocationName(selectedReport.locationName)}</h4>
                   {isScattered && (
-                    <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono font-bold text-gray-700 bg-white/90 border border-[#00A77C]/30 px-2.5 py-0.5 rounded-md">
-                      <Navigation size={10} className="text-[#00A77C]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                    <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono font-bold text-gray-700 bg-white/90 border border-[var(--accent)]/30 px-2.5 py-0.5 rounded-md">
+                      <Navigation size={10} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
                     </span>
                   )}
                 </div>
-                <div className="h-10 w-10 rounded-xl bg-[#00A77C] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <div className="h-10 w-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-xs">
                   <MapPin size={22} />
                 </div>
               </div>
@@ -234,13 +234,13 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
               {/* Mini-map if Scattered Debris */}
               {isScattered && (
                 <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-[#00271D]">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-strong)]">
                     <span className="flex items-center gap-1">
-                      <MapIcon size={14} className="text-[#00A77C]" />
+                      <MapIcon size={14} className="text-[var(--accent)]" />
                       <span>Pinned Location Map:</span>
                     </span>
                     <span className="text-[10px] font-mono text-gray-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md font-bold flex items-center gap-1">
-                      <Navigation size={11} className="text-[#00A77C]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                      <Navigation size={11} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
                     </span>
                   </div>
 

@@ -139,20 +139,20 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
       {/* Compact Header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <span className="text-[10px] font-bold text-[#00A77C] bg-[#00A77C]/10 border border-[#00A77C]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
             MRF Direct Entry
           </span>
-          <h3 className="text-lg font-heading font-black text-[#00271D] mt-1">
+          <h3 className="text-lg font-heading font-black text-[var(--text-strong)] mt-1">
             Direct Campus Collection
           </h3>
-          <p className="text-xs text-[#00271D]/50 mt-0.5">Real-time MRF payload logging</p>
+          <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">Real-time MRF payload logging</p>
         </div>
       </div>
 
       {/* Unified60/40 Split Cockpit */}
       <form onSubmit={handleSubmit}>
         <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-[#00271D]/10">
+          <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-[var(--primary)]/10">
 
             {/* LEFT PANEL(60%): Station & Map Explorer */}
             <div className="lg:col-span-3 p-5 space-y-4">
@@ -165,7 +165,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                     placeholder="Search location..."
                     value={searchLocation}
                     onChange={(e) => setSearchLocation(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[#00271D] font-medium outline-none focus:border-[#00A77C] focus:bg-white transition-all"
+                    className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-[var(--text-strong)] font-medium outline-none focus:border-[var(--accent)] focus:bg-white transition-all"
                   />
                 </div>
                 <button
@@ -173,7 +173,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                   onClick={() => setIsPinningMode(!isPinningMode)}
                   className={`px-3 py-2 text-[10px] font-bold rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
                     isPinningMode
-                      ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-xs'
+                      ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-xs'
                       : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                   }`}
                 >
@@ -185,7 +185,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
               {/* Map Canvas */}
               <div
                 className={`relative w-full h-[300px] lg:h-[380px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center transition-all select-none ${
-                  isPinningMode ? 'ring-2 ring-[#00A77C]' : ''
+                  isPinningMode ? 'ring-2 ring-[var(--accent)]' : ''
                 }`}
               >
                 <CampusMapFrame
@@ -221,9 +221,9 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                 >
 
                 {/* Floating Legend */}
-                <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] text-[#00271D]/70 border border-white/80 flex items-center gap-2 pointer-events-none z-10">
+                <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] text-[var(--text-strong)]/70 border border-white/80 flex items-center gap-2 pointer-events-none z-10">
                   <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 rounded-full bg-[#00A77C]" />
+                    <div className="h-2 w-2 rounded-full bg-[var(--accent)]" />
                     <span>Selected</span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -237,8 +237,8 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                 </div>
 
                 {/* Map Pins Badge */}
-                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[#00271D] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
-                  <MapIcon size={11} className="text-[#00A77C]" />
+                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-[var(--text-strong)] font-bold border border-gray-200 shadow-xs pointer-events-none flex items-center gap-1 z-10">
+                  <MapIcon size={11} className="text-[var(--accent)]" />
                   <span>Map Pins</span>
                 </div>
 
@@ -266,10 +266,10 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                         }}
                         className={`h-9 w-9 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md border-2 ${
                           isSel
-                            ? 'bg-[#00A77C] text-white border-white scale-110 ring-4 ring-[#00A77C]/30 z-30'
+                            ? 'bg-[var(--accent)] text-white border-white scale-110 ring-4 ring-[var(--accent)]/30 z-30'
                             : isWarning
                               ? 'bg-amber-400 text-white border-white hover:scale-105'
-                              : 'bg-white text-[#00271D] border-gray-200 hover:border-[#00A77C] hover:scale-105'
+                              : 'bg-white text-[var(--text-strong)] border-gray-200 hover:border-[var(--accent)] hover:scale-105'
                         }`}
                         title={`${station.name} (${station.code})`}
                       >
@@ -281,7 +281,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                         <div className="absolute bottom-11 left-1/2 -translate-x-1/2 z-40 min-w-[190px] bg-white/95 backdrop-blur-md rounded-xl p-2.5 shadow-2xl border border-gray-200/90 animate-fade-in">
                           <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1.5">
                             <div>
-                              <p className="text-[10px] font-extrabold text-[#00271D]">{station.name}</p>
+                              <p className="text-[10px] font-extrabold text-[var(--text-strong)]">{station.name}</p>
                               <p className="text-[8px] text-gray-400 font-mono">{station.code}</p>
                             </div>
                             <button
@@ -324,7 +324,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
 
                 {/* Pinning Mode Indicator */}
                 {isPinningMode && (
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#00A77C] text-white px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-lg animate-pulse z-10">
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-white px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-lg animate-pulse z-10">
                     <Target size={12} />
                     <span>Tap map to pin location</span>
                   </div>
@@ -361,8 +361,8 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                         onClick={() => handleSelectStation(station)}
                         className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
                           isSel
-                            ? 'bg-[#00A77C] border-[#00A77C] text-white shadow-xs'
-                            : 'bg-gray-50 border-gray-200 text-[#00271D]/80 hover:bg-emerald-50 hover:border-emerald-200'
+                            ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-xs'
+                            : 'bg-gray-50 border-gray-200 text-[var(--text-strong)]/80 hover:bg-emerald-50 hover:border-emerald-200'
                         }`}
                       >
                         <MapPin size={10} />
@@ -379,18 +379,18 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
               {/* Step1: Selected Station Status */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-[#00A77C]/10 flex items-center justify-center">
-                    <MapPin size={13} className="text-[#00A77C]" />
+                  <div className="h-6 w-6 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
+                    <MapPin size={13} className="text-[var(--accent)]" />
                   </div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Selected Station</span>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-[#00A77C] text-white flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center">
                       <MapPin size={14} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-[#00271D]">{currentDisplayName}</p>
+                      <p className="text-xs font-bold text-[var(--text-strong)]">{currentDisplayName}</p>
                       {selectedStationData && (
                         <p className="text-[9px] text-gray-400 font-mono">{selectedStationData.code}</p>
                       )}
@@ -412,8 +412,8 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
               {/* Step2: Recyclable Category(2x2 Grid) */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-[#00A77C]/10 flex items-center justify-center">
-                    <Recycle size={13} className="text-[#00A77C]" />
+                  <div className="h-6 w-6 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
+                    <Recycle size={13} className="text-[var(--accent)]" />
                   </div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Category</span>
                 </div>
@@ -427,17 +427,17 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                         onClick={() => setSelectedCategory(cat.id)}
                         className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-[#00A77C]/10 border-[#00A77C] ring-2 ring-[#00A77C]/30 shadow-xs'
+                            ? 'bg-[var(--accent)]/10 border-[var(--accent)] ring-2 ring-[var(--accent)]/30 shadow-xs'
                             : 'bg-white border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <div className={`h-6 w-6 rounded-full flex items-center justify-center ${
-                            isSelected ? 'bg-[#00A77C] text-white' : 'bg-gray-100 text-gray-500'
+                            isSelected ? 'bg-[var(--accent)] text-white' : 'bg-gray-100 text-gray-500'
                           }`}>
                             <Recycle size={11} />
                           </div>
-                          <span className={`text-[10px] font-extrabold ${isSelected ? 'text-[#00271D]' : cat.color}`}>
+                          <span className={`text-[10px] font-extrabold ${isSelected ? 'text-[var(--text-strong)]' : cat.color}`}>
                             {cat.shortName}
                           </span>
                         </div>
@@ -451,8 +451,8 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
               {/* Step3: Payload Input & Submit */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-[#00A77C]/10 flex items-center justify-center">
-                    <Scale size={13} className="text-[#00A77C]" />
+                  <div className="h-6 w-6 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
+                    <Scale size={13} className="text-[var(--accent)]" />
                   </div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payload</span>
                 </div>
@@ -471,9 +471,9 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                       placeholder="0.0"
                       value={weightKg}
                       onChange={e => setWeightKg(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-white pl-4 pr-14 py-3 text-lg font-black text-[#00271D] outline-none focus:border-[#00A77C] focus:ring-2 focus:ring-[#00A77C]/20"
+                      className="w-full rounded-xl border border-gray-200 bg-white pl-4 pr-14 py-3 text-lg font-black text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 font-extrabold text-sm text-[#00A77C] bg-[#00A77C]/10 px-2 py-0.5 rounded-lg">
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 font-extrabold text-sm text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-lg">
                       KG
                     </span>
                   </div>
@@ -491,7 +491,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                       placeholder="Optional notes..."
                       value={notes}
                       onChange={e => setNotes(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-2.5 text-xs text-gray-900 outline-none resize-none focus:border-[#00A77C] focus:ring-2 focus:ring-[#00A77C]/20"
+                      className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-2.5 text-xs text-gray-900 outline-none resize-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
                     />
                   </div>
                 </div>
@@ -499,7 +499,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-xl bg-[#00A77C] hover:bg-[#008f6a] text-white text-xs font-extrabold shadow-md shadow-[#00A77C]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-extrabold shadow-md shadow-[var(--accent)]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <CheckCircle2 size={16} /> Log & Update Inventory
                 </button>

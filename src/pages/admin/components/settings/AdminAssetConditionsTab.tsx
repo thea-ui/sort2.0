@@ -13,10 +13,10 @@ interface ConditionItem {
 }
 
 const DEFAULT_CONDITIONS: ConditionItem[] = [
-  { id: 'c-1', name: 'Damaged', code: 'DAMAGED', description: 'Broken but may be repairable', badgeStyle: 'bg-blue-100 text-blue-800 border-blue-300', enabled: true },
+  { id: 'c-1', name: 'Damaged', code: 'DAMAGED', description: 'Broken but may be repairable', badgeStyle: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25', enabled: true },
   { id: 'c-2', name: 'Malfunctioning', code: 'MALFUNCTIONING', description: 'Not working properly', badgeStyle: 'bg-amber-100 text-amber-800 border-amber-300', enabled: true },
   { id: 'c-3', name: 'Worn Out', code: 'WORN_OUT', description: 'Heavy wear, needs replacement', badgeStyle: 'bg-orange-100 text-orange-800 border-orange-300', enabled: true },
-  { id: 'c-4', name: 'Missing Parts', code: 'MISSING_PARTS', description: 'Incomplete, parts missing', badgeStyle: 'bg-purple-100 text-purple-800 border-purple-300', enabled: true },
+  { id: 'c-4', name: 'Missing Parts', code: 'MISSING_PARTS', description: 'Incomplete, parts missing', badgeStyle: 'bg-[var(--gold)]/10 text-[var(--gold)] border-[var(--gold)]/25', enabled: true },
 ];
 
 export const AdminAssetConditionsTab: React.FC = () => {
@@ -109,16 +109,16 @@ export const AdminAssetConditionsTab: React.FC = () => {
     <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-8 shadow-sm space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-[#00271D] flex items-center gap-2">
-            <ShieldCheck size={22} className="text-[#00A77C]" />
+          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+            <ShieldCheck size={22} className="text-[var(--accent)]" />
             Asset Conditions
           </h3>
-          <p className="text-sm text-[#00271D]/50 mt-1 font-medium">Condition presets for faculty asset maintenance tickets</p>
+          <p className="text-sm text-[var(--text-strong)]/50 mt-1 font-medium">Condition presets for faculty asset maintenance tickets</p>
         </div>
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
-          className="px-5 py-2.5 bg-[#00A77C] hover:bg-[#008f6a] text-white rounded-xl text-sm font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all"
+          className="px-5 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white rounded-xl text-sm font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all"
         >
           <Plus size={16} /> Add Condition Preset
         </button>
@@ -126,13 +126,13 @@ export const AdminAssetConditionsTab: React.FC = () => {
 
       <div className="space-y-3">
         {conditions.map((cond) => (
-          <div key={cond.id || cond.code} className="p-4 bg-[#F9F3F0] rounded-2xl flex items-center justify-between border border-gray-200/60">
+          <div key={cond.id || cond.code} className="p-4 bg-[var(--background)] rounded-2xl flex items-center justify-between border border-gray-200/60">
             <div>
               <div className="flex items-center gap-2.5">
-                <span className={`font-extrabold text-[#00271D] text-sm ${cond.enabled ? '' : 'line-through opacity-50'}`}>{cond.name}</span>
+                <span className={`font-extrabold text-[var(--text-strong)] text-sm ${cond.enabled ? '' : 'line-through opacity-50'}`}>{cond.name}</span>
                 <span className={`text-xs font-black px-3 py-0.5 rounded-full border ${cond.badgeStyle}`}>{cond.code}</span>
               </div>
-              <p className="text-xs text-[#00271D]/60 mt-0.5 font-medium">{cond.description}</p>
+              <p className="text-xs text-[var(--text-strong)]/60 mt-0.5 font-medium">{cond.description}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -146,10 +146,10 @@ export const AdminAssetConditionsTab: React.FC = () => {
               >
                 {cond.enabled ? 'Active' : 'Disabled'}
               </button>
-              <button type="button" onClick={() => setEditingItem(cond)} className="text-[#00271D]/40 hover:text-blue-600 cursor-pointer p-1.5">
+              <button type="button" onClick={() => setEditingItem(cond)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] cursor-pointer p-1.5">
                 <Edit2 size={15} />
               </button>
-              <button type="button" onClick={() => handleDeleteCondition(cond.id)} className="text-[#00271D]/40 hover:text-rose-600 cursor-pointer p-1.5">
+              <button type="button" onClick={() => handleDeleteCondition(cond.id)} className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5">
                 <Trash2 size={15} />
               </button>
             </div>
@@ -162,33 +162,33 @@ export const AdminAssetConditionsTab: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl border border-white space-y-5 animate-fade-in">
             <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-              <h3 className="text-2xl font-black text-[#00271D]">Add Asset Condition</h3>
-              <button type="button" onClick={() => setShowAddModal(false)} className="text-[#00271D]/40 hover:text-[#00271D]">
+              <h3 className="text-2xl font-black text-[var(--text-strong)]">Add Asset Condition</h3>
+              <button type="button" onClick={() => setShowAddModal(false)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)]">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleAddCondition} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Condition Name</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Condition Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Scratched Surface"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Description</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Description</label>
                 <input
                   type="text"
                   placeholder="e.g. Surface damage but functional"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
@@ -196,7 +196,7 @@ export const AdminAssetConditionsTab: React.FC = () => {
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 cursor-pointer text-sm">
                   Cancel
                 </button>
-                <button type="submit" className="px-6 py-2.5 bg-[#00A77C] text-white font-extrabold rounded-xl shadow-md hover:bg-[#008f6a] cursor-pointer text-sm">
+                <button type="submit" className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm">
                   Save Condition
                 </button>
               </div>
@@ -210,31 +210,31 @@ export const AdminAssetConditionsTab: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl border border-white space-y-5 animate-fade-in">
             <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-              <h3 className="text-2xl font-black text-[#00271D]">Edit Asset Condition</h3>
-              <button type="button" onClick={() => setEditingItem(null)} className="text-[#00271D]/40 hover:text-[#00271D]">
+              <h3 className="text-2xl font-black text-[var(--text-strong)]">Edit Asset Condition</h3>
+              <button type="button" onClick={() => setEditingItem(null)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)]">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleSaveEditCondition} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Condition Name</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Condition Name</label>
                 <input
                   type="text"
                   required
                   value={editingItem.name}
                   onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#00271D]/50 uppercase">Description</label>
+                <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase">Description</label>
                 <input
                   type="text"
                   value={editingItem.description}
                   onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
-                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00A77C]"
+                  className="w-full mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
@@ -242,7 +242,7 @@ export const AdminAssetConditionsTab: React.FC = () => {
                 <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 cursor-pointer text-sm">
                   Cancel
                 </button>
-                <button type="submit" className="px-6 py-2.5 bg-[#00A77C] text-white font-extrabold rounded-xl shadow-md hover:bg-[#008f6a] cursor-pointer text-sm">
+                <button type="submit" className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm">
                   Save Changes
                 </button>
               </div>

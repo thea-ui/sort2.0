@@ -338,7 +338,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
         <TeacherCategorySelector pillarMeta={PILLAR_META} onSelect={handleSelectCategory} />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 p-6 text-white shadow-lg shadow-blue-500/15 flex items-center gap-4">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[var(--primary)] via-[var(--primary)] to-[var(--primary)] p-6 text-white shadow-lg shadow-[var(--primary)]/15 flex items-center gap-4">
             <button
               type="button"
               onClick={() => setSelectedCategoryState(null)}
@@ -423,7 +423,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || !selectedItem || !selectedLocation || !capturedImage}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/25 hover:from-blue-500 hover:to-indigo-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[var(--primary)] via-[var(--primary)] to-[var(--primary)] text-white font-bold text-sm shadow-lg shadow-[var(--primary)]/25 hover:from-[var(--primary)] hover:to-[var(--primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? (
                 <>

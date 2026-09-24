@@ -94,9 +94,9 @@ export const CAT_META: Record<
   RECYCLABLE: {
     label: 'Recyclable',
     short: 'Rec',
-    bg: 'bg-sky-500',
-    border: 'border-sky-400',
-    text: 'text-sky-600',
+    bg: 'bg-[var(--primary)]',
+    border: 'border-[var(--primary)]/25',
+    text: 'text-[var(--text-strong)]',
     Icon: Recycle,
     desc: 'PET bottles, aluminum cans, glass & cardboard',
   },
