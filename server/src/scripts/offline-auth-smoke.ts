@@ -269,20 +269,21 @@ async function main() {
     if (refreshed.json?.refreshToken) breakGlassRefresh = refreshed.json.refreshToken;
 
     // ── 9. Repeated failures lock the fallback out ───────────────────────
-    // Failed PIN attempts legitimately consume the login rate-limit budget, so
-    // running this suite several times inside the 15-minute window can exhaust
-    // it. That is an environment condition, not a defect: report PENDING and
-    // never silently pass.
-    let rateLimited = false;
-    for (let i = 0; i < 3; i++) {
-      const attempt = await call('POST', '/api/auth/login', { body: { identifier: TEST_LRN, password: WRONG_PIN } });
-      if (attempt.status === 429) {
-        rateLimited = true;
-        break;
-      }
+    // The two checks above already recorded 2 real failures. Seed the remaining
+    // threshold directly in the DB and probe once over HTTP, so this suite does
+    // not burn four more attempts from the shared per-IP login rate-limit
+    // budget (which would make repeated runs flaky).
+    const existingFailures = await prisma.offlineAuthLog.count({
+      where: { userId: fixture.id, success: false },
+    });
+    const toSeed = Math.max(0, 5 - existingFailures);
+    for (let i = 0; i < toSeed; i++) {
+      await prisma.offlineAuthLog.create({
+        data: { userId: fixture.id, success: false, reason: 'BAD_PIN (seeded by smoke suite)' },
+      });
     }
     const locked = await call('POST', '/api/auth/login', { body: { identifier: TEST_LRN, password: GOOD_PIN } });
-    if (rateLimited || locked.status === 429) {
+    if (locked.status === 429) {
       warnings.push('lockout check PENDING (login rate limiter exhausted — re-run after 15 minutes)');
       console.log('WARN  sixth failure locks the fallback — PENDING (rate limited)');
     } else {
@@ -312,6 +313,19 @@ async function main() {
     // Always restore: no fixture, no armed fallback, no test noise in the
     // permanent audit trail. (offline_auth_logs cascade with the fixture.)
     await removeFixture(fixture.id);
+
+    if (originalState.enabled) {
+      const remainingHours = originalState.expiresAt
+        ? Math.max(1, Math.ceil((originalState.expiresAt.getTime() - Date.now()) / 3_600_000))
+        : 1;
+      await call('POST', '/api/offline-auth/enable', { token: admin, body: { hours: remainingHours, reason: 'restore pre-test state' } });
+      console.log(`\n(restored pre-existing offline-auth window for ~${remainingHours}h)`);
+    } else {
+      await call('POST', '/api/offline-auth/disable', { token: admin, body: { reason: 'restore pre-test state' } });
+    }
+
+    // Delete AFTER the restore above, otherwise the restore's own audit row
+    // survives and pollutes the trail on the next run.
     await prisma.auditLog
       .deleteMany({
         where: {
@@ -323,15 +337,7 @@ async function main() {
         },
       })
       .catch(() => {});
-    if (originalState.enabled) {
-      const remainingHours = originalState.expiresAt
-        ? Math.max(1, Math.ceil((originalState.expiresAt.getTime() - Date.now()) / 3_600_000))
-        : 1;
-      await call('POST', '/api/offline-auth/enable', { token: admin, body: { hours: remainingHours, reason: 'restore pre-test state' } });
-      console.log(`\n(restored pre-existing offline-auth window for ~${remainingHours}h)`);
-    } else {
-      await call('POST', '/api/offline-auth/disable', { token: admin, body: { reason: 'restore pre-test state' } });
-    }
+
     const finalState = await readState();
     console.log(`\nCleanup: fixture removed, offline-auth enabled=${finalState.enabled}`);
   }

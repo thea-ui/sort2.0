@@ -141,6 +141,7 @@ So we can plan ahead; answers in the same Markdown deliverable are ideal:
 ## 8. Our constraints (for context)
 
 - Strict policy: **no local password storage or fallback** for SORT. If EnrollPro auth is unreachable, SORT logins fail closed with an explicit "authentication service unreachable" message. This is by design (owner decision) — so learner auth *must* work over the API for students to use SORT at all.
+  - **UPDATE (2026-09-25): superseded in part.** The fail-closed default stands, but the owner has since authorised an **audited break-glass offline fallback** because a prolonged EnrollPro outage left the school with no access at all. A user may set a SORT-local **offline PIN** (bcrypt-hashed, never an EnrollPro password); it is only accepted while an administrator has explicitly armed offline auth (max 72 h) *and* EnrollPro is unreachable. A definitive EnrollPro rejection never falls through to the PIN. Every attempt is written to `offline_auth_logs`, arming/disarming is written to `audit_logs`, and the window auto-disables once EnrollPro answers again. See `OFFLINE_ACCESS.md`.
 - We match accounts by `enrollproLrn`, `employeeId`, or `email`; staff log in with Employee ID, learners with LRN (= `portalAccount.accountName`).
 - SORT is a DepEd-school deployment; the learner cohort is the primary user base (81 learners vs 43 staff currently).
 
