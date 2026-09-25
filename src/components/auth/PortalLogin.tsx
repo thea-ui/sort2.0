@@ -8,6 +8,7 @@ import { getLoginErrorMessage, ROLE_PORTAL_MESSAGE } from '../../utils/loginErro
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { FormBanner } from '../common/InlineBanner';
+import { OfflineLoginNotice } from './OfflineAuthNotice';
 import { PixelGridBackground, PIXEL_GRID_WASH } from '../layout/PixelGridBackground';
 import { CARD_SHADOW } from '../ui/Card';
 
@@ -202,6 +203,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({ config, onNavigate }) 
             </div>
 
             <div className="px-8 pb-8 pt-4">
+              <OfflineLoginNotice />
               {errorMsg && <FormBanner variant="error" title={errorMsg} />}
 
               <form onSubmit={handleSubmit} className="space-y-3">

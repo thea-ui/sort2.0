@@ -83,6 +83,23 @@ export function clearUserSnapshot(): void {
   localStorage.removeItem(USER_SNAPSHOT_KEY);
 }
 
+/**
+ * True when the current access token came from the break-glass offline PIN
+ * fallback rather than an EnrollPro-verified login. The claim is read for
+ * display only — the server enforces the real boundary.
+ */
+export function isOfflineSessionToken(): boolean {
+  const token = sessionStorage.getItem('sortv2_token');
+  if (!token) return false;
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64)) as { offline?: boolean };
+    return payload.offline === true;
+  } catch {
+    return false;
+  }
+}
+
 export type SessionUser = User & { certificatesEarned?: unknown };
 
 let isRefreshing = false;
@@ -282,6 +299,41 @@ export const apiService = {
 
   getCurrentUser: async (): Promise<{ user: User }> => {
     return fetchAPI('/auth/me');
+  },
+
+  // ── Break-glass offline auth ─────────────────────────────────────────
+  getOfflineAuthStatus: async (): Promise<{
+    enabled: boolean;
+    expiresAt: string | null;
+    enabledBy: string | null;
+    expired: boolean;
+    hasOfflinePin: boolean;
+    offlinePinSetAt: string | null;
+    pinPolicy: { minLength: number; maxLength: number; digitsOnly: boolean };
+    maxHours: number;
+    offlineSession: boolean;
+  }> => {
+    return fetchAPI('/offline-auth/status');
+  },
+
+  setOfflinePin: async (pin: string): Promise<{ message: string }> => {
+    return fetchAPI('/offline-auth/pin', { method: 'POST', body: JSON.stringify({ pin }) });
+  },
+
+  clearOfflinePin: async (): Promise<{ message: string }> => {
+    return fetchAPI('/offline-auth/pin', { method: 'DELETE' });
+  },
+
+  setUserOfflinePin: async (userId: string, pin: string): Promise<{ message: string }> => {
+    return fetchAPI(`/offline-auth/pin/${userId}`, { method: 'POST', body: JSON.stringify({ pin }) });
+  },
+
+  enableOfflineAuth: async (hours: number): Promise<any> => {
+    return fetchAPI('/offline-auth/enable', { method: 'POST', body: JSON.stringify({ hours }) });
+  },
+
+  disableOfflineAuth: async (): Promise<any> => {
+    return fetchAPI('/offline-auth/disable', { method: 'POST', body: JSON.stringify({}) });
   },
 
   // Users API

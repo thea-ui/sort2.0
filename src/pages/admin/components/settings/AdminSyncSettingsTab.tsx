@@ -3,6 +3,7 @@ import { RefreshCw, Settings, Clock, CheckCircle2, XCircle, AlertTriangle, Loade
 import { apiService } from '../../../../services/api';
 import { useToast } from '../../../../hooks/useToast';
 import { LoadingState } from '../../../../components/common/LoadingState';
+import { AdminOfflineAuthPanel } from './AdminOfflineAuthPanel';
 
 interface SyncStatus {
   lastSync: {
@@ -164,6 +165,9 @@ export const AdminSyncSettingsTab: React.FC = () => {
           Manage EnrollPro synchronization settings and view sync history.
         </p>
       </div>
+
+      {/* Break-glass offline sign-in (EnrollPro outage fallback) */}
+      <AdminOfflineAuthPanel />
 
       {/* Sync Mode Card */}
       <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">

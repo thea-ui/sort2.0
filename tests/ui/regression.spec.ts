@@ -46,7 +46,7 @@ for (const { role, existingTab } of ROLES) {
   });
 }
 
-test('profile menu keeps the demo role switcher out and exposes Sign Out only', async ({ page }) => {
+test('profile menu keeps the demo role switcher out and exposes Offline PIN + Sign Out only', async ({ page }) => {
   const seeded = await seedSession(page, 'STUDENT');
   test.skip(!seeded, 'no STUDENT test identity');
 
@@ -57,5 +57,7 @@ test('profile menu keeps the demo role switcher out and exposes Sign Out only', 
   await expect(page.getByText('Demo Role Switcher')).toHaveCount(0);
   // Passwords are managed by EnrollPro: no change-password entry point in SORT.
   await expect(page.getByRole('button', { name: 'Change Password' })).toHaveCount(0);
+  // The only local credential is the optional break-glass offline PIN.
+  await expect(page.getByRole('button', { name: 'Offline PIN' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
 });

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Recycle, ShieldCheck } from 'lucide-react';
 import { useMockData } from '../../hooks/useMockData';
 import { useTheme } from '../../hooks/useTheme';
+import { isOfflineSessionToken } from '../../services/api';
 import { filterNotificationsForUser } from '../../utils/notifications';
 import { readDismissed, writeDismissed } from '../../utils/notificationDismissals';
 import { ROLE_LABELS } from '../../utils/userDisplay';
@@ -86,6 +87,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     name: currentUser.name,
     roleLabel: ROLE_LABELS[currentUser.role],
     roleTone: isMRF ? ('primary' as const) : ('emerald' as const),
+    offlineSession: isOfflineSessionToken(),
   };
 
   const persistDismissed = (next: Set<string>) => {

@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut, Menu } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PixelGridBackground } from './PixelGridBackground';
+import { OfflineSessionBadge } from '../auth/OfflineAuthNotice';
+import { OfflinePinButton } from '../auth/OfflinePinButton';
 
 // ─── Contract ─────────────────────────────────────────────────────────────────
 // Application shell for the Admin console and the MRF terminal: a 280px ↔ 70px
@@ -37,6 +39,8 @@ export interface ShellUser {
   name: string;
   roleLabel: string;
   roleTone?: ShellRoleTone;
+  /** True when the session came from the break-glass offline PIN fallback. */
+  offlineSession?: boolean;
 }
 
 export interface ShellBrand {
@@ -368,6 +372,7 @@ export const ShellNavFooter: React.FC<ShellNavFooterProps> = ({
             {user.roleLabel}
           </p>
         </div>
+        <OfflinePinButton />
         <button
           type="button"
           onClick={onLogout}
@@ -509,22 +514,25 @@ export const AppShell: React.FC<AppShellProps> = ({
               <div className="flex items-center gap-3 pl-3 border-l border-slate-100">
                 <div className="hidden sm:flex flex-col items-end mr-1">
                   <span className="text-sm font-bold text-slate-900 leading-none">{user.name}</span>
-                  <span
-                    className={cx(
-                      'text-[10px] font-medium px-1.5 py-0.5 rounded-md mt-1',
-                      roleToneClass,
-                    )}
-                    style={
-                      user.roleTone === 'primary'
-                        ? {
-                            color: 'var(--theme-primary)',
-                            backgroundColor: 'rgba(var(--theme-primary-rgb), 0.06)',
-                          }
-                        : undefined
-                    }
-                  >
-                    {user.roleLabel}
-                  </span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {user.offlineSession && <OfflineSessionBadge />}
+                    <span
+                      className={cx(
+                        'text-[10px] font-medium px-1.5 py-0.5 rounded-md',
+                        roleToneClass,
+                      )}
+                      style={
+                        user.roleTone === 'primary'
+                          ? {
+                              color: 'var(--theme-primary)',
+                              backgroundColor: 'rgba(var(--theme-primary-rgb), 0.06)',
+                            }
+                          : undefined
+                      }
+                    >
+                      {user.roleLabel}
+                    </span>
+                  </div>
                 </div>
                 <div className="w-9 h-9 rounded-full ring-2 ring-slate-100 ring-offset-2 flex items-center justify-center bg-slate-200 text-slate-700 text-sm font-bold">
                   {initials(user.name)}

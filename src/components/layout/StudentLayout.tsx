@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { SortLogo } from '../common/SortLogo';
 import { ProfileMenu } from '../common/ProfileMenu';
+import { OfflineSessionBadge } from '../auth/OfflineAuthNotice';
+import { isOfflineSessionToken } from '../../services/api';
 import { filterNotificationsForUser } from '../../utils/notifications';
 import { getInitials } from '../../utils/userDisplay';
 
@@ -75,6 +77,10 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
 
           {/* Right Actions */}
           <div className="flex items-center gap-2">
+
+            {isOfflineSessionToken() && (
+              <OfflineSessionBadge className="hidden sm:inline-flex" />
+            )}
 
             {!isTeacher && (
               <div className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]">
