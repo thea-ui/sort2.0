@@ -34,7 +34,7 @@ export const WalkInStudentPicker: React.FC<WalkInStudentPickerProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] font-black text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/25 px-2.5 py-1 rounded-full">
+          <span className="text-[11px] font-black text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_10%,white)] border border-[var(--gold)]/25 px-2.5 py-1 rounded-full">
             {selected.points} pts
           </span>
           <button
@@ -77,7 +77,7 @@ export const WalkInStudentPicker: React.FC<WalkInStudentPickerProps> = ({
               key={student.id}
               type="button"
               onClick={() => onSelect(student)}
-              className="w-full text-left px-4 py-2.5 hover:bg-[var(--accent)]/5 transition-colors flex items-center justify-between gap-3 border-b border-gray-50 last:border-0 cursor-pointer"
+              className="w-full text-left px-4 py-2.5 hover:bg-[color-mix(in_srgb,var(--accent)_5%,white)] transition-colors flex items-center justify-between gap-3 border-b border-gray-50 last:border-0 cursor-pointer"
             >
               <div className="min-w-0">
                 <p className="text-xs font-extrabold text-[var(--text-strong)] truncate">{student.name}</p>

@@ -1,6 +1,6 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { RightDrawer } from '../../../../components/common/RightDrawer';
 import type { LedgerSheet } from './ledgerSheets';
 
 interface LedgerRowDetailDrawerProps {
@@ -8,23 +8,18 @@ interface LedgerRowDetailDrawerProps {
   onClose: () => void;
 }
 
+/**
+ * Ledger record inspector — the standard 440px right sheet (master handoff
+ * Part 3 §6.1) with the sheet's columns rendered as label/value rows.
+ */
 export const LedgerRowDetailDrawer: React.FC<LedgerRowDetailDrawerProps> = ({
   view,
   onClose,
-}) => {
-  if (!view) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-[var(--primary)]/40 backdrop-blur-sm" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${view.sheet.label} record details`}
-        className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-gradient-to-br from-[var(--primary)] to-[var(--primary-light)] px-6 py-5 text-white">
+}) => (
+  <RightDrawer open={view !== null} onClose={onClose}>
+    {view && (
+      <>
+        <div className="bg-gradient-to-br from-[var(--primary)] to-[var(--primary-light)] px-6 py-5 text-white shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
@@ -68,8 +63,7 @@ export const LedgerRowDetailDrawer: React.FC<LedgerRowDetailDrawerProps> = ({
               );
             })}
         </div>
-      </div>
-    </div>,
-    document.body,
-  );
-};
+      </>
+    )}
+  </RightDrawer>
+);

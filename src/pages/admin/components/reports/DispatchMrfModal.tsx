@@ -49,7 +49,7 @@ export const DispatchMrfModal: React.FC<DispatchMrfModalProps> = ({
             type="text"
             readOnly
             value={cleanLocationName(report.locationName)}
-            className="w-full rounded-xl border border-[var(--primary)]/10 bg-[var(--primary)]/5 px-3.5 py-2.5 text-xs text-[var(--text-strong)] font-bold outline-none"
+            className="w-full rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--primary)_5%,white)] px-3.5 py-2.5 text-xs text-[var(--text-strong)] font-bold outline-none"
           />
           {showGrid && report.coordinates && (
             <p className="text-[10px] text-[var(--text-strong)]/50 font-mono mt-1 flex items-center gap-1">
@@ -71,7 +71,7 @@ export const DispatchMrfModal: React.FC<DispatchMrfModalProps> = ({
             value={selectedMrfId}
             onChange={(e) => onSelectMrf(e.target.value)}
             required
-            className="w-full rounded-xl border border-[var(--primary)]/10 bg-[var(--primary)]/5 px-3.5 py-2.5 text-xs text-[var(--text-strong)] font-semibold outline-none focus:border-[var(--accent)] focus:bg-white cursor-pointer"
+            className="w-full rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--primary)_5%,white)] px-3.5 py-2.5 text-xs text-[var(--text-strong)] font-semibold outline-none focus:border-[var(--accent)] focus:bg-white cursor-pointer"
           >
             <option value="">-- Pick MRF Personnel --</option>
             {mrfUsers.map((mrf) => (

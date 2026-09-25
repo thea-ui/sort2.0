@@ -13,6 +13,7 @@ import {
 import type { Report, User } from '../../../../types';
 import { useRecycleMarket } from '../../../../hooks/useRecycleMarket';
 import { PageHeader } from '../../../../components/layout/PageHeader';
+import { StatCard } from '../../../../components/layout/StatCard';
 
 interface AdminOverviewTabProps {
   reports: Report[];
@@ -76,9 +77,13 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
         ? '12:00 PM'
         : `${peakHourNum + 1}:00 AM`;
   const peakTimeStr = peakHour ? `${peakStart} – ${peakEnd}` : 'No data yet';
-  const peakDispatchTime = peakHour
-    ? `${String(Math.min(peakHourNum + 2, 23)).padStart(2, '0')}:15`
-    : '2:15 PM';
+  const dispatchHour = Math.min(peakHourNum + 2, 23);
+  const peakDispatchTime =
+    dispatchHour > 12
+      ? `${dispatchHour - 12}:15 PM`
+      : dispatchHour === 12
+        ? '12:15 PM'
+        : `${dispatchHour}:15 AM`;
 
   // Grade level distribution dynamically from reports — Students only
   const gradeColors = [
@@ -92,14 +97,14 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
     'bg-amber-500',
   ];
   const gradeBgColors = [
-    'bg-emerald-50/60',
-    'bg-[var(--primary)]/10',
-    'bg-amber-50/60',
-    'bg-[var(--gold)]/10',
-    'bg-rose-50/60',
-    'bg-[var(--primary)]/10',
-    'bg-emerald-50/60',
-    'bg-rose-50/60',
+    'bg-emerald-50',
+    'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
+    'bg-amber-50',
+    'bg-[color-mix(in_srgb,var(--gold)_10%,white)]',
+    'bg-rose-50',
+    'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
+    'bg-emerald-50',
+    'bg-rose-50',
   ];
   const gradeTextColors = [
     'text-emerald-700',
@@ -158,7 +163,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
       count: plasticCount,
       Icon: Droplets,
       barBg: 'bg-emerald-500',
-      bg: 'bg-emerald-50/60',
+      bg: 'bg-emerald-50',
       text: 'text-emerald-700',
       border: 'border-emerald-100',
       iconColor: 'text-emerald-600',
@@ -168,7 +173,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
       count: canCount,
       Icon: Layers,
       barBg: 'bg-[var(--primary)]',
-      bg: 'bg-[var(--primary)]/10',
+      bg: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
       text: 'text-[var(--text-strong)]',
       border: 'border-[var(--primary)]/25',
       iconColor: 'text-[var(--text-strong)]',
@@ -178,7 +183,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
       count: paperCount,
       Icon: FileText,
       barBg: 'bg-amber-500',
-      bg: 'bg-amber-50/60',
+      bg: 'bg-amber-50',
       text: 'text-amber-700',
       border: 'border-amber-100',
       iconColor: 'text-amber-600',
@@ -188,7 +193,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
       count: glassCount,
       Icon: Package,
       barBg: 'bg-[var(--gold)]',
-      bg: 'bg-[var(--gold)]/10',
+      bg: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]',
       text: 'text-[var(--gold)]',
       border: 'border-[var(--gold)]/25',
       iconColor: 'text-[var(--gold)]',
@@ -201,79 +206,55 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Campus Operational Analytics"
-        description="Real-time reporting frequency, grade level distribution, and material breakdowns."
-        badge={
-          <span className="inline-block text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider mb-1.5">
-            Operational Telemetry
-          </span>
-        }
+        title="Campus Analytics"
+        description="Real-time reporting frequency, grade distribution, and material breakdowns."
         actions={
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-strong)] bg-white border border-[var(--primary)]/10 px-3 py-1.5 rounded-xl shadow-sm">
-            <BarChart2 size={13} className="text-[var(--accent)]" /> Live Status Hub
+          <span className="hidden sm:inline-flex items-center gap-2 shrink-0 whitespace-nowrap text-xs font-semibold text-foreground bg-card border border-border px-3 py-1.5 rounded-full shadow-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            Live Status Hub
           </span>
         }
       />
 
       {/* Summary Quick-Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <button
-          type="button"
+        <StatCard
+          label="Reports Today"
+          numericValue={reportsToday}
+          icon={<BarChart2 size={16} />}
+          footer="Active verified incidents"
           onClick={() => onNavigate('admin-reports')}
-          className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-[var(--accent)]/40"
-        >
-          <div className="flex items-center justify-between text-[var(--accent)] mb-1">
-            <span className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors">
-              Reports Today
-            </span>
-            <div className="p-1.5 bg-[var(--accent)]/10 rounded-lg text-[var(--accent)] group-hover:scale-105 transition-transform">
-              <BarChart2 size={15} />
-            </div>
-          </div>
-          <p className="text-3xl font-black text-[var(--text-strong)]">{reportsToday}</p>
-          <p className="text-[11px] font-semibold text-[var(--accent)]">Active verified incidents</p>
-        </button>
-
-        <button
-          type="button"
+        />
+        <StatCard
+          label="This Week"
+          numericValue={reportsThisWeek}
+          icon={<CalendarDays size={16} />}
+          footer="Active campus submissions"
           onClick={() => onNavigate('admin-reports')}
-          className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-[var(--primary)]/25"
-        >
-          <div className="flex items-center justify-between text-[var(--text-strong)] mb-1">
-            <span className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider group-hover:text-[var(--text-strong)] transition-colors">
-              This Week
-            </span>
-            <div className="p-1.5 bg-[var(--primary)]/10 rounded-lg text-[var(--text-strong)] group-hover:scale-105 transition-transform">
-              <CalendarDays size={15} />
-            </div>
-          </div>
-          <p className="text-3xl font-black text-[var(--text-strong)]">{reportsThisWeek}</p>
-          <p className="text-[11px] font-semibold text-[var(--text-strong)]">Active campus submissions</p>
-        </button>
-
-        <button
-          type="button"
+        />
+        <StatCard
+          label="Peak Activity Time"
+          value={peakTimeStr}
+          icon={<Clock size={16} />}
+          iconClassName="bg-amber-50 text-amber-600"
+          footer="Highest daily traffic window"
           onClick={() => onNavigate('admin-collections')}
-          className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm space-y-1 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group hover:border-amber-300"
-        >
-          <div className="flex items-center justify-between text-amber-600 mb-1">
-            <span className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider group-hover:text-amber-600 transition-colors">
-              Peak Activity Time
-            </span>
-            <div className="p-1.5 bg-amber-50 rounded-lg text-amber-500 group-hover:scale-105 transition-transform">
-              <Clock size={15} />
-            </div>
-          </div>
-          <p className="text-xl font-black text-[var(--text-strong)] mt-1">{peakTimeStr}</p>
-          <p className="text-[11px] font-semibold text-amber-600">Highest daily traffic window</p>
-          <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-xl">
-            <Clock size={11} className="text-amber-500 shrink-0" />
-            <span className="text-[10px] font-bold text-amber-700 leading-tight">
-              Optimal MRF Staff Dispatch Window: <span className="text-amber-900">{peakDispatchTime}</span>
-            </span>
-          </div>
-        </button>
+        />
       </div>
+
+      {/* MRF dispatch advisory — kept out of the stat tile so all three stay equal height */}
+      {peakHour && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200">
+          <Clock size={14} className="text-amber-500 shrink-0" />
+          <p className="text-xs font-bold text-amber-700">
+            Optimal MRF Staff Dispatch Window:{' '}
+            <span className="text-amber-900">{peakDispatchTime}</span>
+          </p>
+        </div>
+      )}
 
       {/* 2-Column Grid: Grade Level Breakdown & Most Reported Materials */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -300,7 +281,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                     {item.pct}% · {item.count} report{item.count === 1 ? '' : 's'}
                   </span>
                 </div>
-                <div className="w-full h-2 bg-[var(--primary)]/10 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-[color-mix(in_srgb,var(--primary)_10%,white)] rounded-full overflow-hidden">
                   <div
                     className={`h-full ${item.barBg} transition-all duration-500`}
                     style={{ width: `${item.pct}%` }}
@@ -337,7 +318,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                     {item.pct}% · {item.count} report{item.count === 1 ? '' : 's'}
                   </span>
                 </div>
-                <div className="w-full h-2 bg-[var(--primary)]/10 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-[color-mix(in_srgb,var(--primary)_10%,white)] rounded-full overflow-hidden">
                   <div
                     className={`h-full ${item.barBg} transition-all duration-500`}
                     style={{ width: `${item.pct}%` }}

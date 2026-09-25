@@ -206,7 +206,7 @@ export const AdminBrandingTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-3">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-3">
             <Palette size={26} className="text-[var(--accent)]" />
             School Branding
           </h2>

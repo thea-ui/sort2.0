@@ -39,17 +39,12 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
   return (
     <div className="space-y-6 animate-fade-in text-[var(--text-strong)]">
       <PageHeader
-        title="Waste Dispatch & Recyclables Management"
-        description="Verify incoming student/teacher submissions, dispatch collection alerts to MRF staff, and audit itemized recyclable revenues."
-        badge={
-          <span className="inline-block text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-3 py-1 rounded-full uppercase tracking-wider mb-1.5">
-            Collections & Dispatch Action Center
-          </span>
-        }
+        title="Waste Dispatch & Recyclables"
+        description="Verify submissions, dispatch collection alerts, and audit recyclable revenue."
         actions={
           <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-emerald-50 border border-emerald-200/80">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <span className="text-xs font-bold text-emerald-700">Auto-Sync Active</span>

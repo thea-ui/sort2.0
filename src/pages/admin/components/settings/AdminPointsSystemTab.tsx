@@ -52,10 +52,10 @@ export const AdminPointsSystemTab: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-8 shadow-sm space-y-5">
+      <div className="bg-[color-mix(in_srgb,var(--color-amber-500)_10%,white)] border border-amber-500/30 rounded-3xl p-8 shadow-sm space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-amber-900 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-amber-900 flex items-center gap-2">
             <Trophy size={22} className="text-amber-600" />
             Points System Rules
           </h3>

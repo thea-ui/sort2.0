@@ -33,7 +33,7 @@ export const ReportsBulkActionBar: React.FC<ReportsBulkActionBarProps> = ({
         Select All ({totalCount})
       </label>
       {selectedCount > 0 && (
-        <span className="text-[11px] font-bold text-[var(--accent)] bg-[var(--accent)]/15 px-2.5 py-0.5 rounded-full ml-1 border border-[var(--accent)]/30">
+        <span className="text-[11px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_15%,white)] px-2.5 py-0.5 rounded-full ml-1 border border-[var(--accent)]/30">
           {selectedCount} Selected
         </span>
       )}
@@ -51,7 +51,7 @@ export const ReportsBulkActionBar: React.FC<ReportsBulkActionBarProps> = ({
         <button
           type="button"
           onClick={onClearSelection}
-          className="px-3.5 py-2 rounded-xl border border-[var(--primary)]/10 bg-white hover:bg-[var(--primary)]/5 text-xs font-bold text-[var(--text-strong)]/60 transition-colors cursor-pointer"
+          className="px-3.5 py-2 rounded-xl border border-[var(--primary)]/10 bg-white hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-xs font-bold text-[var(--text-strong)]/60 transition-colors cursor-pointer"
         >
           Deselect All
         </button>

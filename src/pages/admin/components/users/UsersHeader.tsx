@@ -1,5 +1,5 @@
 import React from 'react';
-import { Grid, List, Sparkles } from 'lucide-react';
+import { Grid, List } from 'lucide-react';
 import { PageHeader } from '../../../../components/layout/PageHeader';
 
 interface UsersHeaderProps {
@@ -17,20 +17,14 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
 }) => (
   <PageHeader
     title="User & Role Management"
-    description="Audit user accounts sorted by system role hierarchy (Admin → MRF → Faculty → Student)."
+    description="Audit user accounts by system role hierarchy."
     badge={
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-          <Sparkles size={11} />
-          Role Database Audit
-        </span>
-        <span className="text-[10px] font-bold text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-          {isLoading ? 'Loading accounts…' : `${accountCount} Registered Accounts`}
-        </span>
-      </div>
+      <span className="text-[10px] font-bold text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_10%,white)] border border-[var(--gold)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">
+        {isLoading ? 'Loading accounts…' : `${accountCount} Registered Accounts`}
+      </span>
     }
     actions={
-      <div className="flex items-center gap-1 bg-white/80 border border-white/80 p-1 rounded-full shadow-sm">
+      <div className="flex items-center gap-1 bg-white border border-white/80 p-1 rounded-full shadow-sm">
         {(
           [
             { mode: 'table' as const, label: 'Table View', icon: List },
@@ -45,7 +39,7 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
               viewMode === mode
                 ? 'bg-[var(--primary)] text-white shadow'
-                : 'text-[var(--text-strong)]/60 hover:text-[var(--text-strong)] hover:bg-[var(--primary)]/5'
+                : 'text-[var(--text-strong)]/60 hover:text-[var(--text-strong)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)]'
             }`}
           >
             <Icon size={14} />

@@ -11,7 +11,6 @@ import {
   Check,
   CheckCircle2,
   Layers,
-  Building2,
 } from 'lucide-react';
 import { BinStatus, Report, WasteCategory, BinLocationItem } from '../../../../types';
 import {
@@ -20,6 +19,7 @@ import {
   STORAGE_KEY_LOCATIONS,
 } from '../../../../services/locationStore';
 import { CampusMapFrame } from '../../../../components/map/CampusMapFrame';
+import { PageHeader } from '../../../../components/layout/PageHeader';
 
 interface CampusLiveMapViewProps {
   bins?: BinStatus[];
@@ -125,27 +125,16 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
-      {/* Header Banner (Identical Visual Structure to Student View) */}
-      <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[var(--primary)]/10 text-[var(--text-strong)] flex items-center justify-center shrink-0">
-            <Building2 size={20} />
-          </div>
-          <div>
-            <h2 className="font-heading font-extrabold text-[var(--text-strong)] text-base">Campus Bin Map (Live View)</h2>
-            <p className="text-xs text-[var(--text-strong)]/60 font-medium">
-              Real-time monitoring of campus waste stations, stream availability, and coordinates.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="Campus Bin Map"
+        description="Real-time monitoring of campus waste stations, stream availability, and coordinates."
+        actions={
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shrink-0">
-            <span className="h-2 w-2 rounded-full bg-[var(--impact)] animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-[var(--impact)] animate-pulse motion-reduce:animate-none" />
             Live Sync Active
           </span>
-        </div>
-      </div>
+        }
+      />
 
       {/* Main Container: Map Grid on top/left, Interactive Location Cards on bottom/right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -300,8 +289,8 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
                   }}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-50/80 border-[var(--accent)] shadow-md ring-2 ring-[var(--accent)]/20'
-                      : 'bg-[var(--background)]/60 border-gray-200/80 hover:bg-gray-100/80'
+                      ? 'bg-emerald-50 border-[var(--accent)] shadow-md ring-2 ring-[var(--accent)]/20'
+                      : 'bg-[color-mix(in_srgb,var(--background)_60%,white)] border-gray-200/80 hover:bg-gray-100'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">

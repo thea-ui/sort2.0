@@ -66,7 +66,7 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
                 ? 'bg-[var(--primary)] text-white'
                 : row.rank === 3
                   ? 'bg-amber-700 text-white'
-                  : 'bg-[var(--primary)]/10 text-[var(--text-strong)]/60'
+                  : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]/60'
           }`}
         >
           {row.rank}
@@ -79,7 +79,7 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
       skeleton: 'name',
       cell: (row) => (
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] font-bold flex items-center justify-center text-xs">
+          <div className="w-7 h-7 rounded-full bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)] font-bold flex items-center justify-center text-xs">
             {row.name.charAt(0)}
           </div>
           <span className="font-bold text-[var(--text-strong)]">{row.name}</span>
@@ -125,7 +125,7 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
       />
 
       {/* Points System Banner */}
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex flex-wrap items-center gap-3 text-xs">
+      <div className="bg-[color-mix(in_srgb,var(--color-amber-500)_10%,white)] border border-amber-500/20 rounded-2xl p-4 flex flex-wrap items-center gap-3 text-xs">
         <div className="flex items-center gap-1.5 font-bold text-amber-800">
           <Award size={15} className="text-amber-600" />
           <span>Points System:</span>
@@ -133,13 +133,13 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
         <span className="px-3 py-1 bg-amber-100 text-amber-800 font-bold rounded-full text-[11px] flex items-center gap-1">
           <Flame size={12} className="text-amber-600 fill-amber-600" /> 15 pts — 1st reporter
         </span>
-        <span className="px-3 py-1 bg-[var(--primary)]/10 text-[var(--text-strong)] font-bold rounded-full text-[11px] flex items-center gap-1">
+        <span className="px-3 py-1 bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] font-bold rounded-full text-[11px] flex items-center gap-1">
           <Flame size={12} className="text-[var(--text-strong)] fill-[var(--primary)]" /> 10 pts — 2nd reporter
         </span>
         <span className="px-3 py-1 bg-orange-100 text-orange-800 font-bold rounded-full text-[11px] flex items-center gap-1">
           <Flame size={12} className="text-orange-600 fill-orange-600" /> 5 pts — 3rd reporter
         </span>
-        <span className="px-3 py-1 bg-[var(--primary)]/5 text-[var(--text-strong)]/60 font-medium rounded-full text-[11px]">
+        <span className="px-3 py-1 bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/60 font-medium rounded-full text-[11px]">
           4th+ reporter — no points
         </span>
       </div>
@@ -161,7 +161,7 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
         )}
 
         {top1 && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 shadow-md text-center space-y-2 relative md:-translate-y-2">
+          <div className="bg-[color-mix(in_srgb,var(--color-amber-500)_10%,white)] border border-amber-500/30 rounded-2xl p-6 shadow-md text-center space-y-2 relative md:-translate-y-2">
             <div className="w-9 h-9 rounded-full bg-amber-500 text-white font-black text-sm flex items-center justify-center mx-auto -mt-10 border-2 border-white shadow-md">
               1
             </div>

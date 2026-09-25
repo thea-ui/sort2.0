@@ -121,7 +121,7 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
               <Scale size={11} /> {r.weightCollected} kg
             </span>
           ) : (
-            <span className="inline-flex px-3 py-1 bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/25 rounded-full font-black text-[10px] uppercase whitespace-nowrap">
+            <span className="inline-flex px-3 py-1 bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border border-[var(--primary)]/25 rounded-full font-black text-[10px] uppercase whitespace-nowrap">
               Done / Finished
             </span>
           ),

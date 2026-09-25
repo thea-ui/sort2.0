@@ -30,7 +30,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
     <div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[var(--gold)]/10 rounded-xl text-[var(--gold)]">
+          <div className="p-2 bg-[color-mix(in_srgb,var(--gold)_10%,white)] rounded-xl text-[var(--gold)]">
             <BarChart2 size={18} />
           </div>
           <div>
@@ -42,7 +42,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
             </p>
           </div>
         </div>
-        <span className="text-[11px] font-medium text-[var(--gold)] bg-[var(--gold)]/10 px-2 py-0.5 rounded-full border border-[var(--gold)]/60">
+        <span className="text-[11px] font-medium text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_10%,white)] px-2 py-0.5 rounded-full border border-[var(--gold)]/60">
           {activeStudentCount} Student Profiles
         </span>
       </div>
@@ -55,7 +55,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
             className={`p-4 rounded-2xl border transition-all ${
               item.isTop
                 ? `${item.lightBg} ${item.border} ring-2 ring-[var(--gold)]/30 shadow-sm`
-                : 'bg-gray-50/70 border-gray-200/80 hover:bg-white'
+                : 'bg-gray-50 border-gray-200/80 hover:bg-white'
             }`}
           >
             <div className="flex items-center justify-between">
@@ -82,7 +82,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full h-1.5 bg-gray-200/80 rounded-full overflow-hidden mt-2.5">
+            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mt-2.5">
               <div
                 className={`h-full ${item.color} rounded-full transition-all duration-500`}
                 style={{ width: `${Math.max(item.pct, 5)}%` }}
@@ -106,7 +106,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
           {gradeParticipation.length} Grade{gradeParticipation.length === 1 ? '' : 's'} Configured
         </strong>
       </span>
-      <span className="text-[11px] font-medium text-[var(--accent)] bg-[var(--accent)]/10 px-2.5 py-0.5 rounded-full border border-[var(--accent)]/20">
+      <span className="text-[11px] font-medium text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] px-2.5 py-0.5 rounded-full border border-[var(--accent)]/20">
         {topGradeKey} ({topGradeSubmissions} report{topGradeSubmissions === 1 ? '' : 's'})
       </span>
     </div>

@@ -22,8 +22,7 @@ export const LedgerKpiStrip: React.FC<LedgerKpiStripProps> = ({ kpis }) => (
           label={kpi.label}
           value={kpi.value}
           icon={<Icon size={16} className={kpi.color} />}
-          iconClassName="bg-[var(--primary)]/5"
-          className="p-4"
+          iconClassName="bg-[color-mix(in_srgb,var(--primary)_5%,white)]"
         />
       );
     })}

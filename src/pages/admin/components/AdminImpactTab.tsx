@@ -67,7 +67,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
       weightKg: plasticKg,
       estValuePhp: Math.round(plasticKg * pricePet),
       icon: Package,
-      bgColor: 'bg-[var(--primary)]/10',
+      bgColor: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
       textColor: 'text-[var(--text-strong)]',
       barColor: 'bg-[var(--primary)]',
     },
@@ -78,7 +78,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
       weightKg: glassKg,
       estValuePhp: Math.round(glassKg * priceGlass),
       icon: Wine,
-      bgColor: 'bg-[var(--primary)]/10',
+      bgColor: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
       textColor: 'text-emerald-600',
       barColor: 'bg-emerald-500',
     },
@@ -100,7 +100,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
       weightKg: paperKg,
       estValuePhp: Math.round(paperKg * pricePaper),
       icon: FileText,
-      bgColor: 'bg-[var(--gold)]/10',
+      bgColor: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]',
       textColor: 'text-[var(--gold)]',
       barColor: 'bg-[var(--gold)]',
     },
@@ -125,12 +125,12 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
   );
   const totalStudentReports = studentReports.length;
   const gradeColorPalette = [
-    { color: 'bg-[var(--accent)]', lightBg: 'bg-[var(--accent)]/10', border: 'border-[var(--accent)]/30' },
-    { color: 'bg-[var(--primary)]', lightBg: 'bg-[var(--primary)]/10', border: 'border-[var(--primary)]/25' },
-    { color: 'bg-[var(--gold)]', lightBg: 'bg-[var(--gold)]/10', border: 'border-[var(--gold)]/25' },
+    { color: 'bg-[var(--accent)]', lightBg: 'bg-[color-mix(in_srgb,var(--accent)_10%,white)]', border: 'border-[var(--accent)]/30' },
+    { color: 'bg-[var(--primary)]', lightBg: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]', border: 'border-[var(--primary)]/25' },
+    { color: 'bg-[var(--gold)]', lightBg: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]', border: 'border-[var(--gold)]/25' },
     { color: 'bg-amber-500', lightBg: 'bg-amber-50', border: 'border-amber-200' },
     { color: 'bg-rose-500', lightBg: 'bg-rose-50', border: 'border-rose-200' },
-    { color: 'bg-[var(--primary)]', lightBg: 'bg-[var(--primary)]/10', border: 'border-[var(--primary)]/25' },
+    { color: 'bg-[var(--primary)]', lightBg: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]', border: 'border-[var(--primary)]/25' },
   ];
 
   const gradeCountMap: Record<string, number> = {};
@@ -230,13 +230,8 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
   return (
     <div className="space-y-6 animate-fade-in text-[var(--text-strong)]">
       <PageHeader
-        title="Operational & Collection Performance"
-        description="Real-time monitoring of campus report submissions, MRF task dispatches, grade-level participation, and recyclable revenue."
-        badge={
-          <span className="inline-block text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-3 py-1 rounded-full uppercase tracking-wider mb-1.5">
-            Operational Analytics
-          </span>
-        }
+        title="Operations & Collections"
+        description="Campus reports, MRF dispatches, grade participation and recyclable revenue."
       />
 
       <ImpactKpiRow

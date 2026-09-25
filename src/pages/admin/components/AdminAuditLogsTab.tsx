@@ -17,19 +17,19 @@ interface AuditLogEntry {
 const ACTION_TYPE_STYLE = (type: string): string => {
   switch (type) {
     case 'AUTH':
-      return 'bg-amber-100/80 text-amber-800 border-amber-200';
+      return 'bg-amber-100 text-amber-800 border-amber-200';
     case 'DISMISSAL':
-      return 'bg-[var(--primary)]/5 text-[var(--text-strong)]/60 border-[var(--primary)]/10';
+      return 'bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/60 border-[var(--primary)]/10';
     case 'VERIFICATION':
       return 'bg-emerald-100 text-emerald-800 border-emerald-200';
     case 'DISPATCH':
-      return 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25';
+      return 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25';
     case 'SYNC':
-      return 'bg-[var(--gold)]/10 text-[var(--gold)] border-[var(--gold)]/25';
+      return 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] border-[var(--gold)]/25';
     case 'REPORT':
-      return 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25';
+      return 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25';
     default:
-      return 'bg-[var(--primary)]/5 text-[var(--text-strong)]/70 border-[var(--primary)]/10';
+      return 'bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/70 border-[var(--primary)]/10';
   }
 };
 
@@ -88,7 +88,7 @@ export const AdminAuditLogsTab: React.FC = () => {
       skeleton: 'avatar',
       cell: (log) => (
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-[var(--primary)]/10 text-[var(--text-strong)]/60 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]/60 flex items-center justify-center">
             <span className="text-[10px] font-black">{log.actorName.charAt(0)}</span>
           </div>
           <div>
@@ -134,7 +134,7 @@ export const AdminAuditLogsTab: React.FC = () => {
             type="button"
             onClick={loadLogs}
             aria-label="Refresh audit logs"
-            className="p-2.5 bg-white border border-[var(--primary)]/10 text-[var(--text-strong)]/60 rounded-xl shadow-sm hover:bg-[var(--primary)]/5 cursor-pointer transition-colors"
+            className="p-2.5 bg-white border border-[var(--primary)]/10 text-[var(--text-strong)]/60 rounded-xl shadow-sm hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] cursor-pointer transition-colors"
           >
             <RefreshCw size={14} />
           </button>
@@ -169,7 +169,7 @@ export const AdminAuditLogsTab: React.FC = () => {
         emptyHint="System activity will appear here as it happens."
       />
 
-      <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-5 flex items-center gap-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-center gap-4">
         <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl shrink-0">
           <AlertCircle size={22} />
         </div>

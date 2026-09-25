@@ -12,7 +12,7 @@ import { SchoolYear } from '../../../../hooks/useSchoolYear';
 import { SearchInput } from '../../../../components/layout/SearchInput';
 
 const BUTTON =
-  'px-3 py-2 rounded-xl bg-white border border-[var(--primary)]/10 text-xs font-bold text-[var(--text-strong)]/70 hover:bg-[var(--primary)]/5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors';
+  'px-3 py-2 rounded-xl bg-white border border-[var(--primary)]/10 text-xs font-bold text-[var(--text-strong)]/70 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors';
 
 interface LedgerToolbarProps {
   years: SchoolYear[];

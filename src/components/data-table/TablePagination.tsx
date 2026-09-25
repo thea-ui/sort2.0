@@ -5,6 +5,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
+import { Button } from '../ui/Button';
+import { Select } from '../ui/Select';
 import { getPageWindow, ROWS_PER_PAGE_OPTIONS } from './usePagination';
 
 interface TablePaginationProps {
@@ -18,9 +20,11 @@ interface TablePaginationProps {
   onRowsPerPageChange: (rows: number) => void;
 }
 
-const NAV_BUTTON =
-  'p-2 rounded-lg text-[var(--text-strong)]/50 hover:bg-[var(--primary)]/5 hover:text-[var(--text-strong)] disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-colors';
-
+/**
+ * Pagination footer (master handoff Part 2 §6): hidden entirely at ≤10 rows,
+ * 32px square outline buttons, active page on the primary variant, and an 80px
+ * rows-per-page select that resets to page 1.
+ */
 export const TablePagination: React.FC<TablePaginationProps> = ({
   page,
   totalPages,
@@ -31,97 +35,95 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   onPageChange,
   onRowsPerPageChange,
 }) => {
-  // SMART parity: the footer is hidden entirely for small result sets.
   if (totalRows <= 10) return null;
 
   const pages = getPageWindow(page, totalPages);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-[var(--primary)]/5">
-      <p className="text-xs text-[var(--text-strong)]/50 font-medium">
-        Showing{' '}
-        <span className="font-bold text-[var(--text-strong)]">
-          {rangeStart}–{rangeEnd}
-        </span>{' '}
-        of <span className="font-bold text-[var(--text-strong)]">{totalRows}</span>
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-4 border-t border-border">
+      <p className="text-sm text-muted-foreground">
+        Showing <span className="font-medium text-foreground">{rangeStart}</span> to{' '}
+        <span className="font-medium text-foreground">{rangeEnd}</span> of{' '}
+        <span className="font-medium text-foreground">{totalRows}</span> results
       </p>
 
       <div className="flex items-center gap-4">
-        <label className="flex items-center gap-2 text-xs text-[var(--text-strong)]/50 font-medium">
-          Rows per page:
-          <select
-            value={rowsPerPage}
-            onChange={(event) => onRowsPerPageChange(Number(event.target.value))}
-            className="bg-white border border-[var(--primary)]/10 rounded-xl px-2.5 py-1.5 text-xs font-bold text-[var(--text-strong)] outline-none cursor-pointer focus:border-[var(--accent)]"
-          >
-            {ROWS_PER_PAGE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Rows per page:</span>
+          <Select
+            aria-label="Rows per page"
+            size="sm"
+            className="w-20"
+            value={String(rowsPerPage)}
+            onValueChange={(value) => onRowsPerPageChange(Number(value))}
+            options={ROWS_PER_PAGE_OPTIONS.map((option) => ({
+              label: String(option),
+              value: String(option),
+            }))}
+          />
+        </div>
 
         <nav className="flex items-center gap-1" aria-label="Table pagination">
-          <button
-            type="button"
-            className={NAV_BUTTON}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => onPageChange(1)}
             disabled={page <= 1}
             aria-label="First page"
           >
-            <ChevronsLeft size={14} />
-          </button>
-          <button
-            type="button"
-            className={NAV_BUTTON}
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
             aria-label="Previous page"
           >
-            <ChevronLeft size={14} />
-          </button>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
 
           {pages.map((pageNumber, index) => {
             const previous = pages[index - 1];
             const showGap = previous !== undefined && pageNumber - previous > 1;
             return (
               <React.Fragment key={pageNumber}>
-                {showGap && <span className="px-1 text-xs text-[var(--text-strong)]/30">…</span>}
-                <button
-                  type="button"
+                {showGap && <span className="px-1 text-muted-foreground">...</span>}
+                <Button
+                  variant={pageNumber === page ? 'default' : 'outline'}
+                  size="icon"
+                  className="h-8 w-8"
                   onClick={() => onPageChange(pageNumber)}
                   aria-current={pageNumber === page ? 'page' : undefined}
-                  className={`min-w-7 h-7 px-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
-                    pageNumber === page
-                      ? 'bg-[var(--accent)] text-white'
-                      : 'text-[var(--text-strong)]/60 hover:bg-[var(--primary)]/5 hover:text-[var(--text-strong)]'
-                  }`}
                 >
                   {pageNumber}
-                </button>
+                </Button>
               </React.Fragment>
             );
           })}
 
-          <button
-            type="button"
-            className={NAV_BUTTON}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
             aria-label="Next page"
           >
-            <ChevronRight size={14} />
-          </button>
-          <button
-            type="button"
-            className={NAV_BUTTON}
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => onPageChange(totalPages)}
             disabled={page >= totalPages}
             aria-label="Last page"
           >
-            <ChevronsRight size={14} />
-          </button>
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
         </nav>
       </div>
     </div>

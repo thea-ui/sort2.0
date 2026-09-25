@@ -96,7 +96,7 @@ export const RoomLocationsManager: React.FC<RoomLocationsManagerProps> = ({
 
       <details
         data-testid="fallback-rooms"
-        className="border border-gray-200/70 rounded-2xl bg-[var(--background)]/40 group"
+        className="border border-gray-200/70 rounded-2xl bg-[color-mix(in_srgb,var(--background)_40%,white)] group"
       >
         <summary className="cursor-pointer select-none px-4 py-3 text-xs font-bold text-[var(--text-strong)]/70 flex items-center gap-2 list-none">
           <ChevronDown size={13} className="text-[var(--text-strong)]/40 transition-transform group-open:rotate-180" />

@@ -31,7 +31,7 @@ export const SettingsSectionTabs: React.FC<SettingsSectionTabsProps> = ({
           className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
             isActive
               ? 'bg-[var(--primary)] text-white shadow-sm'
-              : 'bg-white border border-[var(--primary)]/10 text-[var(--text-strong)]/60 hover:bg-[var(--primary)]/5'
+              : 'bg-white border border-[var(--primary)]/10 text-[var(--text-strong)]/60 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)]'
           }`}
         >
           <Icon size={13} className={isActive ? 'text-[var(--accent)]' : ''} />

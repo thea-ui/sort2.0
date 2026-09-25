@@ -77,7 +77,7 @@ export const SchoolYearDetailModal: React.FC<SchoolYearDetailModalProps> = ({ sc
             <>
               <div className="flex items-center gap-3 text-xs text-[var(--text-strong)]/70">
                 <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                  details.isActive ? 'bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20' :
+                  details.isActive ? 'bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)] border border-[var(--accent)]/20' :
                   details.isArchived ? 'bg-gray-100 text-gray-500 border border-gray-200' :
                   'bg-amber-50 text-amber-700 border border-amber-200'
                 }`}>
@@ -89,7 +89,7 @@ export const SchoolYearDetailModal: React.FC<SchoolYearDetailModalProps> = ({ sc
               </div>
 
               {details.enrollproId && (
-                <div className="bg-[var(--primary)]/10 border border-[var(--primary)]/25 rounded-xl p-3 text-xs text-[var(--text-strong)]">
+                <div className="bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/25 rounded-xl p-3 text-xs text-[var(--text-strong)]">
                   Linked to EnrollPro ID: <strong>{details.enrollproId}</strong>
                 </div>
               )}

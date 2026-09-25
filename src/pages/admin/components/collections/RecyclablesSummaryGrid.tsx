@@ -26,7 +26,7 @@ export const RecyclablesSummaryGrid: React.FC<RecyclablesSummaryGridProps> = ({
           Verified inventory log recorded by MRF staff with unit counts, weights, and market values
         </p>
       </div>
-      <span className="text-xs font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-3 py-1.5 rounded-full whitespace-nowrap">
+      <span className="text-xs font-extrabold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-3 py-1.5 rounded-full whitespace-nowrap">
         Total Revenue Generated: ₱{totalRevenuePhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
       </span>
     </div>
@@ -90,7 +90,7 @@ export const RecyclablesSummaryGrid: React.FC<RecyclablesSummaryGridProps> = ({
             </div>
 
             <div className="mt-3 space-y-1.5">
-              <div className="h-1.5 w-full bg-[var(--primary)]/10 rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-[color-mix(in_srgb,var(--primary)_10%,white)] rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     isApproved

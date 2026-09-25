@@ -1,16 +1,23 @@
 import React from 'react';
-import { AlertTriangle, Inbox, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Inbox } from 'lucide-react';
+import { Skeleton } from '../ui/Skeleton';
+import { Button } from '../ui/Button';
 import type { SkeletonHint, TableColumn } from './types';
 
-const HINT_WIDTH: Record<SkeletonHint, string> = {
-  name: 'w-32',
-  pill: 'w-16 h-5 rounded-full',
-  badge: 'w-20 h-5 rounded-full',
-  number: 'w-10',
-  date: 'w-24',
-  avatar: 'w-8 h-8 rounded-full',
-  text: 'w-full max-w-48',
+/** Per-column skeleton shapes (master handoff Part 2 §5). */
+const HINT_CLASS: Record<SkeletonHint, string> = {
+  name: 'h-4 w-28',
+  pill: 'h-6 w-16 rounded-full',
+  badge: 'h-5 w-14 rounded-md',
+  number: 'h-4 w-10',
+  date: 'h-4 w-20',
+  avatar: 'h-8 w-8 rounded-full',
+  text: 'h-4 w-28',
 };
+
+function SkeletonCell({ hint }: { hint?: SkeletonHint }) {
+  return <Skeleton className={HINT_CLASS[hint ?? 'name']} style={{ opacity: 0.6 }} />;
+}
 
 export function LoadingSkeleton<T>({
   columns,
@@ -19,17 +26,14 @@ export function LoadingSkeleton<T>({
   columns: TableColumn<T>[];
   rows?: number;
 }) {
+  const rowCount = Math.min(Math.max(rows, 6), 10);
   return (
     <>
-      {Array.from({ length: rows }).map((_, rowIndex) => (
-        <tr key={rowIndex} className="border-b border-[var(--primary)]/5 last:border-0">
+      {Array.from({ length: rowCount }).map((_, rowIndex) => (
+        <tr key={rowIndex} className="border-0 hover:bg-transparent">
           {columns.map((column) => (
-            <td key={column.key} className="py-3.5 px-4">
-              <div
-                className={`h-4 bg-[var(--primary)]/10 rounded animate-pulse opacity-60 ${
-                  HINT_WIDTH[column.skeleton ?? 'text']
-                }`}
-              />
+            <td key={column.key} className="border-0 py-3.5 px-4">
+              <SkeletonCell hint={column.skeleton} />
             </td>
           ))}
         </tr>
@@ -43,20 +47,34 @@ interface EmptyStateProps {
   title?: string;
   hint?: string;
   searchTerm?: string;
+  icon?: React.ReactNode;
+  action?: React.ReactNode;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ colSpan, title, hint, searchTerm }) => {
-  const resolvedTitle =
-    title ?? (searchTerm ? `No results for "${searchTerm}"` : 'Nothing here yet');
+export const EmptyState: React.FC<EmptyStateProps> = ({
+  colSpan,
+  title,
+  hint,
+  searchTerm,
+  icon,
+  action,
+}) => {
+  const displayTitle = searchTerm ? `No results for "${searchTerm}"` : title ?? 'No results found';
+  const displayHint = searchTerm
+    ? hint ?? 'Try adjusting your search or filter criteria.'
+    : hint;
 
   return (
     <tr>
-      <td colSpan={colSpan} className="py-12 text-center">
-        <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--primary)]/5 text-[var(--text-strong)]/40 flex items-center justify-center">
-          <Inbox size={22} />
+      <td colSpan={colSpan} className="py-14 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+            {icon ?? <Inbox className="h-5 w-5 text-muted-foreground/60" />}
+          </div>
+          <p className="text-sm font-semibold text-foreground">{displayTitle}</p>
+          {displayHint && <p className="text-sm text-muted-foreground max-w-xs">{displayHint}</p>}
+          {action}
         </div>
-        <p className="mt-3 text-sm font-bold text-[var(--text-strong)]">{resolvedTitle}</p>
-        {hint && <p className="mt-1 text-xs text-[var(--text-strong)]/50">{hint}</p>}
       </td>
     </tr>
   );
@@ -70,21 +88,18 @@ interface ErrorStateProps {
 
 export const ErrorState: React.FC<ErrorStateProps> = ({ colSpan, message, onRetry }) => (
   <tr>
-    <td colSpan={colSpan} className="py-12 text-center">
-      <div className="mx-auto h-12 w-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center">
-        <AlertTriangle size={22} />
+    <td colSpan={colSpan} className="py-14 text-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+          <AlertTriangle className="h-5 w-5 text-destructive" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">{message}</p>
+        {onRetry && (
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            Retry
+          </Button>
+        )}
       </div>
-      <p className="mt-3 text-sm font-bold text-[var(--text-strong)]">{message}</p>
-      {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[var(--primary)]/10 hover:bg-[var(--primary)]/5 text-xs font-bold text-[var(--text-strong)] cursor-pointer transition-colors"
-        >
-          <RotateCcw size={13} />
-          Try Again
-        </button>
-      )}
     </td>
   </tr>
 );

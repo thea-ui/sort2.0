@@ -154,7 +154,7 @@ export function LedgerSheetTable<T = any>({
                       c.align
                     )} ${
                       c.value
-                        ? 'cursor-pointer select-none hover:text-slate-600 hover:bg-slate-100/50 transition-colors'
+                        ? 'cursor-pointer select-none hover:text-slate-600 hover:bg-slate-100 transition-colors'
                         : ''
                     }`}
                   >
@@ -201,7 +201,7 @@ export function LedgerSheetTable<T = any>({
                   <tr
                     key={getRowId(row, i)}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    className={`hover:bg-slate-50/70 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                    className={`hover:bg-slate-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                   >
                     {!hideIndex && (
                       <td className="w-12 px-4 py-3.5 text-left text-slate-400 font-mono text-[11px] select-none sticky left-0 bg-white">

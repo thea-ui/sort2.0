@@ -95,7 +95,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[var(--primary)]/40 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-[color-mix(in_srgb,var(--primary)_40%,white)] backdrop-blur-sm flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -126,7 +126,7 @@ export const EditSchoolYearModal: React.FC<EditSchoolYearModalProps> = ({ isOpen
           )}
 
           {schoolYear.enrollproId && (
-            <div className="bg-[var(--primary)]/10 border border-[var(--primary)]/25 rounded-xl p-3 text-xs text-[var(--text-strong)]">
+            <div className="bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/25 rounded-xl p-3 text-xs text-[var(--text-strong)]">
               Linked to EnrollPro ID: <strong>{schoolYear.enrollproId}</strong>. The EnrollPro link cannot be changed.
             </div>
           )}

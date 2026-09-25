@@ -92,7 +92,7 @@ export const AdminChallengesTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
             <Target size={22} className="text-[var(--accent)]" />
             Challenges
           </h3>
@@ -123,7 +123,7 @@ export const AdminChallengesTab: React.FC = () => {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${c.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
                       {c.isActive ? 'Active' : 'Inactive'}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)] border border-[var(--accent)]/20">
                       {CHALLENGE_TYPE_LABELS[c.challengeType]}
                     </span>
                   </div>
@@ -147,10 +147,10 @@ export const AdminChallengesTab: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => handleToggle(c)} className="p-2 rounded-xl hover:bg-[var(--accent)]/10 transition-colors cursor-pointer" title={c.isActive ? 'Deactivate' : 'Activate'}>
+                  <button onClick={() => handleToggle(c)} className="p-2 rounded-xl hover:bg-[color-mix(in_srgb,var(--accent)_10%,white)] transition-colors cursor-pointer" title={c.isActive ? 'Deactivate' : 'Activate'}>
                     {c.isActive ? <ToggleRight size={20} className="text-[var(--accent)]" /> : <ToggleLeft size={20} className="text-gray-400" />}
                   </button>
-                  <button onClick={() => setEditing(c)} className="p-2 rounded-xl hover:bg-[var(--primary)]/10 transition-colors cursor-pointer" title="Edit">
+                  <button onClick={() => setEditing(c)} className="p-2 rounded-xl hover:bg-[color-mix(in_srgb,var(--primary)_10%,white)] transition-colors cursor-pointer" title="Edit">
                     <Edit2 size={16} className="text-[var(--text-strong)]" />
                   </button>
                   <button onClick={() => setDeleteConfirm(c)} className="p-2 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer" title="Delete">
@@ -275,7 +275,7 @@ const ChallengeFormModal: React.FC<{
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]" />
+            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--background)_60%,white)] text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]" />
           </div>
 
           <div>
@@ -284,7 +284,7 @@ const ChallengeFormModal: React.FC<{
               {hasProgress && <Lock size={10} className="text-amber-500" />}
             </label>
             <input value={code} onChange={e => { setCode(e.target.value); setCodeManuallyEdited(true); }} disabled={hasProgress}
-              className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm font-mono outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[var(--background)]/60 text-[var(--text-strong)]'}`} />
+              className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm font-mono outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[color-mix(in_srgb,var(--background)_60%,white)] text-[var(--text-strong)]'}`} />
             {hasProgress && <p className="text-[10px] text-amber-600 mt-1">Locked — users have progress on this challenge</p>}
           </div>
 
@@ -294,7 +294,7 @@ const ChallengeFormModal: React.FC<{
               {hasProgress && <Lock size={10} className="text-amber-500" />}
             </label>
             <select value={challengeType} onChange={e => setChallengeType(e.target.value as ChallengeType)} disabled={hasProgress}
-              className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[var(--background)]/60 text-[var(--text-strong)]'}`}>
+              className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[color-mix(in_srgb,var(--background)_60%,white)] text-[var(--text-strong)]'}`}>
               <option value="REPORT_COUNT">Report Count</option>
               <option value="WEIGHT_COLLECTED">Weight Collected</option>
               <option value="HAZARDOUS_REPORT">Hazardous Report</option>
@@ -307,7 +307,7 @@ const ChallengeFormModal: React.FC<{
               {hasProgress && <Lock size={10} className="text-amber-500" />}
             </label>
             <input type="number" min="1" value={target} onChange={e => setTarget(e.target.value)} disabled={hasProgress}
-              className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[var(--background)]/60 text-[var(--text-strong)]'}`} />
+              className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[color-mix(in_srgb,var(--background)_60%,white)] text-[var(--text-strong)]'}`} />
             <p className="text-[10px] text-[var(--text-strong)]/40 mt-1">{targetHelp}</p>
           </div>
 
@@ -317,28 +317,28 @@ const ChallengeFormModal: React.FC<{
               {hasProgress && <Lock size={10} className="text-amber-500" />}
             </label>
             <input type="number" min="0" value={pointsAwarded} onChange={e => setPointsAwarded(e.target.value)} disabled={hasProgress}
-              className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[var(--background)]/60 text-[var(--text-strong)]'}`} />
+              className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[color-mix(in_srgb,var(--background)_60%,white)] text-[var(--text-strong)]'}`} />
           </div>
 
           <div>
             <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">Icon Name</label>
-            <input value={iconName} onChange={e => setIconName(e.target.value)} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]" />
+            <input value={iconName} onChange={e => setIconName(e.target.value)} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--background)_60%,white)] text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">Start Date</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]" />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--background)_60%,white)] text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]" />
             </div>
             <div>
               <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">End Date</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]" />
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--background)_60%,white)] text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]" />
             </div>
           </div>
 
           <div>
             <label className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] resize-none" />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--background)_60%,white)] text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] resize-none" />
           </div>
 
           <div className="flex gap-3 justify-end pt-2">

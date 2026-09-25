@@ -60,7 +60,7 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
                 className={`flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                   active
                     ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm'
-                    : 'bg-[var(--primary)]/5 text-[var(--text-strong)]/60 border-transparent hover:text-[var(--text-strong)] hover:border-[var(--accent)]/30'
+                    : 'bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/60 border-transparent hover:text-[var(--text-strong)] hover:border-[var(--accent)]/30'
                 }`}
               >
                 <Icon size={14} className={active ? 'text-[var(--accent)]' : 'text-[var(--text-strong)]/40'} />
@@ -83,10 +83,10 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
             onChange={onSearchChange}
             placeholder="Search by user name, email, employee ID, section..."
             className="flex-1"
-            inputClassName="py-2.5 bg-[var(--primary)]/5 border-transparent focus:bg-white"
+            inputClassName="py-2.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border-transparent focus:bg-white"
           />
 
-          <div className="flex items-center gap-1.5 bg-[var(--primary)]/5 px-3 py-1.5 rounded-xl border border-[var(--primary)]/10">
+          <div className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] px-3 py-1.5 rounded-xl border border-[var(--primary)]/10">
             <Filter size={13} className="text-[var(--text-strong)]/50" />
             <span className="text-[11px] font-bold text-[var(--text-strong)]/60 uppercase">Status:</span>
             <select

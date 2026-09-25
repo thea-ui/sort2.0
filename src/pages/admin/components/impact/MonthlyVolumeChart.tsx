@@ -21,7 +21,7 @@ export const MonthlyVolumeChart: React.FC<MonthlyVolumeChartProps> = ({
   <div className="lg:col-span-7 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
       <div className="flex items-center gap-2.5">
-        <div className="p-2 bg-[var(--primary)]/10 rounded-xl text-[var(--accent)]">
+        <div className="p-2 bg-[color-mix(in_srgb,var(--primary)_10%,white)] rounded-xl text-[var(--accent)]">
           <Calendar size={18} />
         </div>
         <div>
@@ -38,7 +38,7 @@ export const MonthlyVolumeChart: React.FC<MonthlyVolumeChartProps> = ({
         <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
           {totalCollectedKg.toFixed(1)} kg Collected
         </span>
-        <span className="px-2.5 py-1 rounded-full bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/25">
+        <span className="px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border border-[var(--primary)]/25">
           {collectedCount} Verified Reports
         </span>
       </div>

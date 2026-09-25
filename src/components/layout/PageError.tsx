@@ -1,5 +1,6 @@
 import React from 'react';
-import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 interface PageErrorProps {
   title?: string;
@@ -9,7 +10,12 @@ interface PageErrorProps {
   icon?: React.ReactNode;
 }
 
-/** Canonical route/page error block (SMART `PageError` parity, SORT tokens). */
+/**
+ * Page-level error block (SMART master handoff Part 4 §8): centered 256px-tall
+ * block, 64px destructive/10 circle, 20px semibold title, muted message and an
+ * outline retry button. Used as the whole page body when a page query fails;
+ * table-level failures use the in-table ErrorState instead.
+ */
 export const PageError: React.FC<PageErrorProps> = ({
   title = 'Something went wrong',
   message,
@@ -17,21 +23,16 @@ export const PageError: React.FC<PageErrorProps> = ({
   retryLabel = 'Try Again',
   icon,
 }) => (
-  <div className="h-64 flex flex-col items-center justify-center text-center px-6">
-    <div className="h-12 w-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center">
-      {icon ?? <AlertTriangle size={22} />}
+  <div className="flex flex-col items-center justify-center h-64 text-center">
+    <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+      {icon ?? <AlertTriangle className="w-8 h-8 text-destructive" />}
     </div>
-    <h3 className="mt-3 text-base font-bold text-[var(--text-strong)]">{title}</h3>
-    <p className="mt-1 text-sm text-[var(--text-strong)]/50 max-w-md">{message}</p>
+    <h2 className="text-xl font-semibold text-foreground mb-2">{title}</h2>
+    <p className="text-muted-foreground mb-4">{message}</p>
     {onRetry && (
-      <button
-        type="button"
-        onClick={onRetry}
-        className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[var(--primary)]/10 hover:bg-[var(--primary)]/5 text-xs font-bold text-[var(--text-strong)] cursor-pointer transition-colors"
-      >
-        <RotateCcw size={13} />
+      <Button onClick={onRetry} variant="outline">
         {retryLabel}
-      </button>
+      </Button>
     )}
   </div>
 );

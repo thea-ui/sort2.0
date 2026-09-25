@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Newspaper, Plus, Edit2, Trash2, X, Eye, EyeOff } from 'lucide-react';
 import { apiService } from '../../../services/api';
+import { PageHeader } from '../../../components/layout/PageHeader';
 
 interface NewsArticle {
   id: string;
@@ -14,12 +15,12 @@ interface NewsArticle {
 }
 
 const TAG_OPTIONS = [
-  { tag: 'ACHIEVEMENT', tagColor: 'bg-[var(--gold)]/15 text-[var(--gold)] border-[var(--gold)]/30', iconColor: 'bg-[var(--gold)]' },
-  { tag: 'MRF UPDATE', tagColor: 'bg-[var(--accent)]/15 text-[var(--accent)] border-[var(--accent)]/30', iconColor: 'bg-[var(--accent)]' },
+  { tag: 'ACHIEVEMENT', tagColor: 'bg-[color-mix(in_srgb,var(--gold)_15%,white)] text-[var(--gold)] border-[var(--gold)]/30', iconColor: 'bg-[var(--gold)]' },
+  { tag: 'MRF UPDATE', tagColor: 'bg-[color-mix(in_srgb,var(--accent)_15%,white)] text-[var(--accent)] border-[var(--accent)]/30', iconColor: 'bg-[var(--accent)]' },
   { tag: 'EVENT', tagColor: 'bg-rose-100 text-rose-700 border-rose-200', iconColor: 'bg-rose-500' },
-  { tag: 'NEW FACILITY', tagColor: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25', iconColor: 'bg-[var(--primary)]' },
-  { tag: 'PROGRAM', tagColor: 'bg-[var(--gold)]/10 text-[var(--gold)] border-[var(--gold)]/25', iconColor: 'bg-[var(--gold)]' },
-  { tag: 'RESEARCH', tagColor: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25', iconColor: 'bg-[var(--primary)]' },
+  { tag: 'NEW FACILITY', tagColor: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25', iconColor: 'bg-[var(--primary)]' },
+  { tag: 'PROGRAM', tagColor: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] border-[var(--gold)]/25', iconColor: 'bg-[var(--gold)]' },
+  { tag: 'RESEARCH', tagColor: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25', iconColor: 'bg-[var(--primary)]' },
   { tag: 'UPDATE', tagColor: 'bg-gray-100 text-gray-700 border-gray-200', iconColor: 'bg-gray-500' },
 ];
 
@@ -126,18 +127,18 @@ export const AdminCampusNewsTab: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-3">
-            <Newspaper size={28} className="text-[var(--accent)]" />
-            Campus News
-          </h2>
-          <p className="text-sm text-[var(--text-strong)]/50 mt-1">Manage news articles visible to students and teachers</p>
-        </div>
-        <button onClick={openCreate} className="px-5 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-2xl shadow-lg shadow-[var(--accent)]/20 flex items-center gap-2 cursor-pointer">
-          <Plus size={16} /> New Article
-        </button>
-      </div>
+      <PageHeader
+        title="Campus News"
+        description="Manage news articles visible to students and teachers"
+        actions={
+          <button
+            onClick={openCreate}
+            className="px-5 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-2xl shadow-lg shadow-[var(--accent)]/20 flex items-center gap-2 cursor-pointer"
+          >
+            <Plus size={16} /> New Article
+          </button>
+        }
+      />
 
       {/* Articles List */}
       <div className="space-y-4">

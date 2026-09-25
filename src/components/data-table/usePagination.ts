@@ -14,11 +14,16 @@ export function clampPage(page: number, totalPages: number): number {
 }
 
 /**
- * Page numbers to render: always includes first/last and the current page with
- * its immediate neighbours, deduped and sorted. Gaps are rendered as ellipses
- * by the pagination component.
+ * Page numbers to render (master handoff Part 2 §6): up to 7 pages are all
+ * shown; beyond that the window is first, last, the current page and its
+ * immediate neighbours, deduped and sorted. Gaps render as ellipses in the
+ * pagination component.
  */
 export function getPageWindow(page: number, totalPages: number): number[] {
+  const MAX_VISIBLE = 7;
+  if (totalPages <= MAX_VISIBLE) {
+    return Array.from({ length: Math.max(1, totalPages) }, (_, index) => index + 1);
+  }
   const candidates = new Set<number>([1, totalPages, page - 1, page, page + 1]);
   return Array.from(candidates)
     .filter((value) => value >= 1 && value <= totalPages)

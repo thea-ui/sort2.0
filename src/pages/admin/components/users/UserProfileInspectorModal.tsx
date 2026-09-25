@@ -86,7 +86,7 @@ export const UserProfileInspectorModal: React.FC<UserProfileInspectorModalProps>
               {rc.label}
             </span>
             <div className="mt-1.5">
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2 py-1 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-2 py-1 rounded-full">
                 <CheckCircle2 size={10} />
                 EnrollPro
               </span>
@@ -96,7 +96,7 @@ export const UserProfileInspectorModal: React.FC<UserProfileInspectorModalProps>
 
         {/* Key stats grid */}
         <div className="grid grid-cols-3 gap-2.5">
-          <div className="bg-[var(--primary)]/5 rounded-2xl p-3 border border-[var(--primary)]/5 text-center space-y-1">
+          <div className="bg-[color-mix(in_srgb,var(--primary)_5%,white)] rounded-2xl p-3 border border-[var(--primary)]/5 text-center space-y-1">
             <div className="flex items-center justify-center">{primaryMetric.icon}</div>
             <p className={primaryMetric.valueClass}>{primaryMetric.value}</p>
             <p className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">
@@ -104,7 +104,7 @@ export const UserProfileInspectorModal: React.FC<UserProfileInspectorModalProps>
             </p>
           </div>
 
-          <div className="bg-[var(--primary)]/5 rounded-2xl p-3 border border-[var(--primary)]/5 text-center space-y-1">
+          <div className="bg-[color-mix(in_srgb,var(--primary)_5%,white)] rounded-2xl p-3 border border-[var(--primary)]/5 text-center space-y-1">
             <div className="flex items-center justify-center">
               {user.warningsCount > 0 ? (
                 <BadgeAlert size={15} className="text-rose-600" />
@@ -122,7 +122,7 @@ export const UserProfileInspectorModal: React.FC<UserProfileInspectorModalProps>
             </p>
           </div>
 
-          <div className="bg-[var(--primary)]/5 rounded-2xl p-3 border border-[var(--primary)]/5 text-center space-y-1">
+          <div className="bg-[color-mix(in_srgb,var(--primary)_5%,white)] rounded-2xl p-3 border border-[var(--primary)]/5 text-center space-y-1">
             <div className="flex items-center justify-center">
               <span
                 className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-sm ${
@@ -151,16 +151,16 @@ export const UserProfileInspectorModal: React.FC<UserProfileInspectorModalProps>
             Profile Details
           </h4>
           <div className="space-y-1.5">
-            <div className="flex items-center gap-3 px-3 py-2 bg-[var(--primary)]/5 rounded-xl border border-[var(--primary)]/5">
+            <div className="flex items-center gap-3 px-3 py-2 bg-[color-mix(in_srgb,var(--primary)_5%,white)] rounded-xl border border-[var(--primary)]/5">
               <Mail size={14} className="text-[var(--text-strong)]/40 shrink-0" />
               <span className="font-mono text-xs text-[var(--text-strong)] truncate">{user.email}</span>
             </div>
-            <div className="flex items-center gap-3 px-3 py-2 bg-[var(--primary)]/5 rounded-xl border border-[var(--primary)]/5">
+            <div className="flex items-center gap-3 px-3 py-2 bg-[color-mix(in_srgb,var(--primary)_5%,white)] rounded-xl border border-[var(--primary)]/5">
               <Hash size={14} className="text-[var(--text-strong)]/40 shrink-0" />
               <span className="font-mono text-xs text-[var(--text-strong)]">{user.employeeId}</span>
             </div>
             {section && (
-              <div className="flex items-center gap-3 px-3 py-2 bg-[var(--primary)]/5 rounded-xl border border-[var(--primary)]/5">
+              <div className="flex items-center gap-3 px-3 py-2 bg-[color-mix(in_srgb,var(--primary)_5%,white)] rounded-xl border border-[var(--primary)]/5">
                 <GraduationCap size={14} className="text-[var(--text-strong)]/40 shrink-0" />
                 <span className="text-xs font-bold text-[var(--text-strong)]">{section}</span>
               </div>
@@ -201,7 +201,7 @@ export const UserProfileInspectorModal: React.FC<UserProfileInspectorModalProps>
               {user.certificatesEarned.map((cert, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--gold)]/10 border border-[var(--gold)]/20 rounded-full text-[11px] font-bold text-[var(--gold)]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[color-mix(in_srgb,var(--gold)_10%,white)] border border-[var(--gold)]/20 rounded-full text-[11px] font-bold text-[var(--gold)]"
                 >
                   <Award size={12} />
                   {cert}

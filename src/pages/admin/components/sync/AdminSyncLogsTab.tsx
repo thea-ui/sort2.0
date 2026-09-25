@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
 import type { SyncLog } from '../../../../types';
+import { PageHeader } from '../../../../components/layout/PageHeader';
 
 interface AdminSyncLogsTabProps {
   syncLogs: SyncLog[];
@@ -19,18 +20,11 @@ export const AdminSyncLogsTab: React.FC<AdminSyncLogsTabProps> = ({ syncLogs, on
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div>
-        <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-          Sync Logs
-        </span>
-        <h3 className="text-xl font-bold text-[var(--text-strong)] tracking-tight mt-1.5">
-          Simulated Sync Transmissions
-        </h3>
-        <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
-          Monitor and trigger data synchronization between campus systems and the main server.
-        </p>
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Simulated Sync Transmissions"
+        description="Monitor and trigger data synchronization between campus systems and the main server."
+      />
 
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm">
         <div className="flex justify-between items-center mb-4">
@@ -53,7 +47,7 @@ export const AdminSyncLogsTab: React.FC<AdminSyncLogsTabProps> = ({ syncLogs, on
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-[var(--primary)]/10 text-[var(--text-strong)]/40 font-bold uppercase tracking-wider bg-[var(--accent)]/5">
+              <tr className="border-b border-[var(--primary)]/10 text-[var(--text-strong)]/40 font-bold uppercase tracking-wider bg-[color-mix(in_srgb,var(--accent)_5%,white)]">
                 <th className="py-3 px-4">Timestamp</th>
                 <th className="py-3 px-4">Target System</th>
                 <th className="py-3 px-4">Records Synced</th>
@@ -65,7 +59,7 @@ export const AdminSyncLogsTab: React.FC<AdminSyncLogsTabProps> = ({ syncLogs, on
                 <tr>
                   <td colSpan={4} className="py-10 text-center">
                     <div className="space-y-2">
-                      <div className="h-10 w-10 mx-auto rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center">
+                      <div className="h-10 w-10 mx-auto rounded-xl bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)] flex items-center justify-center">
                         <RefreshCw size={20} />
                       </div>
                       <p className="text-sm font-bold text-[var(--text-strong)]">No sync tasks logged yet.</p>
@@ -77,7 +71,7 @@ export const AdminSyncLogsTab: React.FC<AdminSyncLogsTabProps> = ({ syncLogs, on
                 </tr>
               ) : (
                 syncLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-[var(--accent)]/5 transition-colors">
+                  <tr key={log.id} className="hover:bg-[color-mix(in_srgb,var(--accent)_5%,white)] transition-colors">
                     <td className="py-3 px-4 font-mono text-[var(--text-strong)]/60 text-[11px]">
                       {log.timestamp}
                     </td>
@@ -86,7 +80,7 @@ export const AdminSyncLogsTab: React.FC<AdminSyncLogsTabProps> = ({ syncLogs, on
                       {log.recordsSynced}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <span className="rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-0.5 text-[9px] font-black uppercase text-[var(--accent)]">
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-2.5 py-0.5 text-[9px] font-black uppercase text-[var(--accent)]">
                         {log.status}
                       </span>
                     </td>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertOctagon, CheckCircle } from 'lucide-react';
 import type { Offense, User } from '../../../../types';
+import { PageHeader } from '../../../../components/layout/PageHeader';
 
 interface AdminWarningsTabProps {
   users: User[];
@@ -30,18 +31,11 @@ export const AdminWarningsTab: React.FC<AdminWarningsTabProps> = ({
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div>
-        <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
-          Sanctions Desk
-        </span>
-        <h3 className="text-xl font-bold text-[var(--text-strong)] tracking-tight mt-1.5">
-          Offenses &amp; Warnings
-        </h3>
-        <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
-          Register improper sorting offenses and manage sanction notices.
-        </p>
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Offenses & Warnings"
+        description="Register improper sorting offenses and manage sanction notices."
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* File Warning Form */}
@@ -52,7 +46,7 @@ export const AdminWarningsTab: React.FC<AdminWarningsTabProps> = ({
           </h4>
 
           {warningSuccess && (
-            <div className="p-3 bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] rounded-xl text-xs flex gap-2 mb-4">
+            <div className="p-3 bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 text-[var(--accent)] rounded-xl text-xs flex gap-2 mb-4">
               <CheckCircle size={16} className="shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold">Sanction Registered!</p>

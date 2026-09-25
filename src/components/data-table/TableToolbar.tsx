@@ -1,5 +1,7 @@
 import React from 'react';
-import { SearchInput } from '../layout/SearchInput';
+import { Search } from 'lucide-react';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import type { TableFilter } from './types';
 
 interface TableToolbarProps {
@@ -11,7 +13,10 @@ interface TableToolbarProps {
   className?: string;
 }
 
-/** Search + filters + actions row (SMART `TableToolbar` parity, SORT tokens). */
+/**
+ * Table toolbar (master handoff Part 2 §7, recipe 1): search with a 16px icon
+ * inset 16px left, 144px filter selects, actions right-aligned on desktop.
+ */
 export const TableToolbar: React.FC<TableToolbarProps> = ({
   searchPlaceholder = 'Search...',
   searchValue,
@@ -23,33 +28,36 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
   const hasSearch = searchValue !== undefined && onSearchChange !== undefined;
 
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto ${className}`}>
-      {hasSearch && (
-        <SearchInput
-          value={searchValue}
-          onChange={onSearchChange}
-          placeholder={searchPlaceholder}
-          className="flex-1 sm:w-64"
-        />
-      )}
+    <div
+      className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${className}`}
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        {hasSearch && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder={searchPlaceholder}
+              value={searchValue}
+              onChange={(event) => onSearchChange(event.target.value)}
+              className="pl-9 w-full sm:w-64"
+            />
+          </div>
+        )}
 
-      {filters.map((filter) => (
-        <select
-          key={filter.label}
-          aria-label={filter.label}
-          value={filter.value}
-          onChange={(event) => filter.onChange(event.target.value)}
-          className="bg-white border border-[var(--primary)]/10 rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-strong)] outline-none cursor-pointer focus:border-[var(--accent)] shadow-xs"
-        >
-          {filter.options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      ))}
+        {filters.map((filter) => (
+          <Select
+            key={filter.label}
+            aria-label={filter.label}
+            value={filter.value}
+            onValueChange={filter.onChange}
+            options={filter.options}
+            size="sm"
+            className="w-36"
+          />
+        ))}
+      </div>
 
-      {actions}
+      {actions && <div className="flex items-center gap-3">{actions}</div>}
     </div>
   );
 };

@@ -10,17 +10,17 @@ interface RewardClaimQueueProps {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  REQUESTED: 'bg-[var(--gold)]/10 text-[var(--gold)] border-[var(--gold)]/30',
-  UNLOCKED: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25',
+  REQUESTED: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] border-[var(--gold)]/30',
+  UNLOCKED: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25',
   RELEASED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  CANCELLED: 'bg-[var(--primary)]/5 text-[var(--text-strong)]/40 border-[var(--primary)]/10',
+  CANCELLED: 'bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/40 border-[var(--primary)]/10',
 };
 
 export const RewardClaimQueue: React.FC<RewardClaimQueueProps> = ({ claims, busyId, onRelease, onCancel }) => {
   if (claims.length === 0) {
     return (
       <div className="bg-white/90 border border-white/80 rounded-3xl p-12 text-center space-y-2">
-        <div className="h-12 w-12 mx-auto rounded-2xl bg-[var(--gold)]/10 text-[var(--gold)] flex items-center justify-center">
+        <div className="h-12 w-12 mx-auto rounded-2xl bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] flex items-center justify-center">
           <Gift size={22} />
         </div>
         <p className="text-sm font-bold text-[var(--text-strong)]">No prize claims yet</p>
@@ -48,7 +48,7 @@ export const RewardClaimQueue: React.FC<RewardClaimQueueProps> = ({ claims, busy
             <div className="flex items-start gap-3 min-w-0">
               <div
                 className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isPhysical ? 'bg-[var(--gold)]/10 text-[var(--gold)]' : 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                  isPhysical ? 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)]' : 'bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)]'
                 }`}
               >
                 {isPhysical ? <Package size={17} /> : <Coins size={17} />}

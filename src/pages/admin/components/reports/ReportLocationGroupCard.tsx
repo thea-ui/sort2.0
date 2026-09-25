@@ -44,7 +44,7 @@ export const ReportLocationGroupCard: React.FC<ReportLocationGroupCardProps> = (
   const hasBoth = activeReports.length > 0 && completedReports.length > 0;
 
   return (
-    <div className="bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-2xl p-4 shadow-sm space-y-3 transition-all hover:border-[var(--accent)]/30">
+    <div className="bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-2xl p-4 shadow-sm space-y-3 transition-all hover:border-[var(--accent)]/30">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-2xl bg-[var(--accent)] text-white flex items-center justify-center shadow-md shadow-[var(--accent)]/20 shrink-0">
@@ -89,19 +89,19 @@ export const ReportLocationGroupCard: React.FC<ReportLocationGroupCardProps> = (
               title={unverifiedInGroup.length > 0 ? 'Verify all reports first' : 'Dispatch MRF collector'}
               className={`px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5 ${
                 unverifiedInGroup.length > 0
-                  ? 'bg-[var(--primary)]/10 text-[var(--text-strong)]/30 cursor-not-allowed shadow-none'
+                  ? 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]/30 cursor-not-allowed shadow-none'
                   : 'bg-[var(--primary)] hover:bg-[var(--primary)] text-white shadow-[var(--primary)]/20 cursor-pointer'
               }`}
             >
               <Send size={13} /> Dispatch Collector
             </button>
           ) : dispatchedInGroup ? (
-            <span className="px-4 py-2 rounded-xl bg-emerald-500/15 text-emerald-900 border border-emerald-300 text-xs font-black shadow-xs flex items-center gap-1.5 opacity-90">
+            <span className="px-4 py-2 rounded-xl bg-[color-mix(in_srgb,var(--color-emerald-500)_15%,white)] text-emerald-900 border border-emerald-300 text-xs font-black shadow-xs flex items-center gap-1.5 opacity-90">
               <CheckCircle2 size={13} className="text-[var(--accent)]" />
               Dispatched {assignedMrfName ? `(${assignedMrfName})` : ''}
             </span>
           ) : (
-            <span className="px-4 py-2 rounded-xl bg-[var(--primary)]/5 text-[var(--text-strong)]/50 border border-[var(--primary)]/10 text-xs font-black flex items-center gap-1.5">
+            <span className="px-4 py-2 rounded-xl bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/50 border border-[var(--primary)]/10 text-xs font-black flex items-center gap-1.5">
               <CheckCircle2 size={13} /> Completed / Archived
             </span>
           )}

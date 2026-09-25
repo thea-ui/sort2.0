@@ -151,15 +151,10 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
     : [];
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="School Years"
-        description="Per-year ledger of reports, points, sales, and stock — plus year lifecycle management."
-        badge={
-          <span className="inline-block text-[10px] font-bold text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider mb-1.5">
-            Academic Administration
-          </span>
-        }
+        description="Per-year ledger of reports, points, sales and stock."
         actions={
           <LedgerToolbar
             years={allSchoolYears}
@@ -234,14 +229,14 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
                   className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
                     isActive
                       ? 'bg-[var(--primary)] text-white shadow-sm'
-                      : 'bg-white border border-[var(--primary)]/10 text-[var(--text-strong)]/60 hover:bg-[var(--primary)]/5'
+                      : 'bg-white border border-[var(--primary)]/10 text-[var(--text-strong)]/60 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)]'
                   }`}
                 >
                   <Icon size={13} className={isActive ? 'text-[var(--accent)]' : ''} />
                   {s.label}
                   <span
                     className={`ml-1 px-1.5 rounded-full text-[9px] ${
-                      isActive ? 'bg-white/15 text-white' : 'bg-[var(--primary)]/10 text-[var(--text-strong)]/50'
+                      isActive ? 'bg-white/15 text-white' : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]/50'
                     }`}
                   >
                     {s.rows.length}

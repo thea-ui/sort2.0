@@ -69,7 +69,7 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
     <div className="animate-fade-in space-y-4">
       {/* Header */}
       <div>
-        <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+        <span className="text-[10px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
           MRF Walk-in Station
         </span>
         <h3 className="text-lg font-heading font-black text-[var(--text-strong)] mt-1">Bottle Turn-in &amp; Points</h3>
@@ -85,7 +85,7 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
           <div className="lg:col-span-3 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm p-5 space-y-5">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
+                <div className="h-6 w-6 rounded-lg bg-[color-mix(in_srgb,var(--accent)_10%,white)] flex items-center justify-center">
                   <User size={13} className="text-[var(--accent)]" />
                 </div>
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -104,7 +104,7 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
+                <div className="h-6 w-6 rounded-lg bg-[color-mix(in_srgb,var(--accent)_10%,white)] flex items-center justify-center">
                   <Recycle size={13} className="text-[var(--accent)]" />
                 </div>
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -116,9 +116,9 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
           </div>
 
           {/* RIGHT: summary rail */}
-          <div className="lg:col-span-2 bg-gray-50/70 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm p-5 flex flex-col gap-4">
+          <div className="lg:col-span-2 bg-gray-50 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm p-5 flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
+              <div className="h-6 w-6 rounded-lg bg-[color-mix(in_srgb,var(--accent)_10%,white)] flex items-center justify-center">
                 <Scale size={13} className="text-[var(--accent)]" />
               </div>
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Step 3 · Confirm</span>
@@ -215,7 +215,7 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
             <Clock size={15} className="text-[var(--accent)]" />
             <h4 className="text-sm font-heading font-bold text-[var(--text-strong)]">Today at the Station</h4>
           </div>
-          <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-1 rounded-full">
+          <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-2.5 py-1 rounded-full">
             {today.length} turnover{today.length === 1 ? '' : 's'}
           </span>
         </div>
@@ -229,7 +229,7 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
             {today.map((turnover) => (
               <div
                 key={turnover.id}
-                className="flex items-center justify-between gap-3 bg-gray-50/70 border border-gray-100 rounded-2xl px-3.5 py-2.5"
+                className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-3.5 py-2.5"
               >
                 <div className="min-w-0">
                   <p className="text-xs font-extrabold text-[var(--text-strong)] truncate">

@@ -103,10 +103,10 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Term status + issuance */}
-      <div className="bg-[var(--primary)]/10 border border-[var(--primary)]/30 rounded-3xl p-8 shadow-sm space-y-5">
+      <div className="bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/30 rounded-3xl p-8 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
               <Calendar size={22} className="text-[var(--text-strong)]" />
               Term-End Ranked Awards
             </h3>
@@ -196,9 +196,9 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
       </div>
 
       {/* Settings */}
-      <form onSubmit={handleSave} className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-3xl p-8 shadow-sm space-y-5">
+      <form onSubmit={handleSave} className="bg-[color-mix(in_srgb,var(--gold)_10%,white)] border border-[var(--gold)]/30 rounded-3xl p-8 shadow-sm space-y-5">
         <div>
-          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
             <Leaf size={22} className="text-emerald-600" />
             Certificate Configuration
           </h3>

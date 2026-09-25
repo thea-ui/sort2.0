@@ -1,21 +1,26 @@
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 
 interface LoadingStateProps {
   label?: string;
   className?: string;
 }
 
-/** Canonical page/section loading block (replaces plain "Loading..." text). */
+/**
+ * Inline section loader (SMART master handoff Part 4 §7): 16px `Loader2`
+ * beside the message, centered with 96px vertical padding. Table loading uses
+ * skeleton rows instead, and the auth/session gate uses the full-page ring.
+ */
 export const LoadingState: React.FC<LoadingStateProps> = ({
   label = 'Loading…',
   className = '',
 }) => (
   <div
-    className={`bg-white/90 border border-white/80 rounded-3xl p-12 text-center ${className}`}
+    className={`flex items-center justify-center gap-2 py-24 text-muted-foreground text-sm ${className}`}
     role="status"
     aria-live="polite"
   >
-    <div className="h-6 w-6 mx-auto rounded-full border-2 border-[var(--accent)]/30 border-t-[var(--accent)] animate-spin" />
-    <p className="text-xs text-[var(--text-strong)]/50 font-semibold mt-3">{label}</p>
+    <Loader2 className="w-4 h-4 animate-spin" />
+    <span>{label}</span>
   </div>
 );

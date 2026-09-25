@@ -119,7 +119,7 @@ export const AdminAssetCategoriesTab: React.FC = () => {
     <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-8 shadow-sm space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
             <Layers size={22} className="text-[var(--accent)]" />
             Asset Categories
           </h3>

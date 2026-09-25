@@ -57,7 +57,7 @@ export const UsersGroupedView: React.FC<UsersGroupedViewProps> = ({
               {group.list.map((u) => (
                 <div
                   key={u.id}
-                  className="p-4 bg-[var(--primary)]/5 border border-[var(--primary)]/5 rounded-2xl flex flex-col justify-between space-y-3 hover:border-[var(--accent)]/30 transition-all"
+                  className="p-4 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/5 rounded-2xl flex flex-col justify-between space-y-3 hover:border-[var(--accent)]/30 transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">

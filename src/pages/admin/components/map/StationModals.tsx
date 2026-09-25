@@ -30,10 +30,10 @@ interface StationModalsProps {
 }
 
 const FIELD =
-  'w-full mt-1 p-2.5 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-xs font-semibold outline-none focus:border-[var(--accent)] text-[var(--text-strong)]';
+  'w-full mt-1 p-2.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-xs font-semibold outline-none focus:border-[var(--accent)] text-[var(--text-strong)]';
 const LABEL = 'text-[10px] font-bold text-[var(--text-strong)]/50 uppercase';
 const CANCEL_BUTTON =
-  'px-4 py-2 bg-[var(--primary)]/5 text-[var(--text-strong)]/70 font-bold rounded-xl hover:bg-[var(--primary)]/10 cursor-pointer transition-colors';
+  'px-4 py-2 bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/70 font-bold rounded-xl hover:bg-[color-mix(in_srgb,var(--primary)_10%,white)] cursor-pointer transition-colors';
 const SUBMIT_BUTTON =
   'px-5 py-2 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer transition-colors';
 
@@ -104,7 +104,7 @@ export const StationModals: React.FC<StationModalsProps> = ({
                 max="95"
                 value={newLocX}
                 onChange={(e) => setNewLocX(Number(e.target.value))}
-                className="w-1/2 p-2.5 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-xs font-semibold text-[var(--text-strong)]"
+                className="w-1/2 p-2.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-xs font-semibold text-[var(--text-strong)]"
               />
               <input
                 type="number"
@@ -112,7 +112,7 @@ export const StationModals: React.FC<StationModalsProps> = ({
                 max="95"
                 value={newLocY}
                 onChange={(e) => setNewLocY(Number(e.target.value))}
-                className="w-1/2 p-2.5 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-xs font-semibold text-[var(--text-strong)]"
+                className="w-1/2 p-2.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-xs font-semibold text-[var(--text-strong)]"
               />
             </div>
           </div>
@@ -133,7 +133,7 @@ export const StationModals: React.FC<StationModalsProps> = ({
               />
               Non-Bio
             </label>
-            <label className="flex items-center gap-1.5 bg-[var(--primary)]/10 px-2.5 py-1.5 rounded-xl border border-[var(--primary)]/25 cursor-pointer text-[11px] font-bold text-[var(--text-strong)]">
+            <label className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--primary)_10%,white)] px-2.5 py-1.5 rounded-xl border border-[var(--primary)]/25 cursor-pointer text-[11px] font-bold text-[var(--text-strong)]">
               <input
                 type="checkbox"
                 checked={newRecycle}
@@ -195,13 +195,13 @@ export const StationModals: React.FC<StationModalsProps> = ({
                   type="number"
                   value={editingLoc.x}
                   onChange={(e) => setEditingLoc({ ...editingLoc, x: Number(e.target.value) })}
-                  className="w-1/2 p-2.5 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-xs font-semibold text-[var(--text-strong)]"
+                  className="w-1/2 p-2.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-xs font-semibold text-[var(--text-strong)]"
                 />
                 <input
                   type="number"
                   value={editingLoc.y}
                   onChange={(e) => setEditingLoc({ ...editingLoc, y: Number(e.target.value) })}
-                  className="w-1/2 p-2.5 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-xs font-semibold text-[var(--text-strong)]"
+                  className="w-1/2 p-2.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-xs font-semibold text-[var(--text-strong)]"
                 />
               </div>
             </div>

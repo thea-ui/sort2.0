@@ -160,7 +160,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
           <Settings size={22} className="text-[var(--accent)]" />
           Sync & Integrations
         </h3>
@@ -179,7 +179,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
             onClick={() => setSyncMode('MANUAL')}
             className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
               syncMode === 'MANUAL'
-                ? 'border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)]'
+                ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_5%,white)] text-[var(--accent)]'
                 : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300'
             }`}
           >
@@ -190,7 +190,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
             onClick={() => setSyncMode('AUTO')}
             className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
               syncMode === 'AUTO'
-                ? 'border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)]'
+                ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_5%,white)] text-[var(--accent)]'
                 : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300'
             }`}
           >
@@ -209,7 +209,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
               max={1440}
               value={intervalMinutes}
               onChange={(e) => setIntervalMinutes(Math.max(5, parseInt(e.target.value) || 60))}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--background)_60%,white)] text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white transition-all"
             />
             <p className="text-xs text-[var(--text-strong)]/40">
               Minimum 5 minutes. Sync will run automatically at this interval.
@@ -274,7 +274,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
               type="time"
               value={binResetTime}
               onChange={(e) => setBinResetTime(e.target.value)}
-              className="px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/60 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white transition-all"
+              className="px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--background)_60%,white)] text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white transition-all"
             />
           </label>
         </div>
@@ -329,7 +329,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
           </div>
 
           {syncStatus.lastSync.message && (
-            <div className="mt-2 p-3 bg-[var(--primary)]/10 border border-[var(--primary)]/25 rounded-xl text-xs text-[var(--text-strong)] font-semibold flex items-start gap-2">
+            <div className="mt-2 p-3 bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/25 rounded-xl text-xs text-[var(--text-strong)] font-semibold flex items-start gap-2">
               <AlertTriangle size={13} className="text-[var(--text-strong)] shrink-0 mt-0.5" />
               <span>{syncStatus.lastSync.message}</span>
             </div>
@@ -389,7 +389,7 @@ export const AdminSyncSettingsTab: React.FC = () => {
             {syncStatus.history.map((log) => (
               <div
                 key={log.id}
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--background)]/60 border border-[var(--primary)]/5"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-[color-mix(in_srgb,var(--background)_60%,white)] border border-[var(--primary)]/5"
               >
                 <div className="flex items-center gap-3">
                   {getStatusIcon(log.status)}

@@ -38,7 +38,7 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
               key={ml}
               className={`rounded-2xl border p-3 transition-all ${
                 active
-                  ? 'border-[var(--accent)] bg-[var(--accent)]/5 ring-2 ring-[var(--accent)]/15'
+                  ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_5%,white)] ring-2 ring-[var(--accent)]/15'
                   : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
@@ -85,7 +85,7 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
       </div>
 
       {/* Other sizes */}
-      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50/60 p-3">
+      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Other size</span>
           <input

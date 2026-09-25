@@ -32,10 +32,10 @@ export const ImpactKpiRow: React.FC<ImpactKpiRowProps> = ({
     {/* Card 1: Total Campus Reports */}
     <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
       <div className="flex items-center justify-between">
-        <div className="p-3 bg-[var(--action)]/10 rounded-xl text-[var(--action)] group-hover:scale-110 transition-transform">
+        <div className="p-3 bg-[color-mix(in_srgb,var(--action)_10%,white)] rounded-xl text-[var(--action)] group-hover:scale-110 transition-transform">
           <FileText size={22} />
         </div>
-        <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-full border border-emerald-200/60">
+        <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
           Live Sync
         </span>
       </div>
@@ -57,10 +57,10 @@ export const ImpactKpiRow: React.FC<ImpactKpiRowProps> = ({
     {/* Card 2: Dispatched & Collected Tasks */}
     <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
       <div className="flex items-center justify-between">
-        <div className="p-3 bg-[var(--primary)]/10 rounded-xl text-[var(--text-strong)] group-hover:scale-110 transition-transform">
+        <div className="p-3 bg-[color-mix(in_srgb,var(--primary)_10%,white)] rounded-xl text-[var(--text-strong)] group-hover:scale-110 transition-transform">
           <Truck size={22} />
         </div>
-        <span className="text-[11px] font-medium text-[var(--text-strong)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full border border-[var(--primary)]/60">
+        <span className="text-[11px] font-medium text-[var(--text-strong)] bg-[color-mix(in_srgb,var(--primary)_10%,white)] px-2 py-0.5 rounded-full border border-[var(--primary)]/60">
           {dispatchResolutionRate}%
         </span>
       </div>
@@ -82,10 +82,10 @@ export const ImpactKpiRow: React.FC<ImpactKpiRowProps> = ({
     {/* Card 3: Most Active Grade Level */}
     <div className="h-full flex flex-col justify-between p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
       <div className="flex items-center justify-between">
-        <div className="p-3 bg-[var(--gold)]/10 rounded-xl text-[var(--gold)] group-hover:scale-110 transition-transform">
+        <div className="p-3 bg-[color-mix(in_srgb,var(--gold)_10%,white)] rounded-xl text-[var(--gold)] group-hover:scale-110 transition-transform">
           <GraduationCap size={22} />
         </div>
-        <span className="text-[11px] font-medium text-[var(--gold)] bg-amber-50/80 px-2 py-0.5 rounded-full border border-amber-200/60">
+        <span className="text-[11px] font-medium text-[var(--gold)] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60">
           Top Grade
         </span>
       </div>
@@ -111,7 +111,7 @@ export const ImpactKpiRow: React.FC<ImpactKpiRowProps> = ({
         <div className="p-3 bg-amber-50 rounded-xl text-[var(--gold)] group-hover:scale-110 transition-transform">
           <Coins size={22} />
         </div>
-        <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-full border border-emerald-200/60">
+        <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
           Market Sync
         </span>
       </div>

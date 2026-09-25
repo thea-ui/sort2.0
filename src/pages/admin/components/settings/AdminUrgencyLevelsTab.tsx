@@ -53,7 +53,7 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
         level: newLevel,
         slaHours: newSla,
         description: newDesc,
-        badgeStyle: 'bg-[var(--gold)]/10 text-[var(--gold)] border-[var(--gold)]/25',
+        badgeStyle: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] border-[var(--gold)]/25',
       });
       setUrgencyLevels(prev => [...prev, created]);
     } catch (err) {
@@ -114,7 +114,7 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
     <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-8 shadow-sm space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
             <Gauge size={22} className="text-[var(--accent)]" />
             Urgency Priority Levels
           </h3>

@@ -3,7 +3,6 @@ import { Edit2, Package, Plus, Trash2 } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { broadcastPresetChange } from '../../../../hooks/useSystemPresets';
 import { AppModal } from '../../../../components/common/AppModal';
-import { PageHeader } from '../../../../components/layout/PageHeader';
 import { DEFAULT_PRESET_GROUPS, PresetGroup } from './presetDefaults';
 
 interface EditingPreset {
@@ -151,19 +150,17 @@ export const AdminItemPresetsTab: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Asset Item Presets"
-        description="Manage default reportable items under each asset category"
-        actions={
-          <button
-            type="button"
-            onClick={() => setShowAddItemModal(true)}
-            className="px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-dark)] cursor-pointer transition-colors"
-          >
-            <Plus size={16} /> Add Preset Item
-          </button>
-        }
-      />
+      {/* Section view: `ReportSetupPage` owns the page header, so this section
+          only contributes its action row (no nested page header). */}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => setShowAddItemModal(true)}
+          className="px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-dark)] cursor-pointer transition-colors"
+        >
+          <Plus size={16} /> Add Preset Item
+        </button>
+      </div>
 
       <div className="space-y-6">
         {presetGroups.map((group) => (
@@ -185,7 +182,7 @@ export const AdminItemPresetsTab: React.FC = () => {
               {group.items.map((item) => (
                 <div
                   key={item.id}
-                  className="p-4 bg-[var(--primary)]/5 rounded-2xl flex items-center justify-between text-sm"
+                  className="p-4 bg-[color-mix(in_srgb,var(--primary)_5%,white)] rounded-2xl flex items-center justify-between text-sm"
                 >
                   <span
                     className={`font-bold ${
@@ -203,7 +200,7 @@ export const AdminItemPresetsTab: React.FC = () => {
                       className={`text-xs font-bold px-3 py-1 rounded-full border cursor-pointer transition-all ${
                         item.enabled
                           ? 'text-emerald-700 bg-emerald-100 border-emerald-200 hover:bg-emerald-200'
-                          : 'text-[var(--text-strong)]/50 bg-[var(--primary)]/10 border-[var(--primary)]/15 hover:bg-[var(--primary)]/15'
+                          : 'text-[var(--text-strong)]/50 bg-[color-mix(in_srgb,var(--primary)_10%,white)] border-[var(--primary)]/15 hover:bg-[color-mix(in_srgb,var(--primary)_15%,white)]'
                       }`}
                     >
                       {item.enabled ? 'Enabled' : 'Disabled'}
@@ -213,7 +210,7 @@ export const AdminItemPresetsTab: React.FC = () => {
                       onClick={() =>
                         setEditingPreset({ groupCat: group.category, id: item.id, name: item.name })
                       }
-                      className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] cursor-pointer p-1.5 rounded-xl hover:bg-[var(--primary)]/10 transition-all"
+                      className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] cursor-pointer p-1.5 rounded-xl hover:bg-[color-mix(in_srgb,var(--primary)_10%,white)] transition-all"
                       title="Edit Item Name"
                     >
                       <Edit2 size={14} />
@@ -250,7 +247,7 @@ export const AdminItemPresetsTab: React.FC = () => {
             <select
               value={newItemCategory}
               onChange={(e) => setNewItemCategory(e.target.value)}
-              className="w-full mt-1.5 p-3 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-sm font-semibold outline-none cursor-pointer focus:border-[var(--accent)]"
+              className="w-full mt-1.5 p-3 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-sm font-semibold outline-none cursor-pointer focus:border-[var(--accent)]"
             >
               {presetGroups.map((g) => (
                 <option key={g.category} value={g.category}>
@@ -268,7 +265,7 @@ export const AdminItemPresetsTab: React.FC = () => {
               placeholder="e.g. Science Microscope"
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
-              className="w-full mt-1.5 p-3 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+              className="w-full mt-1.5 p-3 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
             />
           </div>
         </div>
@@ -293,7 +290,7 @@ export const AdminItemPresetsTab: React.FC = () => {
               type="text"
               disabled
               value={editingPreset?.groupCat ?? ''}
-              className="w-full mt-1.5 p-3 bg-[var(--primary)]/10 border border-[var(--primary)]/10 rounded-xl text-sm font-semibold text-[var(--text-strong)]/50"
+              className="w-full mt-1.5 p-3 bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/10 rounded-xl text-sm font-semibold text-[var(--text-strong)]/50"
             />
           </div>
 
@@ -306,7 +303,7 @@ export const AdminItemPresetsTab: React.FC = () => {
               onChange={(e) =>
                 setEditingPreset((prev) => (prev ? { ...prev, name: e.target.value } : prev))
               }
-              className="w-full mt-1.5 p-3 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+              className="w-full mt-1.5 p-3 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-sm font-semibold outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
             />
           </div>
         </div>

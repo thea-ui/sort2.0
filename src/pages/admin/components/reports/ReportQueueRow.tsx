@@ -33,7 +33,7 @@ export const ReportQueueRow: React.FC<ReportQueueRowProps> = ({
       className={`rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
         isActive
           ? 'bg-white border border-[var(--primary)]/10 shadow-xs hover:border-[var(--accent)]/40 transition-colors'
-          : 'bg-[var(--primary)]/5 border border-[var(--primary)]/5'
+          : 'bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/5'
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">
@@ -66,8 +66,8 @@ export const ReportQueueRow: React.FC<ReportQueueRowProps> = ({
             <span
               className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase ${
                 isActive
-                  ? 'text-[var(--accent)] bg-[var(--accent)]/10'
-                  : 'text-[var(--text-strong)]/40 bg-[var(--primary)]/10'
+                  ? 'text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)]'
+                  : 'text-[var(--text-strong)]/40 bg-[color-mix(in_srgb,var(--primary)_10%,white)]'
               }`}
             >
               {report.reporterRole || 'student'}
@@ -88,7 +88,7 @@ export const ReportQueueRow: React.FC<ReportQueueRowProps> = ({
               <CheckCircle2 size={11} /> Verified
             </span>
           ) : (
-            <span className="px-3 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/25 text-[10px] font-black uppercase tracking-wider">
+            <span className="px-3 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border border-[var(--primary)]/25 text-[10px] font-black uppercase tracking-wider">
               Dispatched ({report.assignedMrfName || 'MRF'})
             </span>
           )
@@ -101,8 +101,8 @@ export const ReportQueueRow: React.FC<ReportQueueRowProps> = ({
           onClick={() => onInspect(report)}
           className={`p-2 rounded-lg border transition-colors cursor-pointer ${
             isActive
-              ? 'bg-[var(--primary)]/10 text-[var(--text-strong)] hover:bg-[var(--primary)]/15 border-[var(--primary)]/25'
-              : 'bg-[var(--primary)]/5 text-[var(--text-strong)]/40 hover:bg-[var(--primary)]/10 border-[var(--primary)]/10'
+              ? 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] hover:bg-[color-mix(in_srgb,var(--primary)_15%,white)] border-[var(--primary)]/25'
+              : 'bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/40 hover:bg-[color-mix(in_srgb,var(--primary)_10%,white)] border-[var(--primary)]/10'
           }`}
           title={isActive ? 'Inspect details & verify' : 'Inspect details'}
         >

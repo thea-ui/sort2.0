@@ -14,10 +14,10 @@ interface RoomModalsProps {
 }
 
 const FIELD =
-  'w-full mt-1 p-2.5 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-xl text-xs font-semibold outline-none focus:border-[var(--accent)] text-[var(--text-strong)]';
+  'w-full mt-1 p-2.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-xs font-semibold outline-none focus:border-[var(--accent)] text-[var(--text-strong)]';
 const LABEL = 'text-[10px] font-bold text-[var(--text-strong)]/50 uppercase';
 const CANCEL_BUTTON =
-  'px-4 py-2 bg-[var(--primary)]/5 text-[var(--text-strong)]/70 font-bold rounded-xl hover:bg-[var(--primary)]/10 cursor-pointer transition-colors';
+  'px-4 py-2 bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/70 font-bold rounded-xl hover:bg-[color-mix(in_srgb,var(--primary)_10%,white)] cursor-pointer transition-colors';
 const SUBMIT_BUTTON =
   'px-5 py-2 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer transition-colors';
 

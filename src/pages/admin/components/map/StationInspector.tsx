@@ -95,7 +95,7 @@ export const StationInspector: React.FC<StationInspectorProps> = ({
 
             return (
               <div key={streamType} className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                isAvailable ? 'bg-white border-gray-200/80 shadow-xs' : activeReport ? 'bg-amber-50/80 border-amber-200' : streamStatus === 'No Bin' ? 'bg-gray-50/80 border-gray-200' : 'bg-rose-50/70 border-rose-200'
+                isAvailable ? 'bg-white border-gray-200/80 shadow-xs' : activeReport ? 'bg-amber-50 border-amber-200' : streamStatus === 'No Bin' ? 'bg-gray-50 border-gray-200' : 'bg-rose-50 border-rose-200'
               }`}>
                 <div className="flex items-start gap-3 min-w-0">
                   <div className={`p-2.5 rounded-xl text-white ${meta.bg} shadow-xs shrink-0 mt-0.5`}>

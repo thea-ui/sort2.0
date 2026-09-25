@@ -40,6 +40,23 @@
   /* Static pre-JS shell accent (ThemeProvider overrides both from tenant branding). */
   --theme-primary: #00271D;
   --theme-primary-rgb: 0, 39, 29;
+
+  /* ── SMART semantic surface tokens (master handoff Parts 2/3/5/6) ──────────
+     Distinct names from SORT's brand tokens: `--accent` stays the brand green,
+     so neutral menu/hover surfaces get their own `--muted`/`--border` tokens
+     (identical computed values to the reference theme). */
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --destructive: #dc2626;
+  --primary-foreground: #ffffff;
+  --secondary-foreground: #ffffff;
   --primary-color: #00271D;
   --secondary-color: #00A77C;
   --accent-color: #00A77C;
@@ -61,6 +78,21 @@
   --color-gold: #C69B26;
   --color-text-primary: #00271D;
   --color-link: #00A77C;
+
+  /* SMART semantic surfaces (see :root above). */
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-destructive: var(--destructive);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-ring: var(--ring);
   
   --font-sans: var(--font-body);
   --font-body: var(--font-body);
@@ -190,6 +222,24 @@
   background: #cbd5e1;
 }
 
+/* ScrollArea primitive (master handoff Part 6 §9): 10px track, rounded
+   border-colored thumb, 1px transparent inset border. */
+.smart-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.smart-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.smart-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
@@ -228,16 +278,103 @@
   animation: sheet-up 0.22s ease-out;
 }
 
-/* Entrance motion (SMART parity): these classes were used across the app but
-   had no keyframes, so every entrance animation silently did nothing. */
+/* ── Entrance motion (SMART master handoff) ──────────────────────────────── */
+
+/* Page entrance: `fadeIn 0.4s ease-out forwards` — opacity only. */
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: none;
+  }
+}
+
+/* Standard dialog / app modal: 100ms fade + zoom from 95%. The keyframes carry
+   the centering translate so they compose with `top-1/2 left-1/2`. */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+}
+
+/* Drawers: 200ms slide from the right; the overlay fades over the same 200ms. */
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Vault drawer: 16px slide + fade (slide-in-from-right-2), 200ms. */
+@keyframes vault-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Dropdown / menu panel: 100ms fade + zoom from 95%. */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Form-level banners: 220ms ease-out, opacity 0→1 + scale 0.98→1. */
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -253,17 +390,70 @@
 }
 
 .animate-fade-in {
-  animation: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+.animate-dialog-in {
+  animation: dialog-in 100ms ease-out;
+}
+
+.animate-dialog-out {
+  animation: dialog-out 100ms ease-in forwards;
+}
+
+.animate-overlay-in {
+  animation: overlay-in 200ms ease-out;
+}
+
+.animate-drawer-in {
+  animation: drawer-in 200ms ease-out;
+}
+
+.animate-drawer-out {
+  animation: drawer-out 200ms ease-in forwards;
+}
+
+.animate-vault-in {
+  animation: vault-in 200ms ease-out;
+}
+
+.animate-menu-in {
+  animation: menu-in 100ms ease-out;
+}
+
+.animate-banner-in {
+  animation: banner-in 220ms ease-out;
 }
 
 .animate-scale-up {
   animation: scale-up 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Overlays, drawers and side panels are excluded from printed output. */
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+}
+
+/* Background scroll lock while a dialog/drawer is open. The shell scrolls its
+   own <main>, so locking the body alone is not enough. */
+html[data-modal-open] main {
+  overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-sheet-up,
   .animate-fade-in,
-  .animate-scale-up {
+  .animate-scale-up,
+  .animate-dialog-in,
+  .animate-dialog-out,
+  .animate-overlay-in,
+  .animate-drawer-in,
+  .animate-drawer-out,
+  .animate-vault-in,
+  .animate-menu-in,
+  .animate-banner-in {
     animation: none;
   }
 }

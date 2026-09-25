@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
-import { Bell, Recycle, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Recycle, ShieldCheck } from 'lucide-react';
 import { useMockData } from '../../hooks/useMockData';
 import { useTheme } from '../../hooks/useTheme';
 import { filterNotificationsForUser } from '../../utils/notifications';
+import { readDismissed, writeDismissed } from '../../utils/notificationDismissals';
 import { ROLE_LABELS } from '../../utils/userDisplay';
+import { NotificationBell } from '../common/NotificationBell';
+import type { BellNotification, NotificationSeverity } from '../common/NotificationBell';
+import type { NotificationType } from '../../types';
 import { AppShell, ShellNavFooter, ShellNavList } from './AppShell';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileNavSheet } from './MobileNavSheet';
@@ -25,6 +29,19 @@ interface DashboardLayoutProps {
   setActiveTab: (tab: string) => void;
 }
 
+/**
+ * Severity model (master handoff Part 4 §3) mapped onto SORT's own notification
+ * types: dismissal/overdue conditions are critical, submissions need attention,
+ * and the remaining lifecycle events are informational.
+ */
+const SEVERITY_BY_TYPE: Record<NotificationType, NotificationSeverity> = {
+  REPORT_DISMISSED: 'critical',
+  REPORT_SUBMITTED: 'warning',
+  REPORT_VERIFIED: 'info',
+  REPORT_DISPATCHED: 'info',
+  REPORT_COMPLETED: 'info',
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 /**
@@ -37,22 +54,56 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { currentUser, logout, notifications, dismissNotification } = useMockData();
+  const { currentUser, logout, notifications } = useMockData();
   const { logoUrl, schoolName, currentSchoolYear } = useTheme();
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  const isMRF = currentUser?.role === 'MRF';
+  const portal = isMRF ? 'mrf' : 'admin';
+  const userId = currentUser?.id ?? '';
+
+  // Dismissals are per portal + user and live in localStorage only.
+  useEffect(() => {
+    if (!userId) return;
+    setDismissed(readDismissed(portal, userId));
+  }, [portal, userId]);
 
   if (!currentUser) return null;
 
-  const isMRF = currentUser.role === 'MRF';
   const navGroups = isMRF ? MRF_NAV_GROUPS : ADMIN_NAV_GROUPS;
-  const adminNotifications = filterNotificationsForUser(notifications, currentUser);
-  const unreadCount = adminNotifications.length;
+  const userNotifications = filterNotificationsForUser(notifications, currentUser).filter(
+    (notification) => !dismissed.has(notification.id),
+  );
+  const bellNotifications: BellNotification[] = userNotifications.map((notification) => ({
+    id: notification.id,
+    severity: SEVERITY_BY_TYPE[notification.type] ?? 'info',
+    title: notification.title,
+    description: notification.message,
+  }));
   const mobilePrimaryItems = isMRF ? MOBILE_PRIMARY_ITEMS.MRF : MOBILE_PRIMARY_ITEMS.ADMIN;
   const shellUser = {
     name: currentUser.name,
     roleLabel: ROLE_LABELS[currentUser.role],
     roleTone: isMRF ? ('primary' as const) : ('emerald' as const),
+  };
+
+  const persistDismissed = (next: Set<string>) => {
+    setDismissed(next);
+    writeDismissed(portal, userId, next);
+  };
+
+  const handleDismissNotification = (id: string) => {
+    persistDismissed(new Set([...dismissed, id]));
+  };
+
+  const handleDismissAllNotifications = () => {
+    persistDismissed(new Set([...dismissed, ...userNotifications.map((notification) => notification.id)]));
+  };
+
+  const handleSelectNotification = (id: string) => {
+    handleDismissNotification(id);
+    setActiveTab(isMRF ? 'dispatches' : 'admin-reports');
   };
 
   const handleNavSelect = (id: string, options?: { keepOpen?: boolean }) => {
@@ -61,114 +112,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   const notificationsButton = (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setNotificationsOpen((open) => !open)}
-        aria-label="Notifications"
-        title="Notifications"
-        className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-all active:scale-95 cursor-pointer relative"
-      >
-        <Bell className="w-5 h-5" />
-        {unreadCount > 0 && (
-          <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
-
-      {notificationsOpen && (
-        <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-            <h4 className="font-bold text-xs text-[var(--text-strong)] uppercase tracking-wider">
-              Alerts & Actions
-            </h4>
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    adminNotifications.forEach((n) => dismissNotification(n.id));
-                  }}
-                  className="text-[9px] text-[var(--accent)] font-bold hover:underline cursor-pointer"
-                >
-                  Clear all
-                </button>
-              )}
-              <span className="text-[10px] px-2 py-0.5 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full font-bold border border-[var(--accent)]/20">
-                {unreadCount} New
-              </span>
-            </div>
-          </div>
-          <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
-            {adminNotifications.map((notif) => {
-              const isVerified = notif.type === 'REPORT_VERIFIED';
-              const isDispatched = notif.type === 'REPORT_DISPATCHED';
-              const isCompleted = notif.type === 'REPORT_COMPLETED';
-              const isSubmitted = notif.type === 'REPORT_SUBMITTED';
-
-              const color = isCompleted
-                ? 'text-emerald-700'
-                : isVerified
-                  ? 'text-amber-700'
-                  : isDispatched
-                    ? 'text-[var(--text-strong)]'
-                    : isSubmitted
-                      ? 'text-[var(--text-strong)]'
-                      : 'text-gray-600';
-              const label = isCompleted
-                ? 'MRF Completed'
-                : isVerified
-                  ? 'Verified'
-                  : isDispatched
-                    ? 'Dispatched'
-                    : isSubmitted
-                      ? 'New Report'
-                      : 'Update';
-
-              return (
-                <button
-                  type="button"
-                  key={notif.id}
-                  onClick={() => {
-                    dismissNotification(notif.id);
-                    setNotificationsOpen(false);
-                    setActiveTab(isMRF ? 'dispatches' : 'admin-reports');
-                  }}
-                  className="w-full text-left p-3 hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <div className="flex justify-between items-start mb-0.5">
-                    <span className={`text-xs font-bold ${color}`}>
-                      [{label}] {notif.title}
-                    </span>
-                    <span className="text-[9px] text-gray-400 shrink-0 ml-2">
-                      {new Date(notif.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 line-clamp-1">{notif.message}</p>
-                </button>
-              );
-            })}
-            {adminNotifications.length === 0 && (
-              <p className="text-xs text-gray-400 text-center py-6">No new alerts.</p>
-            )}
-          </div>
-          <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setNotificationsOpen(false);
-                setActiveTab(isMRF ? 'dispatches' : 'admin-reports');
-              }}
-              className="text-xs text-[var(--accent)] font-bold hover:underline cursor-pointer"
-            >
-              View All Reports
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <NotificationBell
+      notifications={bellNotifications}
+      onDismiss={handleDismissNotification}
+      onDismissAll={handleDismissAllNotifications}
+      onSelect={handleSelectNotification}
+    />
   );
 
   return (

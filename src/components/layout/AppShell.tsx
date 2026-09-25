@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut, Menu } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { PixelGridBackground } from './PixelGridBackground';
 
 // ─── Contract ─────────────────────────────────────────────────────────────────
 // Application shell for the Admin console and the MRF terminal: a 280px ↔ 70px
@@ -428,7 +429,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   const roleToneClass = user.roleTone && user.roleTone !== 'primary' ? ROLE_TONES[user.roleTone] : undefined;
 
   return (
-    <div className="h-screen max-h-screen bg-[var(--background)] text-[var(--text-strong)] flex overflow-hidden font-sans">
+    <div className="h-screen max-h-screen text-[var(--text-strong)] flex overflow-hidden font-sans">
+      <PixelGridBackground />
       <aside
         className={cx(
           'hidden lg:flex flex-col shrink-0 bg-[#fafafa] border-r border-slate-200 shadow-sm transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[width] overflow-hidden',
@@ -536,7 +538,9 @@ export const AppShell: React.FC<AppShellProps> = ({
           ref={mainRef}
           className="flex-1 overflow-y-auto min-w-0 px-4 lg:px-8 py-4 lg:py-8 pb-28 lg:pb-8"
         >
-          {children}
+          {/* Page scaffolding: every page is centered at 1400px; the shell owns
+              all main padding (pages must not re-add horizontal padding). */}
+          <div className="max-w-[1400px] mx-auto w-full">{children}</div>
         </main>
       </div>
     </div>

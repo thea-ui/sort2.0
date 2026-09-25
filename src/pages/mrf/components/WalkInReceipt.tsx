@@ -30,7 +30,7 @@ export const WalkInReceipt: React.FC<WalkInReceiptProps> = ({ receipt, onClose }
             <X size={16} />
           </button>
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-[var(--accent)]/20 ring-1 ring-[var(--accent)]/30 flex items-center justify-center">
+            <div className="h-11 w-11 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_20%,white)] ring-1 ring-[var(--accent)]/30 flex items-center justify-center">
               <CheckCircle2 size={20} className="text-[var(--accent)]" />
             </div>
             <div>
@@ -67,7 +67,7 @@ export const WalkInReceipt: React.FC<WalkInReceiptProps> = ({ receipt, onClose }
 
           {/* Year progress */}
           {progress && (
-            <div className="bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-2xl p-3">
+            <div className="bg-[color-mix(in_srgb,var(--accent)_5%,white)] border border-[var(--accent)]/20 rounded-2xl p-3">
               <p className="text-[10px] font-black uppercase tracking-wider text-[var(--accent)] mb-1">
                 This school year
               </p>
@@ -95,7 +95,7 @@ export const WalkInReceipt: React.FC<WalkInReceiptProps> = ({ receipt, onClose }
               {newlyUnlocked.map((unlock) => (
                 <div
                   key={unlock.claimId}
-                  className="flex items-center justify-between gap-3 bg-[var(--gold)]/5 border border-[var(--gold)]/25 rounded-2xl px-3.5 py-2.5"
+                  className="flex items-center justify-between gap-3 bg-[color-mix(in_srgb,var(--gold)_5%,white)] border border-[var(--gold)]/25 rounded-2xl px-3.5 py-2.5"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Gift size={15} className="text-[var(--gold)] shrink-0" />

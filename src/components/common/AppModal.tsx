@@ -1,14 +1,26 @@
-import React, { useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
-import { ModalPortal } from './ModalPortal';
+import React from 'react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/Dialog';
+import { Button } from '../ui/Button';
+
+/**
+ * Rich "app modal" (SMART master handoff Part 3 §5): tinted 48px icon tile,
+ * 20/24px bold title, 16/24/32px padding, 90vh max height with internal
+ * scroll, and the reference footer (outline Cancel + filled confirm with a
+ * leading spinner/check icon; confirm stacks above Cancel on mobile).
+ *
+ * Confirm/tile colors come from `--theme-primary` (never a hardcoded brand
+ * hex) with `--theme-primary-text` for contrast; destructive uses `#dc2626`
+ * exactly as specified.
+ */
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
-const SIZE_CLASS: Record<ModalSize, string> = {
-  sm: 'max-w-md',
-  md: 'max-w-2xl',
-  lg: 'max-w-3xl',
-  xl: 'max-w-5xl',
+const SIZE_CLASSES: Record<ModalSize, string> = {
+  sm: 'sm:max-w-md!',
+  md: 'sm:max-w-2xl!',
+  lg: 'sm:max-w-2xl! md:max-w-3xl!',
+  xl: 'sm:max-w-3xl! md:max-w-4xl! lg:max-w-5xl!',
 };
 
 interface AppModalProps {
@@ -28,13 +40,6 @@ interface AppModalProps {
   children?: React.ReactNode;
 }
 
-const FOCUSABLE =
-  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
-/**
- * Canonical modal shell (SMART `AppModal` language, SORT tokens): portaled,
- * ESC + backdrop close, basic focus trap, sizes sm–xl, destructive variant.
- */
 export const AppModal: React.FC<AppModalProps> = ({
   open,
   onOpenChange,
@@ -50,120 +55,75 @@ export const AppModal: React.FC<AppModalProps> = ({
   loading = false,
   hideFooter = false,
   children,
-}) => {
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    panelRef.current?.focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onOpenChange(false);
-        return;
-      }
-      if (event.key !== 'Tab' || !panelRef.current) return;
-      const focusables = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      previouslyFocused?.focus?.();
-    };
-  }, [open, onOpenChange]);
-
-  if (!open) return null;
-
-  return (
-    <ModalPortal>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
-        <div
-          className="absolute inset-0 bg-[var(--primary)]/40 backdrop-blur-sm"
-          onClick={() => onOpenChange(false)}
-          aria-hidden="true"
-        />
-        <div
-          ref={panelRef}
-          tabIndex={-1}
-          className={`relative w-full ${SIZE_CLASS[size]} max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl border border-white/80 overflow-hidden animate-scale-up outline-none`}
-        >
-          <div className="flex items-start gap-3 px-6 pt-5 pb-4 border-b border-[var(--primary)]/5">
-            {icon && (
-              <div
-                className={`p-2.5 rounded-xl shrink-0 ${
-                  destructive
-                    ? 'bg-rose-50 text-rose-600'
-                    : 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                }`}
-              >
-                {icon}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold text-[var(--text-strong)]">{title}</h3>
-              {description && (
-                <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">{description}</p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close"
-              className="p-2 -m-1 rounded-xl text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] hover:bg-[var(--primary)]/5 cursor-pointer transition-colors"
+}) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent
+      overlayClassName="bg-black/40"
+      className={`${SIZE_CLASSES[size]} max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 border-0 ring-0 shadow-2xl bg-card rounded-xl sm:rounded-2xl gap-0!`}
+    >
+      <div className="pb-4 sm:pb-5">
+        <div className="flex items-start gap-3 sm:gap-4">
+          {icon && (
+            <div
+              className="p-3 rounded-xl shadow-lg shrink-0 flex items-center justify-center leading-none [&>svg]:w-6 [&>svg]:h-6"
+              style={{
+                backgroundColor: destructive ? '#dc2626' : 'var(--theme-primary)',
+                color: destructive ? '#ffffff' : 'var(--theme-primary-text, #ffffff)',
+              }}
             >
-              <X size={16} />
-            </button>
-          </div>
-
-          <div className="px-6 py-5 overflow-y-auto">{children}</div>
-
-          {!hideFooter && (
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[var(--primary)]/5 bg-[var(--primary)]/5">
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="px-4 py-2 rounded-xl bg-white border border-[var(--primary)]/10 hover:bg-[var(--primary)]/5 text-xs font-bold text-[var(--text-strong)] cursor-pointer transition-colors"
-              >
-                {cancelLabel}
-              </button>
-              {onConfirm && (
-                <button
-                  type="button"
-                  onClick={onConfirm}
-                  disabled={confirmDisabled || loading}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors flex items-center gap-1.5 ${
-                    destructive
-                      ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200'
-                      : 'bg-[var(--accent)] hover:bg-[var(--accent-dark)] shadow-[var(--accent)]/20'
-                  }`}
-                >
-                  {loading && (
-                    <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                  )}
-                  {confirmLabel}
-                </button>
-              )}
+              {icon}
             </div>
           )}
+          <div className="min-w-0 flex-1">
+            <DialogTitle className="text-xl sm:text-2xl font-bold! text-foreground leading-tight">
+              {title}
+            </DialogTitle>
+            {description && (
+              <DialogDescription className="mt-1 text-sm text-muted-foreground">
+                {description}
+              </DialogDescription>
+            )}
+          </div>
         </div>
       </div>
-    </ModalPortal>
-  );
-};
+
+      {children}
+
+      {!hideFooter && (
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 mt-4 border-t border-border">
+          <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)} disabled={loading}>
+            {cancelLabel}
+          </Button>
+          {onConfirm && (
+            <Button
+              className="rounded-xl"
+              style={
+                destructive
+                  ? { backgroundColor: '#dc2626', color: '#ffffff' }
+                  : { backgroundColor: 'var(--theme-primary)', color: 'var(--theme-primary-text, #ffffff)' }
+              }
+              disabled={loading || confirmDisabled}
+              onClick={onConfirm}
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+              )}
+              {confirmLabel}
+            </Button>
+          )}
+        </div>
+      )}
+    </DialogContent>
+  </Dialog>
+);
+
+export {
+  InfoCard,
+  StatTile,
+  AlertBanner,
+  StepCards,
+  ModalSection,
+} from './AppModalBlocks';
+export type { ModalTone, AlertVariant } from './AppModalBlocks';

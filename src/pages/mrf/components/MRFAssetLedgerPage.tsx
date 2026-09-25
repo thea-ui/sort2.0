@@ -53,7 +53,7 @@ interface AssetSummary {
 
 const ACTION_META: Record<string, { label: string; badge: string }> = {
   RECOVERED: { label: 'Recovered', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  REPAIRED: { label: 'Repaired', badge: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25' },
+  REPAIRED: { label: 'Repaired', badge: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25' },
   DISPOSED: { label: 'Disposed', badge: 'bg-gray-100 text-gray-500 border-gray-200' },
 };
 
@@ -277,7 +277,7 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
       {/* Header + Toolbar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-bold text-[var(--text-strong)] bg-[var(--primary)]/10 border border-[var(--primary)]/25 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-[var(--text-strong)] bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/25 px-2.5 py-1 rounded-full uppercase tracking-wider">
             MRF Asset Lifecycle
           </span>
           <h3 className="text-2xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-1.5 flex items-center gap-2">
@@ -439,7 +439,7 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
                 const guidance = disp ?? ASSET_ACTION_GUIDANCE[detailRecord.action as AssetAction];
                 if (!guidance) return null;
                 return (
-                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-3.5">
+                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3.5">
                     <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Outcome Details</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-xs font-black text-[var(--text-strong)]">

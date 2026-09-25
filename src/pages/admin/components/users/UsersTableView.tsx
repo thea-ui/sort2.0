@@ -81,7 +81,7 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
           return <span className="text-[var(--text-strong)]/30 italic text-[11px]">—</span>;
         }
         return (
-          <span className="px-2 py-0.5 bg-[var(--primary)]/5 border border-[var(--primary)]/10 rounded-md text-[10px] font-bold text-[var(--text-strong)]/70">
+          <span className="px-2 py-0.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-md text-[10px] font-bold text-[var(--text-strong)]/70">
             {section}
           </span>
         );
@@ -128,7 +128,7 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
             e.stopPropagation();
             onInspect(u);
           }}
-          className="p-1.5 text-[var(--text-strong)]/60 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-xl transition-all cursor-pointer"
+          className="p-1.5 text-[var(--text-strong)]/60 hover:text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,white)] rounded-xl transition-all cursor-pointer"
           title="Inspect User Profile"
         >
           <Eye size={16} />

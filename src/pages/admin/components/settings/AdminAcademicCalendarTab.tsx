@@ -71,11 +71,11 @@ export const AdminAcademicCalendarTab: React.FC = () => {
   const activeDays = activeTerm ? getDaysRemaining(activeTerm.endDate) : 0;
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
             <CalendarDays size={22} className="text-[var(--accent)]" />
             Academic Calendar
           </h3>
@@ -100,7 +100,7 @@ export const AdminAcademicCalendarTab: React.FC = () => {
           {/* Decorative circles */}
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/5" />
           <div className="absolute -bottom-20 -left-20 w-56 h-56 rounded-full bg-white/5" />
-          <div className="absolute top-1/2 right-1/4 w-24 h-24 rounded-full bg-[var(--accent)]/20" />
+          <div className="absolute top-1/2 right-1/4 w-24 h-24 rounded-full bg-[color-mix(in_srgb,var(--accent)_20%,white)]" />
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3">
@@ -170,7 +170,7 @@ export const AdminAcademicCalendarTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setEditingTerm(t)}
-                  className="p-2 rounded-xl text-[var(--text-strong)]/30 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                  className="p-2 rounded-xl text-[var(--text-strong)]/30 hover:text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,white)] transition-all cursor-pointer opacity-0 group-hover:opacity-100"
                   title="Edit Dates"
                 >
                   <Edit2 size={14} />

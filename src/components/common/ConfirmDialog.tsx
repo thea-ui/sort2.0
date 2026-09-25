@@ -12,19 +12,25 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   destructive?: boolean;
   loading?: boolean;
+  icon?: React.ReactNode;
   children?: React.ReactNode;
 }
 
-/** Confirmation wrapper over AppModal — replaces `window.confirm` (SMART parity). */
+/**
+ * Confirmation wrapper over AppModal (SMART master handoff Part 3 §8):
+ * `AlertTriangle` + red confirm for destructive, `CheckCircle2` + primary for
+ * normal, always size `sm`.
+ */
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   destructive = false,
   confirmLabel = 'Confirm',
+  icon,
   ...rest
 }) => (
   <AppModal
     {...rest}
     size="sm"
-    icon={destructive ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
+    icon={icon ?? (destructive ? <AlertTriangle className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />)}
     confirmLabel={confirmLabel}
     destructive={destructive}
   />

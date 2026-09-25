@@ -6,6 +6,7 @@ import { RewardClaimQueue } from './RewardClaimQueue';
 import { RewardCatalogTable } from './RewardCatalogTable';
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { LoadingState } from '../../../components/common/LoadingState';
+import { PageHeader } from '../../../components/layout/PageHeader';
 
 interface AdminRewardsTabProps {
   showToast: (msg: string) => void;
@@ -145,34 +146,26 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <span className="text-[10px] font-bold text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/25 px-2.5 py-1 rounded-full uppercase tracking-wider">
-            Milestone Prizes
-          </span>
-          <h3 className="text-xl font-bold text-[var(--text-strong)] tracking-tight mt-1.5 flex items-center gap-2">
-            <Gift size={20} className="text-[var(--gold)]" /> Rewards &amp; Prize Claims
-          </h3>
-          <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
-            Release prizes unlocked by student bottle turn-ins. Points rewards credit automatically on release.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={loading}
-          className="self-start sm:self-center px-3.5 py-2 rounded-xl bg-white border border-[var(--primary)]/10 hover:bg-[var(--primary)]/5 text-[var(--text-strong)] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-        >
-          {loading ? (
-            <Loader2 size={13} className="animate-spin" />
-          ) : (
-            <RefreshCw size={13} className="text-[var(--accent)]" />
-          )}
-          Refresh
-        </button>
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Rewards & Prize Claims"
+        description="Release prizes unlocked by student bottle turn-ins. Points rewards credit automatically on release."
+        actions={
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={loading}
+            className="px-3.5 py-2 rounded-xl bg-white border border-[var(--primary)]/10 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+          >
+            {loading ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <RefreshCw size={13} className="text-[var(--accent)]" />
+            )}
+            Refresh
+          </button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -182,21 +175,21 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
             value: stats.awaiting,
             icon: Clock3,
             color: 'text-[var(--gold)]',
-            bg: 'bg-[var(--gold)]/10',
+            bg: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]',
           },
           {
             label: 'Released (loaded)',
             value: stats.released,
             icon: PackageCheck,
             color: 'text-[var(--accent)]',
-            bg: 'bg-[var(--accent)]/10',
+            bg: 'bg-[color-mix(in_srgb,var(--accent)_10%,white)]',
           },
           {
             label: 'Physical stock left',
             value: stats.stockLeft,
             icon: Gift,
             color: 'text-[var(--text-strong)]',
-            bg: 'bg-[var(--primary)]/10',
+            bg: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
           },
         ].map((stat) => (
           <div
@@ -226,7 +219,7 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
             className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
               view === tab
                 ? 'bg-[var(--primary)] text-white shadow-sm'
-                : 'bg-white text-[var(--text-strong)]/60 border border-[var(--primary)]/10 hover:bg-[var(--primary)]/5'
+                : 'bg-white text-[var(--text-strong)]/60 border border-[var(--primary)]/10 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)]'
             }`}
           >
             {tab === 'claims' ? `Claims Queue (${claims.length})` : `Prize Catalog (${catalog.length})`}

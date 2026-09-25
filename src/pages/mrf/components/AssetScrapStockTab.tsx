@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Scale, CheckCircle2, Clock, Coins, ShieldAlert, Loader2, PackageCheck, Plus, Trash2, Inbox } from 'lucide-react';
 import { useAssetScrap, type ScrapItem } from '../../../hooks/useAssetScrap';
 import { useMockData } from '../../../hooks/useMockData';
+import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
+import { Input } from '../../../components/ui/Input';
 import { AssetScrapWeighedHistory } from './AssetScrapWeighedHistory';
 
 interface AssetScrapStockTabProps {
@@ -39,6 +41,10 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
   const [weighMaterial, setWeighMaterial] = useState('ferrous_metal');
   const [weighKg, setWeighKg] = useState('');
   const [weighing, setWeighing] = useState(false);
+  // Destructive flows run through ConfirmDialog — never window.confirm/prompt.
+  const [sellTarget, setSellTarget] = useState<{ code: string; name: string; kg: number } | null>(null);
+  const [disposeTarget, setDisposeTarget] = useState<ScrapItem | null>(null);
+  const [disposeRef, setDisposeRef] = useState('');
 
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -55,9 +61,14 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
     }
   }, [showWeigh, weighTarget, pendingItems]);
 
-  const handleSell = async (materialCode: string, materialName: string, accumulatedKg: number, thresholdKg: number) => {
-    const sellKg = Math.min(accumulatedKg, thresholdKg);
-    if (!window.confirm(`Sell ${sellKg.toFixed(1)} kg of ${materialName} as scrap?`)) return;
+  const handleSell = (materialCode: string, materialName: string, accumulatedKg: number, thresholdKg: number) => {
+    setSellTarget({ code: materialCode, name: materialName, kg: Math.min(accumulatedKg, thresholdKg) });
+  };
+
+  const confirmSell = async () => {
+    if (!sellTarget) return;
+    const { code: materialCode, name: materialName } = sellTarget;
+    setSellTarget(null);
     setBusy(materialCode);
     try {
       const tx = await sellBatch(materialCode);
@@ -112,15 +123,19 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
     }
   };
 
-  const handleDispose = async (item: ScrapItem) => {
-    const reference = window.prompt(
-      `Dispose "${item.description || item.materialName}" via an accredited handler.\nEnter disposal reference (WMR / DENR receipt no.):`,
-      ''
-    );
-    if (reference === null) return;
+  const handleDispose = (item: ScrapItem) => {
+    setDisposeRef('');
+    setDisposeTarget(item);
+  };
+
+  const confirmDispose = async () => {
+    if (!disposeTarget) return;
+    const item = disposeTarget;
+    const reference = disposeRef.trim() || undefined;
+    setDisposeTarget(null);
     setBusy(item.id);
     try {
-      await disposeScrapItem(item.id, reference.trim() || undefined);
+      await disposeScrapItem(item.id, reference);
       showToast(`Marked ${item.materialName} as disposed.`);
     } catch (err: any) {
       showToast(`Disposal failed: ${err.message}`);
@@ -136,11 +151,11 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-[var(--primary)]/15 text-[var(--text-strong)] flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-[color-mix(in_srgb,var(--primary)_15%,white)] text-[var(--text-strong)] flex items-center justify-center shrink-0">
             <Scale size={24} />
           </div>
           <div>
-            <span className="text-[10px] font-black text-[var(--text-strong)] bg-[var(--primary)]/15 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-black text-[var(--text-strong)] bg-[color-mix(in_srgb,var(--primary)_15%,white)] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Asset Scrap Recovery Stock
             </span>
             <h3 className="text-xl font-heading font-black text-[var(--text-strong)] mt-1">Unserviceable Asset Scrap & Junk Sale Tracker</h3>
@@ -231,8 +246,8 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
             <div
               key={mat.materialCode}
               className={`bg-white/95 backdrop-blur-md border rounded-3xl p-5 shadow-sm space-y-3 transition-all relative overflow-hidden ${
-                isApproved ? 'border-emerald-500 ring-2 ring-emerald-400/50 shadow-lg bg-emerald-50/20'
-                : isThresholdReached ? 'border-amber-300 ring-2 ring-amber-400/40 shadow-md bg-amber-50/20'
+                isApproved ? 'border-emerald-500 ring-2 ring-emerald-400/50 shadow-lg bg-emerald-50'
+                : isThresholdReached ? 'border-amber-300 ring-2 ring-amber-400/40 shadow-md bg-amber-50'
                 : 'border-gray-200'
               }`}
             >
@@ -464,6 +479,53 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
           </div>
         </div>
       )}
+
+      {/* Junk-sale confirmation (destructive: disposes of the batch) */}
+      <ConfirmDialog
+        open={sellTarget !== null}
+        onOpenChange={(open) => !open && setSellTarget(null)}
+        title="Sell scrap batch"
+        description={
+          sellTarget
+            ? `Sell ${sellTarget.kg.toFixed(1)} kg of ${sellTarget.name} as scrap? This disposes of the accumulated batch.`
+            : undefined
+        }
+        confirmLabel="Sell batch"
+        destructive
+        loading={sellTarget !== null && busy === sellTarget.code}
+        onConfirm={confirmSell}
+      />
+
+      {/* Disposal reference (replaces the legacy window.prompt) */}
+      <ConfirmDialog
+        open={disposeTarget !== null}
+        onOpenChange={(open) => !open && setDisposeTarget(null)}
+        title="Dispose scrap item"
+        description={
+          disposeTarget
+            ? `Dispose "${disposeTarget.description || disposeTarget.materialName}" via an accredited handler.`
+            : undefined
+        }
+        confirmLabel="Mark disposed"
+        destructive
+        loading={disposeTarget !== null && busy === disposeTarget.id}
+        onConfirm={confirmDispose}
+      >
+        <div className="space-y-1.5">
+          <label
+            htmlFor="disposal-reference"
+            className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block"
+          >
+            Disposal reference (WMR / DENR receipt no.)
+          </label>
+          <Input
+            id="disposal-reference"
+            value={disposeRef}
+            onChange={(event) => setDisposeRef(event.target.value)}
+            placeholder="Optional"
+          />
+        </div>
+      </ConfirmDialog>
     </div>
   );
 };

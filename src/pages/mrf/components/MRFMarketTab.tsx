@@ -26,11 +26,11 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
       {/* Market Overview Header */}
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-[var(--gold)]/15 text-[var(--gold)] flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-[color-mix(in_srgb,var(--gold)_15%,white)] text-[var(--gold)] flex items-center justify-center shrink-0">
             <Scale size={24} />
           </div>
           <div>
-            <span className="text-[10px] font-black text-[var(--gold)] bg-[var(--gold)]/15 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-black text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_15%,white)] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Market Inventory Ledger
             </span>
             <h3 className="text-xl font-heading font-black text-[var(--text-strong)] mt-1">Itemized Recycling Market & Selling Tracker</h3>
@@ -61,9 +61,9 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
               key={cat.id}
               className={`bg-white/95 backdrop-blur-md border rounded-3xl p-5 shadow-sm space-y-3 transition-all relative overflow-hidden ${
                 isApproved
-                  ? 'border-emerald-500 ring-2 ring-emerald-400/50 shadow-lg bg-emerald-50/20'
+                  ? 'border-emerald-500 ring-2 ring-emerald-400/50 shadow-lg bg-emerald-50'
                   : isThresholdReached
-                  ? 'border-amber-300 ring-2 ring-amber-400/40 shadow-md bg-amber-50/20'
+                  ? 'border-amber-300 ring-2 ring-amber-400/40 shadow-md bg-amber-50'
                   : 'border-gray-200'
               }`}
             >

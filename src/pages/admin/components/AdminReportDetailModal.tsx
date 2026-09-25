@@ -100,7 +100,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
 
         {/* Modal Header */}
         <div className="flex items-start gap-3 border-b border-gray-100 pb-3 pr-8">
-          <div className="h-11 w-11 rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center font-bold shrink-0">
+          <div className="h-11 w-11 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_15%,white)] text-[var(--accent)] flex items-center justify-center font-bold shrink-0">
             <Eye size={22} />
           </div>
           <div>
@@ -142,7 +142,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
         </div>
 
         {/* Prominent High-Visibility Campus Location Banner */}
-        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
+        <div className="bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
           <div>
             <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-wider block">Target Campus Location</span>
             <h4 className="text-lg font-heading font-black text-[var(--text-strong)] leading-tight mt-0.5">{cleanLocationName(report.locationName)}</h4>
@@ -200,7 +200,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
                     ? (report.pointsAwarded > 0 ? `+${report.pointsAwarded} pts` : 'No points awarded')
                     : (report.isVerified ? 'Awaiting MRF collection' : 'Pending verification')}
                 {report.reporterRank != null && (
-                  <span className="text-[9px] font-bold text-[var(--gold)] bg-[var(--gold)]/10 px-1.5 py-0.5 rounded-full">
+                  <span className="text-[9px] font-bold text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_10%,white)] px-1.5 py-0.5 rounded-full">
                     Rank #{report.reporterRank}
                   </span>
                 )}
@@ -260,7 +260,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
               </div>
 
               {/* Scattered Debris Banner Overlay */}
-              <div className="absolute top-2 left-2 right-2 bg-rose-500/90 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10px] font-bold border border-rose-400 shadow-md flex items-center justify-between z-30">
+              <div className="absolute top-2 left-2 right-2 bg-rose-500 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10px] font-bold border border-rose-400 shadow-md flex items-center justify-between z-30">
                 <span className="flex items-center gap-1">
                   <AlertTriangle size={12} /> Scattered Debris Report (No Trash Cans)
                 </span>
@@ -300,12 +300,12 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
 
         {/* MRF Staff Collection Summary (if collected) */}
         {(report.status === 'COLLECTED' || report.status === 'RESOLVED') && (
-          <div className="p-4 rounded-2xl bg-[var(--primary)]/10 border border-[var(--primary)]/25 text-[var(--text-strong)] space-y-2 text-xs">
+          <div className="p-4 rounded-2xl bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/25 text-[var(--text-strong)] space-y-2 text-xs">
             <div className="flex items-center justify-between font-extrabold text-[var(--text-strong)]">
               <span className="flex items-center gap-1.5 uppercase text-[10px] tracking-wider">
                 <Package size={14} className="text-[var(--text-strong)]" /> MRF Collection Report
               </span>
-              <span className="text-[10px] bg-[var(--primary)]/10 px-2.5 py-0.5 rounded-full text-[var(--text-strong)] font-bold">
+              <span className="text-[10px] bg-[color-mix(in_srgb,var(--primary)_10%,white)] px-2.5 py-0.5 rounded-full text-[var(--text-strong)] font-bold">
                 Collected by: {report.assignedMrfName || 'MRF Staff'}
               </span>
             </div>

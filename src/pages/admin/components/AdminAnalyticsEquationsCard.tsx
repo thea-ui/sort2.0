@@ -47,7 +47,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       title: 'Total Campus Submissions & Grade Distribution',
       icon: Layers,
       color: 'text-[var(--text-strong)]',
-      bgColor: 'bg-[var(--primary)]/10',
+      bgColor: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
       borderColor: 'border-[var(--primary)]/25',
       formula: 'N_total = N_student + N_teacher',
       subFormula: 'Grade_Share (%) = (N_grade / N_total) × 100%',
@@ -65,7 +65,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       title: 'Dispatch & Collection Resolution Rate',
       icon: TrendingUp,
       color: 'text-[var(--accent)]',
-      bgColor: 'bg-[var(--primary)]/10',
+      bgColor: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
       borderColor: 'border-emerald-200',
       formula: 'Resolution Rate (%) = (N_collected / N_total) × 100%',
       subFormula: 'Pending_Rate (%) = 100% - Resolution Rate (%)',
@@ -102,7 +102,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       title: 'Quarter-End Rank 1 Rewards Reserve (20% Rule)',
       icon: Coins,
       color: 'text-[var(--gold)]',
-      bgColor: 'bg-amber-50/80',
+      bgColor: 'bg-amber-50',
       borderColor: 'border-amber-300',
       formula: 'Reserve_Fund (₱) = Total_MRF_Sales × Reserve_Rate',
       subFormula: 'Quarterly_Disbursement = Reserve_Fund / Eligible_Rank1_Winners',
@@ -119,7 +119,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       title: 'Reporter Rank Points Allocation & Sanctions',
       icon: Award,
       color: 'text-[var(--gold)]',
-      bgColor: 'bg-[var(--gold)]/10',
+      bgColor: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]',
       borderColor: 'border-[var(--gold)]/25',
       formula: 'User_Points = Σ (Reporter_Rank_Bonus) - Σ (Offense_Penalties)',
       subFormula: 'Rank_Bonus = Dynamic from PointRule table | Penalties = Configurable in Settings',
@@ -143,12 +143,12 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
       {/* Header with toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--primary)]/10 pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)]">
+          <div className="p-2.5 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)]">
             <Calculator size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 MATHEMATICAL FORMULATIONS & TELEMETRY EQUATIONS
               </span>
               <span className="text-xs font-semibold text-[var(--text-strong)]/40">• System Synchronized</span>
@@ -221,7 +221,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
                           {eq.category}
                         </span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-white/80 border border-black/5 text-[var(--text-strong)]">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-white border border-black/5 text-[var(--text-strong)]">
                         Active Rule
                       </span>
                     </div>
@@ -251,7 +251,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {eq.parameters.map((p, idx) => (
-                        <div key={idx} className="p-2 rounded-xl bg-white/80 border border-black/5 flex flex-col justify-between">
+                        <div key={idx} className="p-2 rounded-xl bg-white border border-black/5 flex flex-col justify-between">
                           <span className="text-[10px] font-mono text-gray-500 font-semibold">{p.symbol} ({p.label})</span>
                           <span className="text-xs font-black text-[var(--text-strong)] mt-0.5">{p.value}</span>
                         </div>
@@ -260,7 +260,7 @@ export const AdminAnalyticsEquationsCard: React.FC<AdminAnalyticsEquationsCardPr
                   </div>
 
                   {/* Live Calculation Output */}
-                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 text-xs font-bold flex items-center gap-2">
+                  <div className="p-2.5 rounded-xl bg-[color-mix(in_srgb,var(--color-emerald-500)_10%,white)] border border-emerald-500/20 text-emerald-900 text-xs font-bold flex items-center gap-2">
                     <CheckCircle2 size={14} className="text-[var(--accent)] shrink-0" />
                     <span className="text-[11px] font-medium leading-tight">
                       <strong className="text-emerald-950">Live Output: </strong>

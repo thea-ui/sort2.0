@@ -19,7 +19,7 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
 
   return (
     <div className="space-y-2.5">
-      <div className="bg-[var(--gold)]/5 border border-[var(--gold)]/25 rounded-2xl px-4 py-3">
+      <div className="bg-[color-mix(in_srgb,var(--gold)_5%,white)] border border-[var(--gold)]/25 rounded-2xl px-4 py-3">
         <p className="text-[11px] font-bold text-[var(--text-strong)]/70">
           Placeholder prize tiers — replace titles, values, and stock after the student/professor interview.
           Changes apply to future unlocks only; existing claims keep their snapshot.
@@ -41,7 +41,7 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
             <div className="flex items-start gap-3 min-w-0">
               <div
                 className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isPhysical ? 'bg-[var(--gold)]/10 text-[var(--gold)]' : 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                  isPhysical ? 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)]' : 'bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)]'
                 }`}
               >
                 {isPhysical ? <Package size={17} /> : <Coins size={17} />}

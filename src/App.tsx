@@ -25,11 +25,13 @@ const AdminDashboard = lazy(() =>
 );
 
 function RouteFallback() {
+  // Loading gate (SMART master handoff Part 1 §4): centered 48px primary ring
+  // spinner with a status label — never a blank screen.
   return (
-    <div className="flex min-h-[60vh] w-full items-center justify-center bg-[var(--background)] text-[var(--text-strong)]">
-      <div className="flex flex-col items-center space-y-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--accent)] border-t-transparent"></div>
-        <p className="text-sm font-semibold tracking-wide">Loading workspace...</p>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+      <div className="flex flex-col items-center gap-4" role="status" aria-label="Loading">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted-foreground font-medium">Loading...</p>
       </div>
     </div>
   );

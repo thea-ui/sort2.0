@@ -25,7 +25,7 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
     <div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[var(--action)]/10 rounded-xl text-[var(--action)]">
+          <div className="p-2 bg-[color-mix(in_srgb,var(--action)_10%,white)] rounded-xl text-[var(--action)]">
             <MapPin size={18} />
           </div>
           <div>
@@ -43,14 +43,14 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
           hotspotZones.map((zone) => (
             <div
               key={zone.name}
-              className="p-3 bg-gray-50/80 hover:bg-white rounded-2xl border border-gray-100 transition-all flex items-center justify-between"
+              className="p-3 bg-gray-50 hover:bg-white rounded-2xl border border-gray-100 transition-all flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
                 <div
                   className={`p-2 rounded-xl ${
                     zone.isOverdue
                       ? 'bg-rose-50 text-rose-600'
-                      : 'bg-[var(--primary)]/10 text-[var(--text-strong)]'
+                      : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]'
                   }`}
                 >
                   <MapPin size={16} />
@@ -68,7 +68,7 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
                     High Priority
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold text-[var(--text-strong)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full border border-[var(--primary)]/25">
+                  <span className="text-[10px] font-bold text-[var(--text-strong)] bg-[color-mix(in_srgb,var(--primary)_10%,white)] px-2 py-0.5 rounded-full border border-[var(--primary)]/25">
                     Normal
                   </span>
                 )}
@@ -76,7 +76,7 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
             </div>
           ))
         ) : (
-          <div className="p-4 text-center text-xs text-[var(--text-strong)]/50 font-medium bg-gray-50/70 rounded-2xl border border-gray-100">
+          <div className="p-4 text-center text-xs text-[var(--text-strong)]/50 font-medium bg-gray-50 rounded-2xl border border-gray-100">
             No active hotspots — all zones clear
           </div>
         )}
@@ -95,7 +95,7 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
       <button
         type="button"
         onClick={() => onNavigate?.('admin-bin-map')}
-        className="text-[11px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2.5 py-1 rounded-full border border-[var(--accent)]/20 flex items-center gap-1 cursor-pointer hover:bg-[var(--accent)]/20 transition-colors"
+        className="text-[11px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] px-2.5 py-1 rounded-full border border-[var(--accent)]/20 flex items-center gap-1 cursor-pointer hover:bg-[color-mix(in_srgb,var(--accent)_20%,white)] transition-colors"
       >
         <ExternalLink size={11} />
         View Bin Map

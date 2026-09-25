@@ -28,7 +28,7 @@ export const WasteCompositionCard: React.FC<WasteCompositionCardProps> = ({
     <div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[var(--primary)]/10 rounded-xl text-[var(--text-strong)]">
+          <div className="p-2 bg-[color-mix(in_srgb,var(--primary)_10%,white)] rounded-xl text-[var(--text-strong)]">
             <Layers size={18} />
           </div>
           <div>
@@ -67,7 +67,7 @@ export const WasteCompositionCard: React.FC<WasteCompositionCardProps> = ({
           return (
             <div
               key={item.id}
-              className="p-3 bg-gray-50/80 hover:bg-white rounded-2xl border border-gray-100 transition-all flex items-center justify-between"
+              className="p-3 bg-gray-50 hover:bg-white rounded-2xl border border-gray-100 transition-all flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-xl ${item.bgColor} ${item.textColor}`}>

@@ -70,7 +70,7 @@ export const AtlasRoomDirectory: React.FC<AtlasRoomDirectoryProps> = ({ building
     <div data-testid="atlas-room-directory" className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
         <div>
-          <span className="text-[10px] font-extrabold text-[var(--text-strong)] bg-[var(--primary)]/10 border border-[var(--primary)]/25 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-extrabold text-[var(--text-strong)] bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/25 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
             Synced from ATLAS
           </span>
           <h3 className="text-base font-extrabold text-[var(--text-strong)] mt-1 flex items-center gap-2">

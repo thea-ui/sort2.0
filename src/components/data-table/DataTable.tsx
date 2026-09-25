@@ -1,5 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
+import { Card } from '../ui/Card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/Table';
+import { cn } from '../../utils/cn';
 import { EmptyState, ErrorState, LoadingSkeleton } from './TableStates';
 import { TablePagination } from './TablePagination';
 import { TableToolbar } from './TableToolbar';
@@ -41,9 +52,11 @@ const ALIGN_CLASS: Record<'left' | 'center' | 'right', string> = {
 };
 
 /**
- * Generic table (SMART `DataTable` parity, SORT tokens): card shell, optional
- * header band + toolbar, loading/error/empty switching, and pagination that
- * hides itself for small result sets.
+ * Generic table (SMART master handoff Part 2, SORT content): card shell with a
+ * 16.8px-class radius and zero inner padding, optional muted header band with
+ * the toolbar, loading/error/empty states inside the body, and a pagination
+ * footer that hides itself for small result sets. Sorting and footer totals are
+ * SORT additions on top of the reference behavior.
  */
 export function DataTable<T>({
   columns,
@@ -111,89 +124,82 @@ export function DataTable<T>({
   };
 
   const hasFooter = columns.some((column) => column.footer);
-
   const showToolbar = searchable || filters.length > 0 || toolbarActions !== undefined;
   const showHeader = Boolean(title || description || showToolbar);
   const colSpan = Math.max(columns.length, 1);
 
   return (
-    <div
-      className={`bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm overflow-hidden ${className}`}
-    >
+    <Card className={cn('border border-border shadow-sm bg-card rounded-xl p-0 overflow-hidden', className)}>
       {showHeader && (
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-6 pt-5 pb-4 border-b border-[var(--primary)]/5">
-          <div>
-            {title && <h3 className="text-base font-semibold text-[var(--text-strong)]">{title}</h3>}
-            {description && (
-              <p className="text-xs tracking-wide font-medium uppercase text-[var(--text-strong)]/50 mt-0.5">
-                {description}
-              </p>
-            )}
-          </div>
+        <div className="px-6 py-4 border-b border-border flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {(title || description) && (
+            <div>
+              {title && <h3 className="text-base font-semibold text-foreground">{title}</h3>}
+              {description && <p className="text-sm text-muted-foreground">{description}</p>}
+            </div>
+          )}
           {showToolbar && (
-            <TableToolbar
-              searchValue={searchable ? search : undefined}
-              onSearchChange={searchable ? setSearch : undefined}
-              searchPlaceholder={searchPlaceholder}
-              filters={filters}
-              actions={toolbarActions}
-            />
+            <div className="min-w-0">
+              <TableToolbar
+                searchValue={searchable ? search : undefined}
+                onSearchChange={searchable ? setSearch : undefined}
+                searchPlaceholder={searchPlaceholder}
+                filters={filters}
+                actions={toolbarActions}
+              />
+            </div>
           )}
         </div>
       )}
 
       <div className="overflow-x-auto">
-        <table
-          className="w-full text-left text-sm border-collapse"
-          style={minWidth ? { minWidth } : undefined}
-        >
-          <thead>
-            <tr className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-strong)]/40 bg-[var(--primary)]/5 border-b border-[var(--primary)]/10">
+        <Table style={minWidth ? { minWidth } : undefined}>
+          <TableHeader>
+            <TableRow className="bg-muted/50 border-b border-border">
               {columns.map((column) => {
                 const isSorted = sort?.key === column.key;
                 return (
-                  <th
+                  <TableHead
                     key={column.key}
                     scope="col"
                     onClick={column.value ? () => toggleSort(column) : undefined}
                     aria-sort={
                       isSorted ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : undefined
                     }
-                    className={`py-3 px-4 ${ALIGN_CLASS[column.align ?? 'left']} ${
-                      column.value
-                        ? 'cursor-pointer select-none hover:text-[var(--text-strong)]/70 transition-colors'
-                        : ''
-                    } ${column.className ?? ''}`}
+                    className={cn(
+                      ALIGN_CLASS[column.align ?? 'left'],
+                      column.value &&
+                        'cursor-pointer select-none hover:text-foreground transition-colors',
+                      column.className,
+                    )}
                   >
                     <span
-                      className={`inline-flex items-center gap-1.5 ${
-                        column.align === 'right'
-                          ? 'justify-end'
-                          : column.align === 'center'
-                            ? 'justify-center'
-                            : ''
-                      }`}
+                      className={cn(
+                        'inline-flex items-center gap-1.5',
+                        column.align === 'right' && 'justify-end',
+                        column.align === 'center' && 'justify-center',
+                      )}
                     >
                       {column.header}
                       {column.value &&
                         (isSorted ? (
                           sort!.dir === 'asc' ? (
-                            <ArrowUp size={12} className="text-[var(--accent)]" />
+                            <ArrowUp size={12} className="text-foreground" />
                           ) : (
-                            <ArrowDown size={12} className="text-[var(--accent)]" />
+                            <ArrowDown size={12} className="text-foreground" />
                           )
                         ) : (
                           <ChevronsUpDown size={12} className="opacity-30" />
                         ))}
                     </span>
-                  </th>
+                  </TableHead>
                 );
               })}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--primary)]/5">
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {loading ? (
-              <LoadingSkeleton columns={columns} />
+              <LoadingSkeleton columns={columns} rows={pagination.rowsPerPage} />
             ) : error ? (
               <ErrorState colSpan={colSpan} message={error} onRetry={onRetry} />
             ) : sortedRows.length === 0 ? (
@@ -205,51 +211,49 @@ export function DataTable<T>({
               />
             ) : (
               visibleRows.map((row, index) => (
-                <tr
+                <TableRow
                   key={rowKey(row, index)}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={`transition-colors hover:bg-[var(--accent)]/5 ${
-                    onRowClick ? 'cursor-pointer' : ''
-                  }`}
+                  className={cn(onRowClick && 'cursor-pointer')}
                 >
                   {columns.map((column) => (
-                    <td
+                    <TableCell
                       key={column.key}
-                      className={`py-3.5 px-4 text-sm text-[var(--text-strong)] whitespace-nowrap ${
-                        ALIGN_CLASS[column.align ?? 'left']
-                      } ${column.className ?? ''}`}
+                      className={cn(ALIGN_CLASS[column.align ?? 'left'], column.className)}
                     >
                       {column.cell
                         ? column.cell(row)
                         : column.value
                           ? String(column.value(row))
                           : ''}
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))
             )}
-          </tbody>
+          </TableBody>
           {hasFooter && !loading && !error && sortedRows.length > 0 && (
-            <tfoot className="border-t border-[var(--primary)]/10 bg-[var(--primary)]/5">
-              <tr>
+            <TableFooter>
+              <TableRow className="border-0 hover:bg-transparent">
                 {columns.map((column) => (
-                  <td
+                  <TableCell
                     key={column.key}
-                    className={`py-3 px-4 text-sm font-bold text-[var(--text-strong)] whitespace-nowrap ${
-                      ALIGN_CLASS[column.align ?? 'left']
-                    } ${column.className ?? ''}`}
+                    className={cn(
+                      'font-bold',
+                      ALIGN_CLASS[column.align ?? 'left'],
+                      column.className,
+                    )}
                   >
                     {column.footer ? column.footer(sortedRows) : ''}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
-            </tfoot>
+              </TableRow>
+            </TableFooter>
           )}
-        </table>
+        </Table>
       </div>
 
-      {paginate && (
+      {paginate && !loading && !error && sortedRows.length > 0 && (
         <TablePagination
           page={pagination.page}
           totalPages={pagination.totalPages}
@@ -261,6 +265,6 @@ export function DataTable<T>({
           onRowsPerPageChange={pagination.setRowsPerPage}
         />
       )}
-    </div>
+    </Card>
   );
 }

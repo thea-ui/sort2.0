@@ -13,10 +13,10 @@ interface ConditionItem {
 }
 
 const DEFAULT_CONDITIONS: ConditionItem[] = [
-  { id: 'c-1', name: 'Damaged', code: 'DAMAGED', description: 'Broken but may be repairable', badgeStyle: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25', enabled: true },
+  { id: 'c-1', name: 'Damaged', code: 'DAMAGED', description: 'Broken but may be repairable', badgeStyle: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25', enabled: true },
   { id: 'c-2', name: 'Malfunctioning', code: 'MALFUNCTIONING', description: 'Not working properly', badgeStyle: 'bg-amber-100 text-amber-800 border-amber-300', enabled: true },
   { id: 'c-3', name: 'Worn Out', code: 'WORN_OUT', description: 'Heavy wear, needs replacement', badgeStyle: 'bg-orange-100 text-orange-800 border-orange-300', enabled: true },
-  { id: 'c-4', name: 'Missing Parts', code: 'MISSING_PARTS', description: 'Incomplete, parts missing', badgeStyle: 'bg-[var(--gold)]/10 text-[var(--gold)] border-[var(--gold)]/25', enabled: true },
+  { id: 'c-4', name: 'Missing Parts', code: 'MISSING_PARTS', description: 'Incomplete, parts missing', badgeStyle: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] border-[var(--gold)]/25', enabled: true },
 ];
 
 export const AdminAssetConditionsTab: React.FC = () => {
@@ -109,7 +109,7 @@ export const AdminAssetConditionsTab: React.FC = () => {
     <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-8 shadow-sm space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-black text-[var(--text-strong)] flex items-center gap-2">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
             <ShieldCheck size={22} className="text-[var(--accent)]" />
             Asset Conditions
           </h3>

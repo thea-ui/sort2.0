@@ -10,7 +10,7 @@ type FilterKey = 'ALL' | ScrapItemStatus;
 
 const STATUS_META: Record<ScrapItemStatus, { label: string; badge: string }> = {
   AWAITING_WEIGHT: { label: 'Awaiting weight', badge: 'bg-amber-100 text-amber-900 border-amber-300' },
-  IN_STOCK: { label: 'In stock', badge: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25' },
+  IN_STOCK: { label: 'In stock', badge: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25' },
   SOLD: { label: 'Sold', badge: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
   DISPOSED: { label: 'Disposed', badge: 'bg-rose-100 text-rose-900 border-rose-300' },
 };
@@ -62,7 +62,7 @@ export const AssetScrapWeighedHistory: React.FC<AssetScrapWeighedHistoryProps> =
           <History size={16} className="text-[var(--text-strong)]" />
           <span>Weighed Scrap History</span>
         </h4>
-        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[var(--primary)]/15 text-[var(--text-strong)] border border-[var(--primary)]/20">
+        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--primary)_15%,white)] text-[var(--text-strong)] border border-[var(--primary)]/20">
           {items.length} weighed · {totalKg.toFixed(1)} kg total
         </span>
       </div>
