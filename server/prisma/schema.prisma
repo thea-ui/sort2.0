@@ -157,6 +157,12 @@ model User {
   portalAccountActive   Boolean?   @default(true) @map("portal_account_active")
   archivedAt            DateTime?  @map("archived_at")
 
+  // Break-glass offline access. This is a SORT-local PIN that is deliberately
+  // separate from any EnrollPro credential: it is only usable while offline
+  // auth is explicitly enabled and EnrollPro is unreachable. bcrypt-hashed.
+  offlinePinHash        String?    @map("offline_pin_hash")
+  offlinePinSetAt       DateTime?  @map("offline_pin_set_at")
+
   reports         Report[]       @relation("ReportedBy")
   assignedReports Report[]       @relation("AssignedToMRF")
   offenses        Offense[]
@@ -170,6 +176,7 @@ model User {
   walkInsRecorded      WalkInTurnover[] @relation("WalkInRecorder")
   rewardClaims         RewardClaim[]
   rewardReleases       RewardClaim[]    @relation("RewardReleasedBy")
+  offlineAuthLogs      OfflineAuthLog[]
 
   @@index([enrollproId])
   @@index([syncSource])
@@ -385,6 +392,12 @@ model SystemSetting {
   enrollproPublicUrl        String?  @map("enrollpro_public_url")
   enrollproUrl              String?  @map("enrollpro_url")
   enrollproBrandingSyncedAt DateTime? @map("enrollpro_branding_synced_at")
+  // Break-glass offline auth. Default OFF; when enabled it is hard-capped by
+  // offlineAuthExpiresAt and auto-disabled once EnrollPro is reachable again.
+  offlineAuthEnabled        Boolean   @default(false) @map("offline_auth_enabled")
+  offlineAuthExpiresAt      DateTime? @map("offline_auth_expires_at")
+  offlineAuthEnabledBy      String?   @map("offline_auth_enabled_by")
+  offlineAuthEnabledAt      DateTime? @map("offline_auth_enabled_at")
   updatedAt                 DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
@@ -568,13 +581,37 @@ model UserSession {
   ipAddress    String?  @map("ip_address")
   expiresAt    DateTime @map("expires_at")
   createdAt    DateTime @default(now()) @map("created_at")
+  // NORMAL sessions come from a verified EnrollPro login. BREAK_GLASS sessions
+  // come from the offline PIN fallback and are refused once offline auth is
+  // disabled or expires, so they cannot outlive the outage.
+  kind         String   @default("NORMAL") @map("kind")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([refreshToken])
   @@index([expiresAt])
+  @@index([kind])
   @@map("user_sessions")
+}
+
+// Audit trail for every break-glass credential check. Kept separate from
+// audit_logs so "who tried to sign in offline" is directly queryable.
+model OfflineAuthLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  method     String   @default("OFFLINE_PIN")
+  success    Boolean
+  reason     String?
+  ipAddress  String?  @map("ip_address")
+  deviceInfo String?  @map("device_info")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("offline_auth_logs")
 }
 
 model TermCalendar {

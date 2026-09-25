@@ -18,11 +18,14 @@
     "test:atlas": "node --import tsx --test src/services/__tests__/atlas-map.test.ts",
     "test:branding": "node --import tsx --test src/services/__tests__/branding.test.ts",
     "test:sync-guard": "node --import tsx --test src/services/__tests__/enrollpro-sync-guard.test.ts",
+    "test:offline-auth-unit": "node --import tsx --test src/services/__tests__/offline-auth.test.ts",
+    "test:offline-auth": "tsx src/scripts/offline-auth-smoke.ts",
     "db:reset-market": "tsx src/scripts/reset-market-stock.ts",
     "db:wipe-accounts": "tsx prisma/wipe-accounts.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

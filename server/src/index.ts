@@ -17,10 +17,13 @@ import assetScrapRoutes from './routes/asset-scrap.routes.js';
 import atlasRoutes from './routes/atlas.routes.js';
 import walkInRoutes from './routes/walk-in.routes.js';
 import rewardRoutes from './routes/reward.routes.js';
+import offlineAuthRoutes from './routes/offline-auth.routes.js';
 import { rescheduleSync } from './services/sync-scheduler.service.js';
 import { rescheduleBinReset } from './services/bin-reset.service.js';
 import { rescheduleAtlasSync } from './services/atlas-sync-scheduler.service.js';
 import { startBrandingSyncScheduler } from './services/branding-sync-scheduler.service.js';
+import { startOfflineAuthScheduler } from './services/offline-auth-scheduler.service.js';
+import { getOfflineAuthState, setOfflineAuthEnabled } from './services/offline-auth.service.js';
 import { UPLOADS_DIR } from './services/enrollpro-branding.service.js';
 import { mkdirSync } from 'node:fs';
 
@@ -101,6 +104,7 @@ app.use('/api/asset-scrap', assetScrapRoutes);
 app.use('/api/atlas', atlasRoutes);
 app.use('/api/walk-ins', walkInRoutes);
 app.use('/api/rewards', rewardRoutes);
+app.use('/api/offline-auth', offlineAuthRoutes);
 
 // Global Error Handler — log the full error, never leak internals to clients
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -136,6 +140,30 @@ rescheduleAtlasSync().catch(err => {
 
 // ─── EnrollPro Branding Sync (boot + every 60 minutes) ─────────────────
 startBrandingSyncScheduler();
+
+// ─── Break-glass Offline Auth auto-revert (every 5 minutes) ────────────
+// An armed fallback must never survive EnrollPro coming back.
+startOfflineAuthScheduler();
+
+// Escape hatch for a completely locked-out install: arm offline auth from the
+// server environment when nobody can sign in. Server-config access is already
+// trusted, and the normal 72h cap + auto-revert still apply.
+if ((process.env.OFFLINE_AUTH_ENABLED || '').trim().toLowerCase() === 'true') {
+  getOfflineAuthState()
+    .then((state) => {
+      if (state.enabled) {
+        console.log('[OfflineAuth] Already armed at boot; leaving the window unchanged');
+        return;
+      }
+      const parsed = Number(process.env.OFFLINE_AUTH_HOURS);
+      const hours = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 72) : 72;
+      return setOfflineAuthEnabled(true, { name: 'env-boot-override', role: 'SYSTEM' }, {
+        hours,
+        reason: 'OFFLINE_AUTH_ENABLED set in server environment',
+      });
+    })
+    .catch((err) => console.error('[OfflineAuth] Boot override failed:', err.message));
+}
 
 app.listen(PORT, () => {
   console.log(`SORTv2 PostgreSQL Express Server listening on http://localhost:${PORT}`);

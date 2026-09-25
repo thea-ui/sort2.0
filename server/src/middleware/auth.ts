@@ -8,6 +8,8 @@ export interface AuthenticatedRequest extends Request {
   userId: string;
   userRole: string;
   userName: string;
+  /** NORMAL = verified by EnrollPro; BREAK_GLASS = offline PIN fallback. */
+  sessionKind?: 'NORMAL' | 'BREAK_GLASS';
 }
 
 export function authenticate(req: Request, res: Response, next: NextFunction): any {
@@ -17,10 +19,11 @@ export function authenticate(req: Request, res: Response, next: NextFunction): a
   }
   try {
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, getJwtSecret(), { algorithms: JWT_ALGORITHMS }) as { id: string; role: string; name?: string };
+    const decoded = jwt.verify(token, getJwtSecret(), { algorithms: JWT_ALGORITHMS }) as { id: string; role: string; name?: string; offline?: boolean };
     (req as AuthenticatedRequest).userId = decoded.id;
     (req as AuthenticatedRequest).userRole = decoded.role;
     (req as AuthenticatedRequest).userName = decoded.name || 'Unknown';
+    (req as AuthenticatedRequest).sessionKind = decoded.offline ? 'BREAK_GLASS' : 'NORMAL';
     next();
   } catch {
     return res.status(401).json({ error: 'Token is invalid or expired', code: 'INVALID_TOKEN' });
@@ -37,10 +40,11 @@ export function optionalAuthenticate(req: Request, _res: Response, next: NextFun
   if (authHeader && authHeader.startsWith('Bearer ')) {
     try {
       const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, getJwtSecret(), { algorithms: JWT_ALGORITHMS }) as { id: string; role: string; name?: string };
+      const decoded = jwt.verify(token, getJwtSecret(), { algorithms: JWT_ALGORITHMS }) as { id: string; role: string; name?: string; offline?: boolean };
       (req as AuthenticatedRequest).userId = decoded.id;
       (req as AuthenticatedRequest).userRole = decoded.role;
       (req as AuthenticatedRequest).userName = decoded.name || 'Unknown';
+      (req as AuthenticatedRequest).sessionKind = decoded.offline ? 'BREAK_GLASS' : 'NORMAL';
     } catch {
       // Ignore invalid tokens here; the route decides what public data to serve.
     }
