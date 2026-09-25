@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { authenticateWithEnrollPro, authenticateLearnerWithEnrollPro } from '../services/enrollpro-auth.service.js';
+import { getProviderStatus } from '../services/enrollpro-health.service.js';
 import { getJwtSecret } from '../config/env.js';
 
 const router = Router();
@@ -20,6 +21,19 @@ const loginLimiter = rateLimit({
   skipSuccessfulRequests: true,
   handler: (_req, res) => res.status(429).json({
     error: 'Too many login attempts. Please try again in 15 minutes.',
+    code: 'RATE_LIMITED',
+  }),
+});
+
+// Public status polling: bounded so it cannot be used to amplify probes
+// against EnrollPro. Cached server-side for 30s on top of this.
+const providerStatusLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({
+    error: 'Too many status checks. Please try again shortly.',
     code: 'RATE_LIMITED',
   }),
 });
@@ -49,6 +63,22 @@ function maskId(value: string | undefined | null): string {
   if (id.length <= 4) return '****';
   return `${id.slice(0, 2)}${'*'.repeat(id.length - 4)}${id.slice(-2)}`;
 }
+
+// GET /api/auth/provider-status — public identity-provider reachability.
+// Lets the login screens show an outage warning before credentials are typed.
+// Deliberately minimal: a boolean and a timestamp, never key or account data.
+router.get('/provider-status', providerStatusLimiter, async (_req: Request, res: Response): Promise<any> => {
+  try {
+    return res.json(await getProviderStatus());
+  } catch {
+    return res.json({
+      provider: 'enrollpro',
+      online: false,
+      checkedAt: new Date().toISOString(),
+      cached: false,
+    });
+  }
+});
 
 // POST /api/auth/login
 // Students login with LRN, Teachers/Admin/MRF login with Employee ID
@@ -213,8 +243,10 @@ router.post('/refresh', async (req: Request, res: Response): Promise<any> => {
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
-    // Strict guard: only EnrollPro-synced accounts are valid
-    if (session.user.syncSource !== 'ENROLLPRO') {
+    // Strict guard: only EnrollPro-synced accounts are valid. Exception:
+    // offline demo accounts (LOCAL) may keep refreshing, mirroring the
+    // /auth/me exception, so cross-browser demos survive an outage.
+    if (session.user.syncSource !== 'ENROLLPRO' && session.user.enrollmentStatus !== 'OFFLINE_DEMO') {
       await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
       return res.status(401).json({ error: 'Account not provisioned. Contact your administrator.' });
     }

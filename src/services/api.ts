@@ -10,10 +10,31 @@ function getAuthToken(): string | null {
 }
 
 /**
+ * The last account that completed a login/refresh. Persisted in localStorage
+ * (not sessionStorage) so the refresh token is still discoverable after a
+ * browser restart — sessionStorage is wiped when the tab closes, which used to
+ * strand a perfectly valid 7-day refresh token and force a fresh login.
+ */
+const LAST_USER_ID_KEY = 'sortv2_last_user_id';
+const USER_SNAPSHOT_KEY = 'sortv2_user_snapshot';
+
+function getStoredUserId(): string | null {
+  return sessionStorage.getItem('sortv2_user_id') || localStorage.getItem(LAST_USER_ID_KEY);
+}
+
+/**
+ * The last account persisted in localStorage. Exposed so callers can clear a
+ * session whose access token was already wiped from sessionStorage.
+ */
+export function getPersistedUserId(): string | null {
+  return localStorage.getItem(LAST_USER_ID_KEY);
+}
+
+/**
  * Helper to retrieve stored refresh token for the current user from localStorage
  */
 function getRefreshToken(): string | null {
-  const userId = sessionStorage.getItem('sortv2_user_id');
+  const userId = getStoredUserId();
   if (!userId) return null;
   return localStorage.getItem(`sortv2_refresh_${userId}`);
 }
@@ -23,6 +44,7 @@ function getRefreshToken(): string | null {
  */
 export function storeRefreshToken(userId: string, refreshToken: string): void {
   localStorage.setItem(`sortv2_refresh_${userId}`, refreshToken);
+  localStorage.setItem(LAST_USER_ID_KEY, userId);
 }
 
 /**
@@ -30,23 +52,70 @@ export function storeRefreshToken(userId: string, refreshToken: string): void {
  */
 export function clearRefreshToken(userId: string): void {
   localStorage.removeItem(`sortv2_refresh_${userId}`);
+  if (localStorage.getItem(LAST_USER_ID_KEY) === userId) {
+    localStorage.removeItem(LAST_USER_ID_KEY);
+  }
 }
 
+/**
+ * Cache the signed-in user's profile. Only used to keep an existing session
+ * usable when the server is briefly unreachable (e.g. a browser restart during
+ * an outage); it is never a substitute for server-side authorization.
+ */
+export function storeUserSnapshot(user: User): void {
+  try {
+    localStorage.setItem(USER_SNAPSHOT_KEY, JSON.stringify(user));
+  } catch {
+    /* storage full or unavailable — non-fatal */
+  }
+}
+
+export function getUserSnapshot(): User | null {
+  try {
+    const raw = localStorage.getItem(USER_SNAPSHOT_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearUserSnapshot(): void {
+  localStorage.removeItem(USER_SNAPSHOT_KEY);
+}
+
+export type SessionUser = User & { certificatesEarned?: unknown };
+
 let isRefreshing = false;
-let refreshPromise: Promise<any> | null = null;
+let refreshPromise: Promise<RefreshOutcome> | null = null;
+
+/**
+ * Result of a refresh attempt.
+ *
+ * - `refreshed`   — new tokens issued; caller may continue.
+ * - `invalid`     — the server definitively rejected the refresh token
+ *                   (400/401/403). The session is dead and must be cleared.
+ * - `unreachable` — transient failure (network down, 5xx, rate limit). The
+ *                   session is still valid; callers must NOT log the user out.
+ */
+export type RefreshOutcome =
+  | { status: 'refreshed'; accessToken: string; refreshToken: string; user: User }
+  | { status: 'invalid' }
+  | { status: 'unreachable' };
+
+const INVALID_REFRESH_STATUSES = new Set([400, 401, 403]);
 
 /**
  * Refresh the access token using the stored refresh token.
  * Coalesces concurrent calls into a single request.
  */
-async function refreshAccessToken(): Promise<{ accessToken: string; refreshToken: string; user: User } | null> {
+async function refreshAccessToken(): Promise<RefreshOutcome> {
   if (isRefreshing && refreshPromise) return refreshPromise;
 
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) return { status: 'invalid' };
 
   isRefreshing = true;
-  refreshPromise = (async () => {
+  refreshPromise = (async (): Promise<RefreshOutcome> => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
@@ -54,17 +123,28 @@ async function refreshAccessToken(): Promise<{ accessToken: string; refreshToken
         body: JSON.stringify({ refreshToken }),
       });
 
-      if (!response.ok) return null;
+      if (!response.ok) {
+        return INVALID_REFRESH_STATUSES.has(response.status)
+          ? { status: 'invalid' }
+          : { status: 'unreachable' };
+      }
 
       const data = await response.json();
       // Store new tokens
       sessionStorage.setItem('sortv2_token', data.accessToken);
       if (data.user?.id) {
+        sessionStorage.setItem('sortv2_user_id', data.user.id);
         storeRefreshToken(data.user.id, data.refreshToken);
+        storeUserSnapshot(data.user);
       }
-      return data;
+      return {
+        status: 'refreshed',
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user: data.user,
+      };
     } catch {
-      return null;
+      return { status: 'unreachable' };
     } finally {
       isRefreshing = false;
       refreshPromise = null;
@@ -72,6 +152,61 @@ async function refreshAccessToken(): Promise<{ accessToken: string; refreshToken
   })();
 
   return refreshPromise;
+}
+
+/**
+ * Result of a boot restore attempt.
+ *
+ * - `restored`    — a new token pair was issued; the user is genuinely signed in.
+ * - `unreachable` — SORT could not be reached. The stored credentials may still
+ *                   be valid, so the caller may keep a degraded session.
+ * - `none`        — there is nothing to resume, or the server definitively
+ *                   rejected the token. The caller must sign out and the cached
+ *                   profile is already cleared so it cannot resurrect a UI.
+ */
+export type RestoreOutcome =
+  | { status: 'restored'; user: User }
+  | { status: 'unreachable' }
+  | { status: 'none' };
+
+function burnStoredSession(userId: string | null): void {
+  if (userId) clearRefreshToken(userId);
+  sessionStorage.removeItem('sortv2_token');
+  sessionStorage.removeItem('sortv2_user_id');
+  sessionStorage.setItem('sort_auth', 'false');
+  clearUserSnapshot();
+}
+
+/**
+ * Resume a session from the persisted refresh token.
+ *
+ * Used on boot: a browser restart clears sessionStorage (which holds the access
+ * token) but not localStorage, so without this the user would have to log in
+ * again — impossible while the identity provider is unreachable.
+ */
+async function restoreSession(): Promise<RestoreOutcome> {
+  const userId = getStoredUserId();
+  if (!userId) return { status: 'none' };
+  if (!localStorage.getItem(`sortv2_refresh_${userId}`)) {
+    // A cached profile without a credential must never keep a session alive.
+    burnStoredSession(userId);
+    return { status: 'none' };
+  }
+
+  sessionStorage.setItem('sortv2_user_id', userId);
+  const outcome = await refreshAccessToken();
+
+  if (outcome.status === 'refreshed') {
+    return { status: 'restored', user: outcome.user };
+  }
+
+  if (outcome.status === 'unreachable') {
+    sessionStorage.removeItem('sortv2_user_id');
+    return { status: 'unreachable' };
+  }
+
+  burnStoredSession(userId);
+  return { status: 'none' };
 }
 
 /**
@@ -95,9 +230,9 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
 
   // If 401, try refreshing the token once
   if (response.status === 401 && getRefreshToken()) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      headers['Authorization'] = `Bearer ${refreshed.accessToken}`;
+    const outcome = await refreshAccessToken();
+    if (outcome.status === 'refreshed') {
+      headers['Authorization'] = `Bearer ${outcome.accessToken}`;
       response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers,
@@ -126,6 +261,17 @@ export const apiService = {
   },
 
   refreshAccessToken,
+
+  restoreSession,
+
+  /**
+   * Public identity-provider status. No auth required, no secrets returned.
+   * Lets the login screens warn that credential checks are unavailable before
+   * the user types anything.
+   */
+  getProviderStatus: async (): Promise<{ provider: string; online: boolean; checkedAt: string }> => {
+    return fetchAPI('/auth/provider-status');
+  },
 
   logout: async (refreshToken: string): Promise<void> => {
     await fetchAPI('/auth/logout', {
