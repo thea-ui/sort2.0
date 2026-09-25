@@ -1,5 +1,6 @@
 import { PrismaClient, SyncStatus, SyncSource, Role } from '@prisma/client';
 import { ensureSchoolYear } from './rollover.service.js';
+import { assessRoster, isPurgeableLocalAccount } from './enrollpro-sync-guard.js';
 
 const prisma = new PrismaClient();
 
@@ -477,11 +478,25 @@ interface SyncResult {
   };
   message?: string;
   error?: string;
+  /** Cohorts whose archive reconciliation was deliberately withheld. */
+  reconciliationSkipped?: string[];
 }
 
-export async function runEnrollProSync(): Promise<SyncResult> {
+export interface RunSyncOptions {
+  /**
+   * Opt-in override for the empty-roster guard. By default a cohort whose
+   * roster comes back with 0 records while local accounts still exist is
+   * treated as suspect: reconciliation is skipped so a degraded EnrollPro
+   * response cannot archive the entire cohort. Set this only when an empty
+   * roster is genuinely expected (e.g. a brand-new school year).
+   */
+  allowEmpty?: boolean;
+}
+
+export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<SyncResult> {
   const start = Date.now();
   const errors: string[] = [];
+  const reconciliationSkipped = new Map<'learners' | 'faculty' | 'staff', string>();
 
   const cohortResults = {
     learners: { pulled: 0, created: 0, updated: 0, deleted: 0 } as CohortResult,
@@ -501,6 +516,15 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       activeSchoolYear = syData.data;
       schoolYearId = activeSchoolYear?.id;
       schoolYearLabel = activeSchoolYear?.yearLabel;
+    } else {
+      // Learner and faculty rosters are school-year scoped. Without an SY id the
+      // fetch is unscoped, so the result cannot be trusted to prove that an
+      // account disappeared — reconciliation for those cohorts is skipped below.
+      // Staff is not SY-scoped and still reconciles normally.
+      reconciliationSkipped.set('learners', `active school-year unavailable (HTTP ${schoolYearRes.status})`);
+      reconciliationSkipped.set('faculty', `active school-year unavailable (HTTP ${schoolYearRes.status})`);
+      errors.push(`school-year context unavailable: HTTP ${schoolYearRes.status}`);
+      console.warn(`[Sync] Active school-year fetch returned HTTP ${schoolYearRes.status}; learner/faculty reconciliation will be skipped`);
     }
 
     // 1b. Mirror the full EnrollPro school-year catalog. This never activates
@@ -781,15 +805,50 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       select: { id: true, enrollproId: true },
     });
 
+    const cohortOf = (enrollproId: string): 'learners' | 'faculty' | 'staff' | null =>
+      enrollproId.startsWith('learner-') ? 'learners'
+        : enrollproId.startsWith('faculty-') ? 'faculty'
+        : enrollproId.startsWith('staff-') ? 'staff'
+        : null;
+
+    const localCohortCounts = { learners: 0, faculty: 0, staff: 0 };
+    for (const u of localSynced) {
+      if (!u.enrollproId) continue;
+      const cohort = cohortOf(u.enrollproId);
+      if (cohort) localCohortCounts[cohort]++;
+    }
+
+    // Empty-roster guard: EnrollPro can answer 200 with an empty/partial payload
+    // (degraded instance, wrong school-year scope). Treating that as "everyone
+    // left" would mass-archive the cohort, so require an explicit override.
+    for (const cohort of ['learners', 'faculty', 'staff'] as const) {
+      if (reconciliationSkipped.has(cohort)) continue;
+      const decision = assessRoster({
+        pulled: cohortResults[cohort].pulled,
+        fetchError: cohortResults[cohort].error,
+        localCount: localCohortCounts[cohort],
+        allowEmpty: options.allowEmpty === true,
+      });
+      if (!decision.reconcile) {
+        const reason = decision.reason || 'roster not trusted';
+        reconciliationSkipped.set(cohort, reason);
+        if (!cohortResults[cohort].error) {
+          errors.push(`${cohort}: ${reason}`);
+          console.warn(`[Sync] ${reason}`);
+        }
+      }
+    }
+
     for (const u of localSynced) {
       if (!u.enrollproId) continue;
 
-      const cohort = u.enrollproId.startsWith('learner-') ? 'learners'
-        : u.enrollproId.startsWith('faculty-') ? 'faculty'
-        : u.enrollproId.startsWith('staff-') ? 'staff'
-        : null;
+      const cohort = cohortOf(u.enrollproId);
 
       if (!cohort) continue;
+
+      // Skip a cohort whose reconciliation was withheld (empty/failed/unscoped
+      // roster). No archive is ever performed without a trustworthy roster.
+      if (reconciliationSkipped.has(cohort)) continue;
 
       // Only reconcile if this cohort was successfully fetched (no error)
       if (!cohortResults[cohort].error && !syncedIdsByCohort[cohort].has(u.enrollproId)) {
@@ -816,12 +875,14 @@ export async function runEnrollProSync(): Promise<SyncResult> {
     }
 
     // Purge leftover LOCAL-synced accounts — but NEVER one that owns data
-    // (reports, points, walk-in turnovers, claims, offenses, sessions). Offline
-    // walk-in students earn real points that must survive a future sync.
+    // (reports, points, walk-in turnovers, claims, offenses, sessions) or one
+    // that is a deliberate offline walk-in demo account (OFFLINE_DEMO), which is
+    // seeded precisely so the station can be demonstrated without EnrollPro.
     const localAccounts = await prisma.user.findMany({
       where: { syncSource: 'LOCAL' },
       select: {
         id: true,
+        enrollmentStatus: true,
         _count: {
           select: {
             reports: true,
@@ -839,7 +900,12 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       },
     });
     const orphanLocalIds = localAccounts
-      .filter((u) => Object.values(u._count).every((count) => count === 0))
+      .filter((u) =>
+        isPurgeableLocalAccount({
+          enrollmentStatus: u.enrollmentStatus,
+          activityCounts: Object.values(u._count),
+        })
+      )
       .map((u) => u.id);
     const localPurge = orphanLocalIds.length > 0
       ? await prisma.user.deleteMany({ where: { id: { in: orphanLocalIds } } })
@@ -865,15 +931,24 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       status = SyncStatus.FAILED;
     } else if (failedCohorts > 0) {
       status = SyncStatus.PARTIAL;
+    } else if (reconciliationSkipped.size > 0) {
+      // Data was pulled, but at least one cohort was deliberately not
+      // reconciled. Reporting SUCCESS here would hide a degraded provider.
+      status = SyncStatus.PARTIAL;
     } else {
       status = SyncStatus.SUCCESS;
     }
 
     const durationMs = Date.now() - start;
 
-    const message = learnerRosterEmpty
-      ? `NO_STUDENTS_ENROLLED: EnrollPro SY ${schoolYearLabel ?? schoolYearId ?? '?'} has no enrolled learners yet`
+    const skippedSummary = reconciliationSkipped.size > 0
+      ? `SKIPPED_RECONCILIATION(${[...reconciliationSkipped.keys()].join(',')})`
       : undefined;
+
+    const message = skippedSummary
+      ?? (learnerRosterEmpty
+        ? `NO_STUDENTS_ENROLLED: EnrollPro SY ${schoolYearLabel ?? schoolYearId ?? '?'} has no enrolled learners yet`
+        : undefined);
     if (message) console.log(`[Sync] ${message}`);
 
     await prisma.enrollmentSyncLog.create({
@@ -896,6 +971,7 @@ export async function runEnrollProSync(): Promise<SyncResult> {
     return {
       recordsPulled: totalPulled, recordsCreated: totalCreated, recordsUpdated: totalUpdated,
       recordsDeleted: totalDeleted, durationMs, schoolYearId, schoolYearLabel, status, cohortResults, message,
+      reconciliationSkipped: reconciliationSkipped.size > 0 ? [...reconciliationSkipped.keys()] : undefined,
     };
   } catch (error: any) {
     const durationMs = Date.now() - start;

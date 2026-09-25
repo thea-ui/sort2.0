@@ -657,6 +657,15 @@ export const apiService = {
     });
   },
 
+  // Full EnrollPro sync (users + terms + branding). Pass allowEmpty only when a
+  // cohort returning 0 records is genuinely expected.
+  runFullSync: async (options?: { allowEmpty?: boolean }): Promise<any> => {
+    return fetchAPI('/sync/all', {
+      method: 'POST',
+      body: JSON.stringify({ allowEmpty: options?.allowEmpty === true }),
+    });
+  },
+
   // MRF Asset Ledger API
   getAssetRecords: async (filters?: { action?: string; schoolYearId?: string; q?: string }): Promise<any[]> => {
     const query = filters ? new URLSearchParams(filters as Record<string, string>).toString() : '';

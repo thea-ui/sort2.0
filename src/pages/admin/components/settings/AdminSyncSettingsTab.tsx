@@ -103,20 +103,16 @@ export const AdminSyncSettingsTab: React.FC = () => {
   const handleRunSync = async () => {
     setSyncing(true);
     try {
-      const token = sessionStorage.getItem('sortv2_token');
-      const res = await fetch('http://localhost:5000/api/sync/all', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        showToast('success', 'Sync completed successfully');
-        await loadStatus();
+      const result = await apiService.runFullSync();
+      const skipped: string[] = result?.users?.reconciliationSkipped ?? [];
+      if (skipped.length > 0) {
+        showToast('error', `Sync completed, but reconciliation was skipped for: ${skipped.join(', ')} — the roster looked empty. Nothing was archived.`);
       } else {
-        const data = await res.json().catch(() => ({}));
-        showToast('error', data.error || 'Sync failed');
+        showToast('success', 'Sync completed successfully');
       }
-    } catch (err) {
-      showToast('error', 'Sync failed — server unreachable');
+      await loadStatus();
+    } catch (err: any) {
+      showToast('error', err?.message || 'Sync failed');
     }
     setSyncing(false);
   };

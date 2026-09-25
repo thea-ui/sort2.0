@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "verify": "npm run lint && npm run build && npm run test:unit && npm --prefix server run build && npm --prefix server run test:atlas && npm --prefix server run test:branding && npm run test:auth && npm run test:atlas && npm run test:atlas:audit && npm run test:ui",
+    "verify": "npm run lint && npm run build && npm run test:unit && npm --prefix server run build && npm --prefix server run test:atlas && npm --prefix server run test:branding && npm --prefix server run test:sync-guard && npm run test:auth && npm run test:atlas && npm run test:atlas:audit && npm run test:ui",
     "test:unit": "vitest run",
     "test:auth": "node scripts/auth-smoke.mjs",
     "test:atlas": "node scripts/atlas-smoke.mjs",

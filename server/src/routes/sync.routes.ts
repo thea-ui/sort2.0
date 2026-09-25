@@ -15,9 +15,12 @@ async function pullBrandingBestEffort(): Promise<boolean> {
 }
 
 // POST /api/sync/enrollpro — trigger full sync manually
-router.post('/enrollpro', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
+// Body: { allowEmpty?: boolean } — explicitly permit archiving a cohort whose
+// roster came back empty (otherwise that cohort's reconciliation is withheld).
+router.post('/enrollpro', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
-    const result = await runEnrollProSync();
+    const allowEmpty = req.body?.allowEmpty === true;
+    const result = await runEnrollProSync({ allowEmpty });
     const brandingUpdated = await pullBrandingBestEffort();
     return res.json({
       message: 'Sync completed',
@@ -59,10 +62,11 @@ router.post('/school-years', requireAdmin, async (_req: Request, res: Response):
 });
 
 // POST /api/sync/all — sync everything (users + terms)
-router.post('/all', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
+router.post('/all', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
+    const allowEmpty = req.body?.allowEmpty === true;
     const [syncResult, termResult] = await Promise.all([
-      runEnrollProSync(),
+      runEnrollProSync({ allowEmpty }),
       syncTermCalendar(),
     ]);
     const brandingUpdated = await pullBrandingBestEffort();

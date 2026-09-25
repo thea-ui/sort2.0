@@ -4,12 +4,17 @@ import { runEnrollProSync, syncTermCalendar } from '../services/enrollpro-sync.s
 dotenv.config();
 
 async function main() {
+  const allowEmpty = process.argv.includes('--allow-empty');
+  if (allowEmpty) {
+    console.warn('⚠ --allow-empty: a cohort that returns 0 records may be archived. Use only when the empty roster is expected.\n');
+  }
+
   console.log('=== EnrollPro Bulk Sync ===\n');
 
   const start = Date.now();
 
   const [userResult, termResult] = await Promise.all([
-    runEnrollProSync(),
+    runEnrollProSync({ allowEmpty }),
     syncTermCalendar(),
   ]);
 
@@ -36,6 +41,14 @@ async function main() {
   console.log(`Synced: ${termResult.synced}`);
   if (termResult.error) {
     console.log(`Error: ${termResult.error}`);
+  }
+
+  if (userResult.reconciliationSkipped?.length) {
+    console.log(`\n⚠ Reconciliation withheld for: ${userResult.reconciliationSkipped.join(', ')} (empty/unsafe roster)`);
+  }
+
+  if (userResult.message) {
+    console.log(`Note: ${userResult.message}`);
   }
 
   console.log(`\nTotal duration: ${duration}ms`);

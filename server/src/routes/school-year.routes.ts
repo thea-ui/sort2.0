@@ -122,8 +122,26 @@ router.get('/', requireRole('ADMIN', 'MRF'), async (_req: Request, res: Response
 
     if (schoolYears.length === 0 && Date.now() - lastSchoolYearMirrorAttempt > SCHOOL_YEAR_MIRROR_COOLDOWN_MS) {
       lastSchoolYearMirrorAttempt = Date.now();
-      await mirrorEnrollProSchoolYears().catch(() => {});
+
+      let mirror: { fetched?: number; supported?: boolean } | null = null;
+      let mirrorError: string | null = null;
+      try {
+        mirror = await mirrorEnrollProSchoolYears();
+      } catch (err: any) {
+        mirrorError = err?.message || 'EnrollPro school-year catalog unreachable';
+      }
       schoolYears = await listSchoolYears();
+
+      // An empty catalog used to return silently, which reads as "no data" when
+      // the real cause is an unreachable provider. Always leave a trail and flag
+      // the response so the client can explain itself.
+      if (schoolYears.length === 0 && (mirror === null || mirror.fetched === 0 || mirror.supported === false)) {
+        console.warn(
+          `[SchoolYears] Local catalog is empty and the EnrollPro mirror yielded nothing` +
+            `${mirrorError ? `: ${mirrorError}` : ''}. Manual year creation may be required.`
+        );
+        res.setHeader('X-SORT-Degraded', 'enrollpro-school-years-unavailable');
+      }
     }
 
     res.json(schoolYears);
