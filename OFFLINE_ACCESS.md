@@ -52,8 +52,35 @@ session can provision one for them:
 POST /api/offline-auth/pin/:userId     { "pin": "482913" }
 ```
 
-### Tool B — Emergency session script (operator is locked out)
+### Tool A2 — Bulk PIN assignment (nobody has PINs yet)
 
+The chicken-and-egg case: an outage hits before anyone set a PIN, so nobody can
+sign in to set one. With server/DB access, assign PINs to a whole cohort:
+
+```powershell
+# See who is affected, change nothing
+npm --prefix server run assign:pins -- --role STUDENT --dry-run
+
+# Unique random PIN per account, written to a distributable CSV
+npm --prefix server run assign:pins -- --role STUDENT --out pins-students.csv
+
+# Or one shared temporary PIN for the cohort (fastest to announce, weaker)
+npm --prefix server run assign:pins -- --role TEACHER --pin 246810
+
+# Staff only, or everyone
+npm --prefix server run assign:pins -- --role TEACHER,MRF,ADMIN
+npm --prefix server run assign:pins -- --all --out pins-all.csv
+
+# A single person
+npm --prefix server run assign:pins -- --identifier 1234501 --pin 482913
+```
+
+PINs are stored bcrypt-hashed and **cannot be read back** — keep the CSV safe,
+distribute, then destroy it. Users sign in with their usual LRN / Employee ID
+and the assigned PIN. Remember to arm the fallback first (Tool A).
+
+
+### Tool B — Emergency session script (operator is locked out)
 Use when **nobody** can sign in and you have server/DB access.
 
 ```powershell
