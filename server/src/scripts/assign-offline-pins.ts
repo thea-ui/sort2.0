@@ -129,18 +129,27 @@ async function main(): Promise<void> {
 
   const users = await prisma.user.findMany({
     where: {
-      ...(singleIdentifier
-        ? {
-            OR: [
-              { employeeId: { equals: singleIdentifier, mode: 'insensitive' } },
-              { enrollproLrn: { equals: singleIdentifier, mode: 'insensitive' } },
-              { email: { equals: singleIdentifier, mode: 'insensitive' } },
-            ],
-          }
-        : { role: { in: roles } }),
-      syncSource: 'ENROLLPRO',
-      archivedAt: null,
-      NOT: { enrollmentStatus: { in: ['NOT_ENROLLED', 'ALUMNI'] } },
+      AND: [
+        singleIdentifier
+          ? {
+              OR: [
+                { employeeId: { equals: singleIdentifier, mode: 'insensitive' } },
+                { enrollproLrn: { equals: singleIdentifier, mode: 'insensitive' } },
+                { email: { equals: singleIdentifier, mode: 'insensitive' } },
+              ],
+            }
+          : { role: { in: roles } },
+        { syncSource: 'ENROLLPRO', archivedAt: null },
+        {
+          // Staff records carry no enrollmentStatus at all. A bare
+          // `NOT IN (...)` would drop every NULL row (SQL three-valued logic),
+          // which silently excluded the entire staff cohort.
+          OR: [
+            { enrollmentStatus: null },
+            { enrollmentStatus: { notIn: ['NOT_ENROLLED', 'ALUMNI'] } },
+          ],
+        },
+      ],
     },
     select: {
       id: true,
