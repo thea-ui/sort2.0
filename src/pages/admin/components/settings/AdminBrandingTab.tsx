@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Palette, Building2, Save, RefreshCw, Image as ImageIcon, DownloadCloud } from 'lucide-react';
+import {
+  Palette,
+  Building2,
+  Save,
+  RefreshCw,
+  Image as ImageIcon,
+  DownloadCloud,
+  Info,
+  RotateCcw,
+} from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { useTheme, defaultColors, isAchromaticColor } from '../../../../hooks/useTheme';
 import { SystemSettings } from '../../../../types';
@@ -102,12 +111,13 @@ const TextField: React.FC<{
 );
 
 export const AdminBrandingTab: React.FC = () => {
-  const { refresh } = useTheme();
+  const { refresh, brandingSource } = useTheme();
   const [form, setForm] = useState<BrandingForm>(EMPTY_FORM);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pulling, setPulling] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const toast = useToast();
 
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -155,7 +165,9 @@ export const AdminBrandingTab: React.FC = () => {
     setSaving(true);
     try {
       await apiService.updateSettings({
-        schoolName: form.schoolName.trim() || 'School Name',
+        // null = unconfigured; the client then renders the SORT default
+        // identity instead of a placeholder school name.
+        schoolName: form.schoolName.trim() || null,
         schoolAcronym: form.schoolAcronym.trim() || null,
         schoolId: form.schoolId.trim() || null,
         division: form.division.trim() || null,
@@ -194,6 +206,40 @@ export const AdminBrandingTab: React.FC = () => {
     }
   };
 
+  const handleResetToDefaults = async () => {
+    if (
+      !window.confirm(
+        'Reset branding to SORT defaults? School identity, logo and colors will be cleared. EnrollPro can re-sync them later.'
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    try {
+      await apiService.updateSettings({
+        schoolName: null,
+        schoolAcronym: null,
+        schoolId: null,
+        division: null,
+        region: null,
+        address: null,
+        schoolHeadName: null,
+        logoUrl: null,
+        primaryColor: defaultColors.primary,
+        secondaryColor: defaultColors.secondary,
+        accentColor: defaultColors.accent,
+        goldColor: defaultColors.gold,
+      });
+      await loadSettings();
+      await refresh();
+      showToast('success', 'Branding reset to SORT defaults.');
+    } catch (err: any) {
+      showToast('error', err?.message || 'Failed to reset branding.');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const previewPrimary = HEX_COLOR.test(form.primaryColor) ? form.primaryColor : defaultColors.primary;
   const rawAccent = HEX_COLOR.test(form.accentColor) ? form.accentColor : defaultColors.accent;
   const previewAccent = isAchromaticColor(rawAccent) ? previewPrimary : rawAccent;
@@ -217,16 +263,40 @@ export const AdminBrandingTab: React.FC = () => {
             Last EnrollPro sync: {syncedAt ? new Date(syncedAt).toLocaleString() : 'never'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handlePullFromEnrollPro}
-          disabled={pulling}
-          className="px-4 py-2.5 bg-white border border-gray-200 text-[var(--text-strong)] rounded-2xl text-sm font-bold flex items-center gap-2 shadow-xs hover:border-[var(--accent)] disabled:opacity-50 cursor-pointer transition-all"
-        >
-          {pulling ? <RefreshCw size={15} className="animate-spin" /> : <DownloadCloud size={15} />}
-          Pull from EnrollPro
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleResetToDefaults}
+            disabled={resetting || saving}
+            className="px-4 py-2.5 bg-white border border-gray-200 text-[var(--text-strong)] rounded-2xl text-sm font-bold flex items-center gap-2 shadow-xs hover:border-[var(--accent)] disabled:opacity-50 cursor-pointer transition-all"
+          >
+            {resetting ? <RefreshCw size={15} className="animate-spin" /> : <RotateCcw size={15} />}
+            Reset to SORT defaults
+          </button>
+          <button
+            type="button"
+            onClick={handlePullFromEnrollPro}
+            disabled={pulling}
+            className="px-4 py-2.5 bg-white border border-gray-200 text-[var(--text-strong)] rounded-2xl text-sm font-bold flex items-center gap-2 shadow-xs hover:border-[var(--accent)] disabled:opacity-50 cursor-pointer transition-all"
+          >
+            {pulling ? <RefreshCw size={15} className="animate-spin" /> : <DownloadCloud size={15} />}
+            Pull from EnrollPro
+          </button>
+        </div>
       </div>
+
+      {brandingSource === 'default' && (
+        <div className="rounded-2xl border border-[var(--primary)]/10 bg-[var(--primary)]/5 px-4 py-3 flex items-start gap-3">
+          <Info size={18} className="text-[var(--accent)] shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-[var(--text-strong)]">Using SORT defaults</p>
+            <p className="text-xs text-[var(--text-strong)]/60 mt-0.5">
+              No school branding is configured yet. Every session shows the SORT identity until EnrollPro
+              syncs or you save branding below.
+            </p>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSave} className="space-y-6">
         <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-5">
@@ -328,7 +398,7 @@ export const AdminBrandingTab: React.FC = () => {
                 GOLD BADGE
               </span>
               <span className="text-lg font-black text-[var(--text-strong)]">
-                {form.schoolName || 'School Name'} | SORT
+                {form.schoolName || 'S.O.R.T.'} | SORT
               </span>
             </div>
           </div>

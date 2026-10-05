@@ -9,7 +9,10 @@ const prisma = new PrismaClient();
 // this payload is served without authentication.
 
 export const BRANDING_DEFAULTS = {
-  schoolName: 'School Name',
+  // null means "no tenant identity yet" — the client renders the SORT default
+  // (bundled logo + S.O.R.T. wordmark). Never use a placeholder like
+  // 'School Name' here: it is indistinguishable from real configured data.
+  schoolName: null as string | null,
   schoolAcronym: null as string | null,
   schoolId: null as string | null,
   division: null as string | null,
@@ -23,8 +26,10 @@ export const BRANDING_DEFAULTS = {
   logoUrl: null as string | null,
 } as const;
 
+export type BrandingSource = 'tenant' | 'default';
+
 export interface PublicBranding {
-  schoolName: string;
+  schoolName: string | null;
   schoolAcronym: string | null;
   schoolId: string | null;
   division: string | null;
@@ -37,7 +42,10 @@ export interface PublicBranding {
   goldColor: string;
   logoUrl: string | null;
   currentSchoolYear: string | null;
+  currentTerm: string | null;
   enrollproPublicUrl: string;
+  /** 'tenant' when any identity field is set; 'default' = SORT branding. */
+  brandingSource: BrandingSource;
 }
 
 const COLOR_FIELDS = ['primaryColor', 'secondaryColor', 'accentColor', 'goldColor'] as const;
@@ -89,26 +97,57 @@ export function sanitizeBrandingPatch(input: Record<string, unknown>): BrandingP
 
 /**
  * EnrollPro origin for reverse navigation. Prefers the stored value, then the
- * environment, then the shared dev default; always without a trailing `/api`.
+ * environment. Returns '' when neither is configured — callers must hide the
+ * reverse-navigation control rather than point at a dev/shared hub.
  */
 export function getEnrollProPublicUrl(stored?: string | null): string {
   const raw =
-    stored ||
+    (stored && stored.trim()) ||
     process.env.ENROLLPRO_PUBLIC_URL ||
     process.env.ENROLLPRO_BASE_URL ||
-    'https://dev-jegs.buru-degree.ts.net/api';
+    '';
   return raw.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+}
+
+/** Identity fields that make a tenant "configured" (colors alone do not). */
+const IDENTITY_FIELDS = [
+  'schoolName',
+  'schoolAcronym',
+  'schoolId',
+  'schoolHeadName',
+  'division',
+  'region',
+  'address',
+  'logoUrl',
+] as const;
+
+// Rows written before the default-branding fix may contain the literal
+// placeholder 'School Name' (old admin save fallback). Treat it as unset so
+// existing deployments recover without a data migration.
+const LEGACY_PLACEHOLDERS = new Set(['school name']);
+
+function isSetIdentityValue(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && !LEGACY_PLACEHOLDERS.has(value.trim().toLowerCase());
+}
+
+export function hasTenantIdentity(row: Partial<SystemSetting> | null | undefined): boolean {
+  return IDENTITY_FIELDS.some((field) => isSetIdentityValue(row?.[field]));
+}
+
+function brandingSourceFor(row: Partial<SystemSetting> | null | undefined): BrandingSource {
+  return hasTenantIdentity(row) ? 'tenant' : 'default';
 }
 
 export function toPublicBranding(
   row: Partial<SystemSetting> | null,
-  currentSchoolYear: string | null = null
+  currentSchoolYear: string | null = null,
+  currentTerm: string | null = null
 ): PublicBranding {
   const text = (value: string | null | undefined, fallback: string | null) =>
-    value && value.trim().length > 0 ? value : fallback;
+    isSetIdentityValue(value) ? value : fallback;
 
   return {
-    schoolName: text(row?.schoolName, BRANDING_DEFAULTS.schoolName) as string,
+    schoolName: text(row?.schoolName, null),
     schoolAcronym: text(row?.schoolAcronym, null),
     schoolId: text(row?.schoolId, null),
     division: text(row?.division, null),
@@ -121,16 +160,52 @@ export function toPublicBranding(
     goldColor: text(row?.goldColor, BRANDING_DEFAULTS.goldColor) as string,
     logoUrl: text(row?.logoUrl, null),
     currentSchoolYear: currentSchoolYear && currentSchoolYear.trim().length > 0 ? currentSchoolYear : null,
+    currentTerm: currentTerm && currentTerm.trim().length > 0 ? currentTerm : null,
     enrollproPublicUrl: getEnrollProPublicUrl(row?.enrollproPublicUrl),
+    brandingSource: brandingSourceFor(row),
   };
 }
 
+// One-time resolution log: the deployment triage signal for "which branding is
+// actually live" without spamming every public fetch / SSE reconnect.
+let sourceLogged = false;
+
+async function resolveCurrentTermName(): Promise<string | null> {
+  const active = await prisma.academicQuarter.findFirst({
+    where: { isActive: true },
+    select: { quarterName: true },
+  });
+  if (active?.quarterName) return active.quarterName;
+
+  // No term covers today (e.g. seeded past-year calendar): show the year's
+  // first term, matching what EnrollPro displays for the active school year.
+  const first = await prisma.academicQuarter.findFirst({
+    orderBy: { quarterCode: 'asc' },
+    select: { quarterName: true },
+  });
+  return first?.quarterName ?? null;
+}
+
 export async function getPublicBranding(): Promise<PublicBranding> {
-  const [row, activeYear] = await Promise.all([
+  const [row, activeYear, currentTerm] = await Promise.all([
     prisma.systemSetting.findUnique({ where: { id: 'default_setting' } }),
     prisma.schoolYear.findFirst({ where: { isActive: true }, select: { label: true } }),
+    resolveCurrentTermName(),
   ]);
-  return toPublicBranding(row, activeYear?.label ?? null);
+  const branding = toPublicBranding(row, activeYear?.label ?? null, currentTerm);
+
+  if (!sourceLogged) {
+    sourceLogged = true;
+    if (branding.brandingSource === 'default') {
+      console.log('[Branding] Source: default (no tenant branding yet)');
+    } else {
+      console.log(
+        `[Branding] Source: tenant name="${branding.schoolName ?? ''}" logo=${branding.logoUrl ? 'yes' : 'no'}`
+      );
+    }
+  }
+
+  return branding;
 }
 
 // ─── Live update channel (SSE) ────────────────────────────────────────
@@ -173,6 +248,9 @@ export async function saveBranding(patch: BrandingPatch): Promise<PublicBranding
     create: { id: 'default_setting', ...patch },
   });
   const branding = await getPublicBranding();
+  console.log(
+    `[Branding] Saved source=${branding.brandingSource} fields=${Object.keys(patch).sort().join(',') || 'none'}`
+  );
   broadcastBranding(branding);
   return branding;
 }

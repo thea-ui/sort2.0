@@ -79,7 +79,7 @@ export function saveRoomLocations(rooms: string[]) {
 export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
   {
     id: 'loc-1',
-    name: 'Main Courtyard (Quad)',
+    name: 'Admin and Learning Commons',
     code: 'LOC-01',
     status: 'Available',
     x: 70,
@@ -93,7 +93,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
   },
   {
     id: 'loc-2',
-    name: 'Science Hall Cafeteria Side',
+    name: 'Grade 8 Academic Wing',
     code: 'LOC-02',
     status: 'Available',
     x: 49,
@@ -107,7 +107,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
   },
   {
     id: 'loc-3',
-    name: 'Chemistry Building Entrance',
+    name: 'Grade 7 Academic Wing',
     code: 'LOC-03',
     status: 'Available',
     x: 35,
@@ -121,7 +121,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
   },
   {
     id: 'loc-4',
-    name: 'Main Library Lobby Entrance',
+    name: 'TLE and Livelihood Center',
     code: 'LOC-04',
     status: 'Available',
     x: 53,
@@ -135,7 +135,7 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
   },
   {
     id: 'loc-5',
-    name: 'Sports Complex Entrance B',
+    name: 'Science and Innovation Center',
     code: 'LOC-05',
     status: 'Available',
     x: 46,
@@ -149,12 +149,42 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
   },
 ];
 
+/**
+ * Legacy station names → ATLAS building names, keyed by the stable location
+ * code. The mapping was derived from each station's position on the ATLAS
+ * campus map (the building rectangle that contains the pin). Renames only
+ * apply while the stored name is still the legacy value, so manual renames
+ * are never overwritten.
+ */
+export const ATLAS_BUILDING_STATION_RENAMES: Record<string, { from: string; to: string }> = {
+  'LOC-01': { from: 'Main Courtyard (Quad)', to: 'Admin and Learning Commons' },
+  'LOC-02': { from: 'Science Hall Cafeteria Side', to: 'Grade 8 Academic Wing' },
+  'LOC-03': { from: 'Chemistry Building Entrance', to: 'Grade 7 Academic Wing' },
+  'LOC-04': { from: 'Main Library Lobby Entrance', to: 'TLE and Livelihood Center' },
+  'LOC-05': { from: 'Sports Complex Entrance B', to: 'Science and Innovation Center' },
+};
+
 export function getStoredLocations(): BinLocationItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LOCATIONS);
     if (!raw) return DEFAULT_CAMPUS_LOCATIONS;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_CAMPUS_LOCATIONS;
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_CAMPUS_LOCATIONS;
+
+    let renamed = false;
+    const aligned = parsed.map((loc: BinLocationItem) => {
+      const rule = loc.code ? ATLAS_BUILDING_STATION_RENAMES[loc.code] : undefined;
+      if (rule && loc.name === rule.from) {
+        renamed = true;
+        return { ...loc, name: rule.to };
+      }
+      return loc;
+    });
+
+    if (renamed) {
+      localStorage.setItem(STORAGE_KEY_LOCATIONS, JSON.stringify(aligned));
+    }
+    return aligned;
   } catch {
     return DEFAULT_CAMPUS_LOCATIONS;
   }
@@ -162,7 +192,12 @@ export function getStoredLocations(): BinLocationItem[] {
 
 import { apiService } from './api';
 
-export function saveLocations(locations: BinLocationItem[]) {
+/**
+ * Persist + broadcast locally. Safe for every role — the bin status flips
+ * derived from reports are mirrored in this browser without touching the
+ * admin-only server endpoint.
+ */
+export function saveLocationsLocal(locations: BinLocationItem[]) {
   try {
     localStorage.setItem(STORAGE_KEY_LOCATIONS, JSON.stringify(locations));
     window.dispatchEvent(new Event('storage'));
@@ -174,12 +209,19 @@ export function saveLocations(locations: BinLocationItem[]) {
         ch.close();
       } catch (e) {}
     }
-    apiService.saveCampusLocations(locations).catch((err) => {
-      console.warn('Backend API location save failed, cached in localStorage:', err);
-    });
   } catch (err) {
-    console.error('Failed to save locations:', err);
+    console.error('Failed to save locations locally:', err);
   }
+}
+
+export function saveLocations(locations: BinLocationItem[]) {
+  saveLocationsLocal(locations);
+  // The campus-locations endpoint is admin-only; other roles keep the local
+  // copy only (a 403 here would otherwise surface as a console error on every
+  // status flip).
+  apiService.saveCampusLocations(locations).catch((err) => {
+    console.warn('Backend API location save failed, cached in localStorage:', err);
+  });
 }
 
 export function locationsToBins(locations: BinLocationItem[]): BinStatus[] {

@@ -5,6 +5,7 @@ import {
   filterNotificationsForUser,
   isNotificationForUser,
   NOTIFICATIONS_STORAGE_KEY,
+  pruneStaleReportNotifications,
 } from '../notifications';
 import type { AppNotification, Report, User } from '../../types';
 
@@ -139,6 +140,42 @@ describe('buildDispatchNotifications', () => {
         recipientId: 'u-1',
       },
     ]);
+  });
+});
+
+describe('pruneStaleReportNotifications', () => {
+  it('keeps alerts whose report still exists on the server', () => {
+    const feed = [
+      notification({ id: 'n-1', reportId: 'r-1' }),
+      notification({ id: 'n-2', reportId: 'r-2' }),
+    ];
+    expect(pruneStaleReportNotifications(feed, new Set(['r-1', 'r-2']))).toEqual(feed);
+  });
+
+  it('drops every alert after a wipe empties the server report list', () => {
+    const feed = [
+      notification({ id: 'n-1', reportId: 'r-1' }),
+      notification({ id: 'n-2', reportId: 'r-2' }),
+    ];
+    expect(pruneStaleReportNotifications(feed, new Set())).toEqual([]);
+  });
+
+  it('keeps locally-minted optimistic ids until the server assigns one', () => {
+    const feed = [notification({ id: 'n-1', reportId: 'rep-123' })];
+    expect(pruneStaleReportNotifications(feed, new Set(['r-9']))).toEqual(feed);
+  });
+
+  it('drops rows with no usable report id', () => {
+    const feed = [
+      notification({ id: 'n-1', reportId: undefined as unknown as string }),
+      notification({ id: 'n-2', reportId: 'r-1' }),
+    ];
+    expect(pruneStaleReportNotifications(feed, new Set(['r-1'])).map(n => n.id)).toEqual(['n-2']);
+  });
+
+  it('returns the same array reference when nothing is stale', () => {
+    const feed = [notification({ id: 'n-1', reportId: 'r-1' })];
+    expect(pruneStaleReportNotifications(feed, new Set(['r-1']))).toBe(feed);
   });
 });
 

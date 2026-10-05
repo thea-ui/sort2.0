@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../utils/cn';
 import { useBackgroundScrollLock } from '../ui/Dialog';
 
@@ -14,6 +15,10 @@ interface RightDrawerProps {
  * width, left border, shadow-2xl, 200ms slide + 200ms overlay fade. Always
  * mounted so both directions animate; `pointer-events-none` + `aria-hidden`
  * while closed.
+ *
+ * Portaled to <body> at `z-[60]`: the page content area sits inside an
+ * `animate-fade-in` transform stacking context, so an in-place overlay would
+ * paint below the sticky shell header (see ModalPortal).
  */
 export const RightDrawer: React.FC<RightDrawerProps> = ({ open, onClose, children, className }) => {
   useBackgroundScrollLock(open);
@@ -27,9 +32,9 @@ export const RightDrawer: React.FC<RightDrawerProps> = ({ open, onClose, childre
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
-  return (
+  return createPortal(
     <div
-      className={cn('fixed inset-0 z-50 print-hide', !open && 'pointer-events-none')}
+      className={cn('fixed inset-0 z-[60] print-hide', !open && 'pointer-events-none')}
       aria-hidden={!open}
     >
       <div
@@ -50,6 +55,7 @@ export const RightDrawer: React.FC<RightDrawerProps> = ({ open, onClose, childre
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

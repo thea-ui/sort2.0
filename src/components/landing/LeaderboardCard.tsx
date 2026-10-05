@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMockData } from '../../hooks/useMockData';
-import { Trophy, Crown, Medal, Flame, Star } from 'lucide-react';
+import { Trophy, Crown, Medal, Star } from 'lucide-react';
 
 const RANK_CONFIGS = [
   { icon: Crown, badge: 'bg-gradient-to-br from-amber-400 to-yellow-600 text-white', ring: 'ring-amber-300', glow: 'shadow-amber-200/50', bar: 'bg-gradient-to-b from-amber-300 to-amber-500' },
@@ -10,9 +10,6 @@ const RANK_CONFIGS = [
 
 const AVATAR_COLORS = ['bg-[var(--primary)]', 'bg-[var(--gold)]', 'bg-[var(--accent)]', 'bg-amber-500', 'bg-rose-500'];
 const getAvatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-
-const DEPARTMENTS = ['BS Biology', 'BS Computer Science', 'AB Political Science', 'BS Engineering', 'BS Education'];
-const getDepartment = (name: string) => DEPARTMENTS[name.charCodeAt(0) % DEPARTMENTS.length];
 
 function formatDisplayName(fullName: string): { last: string; firstWithInitial: string } {
   const parts = fullName.split(',').map(p => p.trim()).filter(Boolean);
@@ -110,9 +107,7 @@ export const LeaderboardCard: React.FC = () => {
               </div>
 
               {/* Metallic Podium Bar */}
-              <div className={`flex w-full items-center justify-center rounded-t-lg ${podiumHeights[visualIndex]} relative ${cfg.bar} shadow-inner`}>
-                <span className="absolute -top-4 text-sm font-black text-white drop-shadow-md">#{rank + 1}</span>
-              </div>
+              <div className={`flex w-full items-center justify-center rounded-t-lg ${podiumHeights[visualIndex]} ${cfg.bar} shadow-inner`} />
             </div>
           );
         })}
@@ -123,8 +118,6 @@ export const LeaderboardCard: React.FC = () => {
         {leaderboard.slice(3, 5).map((user, i) => {
           const rank = i + 3;
           const { last, firstWithInitial } = formatDisplayName(user.name);
-          const dept = getDepartment(user.name);
-          const streak = Math.floor(Math.random() * 7) + 1;
           const nextTierPoints = Math.ceil((user.points + 50) / 100) * 100;
           const progress = Math.min(100, (user.points / nextTierPoints) * 100);
 
@@ -136,15 +129,6 @@ export const LeaderboardCard: React.FC = () => {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-700">{firstWithInitial} <span className="text-gray-400">{last}</span></p>
-                <div className="mt-0.5 flex items-center gap-2">
-                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[8px] font-semibold text-gray-500">{dept}</span>
-                  {streak >= 3 && (
-                    <span className="flex items-center gap-0.5 rounded-full bg-orange-50 px-1.5 py-0.5 text-[8px] font-bold text-orange-600">
-                      <Flame size={8} />
-                      {streak}d streak
-                    </span>
-                  )}
-                </div>
               </div>
               <div className="text-right shrink-0">
                 <span className="text-xs font-bold text-gray-500">{user.points.toLocaleString()} pts</span>

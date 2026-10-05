@@ -111,12 +111,15 @@ function App() {
   const [activeTab, setActiveTab] = useState('overview');
 
   return (
-    <MockDataProvider>
-      <ErrorBoundary>
+    // The boundary wraps the data provider too: effect-time crashes inside the
+    // provider (e.g. an unexpected storage failure) must surface the recovery
+    // screen instead of unmounting the entire tree into a white page.
+    <ErrorBoundary>
+      <MockDataProvider>
         <AppShell activeTab={activeTab} setActiveTab={setActiveTab} />
         <ToastViewport />
-      </ErrorBoundary>
-    </MockDataProvider>
+      </MockDataProvider>
+    </ErrorBoundary>
   );
 }
 

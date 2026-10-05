@@ -1,4 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  DEFAULT_BRAND_LOGO,
+  resolveBrandIdentity,
+  type ResolvableBranding,
+} from '../utils/brandIdentity';
 
 // ─── Contract ──────────────────────────────────────────────────────────
 // SORT consumes tenant branding from its own public settings endpoint
@@ -11,9 +16,9 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || '/api';
 const PUBLIC_SETTINGS_URL = `${API_BASE_URL}/settings/public`;
 const PUBLIC_STREAM_URL = `${API_BASE_URL}/settings/public/stream`;
-const THEME_CACHE_KEY = 'sortv2_theme_cache';
-const SYSTEM_NAME = 'SORT';
-const FALLBACK_TITLE = 'S.O.R.T. — Smart Operational Recovery & Tracking';
+// v2: the v1 cache could hold pre-fix placeholder data ("School Name" / no
+// brandingSource). Bumping the key discards it instead of migrating it.
+const THEME_CACHE_KEY = 'sortv2_theme_cache_v2';
 
 export interface ThemeColors {
   primary: string;
@@ -29,6 +34,8 @@ export const defaultColors: ThemeColors = {
   gold: '#C69B26',
 };
 
+export type BrandingSource = 'tenant' | 'default';
+
 export interface ThemeState {
   colors: ThemeColors;
   schoolName: string;
@@ -40,7 +47,9 @@ export interface ThemeState {
   schoolHeadName: string | null;
   logoUrl: string | null;
   currentSchoolYear: string | null;
+  currentTerm: string | null;
   enrollproPublicUrl: string;
+  brandingSource: BrandingSource;
 }
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -56,7 +65,11 @@ export const DEFAULT_THEME_STATE: ThemeState = {
   schoolHeadName: null,
   logoUrl: null,
   currentSchoolYear: null,
-  enrollproPublicUrl: 'https://dev-jegs.buru-degree.ts.net',
+  currentTerm: null,
+  // Empty until configured: reverse-navigation controls must hide rather than
+  // point at a shared/dev hub.
+  enrollproPublicUrl: '',
+  brandingSource: 'default',
 };
 
 // ─── Color helpers ─────────────────────────────────────────────────────
@@ -208,22 +221,67 @@ export function applyThemeToDocument(colors: ThemeColors): void {
   }
 }
 
-export function applyBrowserMetadata(schoolName: string, logoUrl: string | null): void {
-  document.title = schoolName
-    ? `${schoolName} | ${SYSTEM_NAME}`
-    : FALLBACK_TITLE;
+function faviconType(href: string): string {
+  const clean = href.split('?')[0].toLowerCase();
+  if (clean.endsWith('.svg')) return 'image/svg+xml';
+  if (clean.endsWith('.ico')) return 'image/x-icon';
+  if (clean.endsWith('.jpg') || clean.endsWith('.jpeg')) return 'image/jpeg';
+  if (clean.endsWith('.webp')) return 'image/webp';
+  return 'image/png';
+}
 
-  if (logoUrl) {
-    const fullLogoUrl = logoUrl.startsWith('http') ? logoUrl : `${window.location.origin}${logoUrl}`;
-    let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.getElementsByTagName('head')[0].appendChild(link);
-    }
-    link.href = fullLogoUrl;
-    link.type = 'image/x-icon';
+let lastFaviconHref: string | null = null;
+
+function setFavicon(href: string): void {
+  const fullHref = href.startsWith('http') ? href : `${window.location.origin}${href}`;
+  let link = document.querySelector<HTMLLinkElement>("link[rel*='icon']");
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
   }
+  if (lastFaviconHref === fullHref) return;
+  lastFaviconHref = fullHref;
+  link.type = faviconType(href);
+  link.href = fullHref;
+}
+
+/**
+ * Probe the tenant logo before swapping the favicon; a broken URL must land on
+ * the bundled SORT mark instead of leaving the browser on a broken icon.
+ */
+function applyFavicon(logoUrl: string | null): void {
+  const tenantLogo = logoUrl?.trim();
+  if (!tenantLogo) {
+    setFavicon(DEFAULT_BRAND_LOGO);
+    return;
+  }
+  const probe = new Image();
+  probe.onload = () => setFavicon(tenantLogo);
+  probe.onerror = () => setFavicon(DEFAULT_BRAND_LOGO);
+  probe.src = tenantLogo;
+}
+
+export function applyBrowserMetadata(state: ResolvableBranding): void {
+  document.title = resolveBrandIdentity(state).title;
+  applyFavicon(state.logoUrl);
+}
+
+// ─── Dev-only resolution log (deployment triage; stripped from prod output) ──
+
+let lastAppliedLogKey = '';
+
+function logAppliedIdentity(state: ThemeState, cacheHit: boolean): void {
+  if (!import.meta.env.DEV) return;
+  const identity = resolveBrandIdentity(state);
+  const key = [state.brandingSource, identity.displayName, identity.logoSrc, cacheHit].join('|');
+  if (key === lastAppliedLogKey) return;
+  lastAppliedLogKey = key;
+  console.info(
+    `[Theme] Applied source=${state.brandingSource} name="${identity.displayName}" logo=${
+      identity.hasTenantLogo ? 'tenant' : 'default'
+    } cache=${cacheHit ? 'hit' : 'miss'}`
+  );
 }
 
 // ─── Cache ─────────────────────────────────────────────────────────────
@@ -231,7 +289,7 @@ export function applyBrowserMetadata(schoolName: string, logoUrl: string | null)
 function loadCachedTheme(): ThemeState | null {
   try {
     const raw = localStorage.getItem(THEME_CACHE_KEY);
-    return raw ? (JSON.parse(raw) as ThemeState) : null;
+    return raw ? coerceThemeState(JSON.parse(raw)) : null;
   } catch {
     return null;
   }
@@ -255,15 +313,33 @@ function readColor(source: Record<string, unknown>, key: string, fallback: strin
   return value && HEX_COLOR.test(value) ? value : fallback;
 }
 
+const IDENTITY_READ_KEYS = [
+  'schoolName',
+  'schoolAcronym',
+  'schoolId',
+  'schoolHeadName',
+  'division',
+  'region',
+  'address',
+  'logoUrl',
+] as const;
+
+/**
+ * Trust the server's `brandingSource` when present; otherwise derive it so
+ * older/compatible payloads still resolve correctly.
+ */
+function readBrandingSource(
+  source: Record<string, unknown>,
+  identity: Record<string, string | null>
+): BrandingSource {
+  const raw = source.brandingSource;
+  if (raw === 'tenant' || raw === 'default') return raw;
+  return IDENTITY_READ_KEYS.some((key) => Boolean(identity[key])) ? 'tenant' : 'default';
+}
+
 export function normalizeBranding(source: Record<string, unknown> | null | undefined): ThemeState {
   const s = source ?? {};
-  return {
-    colors: {
-      primary: readColor(s, 'primaryColor', defaultColors.primary),
-      secondary: readColor(s, 'secondaryColor', defaultColors.secondary),
-      accent: readColor(s, 'accentColor', defaultColors.accent),
-      gold: readColor(s, 'goldColor', defaultColors.gold),
-    },
+  const identity: Record<string, string | null> = {
     schoolName: readString(s, 'schoolName') ?? '',
     schoolAcronym: readString(s, 'schoolAcronym'),
     schoolId: readString(s, 'schoolId'),
@@ -272,9 +348,57 @@ export function normalizeBranding(source: Record<string, unknown> | null | undef
     address: readString(s, 'address'),
     schoolHeadName: readString(s, 'schoolHeadName'),
     logoUrl: readString(s, 'logoUrl'),
-    currentSchoolYear: readString(s, 'currentSchoolYear'),
-    enrollproPublicUrl: (readString(s, 'enrollproPublicUrl') ?? DEFAULT_THEME_STATE.enrollproPublicUrl).replace(/\/+$/, ''),
   };
+
+  return {
+    colors: {
+      primary: readColor(s, 'primaryColor', defaultColors.primary),
+      secondary: readColor(s, 'secondaryColor', defaultColors.secondary),
+      accent: readColor(s, 'accentColor', defaultColors.accent),
+      gold: readColor(s, 'goldColor', defaultColors.gold),
+    },
+    schoolName: identity.schoolName ?? '',
+    schoolAcronym: identity.schoolAcronym,
+    schoolId: identity.schoolId,
+    division: identity.division,
+    region: identity.region,
+    address: identity.address,
+    schoolHeadName: identity.schoolHeadName,
+    logoUrl: identity.logoUrl,
+    currentSchoolYear: readString(s, 'currentSchoolYear'),
+    currentTerm: readString(s, 'currentTerm'),
+    enrollproPublicUrl: (readString(s, 'enrollproPublicUrl') ?? DEFAULT_THEME_STATE.enrollproPublicUrl).replace(/\/+$/, ''),
+    brandingSource: readBrandingSource(s, identity),
+  };
+}
+
+/**
+ * Validate a cached ThemeState (nested `colors`) by round-tripping it through
+ * `normalizeBranding`. A malformed or stale payload degrades to null, and the
+ * caller falls back to `DEFAULT_THEME_STATE`.
+ */
+export function coerceThemeState(raw: unknown): ThemeState | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const colors = (r.colors ?? {}) as Record<string, unknown>;
+  return normalizeBranding({
+    schoolName: r.schoolName,
+    schoolAcronym: r.schoolAcronym,
+    schoolId: r.schoolId,
+    division: r.division,
+    region: r.region,
+    address: r.address,
+    schoolHeadName: r.schoolHeadName,
+    logoUrl: r.logoUrl,
+    currentSchoolYear: r.currentSchoolYear,
+    currentTerm: r.currentTerm,
+    enrollproPublicUrl: r.enrollproPublicUrl,
+    brandingSource: r.brandingSource,
+    primaryColor: colors.primary,
+    secondaryColor: colors.secondary,
+    accentColor: colors.accent,
+    goldColor: colors.gold,
+  });
 }
 
 // ─── Provider ──────────────────────────────────────────────────────────
@@ -292,16 +416,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Apply the cached brand before the network call resolves.
   useEffect(() => {
-    const cached = loadCachedTheme() ?? DEFAULT_THEME_STATE;
-    applyThemeToDocument(cached.colors);
-    applyBrowserMetadata(cached.schoolName, cached.logoUrl);
+    const cached = loadCachedTheme();
+    const initial = cached ?? DEFAULT_THEME_STATE;
+    applyThemeToDocument(initial.colors);
+    applyBrowserMetadata(initial);
+    logAppliedIdentity(initial, Boolean(cached));
   }, []);
 
   const commit = useCallback((next: ThemeState) => {
     setState(next);
     saveThemeCache(next);
     applyThemeToDocument(next.colors);
-    applyBrowserMetadata(next.schoolName, next.logoUrl);
+    applyBrowserMetadata(next);
+    logAppliedIdentity(next, false);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -310,10 +437,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       commit(normalizeBranding(body?.settings));
-    } catch {
+    } catch (err: any) {
       // Keep the cached/current brand; never regress to defaults.
+      if (import.meta.env.DEV) {
+        console.warn('[Theme] Refresh failed; keeping cached brand', err?.message ?? err);
+      }
       applyThemeToDocument(stateRef.current.colors);
-      applyBrowserMetadata(stateRef.current.schoolName, stateRef.current.logoUrl);
+      applyBrowserMetadata(stateRef.current);
     }
   }, [commit]);
 

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { ensureChallengesForSchoolYear } from './challenge-catalog.service.js';
 
 const prisma = new PrismaClient();
 
@@ -285,8 +286,20 @@ export async function executeRollover(
         },
       });
 
-      return { previousLabel, newLabel };
+      return { previousLabel, newLabel, newSchoolYearId: newSY.id };
     }, { timeout: 60000 }); // Extended timeout for large datasets
+
+    // Provision fresh challenge instances for the new school year (copied from
+    // the outgoing year so every year is independently earnable). Non-fatal:
+    // the term sync and the data seeder both re-run this idempotently.
+    try {
+      const provision = await ensureChallengesForSchoolYear(result.newSchoolYearId);
+      console.log(
+        `[Rollover] Challenge instances: ${provision.created} created, ${provision.windowRefreshed} windows refreshed`
+      );
+    } catch (provisionErr: any) {
+      console.error('[Rollover] Challenge provisioning failed:', provisionErr.message);
+    }
 
     console.log(`[Rollover] Completed: "${result.previousLabel}" -> "${result.newLabel}"`);
 
@@ -378,6 +391,14 @@ export async function ensureSchoolYear(
     },
   });
   console.log(`[SY] Created initial school year "${label}" (${newSY.id})`);
+
+  try {
+    const provision = await ensureChallengesForSchoolYear(newSY.id);
+    console.log(`[SY] Challenge instances provisioned: ${provision.created} created`);
+  } catch (provisionErr: any) {
+    console.error('[SY] Challenge provisioning failed:', provisionErr.message);
+  }
+
   return { schoolYearId: newSY.id, rolloverTriggered: false };
 }
 

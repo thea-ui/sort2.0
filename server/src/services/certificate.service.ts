@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { effectiveNowForTerm } from './term-clock.service.js';
 
 const prisma = new PrismaClient();
 
@@ -25,6 +26,9 @@ export interface TermStatus {
   isPeriodOver: boolean;
   resultsReady: boolean;
   awardedCount: number;
+  /** Term-aware clock (ISO). Clamped into the active term while EnrollPro time-travels. */
+  effectiveNow: string | null;
+  timeShifted: boolean;
 }
 
 export interface TermStanding {
@@ -139,11 +143,16 @@ export async function getTermStatus(quarterCode?: string): Promise<TermStatus> {
     isPeriodOver: false,
     resultsReady: false,
     awardedCount: 0,
+    effectiveNow: null,
+    timeShifted: false,
   };
 
   if (!quarter) return empty;
 
-  const now = new Date();
+  // Follow the mirrored EnrollPro term: while its `isActive` flag is set, the
+  // term is current even if EnrollPro's dev clock has been time-traveled
+  // outside the real date range.
+  const { now, timeShifted } = effectiveNowForTerm(quarter);
   const end = endOfDay(quarter.endDate);
   const graceEndsAt = addDays(end, graceDays);
 
@@ -169,17 +178,25 @@ export async function getTermStatus(quarterCode?: string): Promise<TermStatus> {
     isPeriodOver: now > end,
     resultsReady: awardedCount > 0,
     awardedCount,
+    effectiveNow: now.toISOString(),
+    timeShifted,
   };
 }
 
 // ─── Term Points & Standings ──────────────────────────────────────────
 
 export async function computeTermStandings(
-  quarter: { startDate: string; endDate: string },
+  quarter: { startDate: string; endDate: string; isActive?: boolean },
   schoolYearId?: string | null
 ): Promise<TermStanding[]> {
-  const start = startOfDay(quarter.startDate);
-  const end = endOfDay(quarter.endDate);
+  const realNow = new Date();
+  const baseStart = startOfDay(quarter.startDate);
+  const baseEnd = endOfDay(quarter.endDate);
+
+  // The active term absorbs real-time events even when EnrollPro's clock has
+  // been time-traveled beyond the term's real dates (see term-clock.service).
+  const start = quarter.isActive && realNow < baseStart ? realNow : baseStart;
+  const end = quarter.isActive && realNow > baseEnd ? realNow : baseEnd;
 
   const students = await prisma.user.findMany({
     where: { role: 'STUDENT', syncSource: 'ENROLLPRO' },

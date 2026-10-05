@@ -21,7 +21,7 @@ Stores user profiles for all platform actors across campus roles (Student, Teach
 | `id` | `VARCHAR` | 36 (UUID, PK) | Unique identifier for the user account |
 | `name` | `VARCHAR` | 255 | Full legal name of the user (e.g., "CASTILLO, ERIKA AQUINO") |
 | `email` | `VARCHAR` | 255 (Unique) | School or personal contact email address used for login |
-| `password_hash` | `TEXT` | Nullable | Cryptographic hash of the user password (bcrypt, 10 salt rounds) |
+| `password_hash` | `TEXT` | Nullable | Bcrypt (12 rounds) hash of the last EnrollPro-verified password; used only for offline sign-in fallback, never plaintext |
 | `employee_id` | `VARCHAR` | 100 (Unique) | Unique campus identifier (DepEd LRN for students, Employee No. for staff) |
 | `role` | `ENUM` | `Role` | Access permission tier (`STUDENT`, `TEACHER`, `MRF`, `ADMIN`) |
 | `points` | `INTEGER` | Default: 0 | Current spendable / redeemable gamification points balance |
@@ -42,6 +42,7 @@ Stores user profiles for all platform actors across campus roles (Student, Teach
 | `enrollment_status` | `VARCHAR` | 50, Nullable | Current SIS standing (e.g., "Enrolled", "Transferred Out") |
 | `portal_account_active` | `BOOLEAN` | Default: true | Flag controlling student portal login eligibility |
 | `archived_at` | `TIMESTAMP` | Nullable | Timestamp when record was archived during academic rollover |
+| `password_cached_at` | `TIMESTAMP` | Nullable | When the offline password hash was last refreshed from a successful EnrollPro login; null disables offline sign-in for the account |
 | `created_at` | `TIMESTAMP` | Default: `now()` | Record creation timestamp |
 | `updated_at` | `TIMESTAMP` | Auto-updated | Record last modification timestamp |
 
@@ -186,6 +187,8 @@ Houses global administrative configuration constants, point multiplier formulas,
 | `default_vendor_name` | `VARCHAR` | 255 | Default registered recycling contractor buyer |
 | `bin_reset_enabled` | `BOOLEAN` | Default: true | Automated daily schedule resetting bin capacity status |
 | `bin_reset_time` | `VARCHAR` | 10, Default: "18:00" | Scheduled 24-hour time of daily bin capacity reset |
+| `offline_auth_cache_enabled` | `BOOLEAN` | Default: true | Admin kill-switch for offline sign-in against the last EnrollPro-verified password hash |
+| `offline_auth_cache_max_days` | `INTEGER` | Default: 30 | Maximum age (days) of the cached password hash accepted during an EnrollPro outage |
 | `updated_at` | `TIMESTAMP` | Auto-updated | Timestamp when system policies were last adjusted |
 
 *Table 11 centralizes administrative switches, allowing system coordinators to tune gamification mechanics dynamically without code recompilation.*

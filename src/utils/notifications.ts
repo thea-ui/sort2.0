@@ -32,6 +32,25 @@ export function filterNotificationsForUser(
   return notifications.filter(n => isNotificationForUser(n, user));
 }
 
+/**
+ * Drops alerts whose report no longer exists on the server — e.g. after a
+ * tenant wipe, purge, or term rollover. Locally-minted optimistic ids (`rep-…`)
+ * are kept because their report may still be waiting for its server id.
+ * Returns the original array when nothing is stale so the 2s poller does not
+ * trigger a re-render/persist every cycle.
+ */
+export function pruneStaleReportNotifications(
+  notifications: AppNotification[],
+  serverReportIds: ReadonlySet<string>
+): AppNotification[] {
+  const kept = notifications.filter((notification) => {
+    const reportId = notification.reportId;
+    if (typeof reportId !== 'string') return false;
+    return reportId.startsWith('rep-') || serverReportIds.has(reportId);
+  });
+  return kept.length === notifications.length ? notifications : kept;
+}
+
 function uniqueReporterIds(reports: Report[]): string[] {
   const seen = new Set<string>();
   const ids: string[] = [];

@@ -46,7 +46,7 @@ for (const { role, existingTab } of ROLES) {
   });
 }
 
-test('profile menu keeps the demo role switcher out and exposes Offline PIN + Sign Out only', async ({ page }) => {
+test('profile menu keeps the demo role switcher out and exposes Sign Out only', async ({ page }) => {
   const seeded = await seedSession(page, 'STUDENT');
   test.skip(!seeded, 'no STUDENT test identity');
 
@@ -57,7 +57,33 @@ test('profile menu keeps the demo role switcher out and exposes Offline PIN + Si
   await expect(page.getByText('Demo Role Switcher')).toHaveCount(0);
   // Passwords are managed by EnrollPro: no change-password entry point in SORT.
   await expect(page.getByRole('button', { name: 'Change Password' })).toHaveCount(0);
-  // The only local credential is the optional break-glass offline PIN.
-  await expect(page.getByRole('button', { name: 'Offline PIN' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
+});
+
+test('reports-cache quota failure never white-screens the app', async ({ page }) => {
+  const seeded = await seedSession(page, 'STUDENT');
+  test.skip(!seeded, 'no STUDENT test identity');
+
+  // Simulate the exhausted-quota crash: persisting report photos to
+  // localStorage throws QuotaExceededError (regression: uncaught -> white page).
+  await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key === 'sort_reports') {
+        const error = new Error('QuotaExceededError');
+        error.name = 'QuotaExceededError';
+        throw error;
+      }
+      return original.call(this, key, value);
+    };
+  });
+
+  await mockAtlasMap(page);
+  await mockAtlasImage(page, false);
+
+  await page.goto('/');
+
+  // The shell stays alive and the report flow remains reachable.
+  await expect(page.getByRole('button', { name: 'Report' }).first()).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByText('Something went wrong on this screen')).toHaveCount(0);
 });

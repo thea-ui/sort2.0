@@ -1,5 +1,9 @@
 import { Prisma, Role, ChallengeType } from '@prisma/client';
-import { resolveChallengeScope, challengeWindowWhere } from './challenge-term.service.js';
+import {
+  resolveChallengeScope,
+  challengeWindowWhere,
+  challengeSchoolYearWhere,
+} from './challenge-term.service.js';
 
 export interface ChallengeCompletion {
   userId: string;
@@ -92,8 +96,11 @@ async function findActiveChallenges(tx: Prisma.TransactionClient, challengeType:
     where: {
       isActive: true,
       challengeType,
-      quarterCode: { in: scope.visibleQuarterCodes },
-      ...challengeWindowWhere(),
+      // With no configured term, every challenge of the active year stays in
+      // play (legacy GLOBAL behavior); otherwise scope to the active term.
+      ...(scope.quarterCode ? { quarterCode: { in: scope.visibleQuarterCodes } } : {}),
+      ...challengeSchoolYearWhere(scope),
+      ...challengeWindowWhere(scope.effectiveNow),
     },
   });
 }

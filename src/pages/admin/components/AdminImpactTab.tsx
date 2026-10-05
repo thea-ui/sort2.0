@@ -231,7 +231,6 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
     <div className="space-y-6 animate-fade-in text-[var(--text-strong)]">
       <PageHeader
         title="Operations & Collections"
-        description="Campus reports, MRF dispatches, grade participation and recyclable revenue."
       />
 
       <ImpactKpiRow

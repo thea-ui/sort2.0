@@ -46,6 +46,9 @@ import { MRFMarketTab } from './components/MRFMarketTab';
 import { MRFAssetLedgerPage } from './components/MRFAssetLedgerPage';
 import { AssetScrapStockTab } from './components/AssetScrapStockTab';
 import { MRFHistoryTab } from './components/MRFHistoryTab';
+import { CollectedItemsInput } from './components/CollectedItemsInput';
+import { computeCollectionTotals } from '../../utils/collectionTotals';
+import { ModalPortal } from '../../components/common/ModalPortal';
 import { PhotoLightbox } from '../../components/common/PhotoLightbox';
 
 export interface ItemizedRecyclableCategory {
@@ -111,6 +114,8 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
   const [assetOutcome, setAssetOutcome] = useState<string>(ASSET_DISPOSITIONS[1].value);
   const [assetScrapMaterial, setAssetScrapMaterial] = useState<string>('ferrous_metal');
   const [assetScrapKg, setAssetScrapKg] = useState<string>('');
+  const [otherMaterialName, setOtherMaterialName] = useState<string>('');
+  const [otherMaterialKg, setOtherMaterialKg] = useState<string>('');
   const [completionNotes, setCompletionNotes] = useState<string>('');
 
   // Dispatch Assignment Filter
@@ -241,8 +246,11 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       completeModalReport.description.toUpperCase().includes('EQUIPMENT');
 
     if (isRecyclable) {
+      const otherParsedKg = parseFloat(otherMaterialKg) || 0;
+      const otherLabel = otherMaterialName.trim();
+
       // Require at least one weight entered
-      const hasAnyWeight = Object.values(itemWeights).some(v => (parseFloat(v) || 0) > 0);
+      const hasAnyWeight = Object.values(itemWeights).some(v => (parseFloat(v) || 0) > 0) || otherParsedKg > 0;
       if (!hasAnyWeight) {
         showToast('Please enter at least one weight before confirming.');
         return;
@@ -259,7 +267,19 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
           itemsLogged.push(`${cat?.shortName || catId}: ${parsed}kg`);
         }
       }
-      updateReportStatus(completeModalReport.id, 'COLLECTED', totalWeight, completionNotes);
+
+      // Non-listed materials are recorded in the notes only: there is no market
+      // price/threshold category for them, so they must not inflate sellable stock.
+      if (otherParsedKg > 0) {
+        totalWeight += otherParsedKg;
+        itemsLogged.push(`${otherLabel || 'Other material'}: ${otherParsedKg}kg (not in market stock)`);
+      }
+
+      const finalNotes = otherParsedKg > 0
+        ? [completionNotes.trim(), `Other material logged: ${otherLabel || 'Unnamed material'} — ${otherParsedKg}kg (not added to market stock)`].filter(Boolean).join('\n')
+        : completionNotes;
+
+      updateReportStatus(completeModalReport.id, 'COLLECTED', totalWeight, finalNotes);
       showToast(`Logged: ${itemsLogged.join(', ')}. Collection submitted to Admin.`);
     } else if (isAsset) {
       const dispositionValue = LEGACY_ASSET_OUTCOME[assetOutcome] || assetOutcome;
@@ -339,6 +359,8 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     setCompleteModalReport(null);
     setWeightKg('');
     setItemWeights({ pet_plastic: '', aluminum_cans: '', cardboard: '', glass: '' });
+    setOtherMaterialName('');
+    setOtherMaterialKg('');
     setCompletionNotes('');
   };
 
@@ -751,8 +773,9 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
       {/* ── JOB COMPLETION MODAL (Redesigned) ── */}
       {completeModalReport && (
+        <ModalPortal>
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in"
           onClick={(e) => { if (e.target === e.currentTarget) setCompleteModalReport(null); }}
         >
           {(() => {
@@ -764,12 +787,8 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               completeModalReport.description.toUpperCase().includes('EQUIPMENT');
 
             const totalWeight = isRecyclable
-              ? Object.values(itemWeights).reduce((sum, v) => sum + (parseFloat(v) || 0), 0)
+              ? computeCollectionTotals(itemWeights, otherMaterialKg).totalWeight
               : (parseFloat(weightKg) || 0);
-
-            const filledCount = isRecyclable
-              ? Object.values(itemWeights).filter(v => (parseFloat(v) || 0) > 0).length
-              : 0;
 
             const urgencyConfig = {
               LOW: { label: 'Low Priority', dot: 'bg-emerald-400', ring: 'ring-emerald-400/20', text: 'text-emerald-700', bg: 'bg-emerald-50' },
@@ -778,7 +797,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
             }[completeModalReport.urgency] || { label: 'Standard', dot: 'bg-gray-400', ring: 'ring-gray-400/20', text: 'text-gray-600', bg: 'bg-gray-50' };
 
             return (
-              <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden relative">
+              <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-y-auto relative my-auto max-h-[92dvh]">
 
             {/* ── Header ── */}
             <div className="bg-gradient-to-br from-[var(--primary)] via-[var(--primary-light)] to-[var(--primary)] px-6 pt-6 pb-5 relative overflow-hidden">
@@ -828,79 +847,15 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
                 {/* RECYCLABLE: Itemized Weight Inputs */}
                 {isRecyclable && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-[color-mix(in_srgb,var(--accent)_10%,white)] flex items-center justify-center">
-                          <Scale size={14} className="text-[var(--accent)]" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-[var(--text-strong)]">Log Collected Items</p>
-                          <p className="text-[10px] text-gray-400 font-medium">Weigh each recyclable type in kg</p>
-                        </div>
-                      </div>
-                      {totalWeight > 0 && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[color-mix(in_srgb,var(--accent)_10%,white)] ring-1 ring-[var(--accent)]/20">
-                          <span className="text-[11px] font-bold text-[var(--accent)]">{totalWeight.toFixed(1)} kg</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Progress indicator */}
-                    <div className="flex items-center gap-2 px-1">
-                      <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[var(--accent)] to-[#10B981] transition-all duration-500"
-                          style={{ width: `${isRecyclable ? (filledCount / RECYCLABLE_CATEGORIES.length) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-bold text-gray-400">{filledCount}/{RECYCLABLE_CATEGORIES.length}</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {RECYCLABLE_CATEGORIES.map(cat => {
-                        const val = parseFloat(itemWeights[cat.id]) || 0;
-                        const isFilled = val > 0;
-                        return (
-                          <div
-                            key={cat.id}
-                            className={`rounded-xl border-2 transition-all duration-200 p-3 ${
-                              isFilled
-                                ? `${cat.borderColor} ${cat.bgLight} shadow-sm`
-                                : 'border-gray-100 bg-white hover:border-gray-200'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <label className={`text-[10px] font-bold uppercase tracking-wider ${isFilled ? cat.color : 'text-gray-400'}`}>
-                                {cat.shortName}
-                              </label>
-                              {isFilled && (
-                                <span className={`text-[9px] font-bold ${cat.color} bg-white px-1.5 py-0.5 rounded-full`}>
-                                  {val.toFixed(1)} kg
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                placeholder="0.0"
-                                value={itemWeights[cat.id] || ''}
-                                onChange={e => setItemWeights(prev => ({ ...prev, [cat.id]: e.target.value }))}
-                                className={`w-full rounded-lg border px-2.5 py-2 text-sm font-bold outline-none transition-all ${
-                                  isFilled
-                                    ? `border-${cat.id === 'pet_plastic' ? 'sky' : cat.id === 'aluminum_cans' ? 'amber' : cat.id === 'cardboard' ? 'emerald' : 'purple'}-300 bg-white text-gray-900 focus:ring-2 focus:ring-[var(--accent)]/30`
-                                    : 'border-gray-200 bg-gray-50 text-gray-400 focus:bg-white focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/30'
-                                }`}
-                              />
-                              <span className="text-[10px] text-gray-400 font-bold flex-shrink-0">kg</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <CollectedItemsInput
+                    categories={RECYCLABLE_CATEGORIES}
+                    itemWeights={itemWeights}
+                    onWeightChange={(catId, value) => setItemWeights(prev => ({ ...prev, [catId]: value }))}
+                    otherName={otherMaterialName}
+                    onOtherNameChange={setOtherMaterialName}
+                    otherKg={otherMaterialKg}
+                    onOtherKgChange={setOtherMaterialKg}
+                  />
                 )}
 
                 {/* ASSET: Outcome Dropdown */}
@@ -1070,6 +1025,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
             );
           })()}
         </div>
+        </ModalPortal>
       )}
 
       {/* ── MRF TASK DETAILS & CAMPUS MINI-MAP PREVIEW MODAL ── */}
@@ -1092,6 +1048,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
         const isPending = mrfDetailReport.status === 'PENDING';
 
         return (
+          <ModalPortal>
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
             <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl space-y-4 relative my-auto max-h-[92dvh] overflow-y-auto">
               
@@ -1194,6 +1151,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               </div>
             </div>
           </div>
+          </ModalPortal>
         );
       })()}
 

@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarDays, Palette, RefreshCw } from 'lucide-react';
+import { CalendarDays, DatabaseZap, Palette, RefreshCw } from 'lucide-react';
 import { PageHeader } from '../../../../components/layout/PageHeader';
 import { SettingsSectionTabs, SettingsSection } from './SettingsSectionTabs';
 import { AdminBrandingTab } from './AdminBrandingTab';
 import { AdminSyncSettingsTab } from './AdminSyncSettingsTab';
 import { AdminAcademicCalendarTab } from './AdminAcademicCalendarTab';
+import { AdminDataSeederTab } from './AdminDataSeederTab';
 
 const SECTIONS: SettingsSection[] = [
   { id: 'branding', label: 'Branding', icon: Palette },
   { id: 'sync-integrations', label: 'Sync & Integrations', icon: RefreshCw },
   { id: 'academic-calendar', label: 'Academic Calendar', icon: CalendarDays },
+  { id: 'data-seeder', label: 'Data Seeder', icon: DatabaseZap },
 ];
 
 interface SchoolSettingsPageProps {
@@ -28,12 +30,12 @@ export const SchoolSettingsPage: React.FC<SchoolSettingsPageProps> = ({ initialS
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="School & Sync"
-        description="School identity, branding, academic calendar and EnrollPro integration."
       />
       <SettingsSectionTabs sections={SECTIONS} active={section} onChange={setSection} />
       {section === 'branding' && <AdminBrandingTab />}
       {section === 'sync-integrations' && <AdminSyncSettingsTab />}
       {section === 'academic-calendar' && <AdminAcademicCalendarTab />}
+      {section === 'data-seeder' && <AdminDataSeederTab />}
     </div>
   );
 };

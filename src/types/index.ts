@@ -101,6 +101,8 @@ export interface Challenge {
   isActive: boolean;
   iconName: string;
   quarterCode?: string;
+  schoolYearId?: string | null;
+  schoolYearLabel?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   createdAt?: string;
@@ -273,7 +275,8 @@ export interface SystemSettings {
   binResetTime: string;
   walkInPointsPer500ml?: number;
   walkInEnabled?: boolean;
-  schoolName?: string;
+  // null = unconfigured; the UI resolves the SORT default identity.
+  schoolName?: string | null;
   schoolAcronym?: string | null;
   schoolId?: string | null;
   division?: string | null;
@@ -453,6 +456,9 @@ export interface TermStatus {
   isPeriodOver: boolean;
   resultsReady: boolean;
   awardedCount: number;
+  /** Term-aware clock (ISO). Clamped into the active term while EnrollPro time-travels. */
+  effectiveNow: string | null;
+  timeShifted: boolean;
 }
 
 export interface TermStanding {

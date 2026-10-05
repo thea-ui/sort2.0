@@ -207,7 +207,6 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Campus Analytics"
-        description="Real-time reporting frequency, grade distribution, and material breakdowns."
         actions={
           <span className="hidden sm:inline-flex items-center gap-2 shrink-0 whitespace-nowrap text-xs font-semibold text-foreground bg-card border border-border px-3 py-1.5 rounded-full shadow-sm">
             <span className="relative flex h-2 w-2">

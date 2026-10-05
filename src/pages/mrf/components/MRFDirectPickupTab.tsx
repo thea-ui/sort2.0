@@ -31,7 +31,7 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
   addStockKg,
   showToast,
 }) => {
-  const [selectedLocation, setSelectedLocation] = useState<string>('Main Courtyard (Quad)');
+  const [selectedLocation, setSelectedLocation] = useState<string>('Admin and Learning Commons');
   const [isPinningMode, setIsPinningMode] = useState<boolean>(false);
   const [isCustomPin, setIsCustomPin] = useState<boolean>(false);
   const [customPinCoords, setCustomPinCoords] = useState<{ x: number; y: number } | null>(null);

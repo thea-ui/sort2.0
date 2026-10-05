@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Scale, CheckCircle2, Clock, Coins, ShieldAlert, Loader2, PackageCheck, Plus, Trash2, Inbox } from 'lucide-react';
 import { useAssetScrap, type ScrapItem } from '../../../hooks/useAssetScrap';
+import { generateScrapApprovalReference } from '../../../utils/scrapReference';
 import { useMockData } from '../../../hooks/useMockData';
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { Input } from '../../../components/ui/Input';
@@ -314,7 +315,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                   isAdmin ? (
                     <button
                       type="button"
-                      onClick={() => { setApproveFor(mat.materialCode); setApprovalRef(''); }}
+                      onClick={() => { setApproveFor(mat.materialCode); setApprovalRef(generateScrapApprovalReference([...materials, ...salesHistory])); }}
                       className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white flex items-center gap-1.5 cursor-pointer shrink-0"
                     >
                       <CheckCircle2 size={13} /> Approve Sale

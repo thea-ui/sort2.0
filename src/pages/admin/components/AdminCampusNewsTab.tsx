@@ -129,7 +129,6 @@ export const AdminCampusNewsTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Campus News"
-        description="Manage news articles visible to students and teachers"
         actions={
           <button
             onClick={openCreate}

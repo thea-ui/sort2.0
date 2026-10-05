@@ -105,14 +105,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
   const [selectedBinId, setSelectedBinId] = useState<string | null>('bin-1');
   const [isPinningMode, setIsPinningMode] = useState(false);
   const [isCustomDebrisPin, setIsCustomDebrisPin] = useState(false);
-  const [assignedLocationText, setAssignedLocationText] = useState('Main Courtyard (Quad)');
+  const [assignedLocationText, setAssignedLocationText] = useState('Admin and Learning Commons');
 
   // Report form state
   const [pillarCategory, setPillarCategory] = useState<InfrastructurePillar>('waste');
   const [reportTitle, setReportTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [observation, setObservation] = useState('Damaged');
-  const [selectedBuilding, setSelectedBuilding] = useState('Main Courtyard (Quad)');
+  const [selectedBuilding, setSelectedBuilding] = useState('Admin and Learning Commons');
   const [roomNumber, setRoomNumber] = useState('');
   const [wizardStep, setWizardStep] = useState(1);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -171,11 +171,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     setGpsLoading(true);
     setTimeout(() => {
       const offsets: Record<string, { lat: number; lng: number }> = {
-        'Main Courtyard (Quad)':              { lat: 14.5995, lng: 120.9842 },
-        'Science Hall Cafeteria Side':        { lat: 14.6012, lng: 120.9856 },
-        'Chemistry Building Room 302 Entrance':{ lat: 14.5982, lng: 120.9830 },
-        'Main Library Lobby Entrance':        { lat: 14.6001, lng: 120.9870 },
-        'Sports Complex Entrance B':          { lat: 14.6025, lng: 120.9821 },
+        'Admin and Learning Commons':         { lat: 14.5995, lng: 120.9842 },
+        'Grade 8 Academic Wing':              { lat: 14.6012, lng: 120.9856 },
+        'Grade 7 Academic Wing':              { lat: 14.5982, lng: 120.9830 },
+        'TLE and Livelihood Center':          { lat: 14.6001, lng: 120.9870 },
+        'Science and Innovation Center':      { lat: 14.6025, lng: 120.9821 },
       };
       setGpsCoords(offsets[selectedBuilding] || { lat: 14.6000, lng: 120.9850 });
       setGpsLoading(false);
@@ -243,7 +243,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
       setGpsCoords(null);
       setIsCustomDebrisPin(false);
       setPillarCategory('waste');
-      setSelectedBuilding('Main Courtyard (Quad)');
+      setSelectedBuilding('Admin and Learning Commons');
       setRoomNumber('');
       setWizardStep(1);
     }, 1200);

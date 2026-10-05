@@ -154,7 +154,6 @@ export const AdminLedgerPage: React.FC<AdminLedgerPageProps> = ({ showToast, ini
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="School Years"
-        description="Per-year ledger of reports, points, sales and stock."
         actions={
           <LedgerToolbar
             years={allSchoolYears}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Recycle, ShieldCheck } from 'lucide-react';
 import { useMockData } from '../../hooks/useMockData';
 import { useTheme } from '../../hooks/useTheme';
-import { isOfflineSessionToken } from '../../services/api';
+import { resolveBrandIdentity } from '../../utils/brandIdentity';
 import { filterNotificationsForUser } from '../../utils/notifications';
 import { readDismissed, writeDismissed } from '../../utils/notificationDismissals';
 import { ROLE_LABELS } from '../../utils/userDisplay';
@@ -56,7 +56,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   setActiveTab,
 }) => {
   const { currentUser, logout, notifications } = useMockData();
-  const { logoUrl, schoolName, currentSchoolYear } = useTheme();
+  const { logoUrl, schoolName, schoolAcronym, brandingSource, currentSchoolYear, currentTerm } = useTheme();
+  const brandIdentity = resolveBrandIdentity({ schoolName, schoolAcronym, logoUrl, brandingSource });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
@@ -87,7 +88,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     name: currentUser.name,
     roleLabel: ROLE_LABELS[currentUser.role],
     roleTone: isMRF ? ('primary' as const) : ('emerald' as const),
-    offlineSession: isOfflineSessionToken(),
   };
 
   const persistDismissed = (next: Set<string>) => {
@@ -126,8 +126,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     <>
       <AppShell
         brand={{
-          name: schoolName || 'S.O.R.T.',
-          logoUrl,
+          name: brandIdentity.displayName,
+          logoUrl: brandIdentity.logoSrc,
           fallbackIcon: isMRF ? Recycle : ShieldCheck,
         }}
         navGroups={navGroups}
@@ -135,6 +135,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         pageTitle={resolvePageTitle(activeTab, isMRF)}
         user={shellUser}
         schoolYear={currentSchoolYear}
+        currentTerm={currentTerm}
         activeTab={activeTab}
         onNavigate={handleNavSelect}
         onLogout={() => logout()}

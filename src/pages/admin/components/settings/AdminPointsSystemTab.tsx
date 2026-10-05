@@ -60,7 +60,7 @@ export const AdminPointsSystemTab: React.FC = () => {
             Points System Rules
           </h3>
           <p className="text-sm text-amber-900/50 mt-1">
-            When the same bin is reported by multiple users, points are awarded based on rank priority after admin verification and MRF collection.
+            When the same bin is reported by multiple users, points are awarded based on rank priority after admin verification and MRF collection. Ranks restart at each daily bin reset (default 6:00 PM), so the 1st/2nd/3rd spots open again every day.
           </p>
         </div>
       </div>

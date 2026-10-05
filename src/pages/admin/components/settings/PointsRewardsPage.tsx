@@ -35,7 +35,6 @@ export const PointsRewardsPage: React.FC<PointsRewardsPageProps> = ({
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Points & Rewards"
-        description="Point rules, certificates and challenge programs."
       />
       <SettingsSectionTabs sections={SECTIONS} active={section} onChange={setSection} />
       {section === 'points-system' && <AdminPointsSystemTab />}

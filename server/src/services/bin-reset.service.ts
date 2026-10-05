@@ -1,11 +1,10 @@
 import { PrismaClient, ReportStatus } from '@prisma/client';
+import { BIN_RESET_TZ, RESET_TIME_REGEX } from './reset-cycle.service.js';
 
 const prisma = new PrismaClient();
 
 // ── Concurrency Guard ──────────────────────────────────────────────────────
 let binResetInProgress = false;
-
-const BIN_RESET_TZ = process.env.BIN_RESET_TZ || 'Asia/Manila';
 
 // Asset reports are identified by pillar markers in the description. Even if a
 // legacy row is mis-typed as WASTE, the reset must never touch it.
@@ -104,8 +103,6 @@ async function runConfiguredReset() {
   }
 }
 
-const TIME_REGEX = /^([01]?\d|2[0-3]):([0-5]\d)$/;
-
 /**
  * Schedule the daily reset from System Settings. Reads binResetEnabled and
  * binResetTime; re-schedules whenever settings change.
@@ -126,7 +123,7 @@ export async function rescheduleBinReset() {
       return;
     }
 
-    const match = TIME_REGEX.exec(time.trim());
+    const match = RESET_TIME_REGEX.exec(time.trim());
     if (!match) {
       console.warn(`[BinReset] Invalid binResetTime "${time}" — expected HH:MM (24h). No reset scheduled.`);
       return;

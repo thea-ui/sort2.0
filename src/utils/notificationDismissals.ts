@@ -30,3 +30,17 @@ export function writeDismissed(portal: string, userId: string, ids: Set<string>)
     // Quota / private mode — dismissal is best effort.
   }
 }
+
+/**
+ * Removes every dismissal record in this browser. Used by the Danger Zone
+ * reset so a wiped feed cannot leave stale ids marked as dismissed.
+ */
+export function clearAllDismissals(): void {
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(DISMISS_PREFIX))
+      .forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // Storage unavailable — nothing to clear.
+  }
+}

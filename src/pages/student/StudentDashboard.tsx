@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { WasteCategory } from '../../types';
 import { Scale, Sparkles, Flame, Trash2 } from 'lucide-react';
+import { downscaleImageFile } from '../../utils/imageDownscale';
 
 // Sub-components
 import { OverviewTab } from './components/OverviewTab';
@@ -98,11 +99,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        setCapturedImage(uploadEvent.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      // Phone photos are 4-8 MB; compress before they reach the report payload
+      // (localStorage cache, JSON API body, server column) to avoid quota bailouts.
+      downscaleImageFile(file, 1600)
+        .then(setCapturedImage)
+        .catch(() => {
+          const reader = new FileReader();
+          reader.onload = (uploadEvent) => {
+            setCapturedImage(uploadEvent.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        });
     }
   };
 

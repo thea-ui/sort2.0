@@ -3,8 +3,8 @@ import { LandingHeader } from '../components/landing/LandingHeader';
 import { LandingFooter } from '../components/landing/LandingFooter';
 import { HeroSection } from '../components/landing/HeroSection';
 import { FeaturesSection } from '../components/landing/FeaturesSection';
-import { CampaignsFeed } from '../components/landing/CampaignsFeed';
 import { LeaderboardCard } from '../components/landing/LeaderboardCard';
+import { CampusNewsSection } from '../components/landing/CampusNewsSection';
 import { HowItWorksTimeline } from '../components/landing/HowItWorksTimeline';
 
 interface PublicLandingProps {
@@ -31,9 +31,9 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({ onNavigate }) => {
               <LeaderboardCard />
             </div>
 
-            {/* RIGHT: Upcoming Campaigns (40%) */}
+            {/* RIGHT: Campus News & Updates (40%) */}
             <div className="lg:col-span-2">
-              <CampaignsFeed />
+              <CampusNewsSection />
             </div>
           </div>
         </div>

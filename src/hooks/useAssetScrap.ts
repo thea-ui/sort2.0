@@ -155,6 +155,7 @@ export function useAssetScrap() {
       broadcastChange();
     } catch (err) {
       console.error('Failed to approve scrap sale:', err);
+      throw err;
     }
   };
 

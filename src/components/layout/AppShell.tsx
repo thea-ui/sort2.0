@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut, Menu } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PixelGridBackground } from './PixelGridBackground';
-import { OfflineSessionBadge } from '../auth/OfflineAuthNotice';
-import { OfflinePinButton } from '../auth/OfflinePinButton';
 
 // ─── Contract ─────────────────────────────────────────────────────────────────
 // Application shell for the Admin console and the MRF terminal: a 280px ↔ 70px
@@ -39,8 +37,6 @@ export interface ShellUser {
   name: string;
   roleLabel: string;
   roleTone?: ShellRoleTone;
-  /** True when the session came from the break-glass offline PIN fallback. */
-  offlineSession?: boolean;
 }
 
 export interface ShellBrand {
@@ -56,6 +52,7 @@ export interface AppShellProps {
   pageTitle: string;
   user: ShellUser;
   schoolYear?: string | null;
+  currentTerm?: string | null;
   activeTab: string;
   onNavigate: (id: string, options?: { keepOpen?: boolean }) => void;
   onLogout: () => void;
@@ -83,6 +80,12 @@ function initials(name: string) {
 const BrandTile: React.FC<{ brand: ShellBrand; className?: string }> = ({ brand, className }) => {
   const [logoFailed, setLogoFailed] = useState(false);
   const Fallback = brand.fallbackIcon;
+
+  // Retry when branding changes live (tenant logo synced after a failure, or
+  // a default restored after a broken URL).
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [brand.logoUrl]);
 
   return (
     <div
@@ -372,7 +375,6 @@ export const ShellNavFooter: React.FC<ShellNavFooterProps> = ({
             {user.roleLabel}
           </p>
         </div>
-        <OfflinePinButton />
         <button
           type="button"
           onClick={onLogout}
@@ -396,6 +398,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   pageTitle,
   user,
   schoolYear,
+  currentTerm,
   activeTab,
   onNavigate,
   onLogout,
@@ -505,34 +508,32 @@ export const AppShell: React.FC<AppShellProps> = ({
             <div className="flex items-center gap-3">
               {headerActions}
 
-              {schoolYear && (
-                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2 py-1 rounded-lg bg-slate-100 text-slate-600 whitespace-nowrap">
-                  S.Y. {schoolYear}
+              {(currentTerm || schoolYear) && (
+                <span className="hidden sm:inline-flex flex-col items-center leading-tight text-[10px] font-bold tracking-wider px-2 py-1 rounded-lg bg-slate-100 text-slate-600 whitespace-nowrap">
+                  {currentTerm && <span className="text-slate-700">{currentTerm}</span>}
+                  {schoolYear && <span className="text-slate-500">S.Y. {schoolYear}</span>}
                 </span>
               )}
 
               <div className="flex items-center gap-3 pl-3 border-l border-slate-100">
                 <div className="hidden sm:flex flex-col items-end mr-1">
                   <span className="text-sm font-bold text-slate-900 leading-none">{user.name}</span>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    {user.offlineSession && <OfflineSessionBadge />}
-                    <span
-                      className={cx(
-                        'text-[10px] font-medium px-1.5 py-0.5 rounded-md',
-                        roleToneClass,
-                      )}
-                      style={
-                        user.roleTone === 'primary'
-                          ? {
-                              color: 'var(--theme-primary)',
-                              backgroundColor: 'rgba(var(--theme-primary-rgb), 0.06)',
-                            }
-                          : undefined
-                      }
-                    >
-                      {user.roleLabel}
-                    </span>
-                  </div>
+                  <span
+                    className={cx(
+                      'text-[10px] font-medium px-1.5 py-0.5 rounded-md mt-1',
+                      roleToneClass,
+                    )}
+                    style={
+                      user.roleTone === 'primary'
+                        ? {
+                            color: 'var(--theme-primary)',
+                            backgroundColor: 'rgba(var(--theme-primary-rgb), 0.06)',
+                          }
+                        : undefined
+                    }
+                  >
+                    {user.roleLabel}
+                  </span>
                 </div>
                 <div className="w-9 h-9 rounded-full ring-2 ring-slate-100 ring-offset-2 flex items-center justify-center bg-slate-200 text-slate-700 text-sm font-bold">
                   {initials(user.name)}

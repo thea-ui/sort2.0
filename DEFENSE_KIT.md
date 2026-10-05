@@ -12,7 +12,7 @@ Run it in this order — it follows the real operational loop.
 |---|---|---|---|
 | 1 | **Cold start** | Open the app in a **fresh browser profile** | "The landing page loads with no cached state — no spinner, no setup." |
 | 2 | **Public monitoring** | Point at the Hall of Fame + campuses feed | "Live campus data is public; no login needed for transparency." |
-| 3 | **Privacy notice** | Point at the notice under the login card | "Credentials are verified by EnrollPro. SORT never stores passwords — RA 10173." |
+| 3 | **Privacy notice** | Point at the notice under the login card | "Credentials are verified by EnrollPro. For outages SORT keeps only a salted, bcrypt hash of the last verified password — never plaintext — RA 10173." |
 | 4 | **Learner login** | `202600000015` / `DepEd2026!!` | "Students sign in with their LRN." |
 | 5 | **Report** | Report → pick a station → pick a category → **Demo Photo** → Submit | "Biodegradable, Non-Biodegradable, Recyclable and **Hazardous** — the DepEd DO 5 s. 2014 streams, with the mandated bin colours." |
 | 6 | **Duplicate guard** | Immediately try the same bin again | "The system refuses a second report per bin until MRF clears it — anti-abuse by design." |
@@ -72,7 +72,7 @@ Run it in this order — it follows the real operational loop.
 ## 3. Anticipated Panel Questions
 
 **"How do you secure student data?"**
-Credentials are delegated to EnrollPro — SORT never stores passwords. Learner records are personal data under RA 10173, so: report payloads omit reporter emails, list endpoints are PII-minimised, identifiers are masked in server logs (`20******15`), and the login screen carries a privacy notice.
+Credentials are delegated to EnrollPro, and to stay usable during provider outages SORT stores only a bcrypt hash of the last password EnrollPro verified — never plaintext, with a 30-day freshness window, an admin kill-switch, and every offline sign-in audited. Learner records are personal data under RA 10173, so: report payloads omit reporter emails, list endpoints are PII-minimised, identifiers are masked in server logs (`20******15`), and the login screen carries a privacy notice.
 
 **"What stops a student from faking reports?"**
 One report per bin per learner until MRF clears it; admin verification is a hard gate before dispatch; points are awarded only on MRF-verified collection; `weightCollected` and `assignedMrfId` are validated server-side against real MRF personnel.

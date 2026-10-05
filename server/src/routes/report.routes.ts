@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, ReportStatus, WasteCategory, Urgency, ReportType, Role } from '@prisma/client';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { approveReports, awardCollectedReportsWithinTransaction, formatReportResponse } from '../services/report-points.service.js';
+import { countUnverifiedActiveStreamReports, dispatchStreamWithinTransaction } from '../services/report-dispatch.service.js';
 import { recordWeightContribution } from '../services/challenge-progress.service.js';
 import { authenticate, requireAdmin, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
 
@@ -231,6 +232,22 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
           code: 'NOT_VERIFIED',
         });
       }
+
+      // Dispatch is stream-wide (see the transaction below): every active
+      // report in the bin stream must be approved first, or dispatching one
+      // report would silently dispatch its unverified siblings. The UI gates
+      // the button on "Verify All" for the same reason.
+      const unverifiedInStream = await countUnverifiedActiveStreamReports(prisma, {
+        locationKey: targetReport.locationKey,
+        category: targetReport.category,
+        schoolYearId: targetReport.schoolYearId,
+      });
+      if (unverifiedInStream > 0) {
+        return res.status(409).json({
+          error: 'All active reports in this bin stream must be verified before dispatch.',
+          code: 'STREAM_NOT_VERIFIED',
+        });
+      }
     }
 
     const data: any = {};
@@ -300,6 +317,22 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
           schoolYearId: result.schoolYearId,
         }, weightCollected);
         allChallengeCompletions.push(...completions);
+      }
+
+      // Dispatch applies to the whole bin stream: one collector assignment
+      // covers every active sibling report, mirroring the stream-wide
+      // resolution used on collection. Without this, only the target report is
+      // dispatched and the rest need a manual second dispatch.
+      if (status === 'DISPATCHED') {
+        await dispatchStreamWithinTransaction(
+          tx,
+          {
+            locationKey: result.locationKey,
+            category: result.category,
+            schoolYearId: result.schoolYearId,
+          },
+          data.assignedMrfId,
+        );
       }
 
       // Collection is the reward event. Resolve every still-active report in the

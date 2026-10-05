@@ -258,21 +258,15 @@ export function getBinLocations(bins: any[] = []): string[] {
     const names = Array.from(new Set(bins.map((b: any) => b.locationName)));
     if (names.length > 0) return names;
   }
-  return [
-    'Main Courtyard (Quad)',
-    'Science Hall Cafeteria Side',
-    'Chemistry Building Entrance',
-    'Main Library Lobby Entrance',
-    'Sports Complex Entrance B',
-  ];
+  return BIN_LOCATIONS;
 }
 
 export const BIN_LOCATIONS = [
-  'Main Courtyard (Quad)',
-  'Science Hall Cafeteria Side',
-  'Chemistry Building Entrance',
-  'Main Library Lobby Entrance',
-  'Sports Complex Entrance B',
+  'Admin and Learning Commons',
+  'Grade 8 Academic Wing',
+  'Grade 7 Academic Wing',
+  'TLE and Livelihood Center',
+  'Science and Innovation Center',
 ];
 
 export function getBinSlotDetails(bin: any | null, reports: any[] = []) {

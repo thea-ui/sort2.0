@@ -4,6 +4,8 @@ import { apiService } from '../../../services/api';
 import { Reward, RewardClaim } from '../../../types';
 import { RewardClaimQueue } from './RewardClaimQueue';
 import { RewardCatalogTable } from './RewardCatalogTable';
+import { RewardEditModal } from './RewardEditModal';
+import type { RewardPatch } from '../../../utils/rewardCatalog';
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { LoadingState } from '../../../components/common/LoadingState';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -28,6 +30,7 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<PendingConfirmation | null>(null);
+  const [editingReward, setEditingReward] = useState<Reward | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -132,6 +135,14 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
     }
   };
 
+  const handleSaveReward = async (patch: RewardPatch) => {
+    if (!editingReward) return;
+    await apiService.updateReward(editingReward.id, patch);
+    showToast(`${patch.title} updated.`);
+    setEditingReward(null);
+    await refresh();
+  };
+
   const handleUpdateStock = async (reward: Reward, stock: number | null) => {
     setBusyId(reward.id);
     try {
@@ -149,7 +160,6 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Rewards & Prize Claims"
-        description="Release prizes unlocked by student bottle turn-ins. Points rewards credit automatically on release."
         actions={
           <button
             type="button"
@@ -255,8 +265,15 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
           busyId={busyId}
           onToggleActive={handleToggleActive}
           onUpdateStock={handleUpdateStock}
+          onEdit={setEditingReward}
         />
       )}
+
+      <RewardEditModal
+        reward={editingReward}
+        onClose={() => setEditingReward(null)}
+        onSubmit={handleSaveReward}
+      />
 
       <ConfirmDialog
         open={confirmation !== null}

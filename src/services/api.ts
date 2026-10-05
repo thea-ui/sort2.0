@@ -1,5 +1,49 @@
 import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult, Certificate, TermStatus, IssueTermResult, AtlasMapPayload, WalkInStudentOption, WalkInTurnover, WalkInProgress, RecordWalkInInput, RecordWalkInResult, Reward, RewardClaim } from '../types';
 
+export type DataSeedVolume = 'LIGHT' | 'NORMAL' | 'HEAVY';
+export type DataSeedMode = 'SEED_EMPTY' | 'RESEED_YEAR';
+
+export interface DataSeedInclude {
+  walkIns: boolean;
+  marketSales: boolean;
+  offenses: boolean;
+  assetScrap: boolean;
+}
+
+export interface DataSeedCounts {
+  reports: number;
+  pointHistories: number;
+  walkIns: number;
+  offenses: number;
+  sales: number;
+  assetRecords: number;
+}
+
+export interface DataSeedStatus {
+  schoolYear: { id: string; label: string; startDate: string; endDate: string } | null;
+  students: { active: number; archived: number };
+  staff: number;
+  counts: DataSeedCounts;
+  lastSeed: { at: string; actorName: string; details: string } | null;
+  isSeeding: boolean;
+}
+
+export interface DataSeedResult extends DataSeedCounts {
+  message?: string;
+  schoolYearId: string;
+  schoolYearLabel: string;
+  mode: DataSeedMode;
+  volume: DataSeedVolume;
+  collectedReports: number;
+  pointsAwarded: number;
+  studentsCredited: number;
+  walkInPoints: number;
+  rewardClaims: number;
+  salesRevenue: number;
+  challengeCompletions: number;
+  durationMs: number;
+}
+
 const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || '/api';
 
 /**
@@ -10,31 +54,10 @@ function getAuthToken(): string | null {
 }
 
 /**
- * The last account that completed a login/refresh. Persisted in localStorage
- * (not sessionStorage) so the refresh token is still discoverable after a
- * browser restart — sessionStorage is wiped when the tab closes, which used to
- * strand a perfectly valid 7-day refresh token and force a fresh login.
- */
-const LAST_USER_ID_KEY = 'sortv2_last_user_id';
-const USER_SNAPSHOT_KEY = 'sortv2_user_snapshot';
-
-function getStoredUserId(): string | null {
-  return sessionStorage.getItem('sortv2_user_id') || localStorage.getItem(LAST_USER_ID_KEY);
-}
-
-/**
- * The last account persisted in localStorage. Exposed so callers can clear a
- * session whose access token was already wiped from sessionStorage.
- */
-export function getPersistedUserId(): string | null {
-  return localStorage.getItem(LAST_USER_ID_KEY);
-}
-
-/**
  * Helper to retrieve stored refresh token for the current user from localStorage
  */
 function getRefreshToken(): string | null {
-  const userId = getStoredUserId();
+  const userId = sessionStorage.getItem('sortv2_user_id');
   if (!userId) return null;
   return localStorage.getItem(`sortv2_refresh_${userId}`);
 }
@@ -44,7 +67,6 @@ function getRefreshToken(): string | null {
  */
 export function storeRefreshToken(userId: string, refreshToken: string): void {
   localStorage.setItem(`sortv2_refresh_${userId}`, refreshToken);
-  localStorage.setItem(LAST_USER_ID_KEY, userId);
 }
 
 /**
@@ -52,87 +74,23 @@ export function storeRefreshToken(userId: string, refreshToken: string): void {
  */
 export function clearRefreshToken(userId: string): void {
   localStorage.removeItem(`sortv2_refresh_${userId}`);
-  if (localStorage.getItem(LAST_USER_ID_KEY) === userId) {
-    localStorage.removeItem(LAST_USER_ID_KEY);
-  }
 }
-
-/**
- * Cache the signed-in user's profile. Only used to keep an existing session
- * usable when the server is briefly unreachable (e.g. a browser restart during
- * an outage); it is never a substitute for server-side authorization.
- */
-export function storeUserSnapshot(user: User): void {
-  try {
-    localStorage.setItem(USER_SNAPSHOT_KEY, JSON.stringify(user));
-  } catch {
-    /* storage full or unavailable — non-fatal */
-  }
-}
-
-export function getUserSnapshot(): User | null {
-  try {
-    const raw = localStorage.getItem(USER_SNAPSHOT_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearUserSnapshot(): void {
-  localStorage.removeItem(USER_SNAPSHOT_KEY);
-}
-
-/**
- * True when the current access token came from the break-glass offline PIN
- * fallback rather than an EnrollPro-verified login. The claim is read for
- * display only — the server enforces the real boundary.
- */
-export function isOfflineSessionToken(): boolean {
-  const token = sessionStorage.getItem('sortv2_token');
-  if (!token) return false;
-  try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const payload = JSON.parse(atob(base64)) as { offline?: boolean };
-    return payload.offline === true;
-  } catch {
-    return false;
-  }
-}
-
-export type SessionUser = User & { certificatesEarned?: unknown };
 
 let isRefreshing = false;
-let refreshPromise: Promise<RefreshOutcome> | null = null;
-
-/**
- * Result of a refresh attempt.
- *
- * - `refreshed`   — new tokens issued; caller may continue.
- * - `invalid`     — the server definitively rejected the refresh token
- *                   (400/401/403). The session is dead and must be cleared.
- * - `unreachable` — transient failure (network down, 5xx, rate limit). The
- *                   session is still valid; callers must NOT log the user out.
- */
-export type RefreshOutcome =
-  | { status: 'refreshed'; accessToken: string; refreshToken: string; user: User }
-  | { status: 'invalid' }
-  | { status: 'unreachable' };
-
-const INVALID_REFRESH_STATUSES = new Set([400, 401, 403]);
+let refreshPromise: Promise<any> | null = null;
 
 /**
  * Refresh the access token using the stored refresh token.
  * Coalesces concurrent calls into a single request.
  */
-async function refreshAccessToken(): Promise<RefreshOutcome> {
+async function refreshAccessToken(): Promise<{ accessToken: string; refreshToken: string; user: User } | null> {
   if (isRefreshing && refreshPromise) return refreshPromise;
 
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return { status: 'invalid' };
+  if (!refreshToken) return null;
 
   isRefreshing = true;
-  refreshPromise = (async (): Promise<RefreshOutcome> => {
+  refreshPromise = (async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
@@ -140,28 +98,17 @@ async function refreshAccessToken(): Promise<RefreshOutcome> {
         body: JSON.stringify({ refreshToken }),
       });
 
-      if (!response.ok) {
-        return INVALID_REFRESH_STATUSES.has(response.status)
-          ? { status: 'invalid' }
-          : { status: 'unreachable' };
-      }
+      if (!response.ok) return null;
 
       const data = await response.json();
       // Store new tokens
       sessionStorage.setItem('sortv2_token', data.accessToken);
       if (data.user?.id) {
-        sessionStorage.setItem('sortv2_user_id', data.user.id);
         storeRefreshToken(data.user.id, data.refreshToken);
-        storeUserSnapshot(data.user);
       }
-      return {
-        status: 'refreshed',
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-        user: data.user,
-      };
+      return data;
     } catch {
-      return { status: 'unreachable' };
+      return null;
     } finally {
       isRefreshing = false;
       refreshPromise = null;
@@ -169,61 +116,6 @@ async function refreshAccessToken(): Promise<RefreshOutcome> {
   })();
 
   return refreshPromise;
-}
-
-/**
- * Result of a boot restore attempt.
- *
- * - `restored`    — a new token pair was issued; the user is genuinely signed in.
- * - `unreachable` — SORT could not be reached. The stored credentials may still
- *                   be valid, so the caller may keep a degraded session.
- * - `none`        — there is nothing to resume, or the server definitively
- *                   rejected the token. The caller must sign out and the cached
- *                   profile is already cleared so it cannot resurrect a UI.
- */
-export type RestoreOutcome =
-  | { status: 'restored'; user: User }
-  | { status: 'unreachable' }
-  | { status: 'none' };
-
-function burnStoredSession(userId: string | null): void {
-  if (userId) clearRefreshToken(userId);
-  sessionStorage.removeItem('sortv2_token');
-  sessionStorage.removeItem('sortv2_user_id');
-  sessionStorage.setItem('sort_auth', 'false');
-  clearUserSnapshot();
-}
-
-/**
- * Resume a session from the persisted refresh token.
- *
- * Used on boot: a browser restart clears sessionStorage (which holds the access
- * token) but not localStorage, so without this the user would have to log in
- * again — impossible while the identity provider is unreachable.
- */
-async function restoreSession(): Promise<RestoreOutcome> {
-  const userId = getStoredUserId();
-  if (!userId) return { status: 'none' };
-  if (!localStorage.getItem(`sortv2_refresh_${userId}`)) {
-    // A cached profile without a credential must never keep a session alive.
-    burnStoredSession(userId);
-    return { status: 'none' };
-  }
-
-  sessionStorage.setItem('sortv2_user_id', userId);
-  const outcome = await refreshAccessToken();
-
-  if (outcome.status === 'refreshed') {
-    return { status: 'restored', user: outcome.user };
-  }
-
-  if (outcome.status === 'unreachable') {
-    sessionStorage.removeItem('sortv2_user_id');
-    return { status: 'unreachable' };
-  }
-
-  burnStoredSession(userId);
-  return { status: 'none' };
 }
 
 /**
@@ -247,9 +139,9 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
 
   // If 401, try refreshing the token once
   if (response.status === 401 && getRefreshToken()) {
-    const outcome = await refreshAccessToken();
-    if (outcome.status === 'refreshed') {
-      headers['Authorization'] = `Bearer ${outcome.accessToken}`;
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      headers['Authorization'] = `Bearer ${refreshed.accessToken}`;
       response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers,
@@ -270,7 +162,7 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
 
 export const apiService = {
   // Auth API
-  login: async (identifier: string, password: string): Promise<{ token: string; refreshToken: string; user: User }> => {
+  login: async (identifier: string, password: string): Promise<{ token: string; refreshToken: string; user: User; offlineAuth?: boolean }> => {
     return fetchAPI('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ identifier, password }),
@@ -278,17 +170,6 @@ export const apiService = {
   },
 
   refreshAccessToken,
-
-  restoreSession,
-
-  /**
-   * Public identity-provider status. No auth required, no secrets returned.
-   * Lets the login screens warn that credential checks are unavailable before
-   * the user types anything.
-   */
-  getProviderStatus: async (): Promise<{ provider: string; online: boolean; checkedAt: string }> => {
-    return fetchAPI('/auth/provider-status');
-  },
 
   logout: async (refreshToken: string): Promise<void> => {
     await fetchAPI('/auth/logout', {
@@ -299,41 +180,6 @@ export const apiService = {
 
   getCurrentUser: async (): Promise<{ user: User }> => {
     return fetchAPI('/auth/me');
-  },
-
-  // ── Break-glass offline auth ─────────────────────────────────────────
-  getOfflineAuthStatus: async (): Promise<{
-    enabled: boolean;
-    expiresAt: string | null;
-    enabledBy: string | null;
-    expired: boolean;
-    hasOfflinePin: boolean;
-    offlinePinSetAt: string | null;
-    pinPolicy: { minLength: number; maxLength: number; digitsOnly: boolean };
-    maxHours: number;
-    offlineSession: boolean;
-  }> => {
-    return fetchAPI('/offline-auth/status');
-  },
-
-  setOfflinePin: async (pin: string): Promise<{ message: string }> => {
-    return fetchAPI('/offline-auth/pin', { method: 'POST', body: JSON.stringify({ pin }) });
-  },
-
-  clearOfflinePin: async (): Promise<{ message: string }> => {
-    return fetchAPI('/offline-auth/pin', { method: 'DELETE' });
-  },
-
-  setUserOfflinePin: async (userId: string, pin: string): Promise<{ message: string }> => {
-    return fetchAPI(`/offline-auth/pin/${userId}`, { method: 'POST', body: JSON.stringify({ pin }) });
-  },
-
-  enableOfflineAuth: async (hours: number): Promise<any> => {
-    return fetchAPI('/offline-auth/enable', { method: 'POST', body: JSON.stringify({ hours }) });
-  },
-
-  disableOfflineAuth: async (): Promise<any> => {
-    return fetchAPI('/offline-auth/disable', { method: 'POST', body: JSON.stringify({}) });
   },
 
   // Users API
@@ -504,6 +350,28 @@ export const apiService = {
 
   getSyncStatus: async (): Promise<any> => {
     return fetchAPI('/sync/status');
+  },
+
+  // Data Seeder — generate a full school year of realistic activity from the
+  // real EnrollPro-synced accounts (admin only).
+  getDataSeedStatus: async (): Promise<DataSeedStatus> => {
+    return fetchAPI('/data-seed/status');
+  },
+
+  runDataSeed: async (options: {
+    mode?: 'SEED_EMPTY' | 'RESEED_YEAR';
+    volume?: 'LIGHT' | 'NORMAL' | 'HEAVY';
+    include?: Partial<DataSeedInclude>;
+    seed?: number;
+  }): Promise<DataSeedResult> => {
+    return fetchAPI('/data-seed', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  },
+
+  clearActiveYearData: async (): Promise<DataSeedCounts & { message: string }> => {
+    return fetchAPI('/data-seed/clear-year', { method: 'POST' });
   },
 
   // Audit Logs
@@ -709,15 +577,6 @@ export const apiService = {
     });
   },
 
-  // Full EnrollPro sync (users + terms + branding). Pass allowEmpty only when a
-  // cohort returning 0 records is genuinely expected.
-  runFullSync: async (options?: { allowEmpty?: boolean }): Promise<any> => {
-    return fetchAPI('/sync/all', {
-      method: 'POST',
-      body: JSON.stringify({ allowEmpty: options?.allowEmpty === true }),
-    });
-  },
-
   // MRF Asset Ledger API
   getAssetRecords: async (filters?: { action?: string; schoolYearId?: string; q?: string }): Promise<any[]> => {
     const query = filters ? new URLSearchParams(filters as Record<string, string>).toString() : '';
@@ -826,8 +685,9 @@ export const apiService = {
     return fetchAPI('/challenges');
   },
 
-  getAdminChallenges: async (): Promise<AdminChallenge[]> => {
-    return fetchAPI('/challenges/admin');
+  getAdminChallenges: async (schoolYearId?: string): Promise<AdminChallenge[]> => {
+    const query = schoolYearId ? `?schoolYearId=${encodeURIComponent(schoolYearId)}` : '';
+    return fetchAPI(`/challenges/admin${query}`);
   },
 
   createChallenge: async (data: {

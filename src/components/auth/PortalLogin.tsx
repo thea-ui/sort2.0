@@ -3,12 +3,12 @@ import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
 import { useMockData } from '../../hooks/useMockData';
 import { useTheme } from '../../hooks/useTheme';
+import { resolveBrandIdentity } from '../../utils/brandIdentity';
 import { SortLogo } from '../common/SortLogo';
 import { getLoginErrorMessage, ROLE_PORTAL_MESSAGE } from '../../utils/loginErrors';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { FormBanner } from '../common/InlineBanner';
-import { OfflineLoginNotice } from './OfflineAuthNotice';
 import { PixelGridBackground, PIXEL_GRID_WASH } from '../layout/PixelGridBackground';
 import { CARD_SHADOW } from '../ui/Card';
 
@@ -54,7 +54,8 @@ interface PortalLoginProps {
  */
 export const PortalLogin: React.FC<PortalLoginProps> = ({ config, onNavigate }) => {
   const { login } = useMockData();
-  const { schoolName, address } = useTheme();
+  const { schoolName, schoolAcronym, address, logoUrl, brandingSource } = useTheme();
+  const brandIdentity = resolveBrandIdentity({ schoolName, schoolAcronym, logoUrl, brandingSource });
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -124,7 +125,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({ config, onNavigate }) 
 
           <div className="space-y-3 mb-6">
             <h1 className="text-2xl font-bold leading-tight tracking-tight text-white">
-              {schoolName || 'SORT'}
+              {brandIdentity.displayName}
             </h1>
             {address && <p className="text-white text-sm font-bold">{address}</p>}
             <div className="flex flex-col gap-1.5 mt-3">
@@ -177,7 +178,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({ config, onNavigate }) 
                   {config.badge}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground">{schoolName}</p>
+              <p className="text-xs text-muted-foreground">{brandIdentity.displayName}</p>
             </div>
           </div>
 
@@ -203,7 +204,6 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({ config, onNavigate }) 
             </div>
 
             <div className="px-8 pb-8 pt-4">
-              <OfflineLoginNotice />
               {errorMsg && <FormBanner variant="error" title={errorMsg} />}
 
               <form onSubmit={handleSubmit} className="space-y-3">

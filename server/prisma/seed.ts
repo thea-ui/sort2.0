@@ -1,5 +1,6 @@
-import { PrismaClient, Role, WasteCategory, Urgency } from '@prisma/client';
+import { PrismaClient, Role, WasteCategory } from '@prisma/client';
 import { seedWalkInRewards } from '../src/services/walk-in-rewards.seed.js';
+import { ensureChallengesForSchoolYear } from '../src/services/challenge-catalog.service.js';
 
 const prisma = new PrismaClient();
 
@@ -14,7 +15,11 @@ async function main() {
   // No hardcoded school year is seeded here.
 
   // Get active school year for tagging records (may not exist until first sync)
-  const activeSY = await prisma.schoolYear.findFirst({ where: { isActive: true } });
+  const activeSY = await prisma.schoolYear.findFirst({
+    where: { isActive: true, isArchived: false },
+    orderBy: { startDate: 'desc' },
+    select: { id: true, label: true },
+  });
 
   // 5. Seed System Settings
   await prisma.systemSetting.upsert({
@@ -106,49 +111,18 @@ async function main() {
   // All user reports must originate from real EnrollPro student submissions.
   // No fake/local reports are seeded here.
 
-  // 8. Seed Challenges (per-term instances keyed by stable code + quarterCode)
-  //    A challenge instance belongs to the active academic term so it closes
-  //    with that term; progress therefore resets naturally each term.
-  const activeQuarter = await prisma.academicQuarter.findFirst({ where: { isActive: true } });
-  const challengeQuarterCode = activeQuarter?.quarterCode ?? 'GLOBAL';
-  const challengeStartDate = activeQuarter ? new Date(activeQuarter.startDate) : null;
-  const challengeEndDate = activeQuarter ? new Date(activeQuarter.endDate) : null;
-
-  await prisma.challenge.upsert({
-    where: { code_quarterCode: { code: 'WEEKLY_RECYCLING_PIONEER', quarterCode: challengeQuarterCode } },
-    update: {},
-    create: {
-      code: 'WEEKLY_RECYCLING_PIONEER',
-      title: 'Weekly Recycling Pioneer',
-      description: 'Submit 5 verified recyclable waste reports this week.',
-      challengeType: 'REPORT_COUNT',
-      pointsAwarded: 150,
-      target: 5,
-      iconName: 'Recycle',
-      isActive: true,
-      quarterCode: challengeQuarterCode,
-      startDate: challengeStartDate,
-      endDate: challengeEndDate,
-    },
-  });
-  await prisma.challenge.upsert({
-    where: { code_quarterCode: { code: 'ZERO_SINGLE_USE_PLASTICS', quarterCode: challengeQuarterCode } },
-    update: {},
-    create: {
-      code: 'ZERO_SINGLE_USE_PLASTICS',
-      title: 'Zero Single-Use Plastics',
-      description: 'Participate in campus-wide plastic segregation audit.',
-      challengeType: 'REPORT_COUNT',
-      pointsAwarded: 200,
-      target: 1,
-      iconName: 'Award',
-      isActive: true,
-      quarterCode: challengeQuarterCode,
-      startDate: challengeStartDate,
-      endDate: challengeEndDate,
-    },
-  });
-  console.log('✅ Challenges Seeded');
+  // 8. Provision challenge instances for the active school year.
+  //    Catalog challenges are instantiated per academic term (T1/T2/T3) and
+  //    scoped to the school year, so rollover produces fresh, re-earnable
+  //    instances. Idempotent; stale windows are refreshed by the term sync.
+  if (activeSY) {
+    const provision = await ensureChallengesForSchoolYear(activeSY.id);
+    console.log(
+      `✅ Challenges provisioned for ${activeSY.label} (${provision.created} created, ${provision.unchanged} unchanged)`
+    );
+  } else {
+    console.log('ℹ️  Challenges not provisioned — no active school year yet (sync will create them)');
+  }
 
   // 9. Seed Asset Categories & Item Presets
   const categoryCount = await prisma.assetCategory.count();
@@ -255,10 +229,10 @@ async function main() {
       data: [
         {
           code: 'LOC-01',
-          name: 'Main Courtyard (Quad)',
+          name: 'Admin and Learning Commons',
           status: 'Available',
-          x: 70,
-          y: 45,
+          x: 79,
+          y: 91,
           streams: [
             { type: 'BIODEGRADABLE', status: 'Available' },
             { type: 'NON_BIODEGRADABLE', status: 'Available' },
@@ -267,10 +241,10 @@ async function main() {
         },
         {
           code: 'LOC-02',
-          name: 'Main Library Lobby Entrance',
+          name: 'Grade 8 Academic Wing',
           status: 'Unavailable',
-          x: 53,
-          y: 55,
+          x: 42,
+          y: 53,
           streams: [
             { type: 'BIODEGRADABLE', status: 'Available' },
             { type: 'NON_BIODEGRADABLE', status: 'Unavailable' },
@@ -279,10 +253,10 @@ async function main() {
         },
         {
           code: 'LOC-03',
-          name: 'Science Hall Cafeteria Side',
+          name: 'Grade 7 Academic Wing',
           status: 'Available',
-          x: 49,
-          y: 35,
+          x: 16,
+          y: 53,
           streams: [
             { type: 'BIODEGRADABLE', status: 'Available' },
             { type: 'NON_BIODEGRADABLE', status: 'Available' },
@@ -291,10 +265,10 @@ async function main() {
         },
         {
           code: 'LOC-04',
-          name: 'Chemistry Building Entrance',
+          name: 'TLE and Livelihood Center',
           status: 'Available',
-          x: 35,
-          y: 42,
+          x: 54,
+          y: 91,
           streams: [
             { type: 'BIODEGRADABLE', status: 'Available' },
             { type: 'NON_BIODEGRADABLE', status: 'Available' },
@@ -303,10 +277,10 @@ async function main() {
         },
         {
           code: 'LOC-05',
-          name: 'Sports Complex Entrance B',
+          name: 'Science and Innovation Center',
           status: 'Unavailable',
-          x: 46,
-          y: 65,
+          x: 18,
+          y: 92,
           streams: [
             { type: 'BIODEGRADABLE', status: 'Available' },
             { type: 'NON_BIODEGRADABLE', status: 'Unavailable' },

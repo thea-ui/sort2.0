@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
-import { Lock, ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { toast } from '../../hooks/useToast';
+import { Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { getLoginErrorMessage, ROLE_PORTAL_MESSAGE } from '../../utils/loginErrors';
-import { OfflineLoginNotice } from '../auth/OfflineAuthNotice';
 
 interface LoginCardProps {
   onAuthenticated: () => void;
@@ -29,6 +29,9 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
       const result = await login(password, identifier);
       setLoading(false);
       if (result.ok) {
+        if (result.offlineAuth) {
+          toast.info('EnrollPro is offline — you were signed in with your last verified password.');
+        }
         if (result.user.role !== 'STUDENT' && result.user.role !== 'TEACHER') {
           setError(ROLE_PORTAL_MESSAGE);
         } else {
@@ -59,9 +62,6 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
             <p className="text-[11px] text-gray-400">Students use LRN · Staff use Employee ID</p>
           </div>
         </div>
-
-        {/* EnrollPro outage — shown before credentials are typed */}
-        <OfflineLoginNotice />
 
         {/* Error */}
         {error && (
@@ -128,18 +128,6 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
             )}
           </button>
         </form>
-
-        {/* Data privacy notice (RA 10173) */}
-        <div className="mt-5 flex items-start gap-2 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)] px-3.5 py-3">
-          <ShieldCheck size={14} className="mt-0.5 shrink-0 text-[var(--accent)]" strokeWidth={2} />
-          <p className="text-[10px] leading-relaxed text-[var(--text-strong)]/70">
-            Your credentials are verified by <span className="font-semibold">EnrollPro</span>. SORT does not
-            store your EnrollPro password. If you set an optional SORT offline PIN, it is stored only as a
-            one-way hash and used solely while EnrollPro is unreachable. Learner and staff records are
-            processed in line with RA 10173 (Data Privacy Act of 2012) and are visible only to authorised
-            school personnel.
-          </p>
-        </div>
       </div>
     </div>
   );

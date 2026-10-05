@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_THEME_STATE,
+  coerceThemeState,
   defaultColors,
   isLightColor,
   normalizeBranding,
@@ -106,5 +107,47 @@ describe('normalizeBranding', () => {
   it('strips trailing slashes from the EnrollPro origin', () => {
     const state = normalizeBranding({ enrollproPublicUrl: 'https://example.ts.net///' });
     expect(state.enrollproPublicUrl).toBe('https://example.ts.net');
+  });
+
+  it('trusts the server brandingSource and derives it when absent', () => {
+    expect(normalizeBranding(null).brandingSource).toBe('default');
+    expect(normalizeBranding({ schoolName: 'Test NHS' }).brandingSource).toBe('tenant');
+    expect(normalizeBranding({ logoUrl: '/uploads/x.png' }).brandingSource).toBe('tenant');
+    expect(
+      normalizeBranding({ schoolName: 'Test NHS', brandingSource: 'default' }).brandingSource
+    ).toBe('default');
+    expect(
+      normalizeBranding({ schoolName: null, brandingSource: 'tenant' }).brandingSource
+    ).toBe('tenant');
+  });
+
+  it('defaults the EnrollPro origin to empty instead of a dev hub', () => {
+    expect(normalizeBranding(null).enrollproPublicUrl).toBe('');
+    expect(DEFAULT_THEME_STATE.enrollproPublicUrl).toBe('');
+  });
+});
+
+describe('coerceThemeState', () => {
+  it('round-trips a cached ThemeState with nested colors', () => {
+    const cached = normalizeBranding({
+      schoolName: 'Test NHS',
+      schoolAcronym: 'TN',
+      logoUrl: '/uploads/x.png',
+      primaryColor: '#861313',
+      brandingSource: 'tenant',
+      enrollproPublicUrl: 'https://example.ts.net/',
+    });
+    const coerced = coerceThemeState(JSON.parse(JSON.stringify(cached)));
+    expect(coerced).not.toBeNull();
+    expect(coerced!.schoolName).toBe('Test NHS');
+    expect(coerced!.colors.primary).toBe('#861313');
+    expect(coerced!.brandingSource).toBe('tenant');
+    expect(coerced!.enrollproPublicUrl).toBe('https://example.ts.net');
+  });
+
+  it('rejects malformed cache payloads', () => {
+    expect(coerceThemeState(null)).toBeNull();
+    expect(coerceThemeState('not-an-object')).toBeNull();
+    expect(coerceThemeState(42)).toBeNull();
   });
 });

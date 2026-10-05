@@ -3,6 +3,7 @@ import { Camera, Video, Upload, RefreshCw, X, CheckCircle, Maximize2 } from 'luc
 import { useLiveCamera } from '../../../hooks/useLiveCamera';
 import { CameraCaptureOverlay } from '../../../components/common/CameraCaptureOverlay';
 import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
+import { downscaleImageFile } from '../../../utils/imageDownscale';
 
 interface TeacherPhotoEvidenceProps {
   capturedImage: string | null;
@@ -109,9 +110,12 @@ export const TeacherPhotoEvidence: React.FC<TeacherPhotoEvidenceProps> = ({
                 <input type="file" accept="image/*" className="hidden" onChange={e => {
                   const f = e.target.files?.[0];
                   if (f) {
-                    const r = new FileReader();
-                    r.onload = ev => setCapturedImage(ev.target?.result as string);
-                    r.readAsDataURL(f);
+                    // Compress before the photo reaches the report payload.
+                    downscaleImageFile(f, 1600).then(setCapturedImage).catch(() => {
+                      const r = new FileReader();
+                      r.onload = ev => setCapturedImage(ev.target?.result as string);
+                      r.readAsDataURL(f);
+                    });
                   }
                 }} />
               </label>

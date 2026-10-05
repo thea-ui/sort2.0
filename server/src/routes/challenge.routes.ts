@@ -4,6 +4,8 @@ import { authenticate, requireAdmin, AuthenticatedRequest } from '../middleware/
 import {
   resolveChallengeScope,
   challengeWindowWhere,
+  challengeSchoolYearWhere,
+  isChallengeWindowOpen,
   GLOBAL_QUARTER_CODE,
 } from '../services/challenge-term.service.js';
 
@@ -26,8 +28,10 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<any> 
     const challenges = await prisma.challenge.findMany({
       where: {
         isActive: true,
-        quarterCode: { in: scope.visibleQuarterCodes },
-        ...challengeWindowWhere(),
+        // No configured term → show every challenge of the active year.
+        ...(scope.quarterCode ? { quarterCode: { in: scope.visibleQuarterCodes } } : {}),
+        ...challengeSchoolYearWhere(scope),
+        ...challengeWindowWhere(scope.effectiveNow),
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -51,6 +55,7 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<any> 
         isActive: c.isActive,
         iconName: c.iconName,
         quarterCode: c.quarterCode,
+        schoolYearId: c.schoolYearId,
         startDate: c.startDate?.toISOString() || null,
         endDate: c.endDate?.toISOString() || null,
         createdAt: c.createdAt.toISOString(),
@@ -67,13 +72,18 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<any> 
   }
 });
 
-// GET /api/challenges/admin — ADMIN only (all definitions + aggregate stats + hasProgress)
-router.get('/admin', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
+// GET /api/challenges/admin — ADMIN only (definitions + stats; ?schoolYearId= for history)
+router.get('/admin', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
     const scope = await resolveChallengeScope();
-    const now = new Date();
+    const querySchoolYearId =
+      typeof req.query.schoolYearId === 'string' ? req.query.schoolYearId.trim() : '';
+    const now = scope.effectiveNow;
 
     const challenges = await prisma.challenge.findMany({
+      where: querySchoolYearId
+        ? { schoolYearId: querySchoolYearId }
+        : challengeSchoolYearWhere(scope),
       orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
       include: {
         progressRecords: {
@@ -82,6 +92,7 @@ router.get('/admin', requireAdmin, async (_req: Request, res: Response): Promise
         contributions: {
           select: { userId: true },
         },
+        schoolYear: { select: { label: true } },
       },
     });
 
@@ -92,8 +103,8 @@ router.get('/admin', requireAdmin, async (_req: Request, res: Response): Promise
       const totalContributions = c.contributions.length;
 
       // Ended = its term is no longer in play, or its own window has passed.
-      const offTerm = !scope.visibleQuarterCodes.includes(c.quarterCode);
-      const windowPassed = (c.startDate !== null && c.startDate > now) || (c.endDate !== null && c.endDate < now);
+      const offTerm = scope.quarterCode ? !scope.visibleQuarterCodes.includes(c.quarterCode) : false;
+      const windowPassed = !isChallengeWindowOpen(c, now);
       const isEnded = offTerm || windowPassed;
 
       return {
@@ -107,6 +118,8 @@ router.get('/admin', requireAdmin, async (_req: Request, res: Response): Promise
         isActive: c.isActive,
         iconName: c.iconName,
         quarterCode: c.quarterCode,
+        schoolYearId: c.schoolYearId,
+        schoolYearLabel: c.schoolYear?.label ?? null,
         isEnded,
         startDate: c.startDate?.toISOString() || null,
         endDate: c.endDate?.toISOString() || null,
@@ -156,16 +169,17 @@ router.post('/', requireAdmin, async (req: Request, res: Response): Promise<any>
       return res.status(400).json({ error: 'startDate must be before endDate' });
     }
 
-    // New challenges belong to the current academic term by default; falls back
-    // to GLOBAL only when no term is configured.
+    // New challenges belong to the current academic term and school year by
+    // default; falls back to GLOBAL only when no term is configured.
     const scope = await resolveChallengeScope();
     const resolvedQuarterCode =
       typeof quarterCode === 'string' && quarterCode.trim()
         ? quarterCode.trim()
         : scope.quarterCode || GLOBAL_QUARTER_CODE;
+    const schoolYearId = scope.schoolYearId;
 
-    const existing = await prisma.challenge.findUnique({
-      where: { code_quarterCode: { code, quarterCode: resolvedQuarterCode } },
+    const existing = await prisma.challenge.findFirst({
+      where: { code, quarterCode: resolvedQuarterCode, schoolYearId },
     });
     if (existing) {
       return res.status(409).json({ error: `Challenge with code "${code}" already exists for term ${resolvedQuarterCode}` });
@@ -181,6 +195,7 @@ router.post('/', requireAdmin, async (req: Request, res: Response): Promise<any>
         iconName: iconName || 'Target',
         description: description || '',
         quarterCode: resolvedQuarterCode,
+        schoolYearId,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
       },
@@ -236,7 +251,12 @@ router.patch('/:id', requireAdmin, async (req: Request, res: Response): Promise<
           return res.status(400).json({ error: 'code must match /^[A-Z0-9_]+$/' });
         }
         const codeConflict = await prisma.challenge.findFirst({
-          where: { code, quarterCode: existing.quarterCode, id: { not: id } },
+          where: {
+            code,
+            quarterCode: existing.quarterCode,
+            schoolYearId: existing.schoolYearId,
+            id: { not: id },
+          },
         });
         if (codeConflict) {
           return res.status(409).json({ error: `Code "${code}" is already in use` });

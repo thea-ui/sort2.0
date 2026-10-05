@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAtlasMap } from '../../hooks/useAtlasMap';
-import { FitBox, atlasAspectRatio, fitContain } from '../../utils/fitContain';
+import { FitBox, atlasViewAspectRatio, fitContain } from '../../utils/fitContain';
 import { BlueprintTransform } from '../../services/locationStore';
 import { BlueprintImage } from './BlueprintImage';
 import { AtlasBaseMap } from './AtlasBaseMap';
@@ -64,7 +64,7 @@ export const CampusMapFrame: React.FC<CampusMapFrameProps> = ({
   contentProps,
 }) => {
   const { buildings, campusImageUrl, resolved } = useAtlasMap();
-  const ratio = useMemo(() => atlasAspectRatio(buildings), [buildings]);
+  const ratio = useMemo(() => atlasViewAspectRatio(buildings), [buildings]);
 
   const [mode] = useState<BaseMapMode>(readBaseMapMode);
   const [box, setBox] = useState<FitBox | null>(null);

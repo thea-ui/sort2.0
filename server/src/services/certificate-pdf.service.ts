@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getPublicBranding, type PublicBranding } from './branding.service.js';
 
 export interface CertificateData {
   studentName: string;
@@ -16,6 +17,77 @@ export interface CertificateData {
   termName?: string;
   serial?: string;
   isRanked?: boolean;
+}
+
+// ─── Branding ──────────────────────────────────────────────────────────
+// Certificates follow the same resolved tenant branding as the UI. When no
+// tenant identity exists they print the SORT system name instead of a
+// hardcoded school (which would be wrong on every other deployment).
+
+export type CertificateBranding = Pick<
+  PublicBranding,
+  'schoolName' | 'region' | 'address' | 'primaryColor' | 'secondaryColor' | 'accentColor' | 'goldColor'
+>;
+
+export interface CertificateHeader {
+  republicLine: string;
+  schoolName: string;
+  programLine: string;
+  conferredLine: (dateAwarded: string) => string;
+  serialPrefix: string;
+  colors: { primary: string; secondary: string; accent: string; gold: string };
+}
+
+const CERT_SYSTEM_NAME = 'S.O.R.T.';
+
+function serialPrefixFromName(name: string): string {
+  const parts = name
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return 'SORT';
+  return parts
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 6);
+}
+
+/** Shift every RGB channel by `delta` (clamped); used for gold ornaments. */
+export function shiftHex(hex: string, delta: number): string {
+  const match = /^#([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!match) return hex;
+  const value = parseInt(match[1], 16);
+  const channel = (offset: number) => Math.min(255, Math.max(0, ((value >> offset) & 0xff) + delta));
+  return `#${((channel(16) << 16) | (channel(8) << 8) | channel(0)).toString(16).padStart(6, '0')}`;
+}
+
+/** Pure mapping from branding to every certificate text/color input. */
+export function resolveCertificateHeader(branding: CertificateBranding): CertificateHeader {
+  const schoolName = branding.schoolName?.trim() || CERT_SYSTEM_NAME;
+  const region = branding.region?.trim();
+  const address = branding.address?.trim();
+  const isSystemDefault = schoolName === CERT_SYSTEM_NAME;
+
+  return {
+    republicLine:
+      'REPUBLIC OF THE PHILIPPINES   \u2022   DEPARTMENT OF EDUCATION' +
+      (region ? `   \u2022   ${region.toUpperCase()}` : ''),
+    schoolName: schoolName.toUpperCase(),
+    programLine: 'CAMPUS MATERIAL RECOVERY FACILITY   \u2022   ECOLOGICAL RECOVERY PROGRAM',
+    conferredLine: (dateAwarded: string) =>
+      isSystemDefault
+        ? `Conferred on ${dateAwarded}.`
+        : `Conferred on ${dateAwarded} at ${schoolName}${address ? `, ${address}` : ''}.`,
+    serialPrefix: serialPrefixFromName(schoolName),
+    colors: {
+      primary: branding.primaryColor,
+      secondary: branding.secondaryColor,
+      accent: branding.accentColor,
+      gold: branding.goldColor,
+    },
+  };
 }
 
 function resolveFontsDir(): string {
@@ -75,7 +147,17 @@ function formatRecipientName(rawName: string): string {
     .join(' ');
 }
 
-export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
+/**
+ * `brandingOverride` is injectable so tests (and callers that already hold a
+ * branding snapshot) can skip the DB round trip.
+ */
+export async function generateCertificatePDF(
+  data: CertificateData,
+  brandingOverride?: CertificateBranding
+): Promise<Buffer> {
+  const branding = brandingOverride ?? (await getPublicBranding());
+  const header = resolveCertificateHeader(branding);
+
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
@@ -110,6 +192,18 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     const height = 595.28;
     const centerX = width / 2;
 
+    // Tenant brand colors (defaults when unconfigured) with derived ornament
+    // shades so a tenant palette re-tints the whole certificate.
+    const { primary, accent, gold } = header.colors;
+
+    // Display typography stays neutral ink: a saturated tenant primary floods
+    // the page when it covers the title, name and labels at large sizes. Brand
+    // color is reserved for the frame, rules, seal and badges (design token rule).
+    const ink = '#111827';
+    const inkSoft = '#334155';
+    const goldLight = shiftHex(gold, 17);
+    const goldDark = shiftHex(gold, -48);
+
     // Helper: Draw a precise 5-point vector star
     const drawStar = (cx: number, cy: number, rOuter: number, rInner: number, fillColor: string, strokeColor?: string) => {
       const starPts: [number, number][] = [];
@@ -139,8 +233,8 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     doc.rect(10, 10, width - 20, height - 20).fill('#FCFBF9');
 
     // ── 2. Multi-tier Ceremonial Diploma Frames ────────────────────────
-    doc.rect(16, 16, width - 32, height - 32).lineWidth(2.5).stroke('#00271D');
-    doc.rect(20.5, 20.5, width - 41, height - 41).lineWidth(0.75).stroke('#00A77C');
+    doc.rect(16, 16, width - 32, height - 32).lineWidth(2.5).stroke(primary);
+    doc.rect(20.5, 20.5, width - 41, height - 41).lineWidth(0.75).stroke(accent);
 
     const m = 26;
     const notch = 14;
@@ -157,7 +251,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       .lineTo(m, m + notch)
       .closePath()
       .lineWidth(1.8)
-      .stroke('#C69B26');
+      .stroke(gold);
 
     const im = 31;
     const inotch = 10;
@@ -174,7 +268,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       .lineTo(im, im + inotch)
       .closePath()
       .lineWidth(0.6)
-      .stroke('#C69B26');
+      .stroke(gold);
 
     // ── 3. Corner Ornaments (Gold Diamonds & Flourish Wings) ──────────
     const drawCornerOrnament = (cx: number, cy: number, signX: number, signY: number) => {
@@ -184,10 +278,10 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
         [cx + dSize, cy],
         [cx, cy + dSize],
         [cx - dSize, cy]
-      ).fillAndStroke('#C69B26', '#8C6D14');
+      ).fillAndStroke(gold, goldDark);
 
-      doc.moveTo(cx + signX * 7, cy).lineTo(cx + signX * 22, cy).lineWidth(0.8).stroke('#C69B26');
-      doc.moveTo(cx, cy + signY * 7).lineTo(cx, cy + signY * 22).lineWidth(0.8).stroke('#C69B26');
+      doc.moveTo(cx + signX * 7, cy).lineTo(cx + signX * 22, cy).lineWidth(0.8).stroke(gold);
+      doc.moveTo(cx, cy + signY * 7).lineTo(cx, cy + signY * 22).lineWidth(0.8).stroke(gold);
     };
 
     drawCornerOrnament(m + notch, m + notch, 1, 1);
@@ -200,8 +294,8 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
 
     doc.fontSize(7.5)
       .font('Helvetica-Bold')
-      .fillColor('#00271D')
-      .text('REPUBLIC OF THE PHILIPPINES   \u2022   DEPARTMENT OF EDUCATION   \u2022   REGION VI', 0, curY, {
+      .fillColor(inkSoft)
+      .text(header.republicLine, 0, curY, {
         align: 'center',
         characterSpacing: 1.8,
       });
@@ -209,8 +303,8 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     curY = 56;
     doc.fontSize(16.5)
       .font(fontSchool)
-      .fillColor('#00271D')
-      .text('HINIGARAN NATIONAL HIGH SCHOOL', 0, curY, {
+      .fillColor(ink)
+      .text(header.schoolName, 0, curY, {
         align: 'center',
         characterSpacing: 2.2,
       });
@@ -218,8 +312,8 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     curY = 78;
     doc.fontSize(8)
       .font('Helvetica-Bold')
-      .fillColor('#00A77C')
-      .text('CAMPUS MATERIAL RECOVERY FACILITY   \u2022   ECOLOGICAL RECOVERY PROGRAM', 0, curY, {
+      .fillColor(accent)
+      .text(header.programLine, 0, curY, {
         align: 'center',
         characterSpacing: 2,
       });
@@ -231,25 +325,25 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     const hRight = centerX + headerLineSpan / 2;
 
     // Outer tapered hairlines
-    doc.moveTo(hLeft, curY).lineTo(centerX - 36, curY).lineWidth(0.75).stroke('#C69B26');
-    doc.moveTo(centerX + 36, curY).lineTo(hRight, curY).lineWidth(0.75).stroke('#C69B26');
+    doc.moveTo(hLeft, curY).lineTo(centerX - 36, curY).lineWidth(0.75).stroke(gold);
+    doc.moveTo(centerX + 36, curY).lineTo(hRight, curY).lineWidth(0.75).stroke(gold);
 
     // Flanking accent beads
-    doc.circle(centerX - 24, curY, 1.2).fill('#C69B26');
-    doc.circle(centerX + 24, curY, 1.2).fill('#C69B26');
+    doc.circle(centerX - 24, curY, 1.2).fill(gold);
+    doc.circle(centerX + 24, curY, 1.2).fill(gold);
 
     // Flanking graduated diamonds
-    drawDiamond(centerX - 13, curY, 2.2, '#C69B26');
-    drawDiamond(centerX + 13, curY, 2.2, '#C69B26');
+    drawDiamond(centerX - 13, curY, 2.2, gold);
+    drawDiamond(centerX + 13, curY, 2.2, gold);
 
     // Centerpiece: Regal 5-point vector star
-    drawStar(centerX, curY, 4.5, 2.2, '#C69B26', '#8C6D14');
+    drawStar(centerX, curY, 4.5, 2.2, gold, goldDark);
 
     // ── 5. Main Certificate Title (Inscriptional Roman) ───────────────
     curY = 114;
     doc.fontSize(30)
       .font(fontTitle)
-      .fillColor('#00271D')
+      .fillColor(ink)
       .text('CERTIFICATE OF RECOGNITION', 0, curY, {
         align: 'center',
         characterSpacing: 3.2,
@@ -258,7 +352,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     curY = 158;
     doc.fontSize(8.5)
       .font('Helvetica-Bold')
-      .fillColor('#C69B26')
+      .fillColor(gold)
       .text(
         `SMART OPERATIONAL RECOVERY & TRACKING SYSTEM   \u2022   ${data.certificateName.toUpperCase()}`,
         0,
@@ -292,7 +386,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       doc.fontSize(nameFontSize);
     }
 
-    doc.fillColor('#00271D')
+    doc.fillColor(ink)
       .text(displayName, 0, curY, {
         align: 'center',
       });
@@ -305,16 +399,16 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     const pedRight = centerX + pedSpan / 2;
 
     // Primary baseline rule
-    doc.moveTo(pedLeft, curY).lineTo(centerX - 16, curY).lineWidth(1.2).stroke('#C69B26');
-    doc.moveTo(centerX + 16, curY).lineTo(pedRight, curY).lineWidth(1.2).stroke('#C69B26');
+    doc.moveTo(pedLeft, curY).lineTo(centerX - 16, curY).lineWidth(1.2).stroke(gold);
+    doc.moveTo(centerX + 16, curY).lineTo(pedRight, curY).lineWidth(1.2).stroke(gold);
 
     // Subtle parallel accent hairline (2.5pt below, shorter span)
     const subSpan = pedSpan - 50;
-    doc.moveTo(centerX - subSpan / 2, curY + 2.5).lineTo(centerX - 12, curY + 2.5).lineWidth(0.5).stroke('#D4AF37');
-    doc.moveTo(centerX + 12, curY + 2.5).lineTo(centerX + subSpan / 2, curY + 2.5).lineWidth(0.5).stroke('#D4AF37');
+    doc.moveTo(centerX - subSpan / 2, curY + 2.5).lineTo(centerX - 12, curY + 2.5).lineWidth(0.5).stroke(goldLight);
+    doc.moveTo(centerX + 12, curY + 2.5).lineTo(centerX + subSpan / 2, curY + 2.5).lineWidth(0.5).stroke(goldLight);
 
     // Center Diamond
-    drawDiamond(centerX, curY, 3.5, '#C69B26', '#8C6D14');
+    drawDiamond(centerX, curY, 3.5, gold, goldDark);
 
     // Optional Grade/Section/LRN Subline
     const subInfoParts: string[] = [];
@@ -330,7 +424,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       curY = 274;
       doc.fontSize(9.5)
         .font('Helvetica-Bold')
-        .fillColor('#00A77C')
+        .fillColor(accent)
         .text(subInfoParts.join('     \u2022     '), 0, curY, {
           align: 'center',
           characterSpacing: 0.8,
@@ -358,7 +452,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     const boxX = centerX - boxW / 2;
 
     // Plaque background & border
-    doc.roundedRect(boxX, curY, boxW, boxH, 8).fillAndStroke('#F6F2EB', '#C69B26');
+    doc.roundedRect(boxX, curY, boxW, boxH, 8).fillAndStroke('#F6F2EB', gold);
     doc.roundedRect(boxX + 2.5, curY + 2.5, boxW - 5, boxH - 5, 6).lineWidth(0.5).stroke('#E2D7C3');
 
     const colW = boxW / 3;
@@ -377,7 +471,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       .text('ACCUMULATED ECO-POINTS', c1X, curY + 12, { width: colW, align: 'center', characterSpacing: 0.8 });
     doc.fontSize(15.5)
       .font('Helvetica-Bold')
-      .fillColor('#00A77C')
+      .fillColor(accent)
       .text(`${data.points} PTS`, c1X, curY + 31, { width: colW, align: 'center' });
 
     // Vertical Divider 1
@@ -391,7 +485,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       .text(col2Label, c2X, curY + 12, { width: colW, align: 'center', characterSpacing: 0.8 });
     doc.fontSize(15.5)
       .font('Helvetica-Bold')
-      .fillColor('#C69B26')
+      .fillColor(gold)
       .text(col2Value, c2X, curY + 31, { width: colW, align: 'center' });
 
     // Vertical Divider 2
@@ -405,7 +499,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       .text(col3Label, c3X, curY + 12, { width: colW, align: 'center', characterSpacing: 0.8 });
     doc.fontSize(13.5)
       .font('Helvetica-Bold')
-      .fillColor('#00271D')
+      .fillColor(ink)
       .text(col3Value, c3X, curY + 32, { width: colW, align: 'center' });
 
     // ── 10. Conferred Date Line ───────────────────────────────────────
@@ -413,7 +507,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     doc.fontSize(10)
       .font(fontDate)
       .fillColor('#4A5568')
-      .text(`Conferred on ${data.dateAwarded} at Hinigaran National High School, Hinigaran, Negros Occidental.`, 0, curY, {
+      .text(header.conferredLine(data.dateAwarded), 0, curY, {
         align: 'center',
       });
 
@@ -424,12 +518,12 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
     const sig2X = centerX + 205;
 
     // Left Signature: MRF Coordinator
-    doc.moveTo(sig1X - sigW / 2, sigY).lineTo(sig1X + sigW / 2, sigY).lineWidth(1).stroke('#00271D');
-    doc.polygon([sig1X, sigY - 2.5], [sig1X + 3, sigY], [sig1X, sigY + 2.5], [sig1X - 3, sigY]).fill('#C69B26');
+    doc.moveTo(sig1X - sigW / 2, sigY).lineTo(sig1X + sigW / 2, sigY).lineWidth(1).stroke(primary);
+    doc.polygon([sig1X, sigY - 2.5], [sig1X + 3, sigY], [sig1X, sigY + 2.5], [sig1X - 3, sigY]).fill(gold);
 
     doc.fontSize(9.5)
       .font('Helvetica-Bold')
-      .fillColor('#00271D')
+      .fillColor(ink)
       .text('MRF FACILITY COORDINATOR', sig1X - sigW / 2, sigY + 7, { width: sigW, align: 'center' });
     doc.fontSize(8)
       .font('Times-Italic')
@@ -437,12 +531,12 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       .text('Materials Recovery & Eco-Station', sig1X - sigW / 2, sigY + 20, { width: sigW, align: 'center' });
 
     // Right Signature: School Administrator / Principal
-    doc.moveTo(sig2X - sigW / 2, sigY).lineTo(sig2X + sigW / 2, sigY).lineWidth(1).stroke('#00271D');
-    doc.polygon([sig2X, sigY - 2.5], [sig2X + 3, sigY], [sig2X, sigY + 2.5], [sig2X - 3, sigY]).fill('#C69B26');
+    doc.moveTo(sig2X - sigW / 2, sigY).lineTo(sig2X + sigW / 2, sigY).lineWidth(1).stroke(primary);
+    doc.polygon([sig2X, sigY - 2.5], [sig2X + 3, sigY], [sig2X, sigY + 2.5], [sig2X - 3, sigY]).fill(gold);
 
     doc.fontSize(9.5)
       .font('Helvetica-Bold')
-      .fillColor('#00271D')
+      .fillColor(ink)
       .text('SCHOOL PRINCIPAL / ADMINISTRATOR', sig2X - sigW / 2, sigY + 7, { width: sigW, align: 'center' });
     doc.fontSize(8)
       .font('Times-Italic')
@@ -466,7 +560,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       .lineTo(0, ribL - 6)
       .lineTo(-ribW / 2, ribL)
       .closePath()
-      .fill('#00A77C');
+      .fill(accent);
     doc.restore();
 
     doc.save();
@@ -478,7 +572,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       .lineTo(0, ribL - 6)
       .lineTo(-ribW / 2, ribL)
       .closePath()
-      .fill('#C69B26');
+      .fill(gold);
     doc.restore();
 
     // Starburst Outer Ring (24 points)
@@ -491,18 +585,18 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
       const r = i % 2 === 0 ? rOuter : rInner;
       starCoords.push([sealX + r * Math.cos(angle), sealY + r * Math.sin(angle)]);
     }
-    doc.polygon(...starCoords).fillAndStroke('#D4AF37', '#997300');
+    doc.polygon(...starCoords).fillAndStroke(goldLight, goldDark);
 
     // Concentric Gold Ring & Evergreen Core
     doc.circle(sealX, sealY, sealRadius - 4).lineWidth(1.2).stroke('#FAF8F5');
-    doc.circle(sealX, sealY, sealRadius - 5.5).fill('#00271D');
-    doc.circle(sealX, sealY, sealRadius - 7).lineWidth(0.6).stroke('#C69B26');
+    doc.circle(sealX, sealY, sealRadius - 5.5).fill(primary);
+    doc.circle(sealX, sealY, sealRadius - 7).lineWidth(0.6).stroke(gold);
 
-    drawStar(sealX, sealY - 14, 2.5, 1.2, '#D4AF37');
+    drawStar(sealX, sealY - 14, 2.5, 1.2, goldLight);
 
     doc.fontSize(5.5)
       .font('Helvetica-Bold')
-      .fillColor('#D4AF37')
+      .fillColor(goldLight)
       .text('S.O.R.T.', sealX - 22, sealY - 10, { width: 44, align: 'center', characterSpacing: 0.5 });
 
     doc.fontSize(5.5)
@@ -517,13 +611,13 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
 
     doc.fontSize(5)
       .font('Helvetica-Bold')
-      .fillColor('#D4AF37')
+      .fillColor(goldLight)
       .text('EXCELLENCE', sealX - 22, sealY + 8, { width: 44, align: 'center', characterSpacing: 0.5 });
 
     // ── 12. Security & Accreditation Verification Footer ──────────────
     const footY = height - 42;
     const cleanYear = data.schoolYear.split('-')[0] || '2026';
-    const certSerial = data.serial || `SORT-HNHS-${cleanYear}-R${data.rank}-P${data.points}`;
+    const certSerial = data.serial || `SORT-${header.serialPrefix}-${cleanYear}-R${data.rank}-P${data.points}`;
 
     doc.fontSize(7)
       .font('Helvetica')
@@ -539,7 +633,7 @@ export function generateCertificatePDF(data: CertificateData): Promise<Buffer> {
 
     doc.fontSize(7)
       .font('Helvetica-Bold')
-      .fillColor('#00A77C')
+      .fillColor(accent)
       .text('AUTHENTICATED CREDENTIAL', width - 65 - 140, footY, { width: 140, align: 'right' });
 
     doc.end();

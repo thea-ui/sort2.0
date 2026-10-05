@@ -4,8 +4,12 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { authenticateWithEnrollPro, authenticateLearnerWithEnrollPro } from '../services/enrollpro-auth.service.js';
-import { getProviderStatus } from '../services/enrollpro-health.service.js';
-import { getOfflineAuthState, verifyOfflinePin } from '../services/offline-auth.service.js';
+import {
+  cacheVerifiedPassword,
+  clearCachedPassword,
+  verifyOfflinePassword,
+} from '../services/offline-auth.service.js';
+import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { getJwtSecret } from '../config/env.js';
 
 const router = Router();
@@ -13,8 +17,9 @@ const prisma = new PrismaClient();
 const JWT_ALGORITHMS: jwt.Algorithm[] = ['HS256'];
 const ACCESS_EXPIRY_SECONDS = 15 * 60; // 15 minutes
 const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-// Break-glass sessions are deliberately shorter-lived than normal ones.
-const BREAK_GLASS_ACCESS_EXPIRY_SECONDS = 8 * 60 * 60; // 8 hours
+// Offline sessions are a fallback, not the norm: keep them short-lived so a
+// suspension/rollover on EnrollPro takes effect quickly once it is reachable.
+const OFFLINE_REFRESH_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -22,25 +27,8 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
-  // A 503 means the identity provider was unreachable — not that credentials
-  // were wrong. Counting outages against the brute-force budget would let a
-  // single NAT'd campus lock itself out during an EnrollPro outage.
-  skip: (_req, res) => res.statusCode === 503,
   handler: (_req, res) => res.status(429).json({
     error: 'Too many login attempts. Please try again in 15 minutes.',
-    code: 'RATE_LIMITED',
-  }),
-});
-
-// Public status polling: bounded so it cannot be used to amplify probes
-// against EnrollPro. Cached server-side for 30s on top of this.
-const providerStatusLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  limit: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (_req, res) => res.status(429).json({
-    error: 'Too many status checks. Please try again shortly.',
     code: 'RATE_LIMITED',
   }),
 });
@@ -56,7 +44,7 @@ function getRefreshExpiry(): Date {
 }
 
 function safeUser(user: any) {
-  const { passwordHash: _, ...rest } = user;
+  const { passwordHash: _, passwordCachedAt: __, ...rest } = user;
   return { ...rest, certificatesEarned: rest.certificates };
 }
 
@@ -70,67 +58,6 @@ function maskId(value: string | undefined | null): string {
   if (id.length <= 4) return '****';
   return `${id.slice(0, 2)}${'*'.repeat(id.length - 4)}${id.slice(-2)}`;
 }
-
-type SessionKind = 'NORMAL' | 'BREAK_GLASS';
-
-/**
- * Mint an access token + persisted refresh session. Break-glass sessions carry
- * an `offline` claim so downstream routes can tell that the identity was
- * verified locally rather than by EnrollPro.
- */
-async function issueSession(
-  user: { id: string; email: string; role: string; name: string },
-  req: Request,
-  options: { kind: SessionKind; sessionExpiresAt?: Date }
-): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
-  const isBreakGlass = options.kind === 'BREAK_GLASS';
-  const accessExpiry = isBreakGlass ? BREAK_GLASS_ACCESS_EXPIRY_SECONDS : ACCESS_EXPIRY_SECONDS;
-
-  const accessToken = jwt.sign(
-    {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      ...(isBreakGlass ? { offline: true } : {}),
-    },
-    getJwtSecret(),
-    { expiresIn: accessExpiry }
-  );
-
-  const refreshToken = generateRefreshToken();
-  const deviceInfo = req.headers['user-agent'] || 'unknown';
-  const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
-
-  await prisma.userSession.create({
-    data: {
-      userId: user.id,
-      refreshToken,
-      deviceInfo,
-      ipAddress,
-      expiresAt: options.sessionExpiresAt ?? getRefreshExpiry(),
-      kind: options.kind,
-    },
-  });
-
-  return { accessToken, refreshToken, expiresIn: `${accessExpiry}s` };
-}
-
-// GET /api/auth/provider-status — public identity-provider reachability.
-// Lets the login screens show an outage warning before credentials are typed.
-// Deliberately minimal: a boolean and a timestamp, never key or account data.
-router.get('/provider-status', providerStatusLimiter, async (_req: Request, res: Response): Promise<any> => {
-  try {
-    return res.json(await getProviderStatus());
-  } catch {
-    return res.json({
-      provider: 'enrollpro',
-      online: false,
-      checkedAt: new Date().toISOString(),
-      cached: false,
-    });
-  }
-});
 
 // POST /api/auth/login
 // Students login with LRN, Teachers/Admin/MRF login with Employee ID
@@ -182,81 +109,50 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
       ? await authenticateLearnerWithEnrollPro(user.enrollproLrn || loginId, loginPassword)
       : await authenticateWithEnrollPro(loginId, loginPassword);
 
+    // EnrollPro unreachable: fall back to the cached hash of the last password it
+    // verified. Online responses — including 401 — never fall back, so a password
+    // change on EnrollPro always wins while it is reachable.
+    let offlineAuth = false;
     if (authResult.unreachable) {
-      // Break-glass fallback. A definitive EnrollPro rejection (401) never
-      // reaches this branch: only an actual outage does. The PIN is SORT-local
-      // and the fallback must be explicitly armed by an administrator.
-      const state = await getOfflineAuthState();
-      if (state.enabled) {
-        const pin = await verifyOfflinePin(user.id, loginPassword, {
-          ip: req.ip || req.socket.remoteAddress || undefined,
-          device: String(req.headers['user-agent'] || 'unknown'),
+      const offline = await verifyOfflinePassword(user, loginPassword);
+      if (!offline.ok) {
+        console.log(
+          `[Auth] Login failed: EnrollPro unreachable and no usable offline verifier for "${maskId(loginId)}" (${offline.reason})`
+        );
+        return res.status(503).json({
+          error: 'Authentication service unreachable. Please try again later.',
+          code: 'AUTH_SERVICE_UNREACHABLE',
+          unreachable: true,
         });
-
-        if (pin.ok) {
-          // Same suspension rules as a normal login.
-          if (user.accountStatus === 'SUSPENDED' && user.suspendedUntil && user.suspendedUntil > new Date()) {
-            console.log(`[Auth] Offline login denied: "${maskId(loginId)}" is suspended`);
-            return res.status(403).json({
-              error: 'Account is suspended. Please try again later.',
-              code: 'ACCOUNT_SUSPENDED',
-            });
-          }
-          const session = await issueSession(user, req, {
-            kind: 'BREAK_GLASS',
-            // Never outlive the armed window.
-            sessionExpiresAt: state.expiresAt ? new Date(state.expiresAt) : undefined,
-          });
-          console.log(`[Auth] Offline (break-glass) login for "${maskId(loginId)}"`);
-          return res.json({
-            token: session.accessToken,
-            accessToken: session.accessToken,
-            refreshToken: session.refreshToken,
-            expiresIn: session.expiresIn,
-            user: safeUser(user),
-            offlineSession: true,
-          });
-        }
-
-        console.warn(`[Auth] Offline PIN rejected for "${maskId(loginId)}": ${pin.reason}`);
-        return res.status(401).json({
-          error: pin.lockedOut
-            ? 'Too many failed offline PIN attempts. Try again in 15 minutes.'
-            : 'EnrollPro is offline. Enter your offline PIN.',
-          code: pin.lockedOut ? 'OFFLINE_PIN_LOCKED' : 'OFFLINE_PIN_INVALID',
-          offlineAuthEnabled: true,
+      }
+      offlineAuth = true;
+      console.warn(`[Auth] Offline login accepted for "${maskId(loginId)}" using cached password verifier`);
+    } else {
+      if (authResult.mustChangePassword) {
+        // A forced EnrollPro password change must not be bypassable offline.
+        await clearCachedPassword(user.id);
+        console.log(`[Auth] Login failed: user "${maskId(loginId)}" must change password in EnrollPro`);
+        return res.status(403).json({
+          error: 'Please change your password in EnrollPro first, then sign in.',
+          code: 'PASSWORD_CHANGE_REQUIRED',
         });
       }
 
-      console.log(`[Auth] Login failed: EnrollPro unreachable for "${maskId(loginId)}"`);
-      return res.status(503).json({
-        error: 'Authentication service unreachable. Please try again later.',
-        code: 'AUTH_SERVICE_UNREACHABLE',
-        unreachable: true,
-      });
-    }
+      if (authResult.accountInactive) {
+        await clearCachedPassword(user.id);
+        console.log(`[Auth] Login failed: student "${maskId(loginId)}" EnrollPro portal account inactive`);
+        return res.status(403).json({
+          error: 'Your EnrollPro portal account is not yet activated. Contact the registrar.',
+          code: 'NO_ENROLLPRO_ACCOUNT',
+        });
+      }
 
-    if (authResult.mustChangePassword) {
-      console.log(`[Auth] Login failed: user "${maskId(loginId)}" must change password in EnrollPro`);
-      return res.status(403).json({
-        error: 'Please change your password in EnrollPro first, then sign in.',
-        code: 'PASSWORD_CHANGE_REQUIRED',
-      });
-    }
-
-    if (authResult.accountInactive) {
-      console.log(`[Auth] Login failed: student "${maskId(loginId)}" EnrollPro portal account inactive`);
-      return res.status(403).json({
-        error: 'Your EnrollPro portal account is not yet activated. Contact the registrar.',
-        code: 'NO_ENROLLPRO_ACCOUNT',
-      });
-    }
-
-    if (!authResult.success) {
-      // Log the real reason from EnrollPro (401 vs 400 vs other) while keeping
-      // the client response generic so we never leak which part was wrong.
-      console.warn(`[Auth] Login failed for "${maskId(loginId)}": ${authResult.error || 'invalid credentials'}`);
-      return res.status(401).json({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' });
+      if (!authResult.success) {
+        // Log the real reason from EnrollPro (401 vs 400 vs other) while keeping
+        // the client response generic so we never leak which part was wrong.
+        console.warn(`[Auth] Login failed for "${maskId(loginId)}": ${authResult.error || 'invalid credentials'}`);
+        return res.status(401).json({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' });
+      }
     }
 
     // Check if account is suspended
@@ -283,13 +179,58 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
       user.suspendedUntil = null;
     }
 
-    const session = await issueSession(user, req, { kind: 'NORMAL' });
+    // Password verified by EnrollPro: refresh the offline verifier for the next
+    // outage. Cached only after every gate passed, so blocked accounts can never
+    // gain offline access.
+    if (!offlineAuth) {
+      await cacheVerifiedPassword(user.id, loginPassword);
+    }
+
+    // Create short-lived access token
+    const accessToken = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, name: user.name },
+      getJwtSecret(),
+      { expiresIn: ACCESS_EXPIRY_SECONDS }
+    );
+
+    // Create refresh token and store session
+    const refreshToken = generateRefreshToken();
+    const deviceInfo = req.headers['user-agent'] || 'unknown';
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+
+    await prisma.userSession.create({
+      data: {
+        userId: user.id,
+        refreshToken,
+        deviceInfo,
+        ipAddress,
+        expiresAt: offlineAuth
+          ? new Date(Date.now() + OFFLINE_REFRESH_EXPIRY_MS)
+          : getRefreshExpiry(),
+      },
+    });
+
+    if (offlineAuth) {
+      await prisma.auditLog
+        .create({
+          data: {
+            actorName: user.name,
+            actorRole: user.role,
+            actionType: 'OFFLINE_LOGIN',
+            details: 'Signed in against the cached password verifier while EnrollPro was unreachable',
+            ipAddress,
+            schoolYearId: await getActiveSchoolYearId(),
+          },
+        })
+        .catch((err: any) => console.error('[Auth] Failed to write offline login audit row:', err.message));
+    }
 
     return res.json({
-      token: session.accessToken,
-      accessToken: session.accessToken,
-      refreshToken: session.refreshToken,
-      expiresIn: session.expiresIn,
+      token: accessToken,
+      accessToken,
+      refreshToken,
+      expiresIn: `${ACCESS_EXPIRY_SECONDS}s`,
+      ...(offlineAuth ? { offlineAuth: true } : {}),
       user: safeUser(user),
     });
   } catch (error) {
@@ -320,10 +261,8 @@ router.post('/refresh', async (req: Request, res: Response): Promise<any> => {
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
-    // Strict guard: only EnrollPro-synced accounts are valid. Exception:
-    // offline demo accounts (LOCAL) may keep refreshing, mirroring the
-    // /auth/me exception, so cross-browser demos survive an outage.
-    if (session.user.syncSource !== 'ENROLLPRO' && session.user.enrollmentStatus !== 'OFFLINE_DEMO') {
+    // Strict guard: only EnrollPro-synced accounts are valid
+    if (session.user.syncSource !== 'ENROLLPRO') {
       await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
       return res.status(401).json({ error: 'Account not provisioned. Contact your administrator.' });
     }
@@ -350,61 +289,27 @@ router.post('/refresh', async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Break-glass sessions exist only for the duration of an armed outage
-    // window. Once offline auth is disabled or expires they die here, so a
-    // fallback token can never outlive the emergency that justified it.
-    let sessionExpiresAt = getRefreshExpiry();
-    let isBreakGlass = session.kind === 'BREAK_GLASS';
-    if (isBreakGlass) {
-      const state = await getOfflineAuthState();
-      if (!state.enabled) {
-        await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
-        return res.status(401).json({
-          error: 'Offline sign-in has ended. Sign in again when EnrollPro is reachable.',
-          code: 'OFFLINE_AUTH_DISABLED',
-        });
-      }
-      if (state.expiresAt) {
-        const windowEnd = new Date(state.expiresAt);
-        if (windowEnd.getTime() <= Date.now()) {
-          await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
-          return res.status(401).json({
-            error: 'Offline sign-in window has expired.',
-            code: 'OFFLINE_AUTH_DISABLED',
-          });
-        }
-        sessionExpiresAt = windowEnd;
-      }
-    }
-
     // Rotate refresh token (issue new one, invalidate old)
     const newRefreshToken = generateRefreshToken();
     await prisma.userSession.update({
       where: { id: session.id },
       data: {
         refreshToken: newRefreshToken,
-        expiresAt: sessionExpiresAt,
+        expiresAt: getRefreshExpiry(),
       },
     });
 
     const accessToken = jwt.sign(
-      {
-        id: session.user.id,
-        email: session.user.email,
-        role: session.user.role,
-        name: session.user.name,
-        ...(isBreakGlass ? { offline: true } : {}),
-      },
+      { id: session.user.id, email: session.user.email, role: session.user.role, name: session.user.name },
       getJwtSecret(),
-      { expiresIn: isBreakGlass ? BREAK_GLASS_ACCESS_EXPIRY_SECONDS : ACCESS_EXPIRY_SECONDS }
+      { expiresIn: ACCESS_EXPIRY_SECONDS }
     );
 
     return res.json({
       accessToken,
       refreshToken: newRefreshToken,
-      expiresIn: `${isBreakGlass ? BREAK_GLASS_ACCESS_EXPIRY_SECONDS : ACCESS_EXPIRY_SECONDS}s`,
+      expiresIn: `${ACCESS_EXPIRY_SECONDS}s`,
       user: safeUser(session.user),
-      ...(isBreakGlass ? { offlineSession: true } : {}),
     });
   } catch (error) {
     console.error('Refresh error:', error);
@@ -494,8 +399,6 @@ router.get('/me', async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const offlineSession = Boolean((decoded as { offline?: boolean }).offline);
-
     // Strict guard: only EnrollPro-synced accounts are valid. Exception:
     // offline walk-in students (syncSource LOCAL) may be served when a valid
     // signed token is presented (e.g. the documented minted-token contingency
@@ -512,7 +415,6 @@ router.get('/me', async (req: Request, res: Response): Promise<any> => {
 
     return res.json({
       user: safeUser(user),
-      offlineSession,
     });
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token' });

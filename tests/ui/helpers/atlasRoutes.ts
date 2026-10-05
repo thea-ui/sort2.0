@@ -69,6 +69,62 @@ export const EMPTY_MAP_FIXTURE = {
   buildings: [],
 };
 
+/**
+ * Live-shape payload with a rotated wing (Grade 8, rotation 90°). Regression
+ * fixture for the viewBox clipping bug: the rotated rect reaches above the
+ * rotation-unaware bounds and used to be cut by the SVG viewport.
+ */
+export const ROTATED_MAP_FIXTURE = {
+  schoolId: 1,
+  syncedAt: new Date().toISOString(),
+  stale: false,
+  campusImageUrl: null,
+  buildings: [
+    {
+      atlasId: 5,
+      name: 'Science and Innovation Center',
+      shortCode: 'SIC',
+      x: 51,
+      y: 320,
+      width: 107,
+      height: 160,
+      color: '#16a34a',
+      rotation: 0,
+      floorCount: 2,
+      isTeachingBuilding: true,
+      rooms: [],
+    },
+    {
+      atlasId: 2,
+      name: 'Grade 8 Academic Wing',
+      shortCode: 'G8AW',
+      x: 868,
+      y: 28,
+      width: 212,
+      height: 79,
+      color: '#8b5cf6',
+      rotation: 90,
+      floorCount: 4,
+      isTeachingBuilding: true,
+      rooms: [],
+    },
+    {
+      atlasId: 73,
+      name: 'MRF Building',
+      shortCode: 'MB',
+      x: 882,
+      y: 276,
+      width: 102,
+      height: 200,
+      color: '#78716c',
+      rotation: 0,
+      floorCount: 1,
+      isTeachingBuilding: true,
+      rooms: [],
+    },
+  ],
+};
+
 export const STALE_MAP_FIXTURE = {
   ...FULL_MAP_FIXTURE,
   syncedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),

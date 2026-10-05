@@ -2,53 +2,46 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  assertValidOfflinePin,
-  nextOnlineStreak,
-  OfflinePinValidationError,
-  OFFLINE_PIN_MIN_LENGTH,
-  OFFLINE_PIN_MAX_LENGTH,
+  BCRYPT_COST,
+  DEFAULT_MAX_CACHE_DAYS,
+  MAX_CACHE_DAYS,
+  clampMaxCacheDays,
+  hashPassword,
+  isCacheWithinWindow,
+  verifyPasswordHash,
 } from '../offline-auth.service.js';
 
-test('O1 PIN policy: accepts a reasonable numeric PIN', () => {
-  assert.doesNotThrow(() => assertValidOfflinePin('864297'));
-  assert.doesNotThrow(() => assertValidOfflinePin('13579246'));
+test('OA1 clamp: defaults, bounds and coercion', () => {
+  assert.equal(clampMaxCacheDays(undefined), DEFAULT_MAX_CACHE_DAYS);
+  assert.equal(clampMaxCacheDays('not-a-number'), DEFAULT_MAX_CACHE_DAYS);
+  assert.equal(clampMaxCacheDays(NaN), DEFAULT_MAX_CACHE_DAYS);
+  assert.equal(clampMaxCacheDays(0), 1);
+  assert.equal(clampMaxCacheDays(-5), 1);
+  assert.equal(clampMaxCacheDays(999), MAX_CACHE_DAYS);
+  assert.equal(clampMaxCacheDays('15'), 15);
+  assert.equal(clampMaxCacheDays(12.6), 13);
 });
 
-test('O2 PIN policy: rejects non-numeric input', () => {
-  assert.throws(() => assertValidOfflinePin('abc123'), OfflinePinValidationError);
-  assert.throws(() => assertValidOfflinePin('12 3456'), OfflinePinValidationError);
+test('OA2 freshness window: accepts fresh cache, rejects stale/missing/invalid', () => {
+  const now = new Date('2026-09-26T12:00:00Z');
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
+
+  assert.equal(isCacheWithinWindow(daysAgo(0), 30, now), true);
+  assert.equal(isCacheWithinWindow(daysAgo(29), 30, now), true);
+  assert.equal(isCacheWithinWindow(daysAgo(30), 30, now), true);
+  assert.equal(isCacheWithinWindow(daysAgo(31), 30, now), false);
+  assert.equal(isCacheWithinWindow(daysAgo(400), 365, now), false);
+  assert.equal(isCacheWithinWindow(null, 30, now), false);
+  assert.equal(isCacheWithinWindow(undefined, 30, now), false);
+  assert.equal(isCacheWithinWindow('not-a-date', 30, now), false);
+  assert.equal(isCacheWithinWindow(now.toISOString(), 30, now), true);
 });
 
-test('O3 PIN policy: enforces length bounds', () => {
-  assert.throws(() => assertValidOfflinePin('1'.repeat(OFFLINE_PIN_MIN_LENGTH - 1)), OfflinePinValidationError);
-  assert.throws(() => assertValidOfflinePin('1'.repeat(OFFLINE_PIN_MAX_LENGTH + 1)), OfflinePinValidationError);
-});
+test('OA3 bcrypt roundtrip: correct password verifies, wrong one does not', async () => {
+  const hash = await hashPassword('DepEdSY2026!');
 
-test('O4 PIN policy: rejects obvious sequences', () => {
-  assert.throws(() => assertValidOfflinePin('123456'), OfflinePinValidationError);
-  assert.throws(() => assertValidOfflinePin('111111'), OfflinePinValidationError);
-  assert.throws(() => assertValidOfflinePin('654321'), OfflinePinValidationError);
-});
-
-test('O5 auto-revert: a failed probe resets the streak', () => {
-  assert.deepEqual(nextOnlineStreak(1, false), { streak: 0, shouldDisable: false });
-  assert.deepEqual(nextOnlineStreak(0, false), { streak: 0, shouldDisable: false });
-});
-
-test('O6 auto-revert: one successful probe does not disarm the fallback', () => {
-  assert.deepEqual(nextOnlineStreak(0, true), { streak: 1, shouldDisable: false });
-});
-
-test('O7 auto-revert: two consecutive successes disarm and reset', () => {
-  assert.deepEqual(nextOnlineStreak(1, true), { streak: 0, shouldDisable: true });
-});
-
-test('O8 auto-revert: a blip between successes restarts the count', () => {
-  const first = nextOnlineStreak(0, true);
-  assert.equal(first.shouldDisable, false);
-  const blip = nextOnlineStreak(first.streak, false);
-  assert.equal(blip.streak, 0);
-  const after = nextOnlineStreak(blip.streak, true);
-  assert.equal(after.shouldDisable, false);
-  assert.equal(after.streak, 1);
+  assert.ok(hash.startsWith('$2'), 'hash should be bcrypt-formatted');
+  assert.ok(hash.includes(`$${BCRYPT_COST}$`), 'hash should use the configured cost');
+  assert.equal(await verifyPasswordHash('DepEdSY2026!', hash), true);
+  assert.equal(await verifyPasswordHash('DepEd2026!', hash), false);
 });

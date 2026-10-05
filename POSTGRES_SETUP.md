@@ -54,6 +54,9 @@ NODE_ENV="development"
 # EnrollPro Integration
 ENROLLPRO_BASE_URL="https://your-enrollpro-instance.com/api"
 ENROLLPRO_SYNC_SECRET="your_integration_key_here"
+# Optional: public origin used for "back to EnrollPro" links. When unset the
+# app hides those controls; it never falls back to a shared dev hub.
+ENROLLPRO_PUBLIC_URL="https://your-enrollpro-instance.com"
 
 # ATLAS Campus Map Integration (read-only mirror)
 ATLAS_BASE_URL="http://100.88.55.125:5001/api/v1"

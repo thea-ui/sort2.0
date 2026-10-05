@@ -104,7 +104,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
           <span>How Points Work</span>
         </div>
         <p className="text-xs text-[var(--text-strong)]/80 leading-relaxed font-medium">
-          When the same bin is reported by multiple students, only the first 3 get points after the MRF collects the reported waste:
+          When the same bin is reported by multiple students, only the first 3 get points after the MRF collects the reported waste. Ranks restart at each daily reset (default 6:00 PM) — every day has a fresh 1st, 2nd, and 3rd reporter:
         </p>
 
         <div className="flex flex-wrap gap-2 pt-0.5">
@@ -233,6 +233,13 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
           <span>Active Accumulation Challenges</span>
         </h3>
 
+        {challenges.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[var(--primary)]/15 bg-[var(--background)]/40 p-6 text-center">
+            <p className="text-xs font-medium text-[var(--text-strong)]/50">
+              No active challenges for this term. Check back soon!
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {challenges.map(ch => {
             const pct = Math.round((ch.currentCount / ch.target) * 100);
@@ -265,6 +272,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
             );
           })}
         </div>
+        )}
       </div>
 
       {/* Walk-in Bottle Turn-ins & Milestone Prizes */}

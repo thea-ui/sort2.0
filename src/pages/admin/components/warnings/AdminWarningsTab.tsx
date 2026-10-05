@@ -34,7 +34,6 @@ export const AdminWarningsTab: React.FC<AdminWarningsTabProps> = ({
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Offenses & Warnings"
-        description="Register improper sorting offenses and manage sanction notices."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

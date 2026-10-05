@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gift, Coins, Package, Save, Eye, EyeOff } from 'lucide-react';
+import { Gift, Coins, Package, Save, Eye, EyeOff, Pencil } from 'lucide-react';
 import { Reward } from '../../../types';
 
 interface RewardCatalogTableProps {
@@ -7,6 +7,7 @@ interface RewardCatalogTableProps {
   busyId: string | null;
   onToggleActive: (reward: Reward) => void;
   onUpdateStock: (reward: Reward, stock: number | null) => void;
+  onEdit: (reward: Reward) => void;
 }
 
 export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
@@ -14,6 +15,7 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
   busyId,
   onToggleActive,
   onUpdateStock,
+  onEdit,
 }) => {
   const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
 
@@ -62,6 +64,16 @@ export const RewardCatalogTable: React.FC<RewardCatalogTableProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onEdit(reward)}
+                className="p-2 rounded-xl border border-gray-200 text-[var(--text-strong)] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
+                aria-label={`Edit ${reward.title}`}
+                title="Edit prize"
+              >
+                <Pencil size={14} />
+              </button>
               {isPhysical && (
                 <>
                   <input

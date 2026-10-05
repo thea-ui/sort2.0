@@ -1,6 +1,6 @@
 import { PrismaClient, SyncStatus, SyncSource, Role } from '@prisma/client';
 import { ensureSchoolYear } from './rollover.service.js';
-import { assessRoster, isPurgeableLocalAccount } from './enrollpro-sync-guard.js';
+import { ensureChallengesForSchoolYear } from './challenge-catalog.service.js';
 
 const prisma = new PrismaClient();
 
@@ -102,6 +102,18 @@ interface EnrollProSchoolYear {
   term3End?: string | null;
   term4Start?: string | null;
   term4End?: string | null;
+}
+
+/**
+ * Response of `/integration/v1/active-term`. This is the authoritative term
+ * pointer: on development instances it follows EnrollPro's time-travel clock,
+ * so SORT mirrors it instead of deriving activity from the local date.
+ */
+interface EnrollProActiveTerm {
+  activeTerm?: string | null;
+  activeTermLabel?: string | null;
+  termFormat?: string;
+  schoolYearId?: number;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────
@@ -274,6 +286,45 @@ async function fetchActiveEnrollProSchoolYear(): Promise<EnrollProSchoolYear | n
   if (!res.ok) return null;
   const json = await res.json() as { data?: EnrollProSchoolYear };
   return json.data?.id ? json.data : null;
+}
+
+/**
+ * Which term EnrollPro considers current. Returns null when the endpoint is
+ * unreachable so callers can fall back to the local clock.
+ */
+async function fetchEnrollProActiveTerm(schoolYearId: number): Promise<EnrollProActiveTerm | null> {
+  try {
+    const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/active-term?schoolYearId=${schoolYearId}`, {
+      headers: integrationHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = await res.json() as { data?: EnrollProActiveTerm };
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * EnrollPro's term list for the active school year. Prefers the `terms[]`
+ * array (term-format agnostic) and falls back to the legacy term1..term4
+ * fields, dropping terms without a complete date range.
+ */
+function buildEnrollProTerms(sy: EnrollProSchoolYear): { start: string; end: string; name: string; code: string }[] {
+  if (sy.terms && sy.terms.length > 0) {
+    return sy.terms.flatMap((t) =>
+      t.identity && t.startDate && t.endDate
+        ? [{ start: t.startDate, end: t.endDate, name: t.displayLabel || t.identity, code: t.identity }]
+        : []
+    );
+  }
+
+  return [
+    { start: sy.term1Start, end: sy.term1End, name: 'Term 1', code: 'T1' },
+    { start: sy.term2Start, end: sy.term2End, name: 'Term 2', code: 'T2' },
+    { start: sy.term3Start, end: sy.term3End, name: 'Term 3', code: 'T3' },
+    { start: sy.term4Start, end: sy.term4End, name: 'Term 4', code: 'T4' },
+  ].flatMap((t) => (t.start && t.end ? [{ start: t.start, end: t.end, name: t.name, code: t.code }] : []));
 }
 
 /**
@@ -478,25 +529,11 @@ interface SyncResult {
   };
   message?: string;
   error?: string;
-  /** Cohorts whose archive reconciliation was deliberately withheld. */
-  reconciliationSkipped?: string[];
 }
 
-export interface RunSyncOptions {
-  /**
-   * Opt-in override for the empty-roster guard. By default a cohort whose
-   * roster comes back with 0 records while local accounts still exist is
-   * treated as suspect: reconciliation is skipped so a degraded EnrollPro
-   * response cannot archive the entire cohort. Set this only when an empty
-   * roster is genuinely expected (e.g. a brand-new school year).
-   */
-  allowEmpty?: boolean;
-}
-
-export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<SyncResult> {
+export async function runEnrollProSync(): Promise<SyncResult> {
   const start = Date.now();
   const errors: string[] = [];
-  const reconciliationSkipped = new Map<'learners' | 'faculty' | 'staff', string>();
 
   const cohortResults = {
     learners: { pulled: 0, created: 0, updated: 0, deleted: 0 } as CohortResult,
@@ -516,15 +553,6 @@ export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<Sy
       activeSchoolYear = syData.data;
       schoolYearId = activeSchoolYear?.id;
       schoolYearLabel = activeSchoolYear?.yearLabel;
-    } else {
-      // Learner and faculty rosters are school-year scoped. Without an SY id the
-      // fetch is unscoped, so the result cannot be trusted to prove that an
-      // account disappeared — reconciliation for those cohorts is skipped below.
-      // Staff is not SY-scoped and still reconciles normally.
-      reconciliationSkipped.set('learners', `active school-year unavailable (HTTP ${schoolYearRes.status})`);
-      reconciliationSkipped.set('faculty', `active school-year unavailable (HTTP ${schoolYearRes.status})`);
-      errors.push(`school-year context unavailable: HTTP ${schoolYearRes.status}`);
-      console.warn(`[Sync] Active school-year fetch returned HTTP ${schoolYearRes.status}; learner/faculty reconciliation will be skipped`);
     }
 
     // 1b. Mirror the full EnrollPro school-year catalog. This never activates
@@ -805,50 +833,15 @@ export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<Sy
       select: { id: true, enrollproId: true },
     });
 
-    const cohortOf = (enrollproId: string): 'learners' | 'faculty' | 'staff' | null =>
-      enrollproId.startsWith('learner-') ? 'learners'
-        : enrollproId.startsWith('faculty-') ? 'faculty'
-        : enrollproId.startsWith('staff-') ? 'staff'
+    for (const u of localSynced) {
+      if (!u.enrollproId) continue;
+
+      const cohort = u.enrollproId.startsWith('learner-') ? 'learners'
+        : u.enrollproId.startsWith('faculty-') ? 'faculty'
+        : u.enrollproId.startsWith('staff-') ? 'staff'
         : null;
 
-    const localCohortCounts = { learners: 0, faculty: 0, staff: 0 };
-    for (const u of localSynced) {
-      if (!u.enrollproId) continue;
-      const cohort = cohortOf(u.enrollproId);
-      if (cohort) localCohortCounts[cohort]++;
-    }
-
-    // Empty-roster guard: EnrollPro can answer 200 with an empty/partial payload
-    // (degraded instance, wrong school-year scope). Treating that as "everyone
-    // left" would mass-archive the cohort, so require an explicit override.
-    for (const cohort of ['learners', 'faculty', 'staff'] as const) {
-      if (reconciliationSkipped.has(cohort)) continue;
-      const decision = assessRoster({
-        pulled: cohortResults[cohort].pulled,
-        fetchError: cohortResults[cohort].error,
-        localCount: localCohortCounts[cohort],
-        allowEmpty: options.allowEmpty === true,
-      });
-      if (!decision.reconcile) {
-        const reason = decision.reason || 'roster not trusted';
-        reconciliationSkipped.set(cohort, reason);
-        if (!cohortResults[cohort].error) {
-          errors.push(`${cohort}: ${reason}`);
-          console.warn(`[Sync] ${reason}`);
-        }
-      }
-    }
-
-    for (const u of localSynced) {
-      if (!u.enrollproId) continue;
-
-      const cohort = cohortOf(u.enrollproId);
-
       if (!cohort) continue;
-
-      // Skip a cohort whose reconciliation was withheld (empty/failed/unscoped
-      // roster). No archive is ever performed without a trustworthy roster.
-      if (reconciliationSkipped.has(cohort)) continue;
 
       // Only reconcile if this cohort was successfully fetched (no error)
       if (!cohortResults[cohort].error && !syncedIdsByCohort[cohort].has(u.enrollproId)) {
@@ -875,14 +868,12 @@ export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<Sy
     }
 
     // Purge leftover LOCAL-synced accounts — but NEVER one that owns data
-    // (reports, points, walk-in turnovers, claims, offenses, sessions) or one
-    // that is a deliberate offline walk-in demo account (OFFLINE_DEMO), which is
-    // seeded precisely so the station can be demonstrated without EnrollPro.
+    // (reports, points, walk-in turnovers, claims, offenses, sessions). Offline
+    // walk-in students earn real points that must survive a future sync.
     const localAccounts = await prisma.user.findMany({
       where: { syncSource: 'LOCAL' },
       select: {
         id: true,
-        enrollmentStatus: true,
         _count: {
           select: {
             reports: true,
@@ -900,12 +891,7 @@ export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<Sy
       },
     });
     const orphanLocalIds = localAccounts
-      .filter((u) =>
-        isPurgeableLocalAccount({
-          enrollmentStatus: u.enrollmentStatus,
-          activityCounts: Object.values(u._count),
-        })
-      )
+      .filter((u) => Object.values(u._count).every((count) => count === 0))
       .map((u) => u.id);
     const localPurge = orphanLocalIds.length > 0
       ? await prisma.user.deleteMany({ where: { id: { in: orphanLocalIds } } })
@@ -931,24 +917,15 @@ export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<Sy
       status = SyncStatus.FAILED;
     } else if (failedCohorts > 0) {
       status = SyncStatus.PARTIAL;
-    } else if (reconciliationSkipped.size > 0) {
-      // Data was pulled, but at least one cohort was deliberately not
-      // reconciled. Reporting SUCCESS here would hide a degraded provider.
-      status = SyncStatus.PARTIAL;
     } else {
       status = SyncStatus.SUCCESS;
     }
 
     const durationMs = Date.now() - start;
 
-    const skippedSummary = reconciliationSkipped.size > 0
-      ? `SKIPPED_RECONCILIATION(${[...reconciliationSkipped.keys()].join(',')})`
+    const message = learnerRosterEmpty
+      ? `NO_STUDENTS_ENROLLED: EnrollPro SY ${schoolYearLabel ?? schoolYearId ?? '?'} has no enrolled learners yet`
       : undefined;
-
-    const message = skippedSummary
-      ?? (learnerRosterEmpty
-        ? `NO_STUDENTS_ENROLLED: EnrollPro SY ${schoolYearLabel ?? schoolYearId ?? '?'} has no enrolled learners yet`
-        : undefined);
     if (message) console.log(`[Sync] ${message}`);
 
     await prisma.enrollmentSyncLog.create({
@@ -971,7 +948,6 @@ export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<Sy
     return {
       recordsPulled: totalPulled, recordsCreated: totalCreated, recordsUpdated: totalUpdated,
       recordsDeleted: totalDeleted, durationMs, schoolYearId, schoolYearLabel, status, cohortResults, message,
-      reconciliationSkipped: reconciliationSkipped.size > 0 ? [...reconciliationSkipped.keys()] : undefined,
     };
   } catch (error: any) {
     const durationMs = Date.now() - start;
@@ -994,33 +970,39 @@ export async function runEnrollProSync(options: RunSyncOptions = {}): Promise<Sy
 
 export async function syncTermCalendar(): Promise<{ synced: number; error?: string }> {
   try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    // Integration endpoints require X-Integration-Key, not JWT
-    if (ENROLLPRO_SYNC_SECRET) {
-      headers['X-Integration-Key'] = ENROLLPRO_SYNC_SECRET;
-    }
-
-    const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers });
+    const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
     if (!res.ok) return { synced: 0, error: `Returned ${res.status}` };
 
-    const json = await res.json() as { data?: any };
+    const json = await res.json() as { data?: EnrollProSchoolYear };
     const sy = json.data;
     if (!sy?.id) return { synced: 0, error: 'No active school year' };
 
-    let synced = 0;
+    // EnrollPro is the single source of truth for which term is current. Its
+    // dev instances time-travel the clock and expose the result through
+    // `/active-term`, so never derive activity from SORT's local date unless
+    // the partner endpoint is unreachable.
+    const activeTerm = await fetchEnrollProActiveTerm(sy.id);
+    const mirroredFromEnrollPro =
+      activeTerm !== null && (activeTerm.schoolYearId == null || activeTerm.schoolYearId === sy.id);
+    if (!mirroredFromEnrollPro) {
+      console.warn('[Sync] EnrollPro active-term unavailable — falling back to the local clock for term activity');
+    }
+    const activeCode = mirroredFromEnrollPro ? activeTerm?.activeTerm ?? null : null;
+
+    const terms = buildEnrollProTerms(sy);
     const now = new Date();
-    const terms = [
-      { start: sy.term1Start, end: sy.term1End, name: 'Term 1', code: 'T1' },
-      { start: sy.term2Start, end: sy.term2End, name: 'Term 2', code: 'T2' },
-      { start: sy.term3Start, end: sy.term3End, name: 'Term 3', code: 'T3' },
-    ];
+    const isTermActive = (term: { start: string; end: string; code: string }) =>
+      mirroredFromEnrollPro
+        ? term.code === activeCode
+        : now >= new Date(term.start) && now <= new Date(term.end);
+
+    let synced = 0;
 
     // Sync to TermCalendar (EnrollPro mirror)
     for (const term of terms) {
-      if (!term.start || !term.end) continue;
       const startDate = new Date(term.start);
       const endDate = new Date(term.end);
-      const isActive = now >= startDate && now <= endDate;
+      const isActive = isTermActive(term);
 
       const existing = await prisma.termCalendar.findFirst({ where: { termCode: `${term.code}-SY${sy.id}` } });
       if (existing) {
@@ -1041,8 +1023,7 @@ export async function syncTermCalendar(): Promise<{ synced: number; error?: stri
 
     // Also sync to AcademicQuarter (SORT's internal calendar)
     for (const term of terms) {
-      if (!term.start || !term.end) continue;
-      const isActive = now >= new Date(term.start) && now <= new Date(term.end);
+      const isActive = isTermActive(term);
 
       const existing = await prisma.academicQuarter.findFirst({ where: { quarterCode: term.code } });
       if (existing) {
@@ -1061,6 +1042,36 @@ export async function syncTermCalendar(): Promise<{ synced: number; error?: stri
           },
         });
       }
+    }
+
+    // Retire local terms that EnrollPro no longer returns (e.g. a format
+    // switch to semesters). Only when the mirror actually answered.
+    if (mirroredFromEnrollPro) {
+      const codes = terms.map((t) => t.code);
+      await prisma.academicQuarter.updateMany({
+        where: { isActive: true, quarterCode: { notIn: codes } },
+        data: { isActive: false },
+      });
+    }
+
+    // Challenge instances follow the term calendar: refresh any windows still
+    // pointing at a previous school year for the active year.
+    try {
+      const activeSY = await prisma.schoolYear.findFirst({
+        where: { isActive: true, isArchived: false },
+        orderBy: { startDate: 'desc' },
+        select: { id: true },
+      });
+      if (activeSY) {
+        const provision = await ensureChallengesForSchoolYear(activeSY.id);
+        if (provision.created > 0 || provision.windowRefreshed > 0) {
+          console.log(
+            `[Sync] Challenge instances: ${provision.created} created, ${provision.windowRefreshed} windows refreshed`
+          );
+        }
+      }
+    } catch (provisionErr: any) {
+      console.error('[Sync] Challenge provisioning error:', provisionErr.message);
     }
 
     return { synced };

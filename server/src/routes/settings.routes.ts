@@ -7,12 +7,12 @@ import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middle
 import {
   getPublicBranding,
   sanitizeBrandingPatch,
-  toPublicBranding,
   broadcastBranding,
   addBrandingStreamClient,
   removeBrandingStreamClient,
 } from '../services/branding.service.js';
 import { syncEnrollProBranding } from '../services/enrollpro-branding.service.js';
+import { clampMaxCacheDays } from '../services/offline-auth.service.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -122,6 +122,8 @@ router.get('/', authenticate, async (_req, res) => {
           warningAutoDeductAmount: 10,
           rewardsReservePercent: 20,
           defaultVendorName: 'GreenCycle Recycling Vendor',
+          offlineAuthCacheEnabled: true,
+          offlineAuthCacheMaxDays: 30,
         },
       });
     }
@@ -159,6 +161,8 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
       defaultVendorName,
       binResetEnabled,
       binResetTime,
+      offlineAuthCacheEnabled,
+      offlineAuthCacheMaxDays,
     } = req.body;
 
     // Branding fields are whitelisted + normalised before touching the row.
@@ -190,6 +194,8 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
         ...(defaultVendorName !== undefined && { defaultVendorName: String(defaultVendorName) }),
         ...(binResetEnabled !== undefined && { binResetEnabled: Boolean(binResetEnabled) }),
         ...(binResetTime !== undefined && { binResetTime: String(binResetTime) }),
+        ...(offlineAuthCacheEnabled !== undefined && { offlineAuthCacheEnabled: Boolean(offlineAuthCacheEnabled) }),
+        ...(offlineAuthCacheMaxDays !== undefined && { offlineAuthCacheMaxDays: clampMaxCacheDays(offlineAuthCacheMaxDays) }),
         ...brandingPatch,
       },
       create: {
@@ -217,13 +223,15 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
         defaultVendorName: String(defaultVendorName || 'GreenCycle Recycling Vendor'),
         binResetEnabled: Boolean(binResetEnabled ?? true),
         binResetTime: String(binResetTime || '18:00'),
+        offlineAuthCacheEnabled: Boolean(offlineAuthCacheEnabled ?? true),
+        offlineAuthCacheMaxDays: clampMaxCacheDays(offlineAuthCacheMaxDays ?? 30),
         ...brandingPatch,
       },
     });
 
     // Push branding changes to every open settings stream.
     if (Object.keys(brandingPatch).length > 0) {
-      broadcastBranding(toPublicBranding(updated));
+      broadcastBranding(await getPublicBranding());
     }
 
     // Re-schedule the daily reset if the time/flag changed

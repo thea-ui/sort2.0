@@ -1,5 +1,7 @@
 import { PrismaClient, Prisma, ReportStatus, Role } from '@prisma/client';
 import { recordReportContribution } from './challenge-progress.service.js';
+import { BIN_RESET_TZ, computeResetCycleStart, DEFAULT_RESET_TIME } from './reset-cycle.service.js';
+import { buildStreamAwardPlan } from './report-award-plan.js';
 
 const prisma = new PrismaClient();
 
@@ -88,7 +90,9 @@ export interface StreamParams {
  * Rules:
  * - Only students receive points; faculty are marked credited with 0.
  * - Rank is assigned in submission order (createdAt) among the stream's
- *   collected reports, continuing from the highest already-stored rank.
+ *   collected reports, continuing from the highest rank credited within the
+ *   current daily-reset cycle. Ranks restart at every reset boundary, so the
+ *   first report collected after the reset is 1st Reporter again.
  * - Reports that were never approved (isVerified = false) or that are not yet
  *   collected are skipped, so EXPIRED/DISMISSED reports never earn points.
  * - Idempotent: guarded by `pointsAwardedAt: null`.
@@ -108,6 +112,15 @@ export async function awardCollectedReportsWithinTransaction(
     throw new Error('PointRule table is empty — server misconfigured');
   }
   const rankPointsMap = pointRules.map((r) => r.pointsAwarded);
+
+  // Ranks restart at each daily reset boundary: only credits from the current
+  // cycle continue the rank sequence (see reset-cycle.service.ts).
+  const settings = await tx.systemSetting.findUnique({ where: { id: 'default_setting' } });
+  const cycleStart = computeResetCycleStart(
+    new Date(),
+    settings?.binResetTime || DEFAULT_RESET_TIME,
+    BIN_RESET_TZ
+  );
 
   const streamWhere: any = {
     locationKey,
@@ -138,29 +151,20 @@ export async function awardCollectedReportsWithinTransaction(
   );
 
   const maxProcessedRank = streamReports
-    .filter((r) => r.pointsAwardedAt !== null && r.reporterRank !== null && !facultyIds.has(r.reporterId))
+    .filter(
+      (r) =>
+        r.pointsAwardedAt !== null &&
+        r.pointsAwardedAt >= cycleStart &&
+        r.reporterRank !== null &&
+        !facultyIds.has(r.reporterId)
+    )
     .reduce((max, r) => Math.max(max, r.reporterRank!), 0);
 
-  let studentRank = maxProcessedRank;
-
-  const streamUpdates: { report: typeof streamReports[0]; rank: number | null; points: number }[] = [];
-
-  for (const report of streamReports) {
-    if (report.pointsAwardedAt) continue;
-
-    // Points require admin approval (isVerified) AND collection.
-    if (!report.isVerified) continue;
-
-    const isFaculty = facultyIds.has(report.reporterId);
-    if (isFaculty) {
-      streamUpdates.push({ report, rank: null, points: 0 });
-      continue;
-    }
-
-    studentRank++;
-    const pts = studentRank <= rankPointsMap.length ? rankPointsMap[studentRank - 1] : 0;
-    streamUpdates.push({ report, rank: studentRank, points: pts });
-  }
+  const streamUpdates = buildStreamAwardPlan(streamReports, {
+    facultyIds,
+    startRank: maxProcessedRank,
+    rankPointsMap,
+  });
 
   const updatedReports: any[] = [];
   const awards: VerifyAward[] = [];

@@ -23,7 +23,6 @@ export const AdminSyncLogsTab: React.FC<AdminSyncLogsTabProps> = ({ syncLogs, on
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Simulated Sync Transmissions"
-        description="Monitor and trigger data synchronization between campus systems and the main server."
       />
 
       <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm">

@@ -63,6 +63,8 @@ For detailed step-by-step PostgreSQL installation, pgAdmin database creation, an
    JWT_SECRET="your_jwt_secret_here"
    ENROLLPRO_BASE_URL="https://your-enrollpro-instance.com/api"
    ENROLLPRO_SYNC_SECRET="your_integration_key_here"
+   # Optional: public origin for "back to EnrollPro" links (hidden when unset).
+   ENROLLPRO_PUBLIC_URL="https://your-enrollpro-instance.com"
    ATLAS_BASE_URL="http://100.88.55.125:5001/api/v1"
    ATLAS_SCHOOL_ID=1
    ```

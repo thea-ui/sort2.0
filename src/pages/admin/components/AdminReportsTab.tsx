@@ -40,7 +40,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = (props) => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fade-in">
-      <ReportsHeader shownCount={queue.filteredReports.length} />
+      <ReportsHeader />
 
       <ReportsFilterBar
         activeFilter={queue.activeFilter}

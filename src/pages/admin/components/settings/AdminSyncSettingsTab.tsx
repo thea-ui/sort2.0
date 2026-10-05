@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Settings, Clock, CheckCircle2, XCircle, AlertTriangle, Loader2, Users, ShieldCheck, Recycle } from 'lucide-react';
+import { RefreshCw, Settings, Clock, CheckCircle2, XCircle, AlertTriangle, Loader2, Users, ShieldCheck, Recycle, WifiOff } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { useToast } from '../../../../hooks/useToast';
 import { LoadingState } from '../../../../components/common/LoadingState';
-import { AdminOfflineAuthPanel } from './AdminOfflineAuthPanel';
 
 interface SyncStatus {
   lastSync: {
@@ -37,6 +36,8 @@ export const AdminSyncSettingsTab: React.FC = () => {
   const [intervalMinutes, setIntervalMinutes] = useState(60);
   const [binResetEnabled, setBinResetEnabled] = useState(true);
   const [binResetTime, setBinResetTime] = useState('18:00');
+  const [offlineAuthCacheEnabled, setOfflineAuthCacheEnabled] = useState(true);
+  const [offlineAuthCacheMaxDays, setOfflineAuthCacheMaxDays] = useState(30);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,8 @@ export const AdminSyncSettingsTab: React.FC = () => {
         setIntervalMinutes(settings.syncIntervalMinutes || 60);
         setBinResetEnabled(settings.binResetEnabled !== false);
         setBinResetTime(settings.binResetTime || '18:00');
+        setOfflineAuthCacheEnabled(settings.offlineAuthCacheEnabled !== false);
+        setOfflineAuthCacheMaxDays(settings.offlineAuthCacheMaxDays || 30);
       }
     } catch (err) {
       console.warn('Failed to load sync settings:', err);
@@ -101,19 +104,34 @@ export const AdminSyncSettingsTab: React.FC = () => {
     setSaving(false);
   };
 
+  const handleSaveOfflineAuth = async () => {
+    setSaving(true);
+    try {
+      await apiService.updateSettings({ offlineAuthCacheEnabled, offlineAuthCacheMaxDays });
+      showToast('success', 'Offline sign-in settings saved');
+    } catch {
+      showToast('error', 'Failed to save offline sign-in settings');
+    }
+    setSaving(false);
+  };
+
   const handleRunSync = async () => {
     setSyncing(true);
     try {
-      const result = await apiService.runFullSync();
-      const skipped: string[] = result?.users?.reconciliationSkipped ?? [];
-      if (skipped.length > 0) {
-        showToast('error', `Sync completed, but reconciliation was skipped for: ${skipped.join(', ')} — the roster looked empty. Nothing was archived.`);
-      } else {
+      const token = sessionStorage.getItem('sortv2_token');
+      const res = await fetch('http://localhost:5000/api/sync/all', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
         showToast('success', 'Sync completed successfully');
+        await loadStatus();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast('error', data.error || 'Sync failed');
       }
-      await loadStatus();
-    } catch (err: any) {
-      showToast('error', err?.message || 'Sync failed');
+    } catch (err) {
+      showToast('error', 'Sync failed — server unreachable');
     }
     setSyncing(false);
   };
@@ -165,9 +183,6 @@ export const AdminSyncSettingsTab: React.FC = () => {
           Manage EnrollPro synchronization settings and view sync history.
         </p>
       </div>
-
-      {/* Break-glass offline sign-in (EnrollPro outage fallback) */}
-      <AdminOfflineAuthPanel />
 
       {/* Sync Mode Card */}
       <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">
@@ -253,8 +268,9 @@ export const AdminSyncSettingsTab: React.FC = () => {
         </h4>
         <p className="text-sm text-[var(--text-strong)]/50">
           The school clears all bins at the configured time each day. At reset, bin fill levels return to 0 and
-          stale waste reports (pending or dispatched but never collected) are auto-expired — neutral, no penalties,
-          no point changes. Asset reports are never touched.
+          stale waste reports still pending (not yet dispatched) are auto-expired — neutral, no penalties,
+          no point changes. Dispatched and asset reports are never touched. Reporter ranks also restart at this
+          time each day, so the next collected report counts as 1st Reporter again.
         </p>
 
         <div className="flex flex-wrap items-center gap-5">
@@ -287,6 +303,58 @@ export const AdminSyncSettingsTab: React.FC = () => {
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Settings size={14} />}
           {saving ? 'Saving...' : 'Save Bin Reset'}
+        </button>
+      </div>
+
+      {/* Offline Sign-In Cache Card */}
+      <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 space-y-4">
+        <h4 className="text-lg font-bold text-[var(--text-strong)] flex items-center gap-2">
+          <WifiOff size={18} className="text-amber-500" />
+          Offline Sign-In (EnrollPro outage fallback)
+        </h4>
+        <p className="text-sm text-[var(--text-strong)]/50">
+          After each successful sign-in, SORT keeps a bcrypt hash of that password so users can still sign in
+          while EnrollPro is unreachable. Online EnrollPro responses always win — a password change or forced
+          reset on EnrollPro takes effect immediately. Turn this off to fail closed during outages instead.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-5">
+          <label className="flex items-center gap-2 text-sm font-bold text-[var(--text-strong)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={offlineAuthCacheEnabled}
+              onChange={(e) => setOfflineAuthCacheEnabled(e.target.checked)}
+              className="h-4 w-4 accent-[var(--accent)]"
+            />
+            Allow offline sign-in with last verified password
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-wider">
+              Max cache age (days)
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={offlineAuthCacheMaxDays}
+              onChange={(e) => setOfflineAuthCacheMaxDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 30)))}
+              className="w-28 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--background)_60%,white)] text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white transition-all"
+            />
+            <span className="text-xs text-[var(--text-strong)]/40">
+              Older cached passwords stop working during outages.
+            </span>
+          </label>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSaveOfflineAuth}
+          disabled={saving}
+          className="px-5 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+        >
+          {saving ? <Loader2 size={14} className="animate-spin" /> : <Settings size={14} />}
+          {saving ? 'Saving...' : 'Save Offline Sign-In'}
         </button>
       </div>
 

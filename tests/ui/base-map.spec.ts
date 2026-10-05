@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { seedSession } from './helpers/session';
 import {
   EMPTY_MAP_FIXTURE,
+  ROTATED_MAP_FIXTURE,
   mockAtlasImage,
   mockAtlasMap,
   mockAtlasMapDelayed,
@@ -51,6 +52,36 @@ test.describe('Bin Map base layer — ATLAS first', () => {
 
     await expect(page.getByTestId('atlas-base-map')).toBeVisible();
     await expect(page.getByTestId('campus-map-frame').getByTestId('station-pin').first()).toBeVisible();
+  });
+
+  test('rotated ATLAS wings render fully inside the base map (no clipping)', async ({ page }) => {
+    const seeded = await seedSession(page, 'STUDENT');
+    test.skip(!seeded, 'no usable STUDENT test identity');
+
+    await mockAtlasMap(page, ROTATED_MAP_FIXTURE);
+    await mockAtlasImage(page, false);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Bin Map' }).first().click();
+
+    const svg = page.getByTestId('atlas-base-map');
+    await expect(svg).toBeVisible();
+
+    // The rotation-aware viewBox must keep the 90°-rotated G8AW rect inside the
+    // SVG viewport with the padding margin on every side.
+    const margins = await svg.locator('g[data-building-id="2"] rect').evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      const view = el.ownerSVGElement!.getBoundingClientRect();
+      return {
+        top: rect.top - view.top,
+        bottom: view.bottom - rect.bottom,
+        left: rect.left - view.left,
+        right: view.right - rect.right,
+      };
+    });
+    expect(margins.top).toBeGreaterThan(0);
+    expect(margins.bottom).toBeGreaterThan(0);
+    expect(margins.left).toBeGreaterThan(0);
+    expect(margins.right).toBeGreaterThan(0);
   });
 
   test('falls back to the uploaded blueprint when ATLAS is empty', async ({ page }) => {

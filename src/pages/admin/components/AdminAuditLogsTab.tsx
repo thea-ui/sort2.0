@@ -128,7 +128,6 @@ export const AdminAuditLogsTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Audit Logs"
-        description="Monitor all system activities and administrative changes"
         actions={
           <button
             type="button"

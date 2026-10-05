@@ -1,6 +1,6 @@
 import React, { useId, useMemo } from 'react';
 import { AtlasBuilding } from '../../types';
-import { atlasBounds } from '../../utils/fitContain';
+import { atlasRawBounds, atlasViewBounds } from '../../utils/fitContain';
 import { readableTextColor } from '../atlas/atlasRoomMeta';
 
 interface AtlasBaseMapProps {
@@ -12,9 +12,10 @@ interface AtlasBaseMapProps {
 
 /**
  * Read-only ATLAS rendering for use as a *background* under percentage-based
- * pin overlays. Uses the exact drawing bounds as its viewBox (no padding) and
- * `preserveAspectRatio="none"`, so the parent fit box maps percentages
- * linearly to ATLAS canvas coordinates. Not interactive by design.
+ * pin overlays. The viewBox is the rotation-aware drawn bounds plus uniform
+ * padding (so rotated wings are never clipped and the plan keeps the ATLAS
+ * editor's margins) with `preserveAspectRatio="none"`, so the parent fit box
+ * maps percentages linearly to ATLAS canvas coordinates. Not interactive.
  */
 export const AtlasBaseMap: React.FC<AtlasBaseMapProps> = ({
   buildings,
@@ -22,24 +23,25 @@ export const AtlasBaseMap: React.FC<AtlasBaseMapProps> = ({
   showLabels = true,
   className,
 }) => {
-  const bounds = useMemo(() => atlasBounds(buildings), [buildings]);
+  const view = useMemo(() => atlasViewBounds(buildings), [buildings]);
+  const raw = useMemo(() => atlasRawBounds(buildings), [buildings]);
   const rawId = useId();
   const patternId = useMemo(
     () => `atlas-base-grid-${rawId.replace(/[^a-zA-Z0-9]/g, '')}`,
     [rawId]
   );
 
-  if (!bounds) return null;
+  if (!view || !raw) return null;
 
   const valid = buildings.filter((b) => b.width > 0 && b.height > 0);
-  const labelSize = Math.max(bounds.w, bounds.h) * 0.012;
-  const gridSize = Math.max(8, bounds.w / 45);
+  const labelSize = Math.max(view.w, view.h) * 0.012;
+  const gridSize = Math.max(8, view.w / 45);
 
   return (
     <svg
       data-testid="atlas-base-map"
       className={className ?? 'absolute inset-0 w-full h-full pointer-events-none'}
-      viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`}
+      viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
       preserveAspectRatio="none"
       role="img"
       aria-label={`Campus base map with ${valid.length} buildings`}
@@ -50,15 +52,15 @@ export const AtlasBaseMap: React.FC<AtlasBaseMapProps> = ({
         </pattern>
       </defs>
 
-      <rect x={bounds.x} y={bounds.y} width={bounds.w} height={bounds.h} fill={`url(#${patternId})`} />
+      <rect x={view.x} y={view.y} width={view.w} height={view.h} fill={`url(#${patternId})`} />
 
       {campusImageUrl && (
         <image
           href={campusImageUrl}
-          x={bounds.x}
-          y={bounds.y}
-          width={bounds.w}
-          height={bounds.h}
+          x={raw.x}
+          y={raw.y}
+          width={raw.w}
+          height={raw.h}
           preserveAspectRatio="xMidYMid slice"
           opacity={0.55}
         />
@@ -71,8 +73,8 @@ export const AtlasBaseMap: React.FC<AtlasBaseMapProps> = ({
         const centerY = building.y + building.height / 2;
         const showLabel =
           showLabels &&
-          building.width > bounds.w * 0.045 &&
-          building.height > bounds.h * 0.06;
+          building.width > view.w * 0.045 &&
+          building.height > view.h * 0.06;
 
         return (
           <g

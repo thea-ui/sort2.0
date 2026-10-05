@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { AppNotification, NotificationDraft } from '../types';
 import { LEGACY_NOTIFICATIONS_STORAGE_KEY, NOTIFICATIONS_STORAGE_KEY } from '../utils/notifications';
+import { safeGetJSON, safeSetItem } from '../utils/safeStorage';
+
+const MAX_CACHED_NOTIFICATIONS = 150;
 
 function loadStoredNotifications(): AppNotification[] {
   try {
     // Drop the legacy feed: it used the magic recipient 'admin' and leaked
     // admin alerts to every other signed-in role on this browser.
     localStorage.removeItem(LEGACY_NOTIFICATIONS_STORAGE_KEY);
-    const raw = JSON.parse(localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) || '[]');
+    const raw = safeGetJSON<unknown>(NOTIFICATIONS_STORAGE_KEY, []);
     return Array.isArray(raw) ? raw : [];
   } catch {
     return [];
@@ -26,7 +29,9 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>(loadStoredNotifications);
 
   useEffect(() => {
-    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+    safeSetItem(NOTIFICATIONS_STORAGE_KEY, notifications, {
+      slim: (list) => (list.length > MAX_CACHED_NOTIFICATIONS ? list.slice(0, MAX_CACHED_NOTIFICATIONS) : list),
+    });
   }, [notifications]);
 
   const addNotification = (draft: NotificationDraft) => {

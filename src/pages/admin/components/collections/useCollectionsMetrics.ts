@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Report, User as UserType } from '../../../../types';
 import { MarketStockItem, useRecycleMarket } from '../../../../hooks/useRecycleMarket';
+import { useAssetScrap } from '../../../../hooks/useAssetScrap';
+import { generateScrapApprovalReference } from '../../../../utils/scrapReference';
 import {
   countUnweighedResidual,
   residualRecords,
@@ -76,7 +78,20 @@ export function useCollectionsMetrics({
     approveSaleBatch,
   } = useRecycleMarket();
 
+  const {
+    materials: scrapMaterials,
+    salesHistory: scrapSalesHistory,
+    totalScrapSales,
+    approveSale: approveScrapSale,
+  } = useAssetScrap();
+
+  const nextScrapApprovalReference = useMemo(
+    () => generateScrapApprovalReference([...scrapMaterials, ...scrapSalesHistory]),
+    [scrapMaterials, scrapSalesHistory],
+  );
+
   const totalMRFRevenuePhp = totalVendorSales;
+  const grandTotalRevenuePhp = totalMRFRevenuePhp + totalScrapSales;
 
   const totalCollectedWeight = Object.values(stocksRecord).reduce(
     (sum, stock) => sum + (stock?.accumulatedKg || 0),
@@ -228,6 +243,11 @@ export function useCollectionsMetrics({
     itemizedRecyclables,
     residualWaste,
     totalMRFRevenuePhp,
+    grandTotalRevenuePhp,
     approveSaleBatch,
+    scrapMaterials,
+    totalScrapSales,
+    approveScrapSale,
+    nextScrapApprovalReference,
   };
 }

@@ -8,7 +8,8 @@ import {
   saveBlueprint,
 } from '../../../../services/locationStore';
 import { useToast } from '../../../../hooks/useToast';
-import { clampOffset, clampScale, downscaleImageFile } from './blueprintUtils';
+import { clampOffset, clampScale } from './blueprintUtils';
+import { downscaleImageFile } from '../../../../utils/imageDownscale';
 
 /**
  * Blueprint upload + adjust-mode state for the campus map editor: staging a

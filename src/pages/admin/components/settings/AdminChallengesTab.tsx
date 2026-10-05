@@ -13,8 +13,17 @@ const CHALLENGE_TYPE_LABELS: Record<ChallengeType, string> = {
 
 const CODE_REGEX = /^[A-Z0-9_]+$/;
 
+interface SchoolYearOption {
+  id: string;
+  label: string;
+  isActive: boolean;
+  isArchived: boolean;
+}
+
 export const AdminChallengesTab: React.FC = () => {
   const [challenges, setChallenges] = useState<AdminChallenge[]>([]);
+  const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
+  const [yearFilter, setYearFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<AdminChallenge | null>(null);
@@ -29,7 +38,7 @@ export const AdminChallengesTab: React.FC = () => {
 
   const loadChallenges = async () => {
     try {
-      const data = await apiService.getAdminChallenges();
+      const data = await apiService.getAdminChallenges(yearFilter || undefined);
       setChallenges(data);
     } catch (err) {
       console.warn('Failed to load challenges:', err);
@@ -38,7 +47,29 @@ export const AdminChallengesTab: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadChallenges(); }, []);
+  useEffect(() => {
+    apiService
+      .getSchoolYears()
+      .then((rows) => setSchoolYears(Array.isArray(rows) ? rows : []))
+      .catch((err) => console.warn('Failed to load school years:', err));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiService.getAdminChallenges(yearFilter || undefined);
+        if (!cancelled) setChallenges(data);
+      } catch (err) {
+        console.warn('Failed to load challenges:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [yearFilter]);
 
   const handleToggle = async (challenge: AdminChallenge) => {
     if (challenge.isActive && challenge.hasProgress) {
@@ -96,12 +127,32 @@ export const AdminChallengesTab: React.FC = () => {
             <Target size={22} className="text-[var(--accent)]" />
             Challenges
           </h3>
-          <p className="text-sm text-[var(--text-strong)]/50 mt-0.5">Manage gamification challenges for students.</p>
+          <p className="text-sm text-[var(--text-strong)]/50 mt-0.5">
+            Manage gamification challenges. Each school year gets its own term instances.
+          </p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="px-4 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all">
-          <Plus size={14} />
-          Create Challenge
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] font-bold text-[var(--text-strong)]/40 uppercase tracking-wider">School Year</span>
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-[var(--primary)]/10 bg-white text-xs font-bold text-[var(--text-strong)] outline-none focus:border-[var(--accent)] cursor-pointer"
+            >
+              <option value="">Current year</option>
+              {schoolYears.map((sy) => (
+                <option key={sy.id} value={sy.id}>
+                  {sy.label}
+                  {sy.isArchived ? ' (archived)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button onClick={() => setShowCreate(true)} className="px-4 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all">
+            <Plus size={14} />
+            Create Challenge
+          </button>
+        </div>
       </div>
 
       {challenges.length === 0 ? (
@@ -125,6 +176,9 @@ export const AdminChallengesTab: React.FC = () => {
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)] border border-[var(--accent)]/20">
                       {CHALLENGE_TYPE_LABELS[c.challengeType]}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[color-mix(in_srgb,var(--primary)_8%,white)] text-[var(--text-strong)]/60 border border-[var(--primary)]/10">
+                      {c.schoolYearLabel ?? 'Legacy'} · {c.quarterCode ?? 'GLOBAL'}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--text-strong)]/50 mb-2 line-clamp-2">{c.description}</p>

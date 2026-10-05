@@ -1,12 +1,8 @@
-import { promises as fs, mkdirSync } from 'node:fs';
+import crypto from 'node:crypto';
+import { promises as fs, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { PrismaClient } from '@prisma/client';
-import {
-  getEnrollProPublicUrl,
-  saveBranding,
-  type BrandingPatch,
-  type PublicBranding,
-} from './branding.service.js';
+import { saveBranding, type BrandingPatch, type PublicBranding } from './branding.service.js';
 
 const prisma = new PrismaClient();
 
@@ -101,6 +97,33 @@ export async function fetchEnrollProPublicSettings(): Promise<EnrollProPublicSet
 }
 
 /**
+ * Content-addressed logo filename. EnrollPro replaces logo bytes at a stable
+ * URL, so a fixed SORT filename would keep serving the browser-cached image
+ * (`/uploads` is cached for 1h). A content hash makes every new logo a new URL.
+ */
+export function brandLogoFileName(buffer: Buffer, ext: string): string {
+  const hash = crypto.createHash('sha1').update(buffer).digest('hex').slice(0, 10);
+  return `${LOGO_FILENAME}-${hash}${ext}`;
+}
+
+/** Remove previously synced logo files (legacy fixed name + older hashes). */
+function removeStaleSyncedLogos(keepFileName: string): void {
+  try {
+    for (const entry of readdirSync(UPLOADS_DIR)) {
+      if (entry === keepFileName || !entry.startsWith(LOGO_FILENAME)) continue;
+      if (!/^logo-enrollpro-sync(-[0-9a-f]{10})?\.(png|jpg|jpeg|webp|gif)$/i.test(entry)) continue;
+      try {
+        unlinkSync(path.join(UPLOADS_DIR, entry));
+      } catch {
+        // Best-effort cleanup; a locked/removed file must not fail the sync.
+      }
+    }
+  } catch {
+    // Directory missing/unreadable: nothing to clean up.
+  }
+}
+
+/**
  * Download the tenant logo to SORT's own /uploads directory. Failures are
  * non-fatal: the caller keeps the previous logo.
  */
@@ -124,9 +147,14 @@ export async function downloadEnrollProLogo(logoRelativePath: string): Promise<s
     }
 
     const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length === 0) throw new Error('empty logo payload');
+
     mkdirSync(UPLOADS_DIR, { recursive: true });
-    await fs.writeFile(path.join(UPLOADS_DIR, `${LOGO_FILENAME}${safeExt}`), buffer);
-    return `/uploads/${LOGO_FILENAME}${safeExt}`;
+    const fileName = brandLogoFileName(buffer, safeExt);
+    const target = path.join(UPLOADS_DIR, fileName);
+    if (!existsSync(target)) await fs.writeFile(target, buffer);
+    removeStaleSyncedLogos(fileName);
+    return `/uploads/${fileName}`;
   } catch (err: any) {
     console.warn('[Branding] Logo download failed (keeping previous logo):', err?.message || err);
     return null;
@@ -193,7 +221,8 @@ export async function syncEnrollProBranding(): Promise<BrandingSyncResult> {
 
     console.log(
       `[Branding] Synced from EnrollPro: ${colors.primary}/${colors.secondary}/${colors.accent}` +
-        (logoUpdated ? ' + logo' : '')
+        (logoUpdated ? ' + logo' : '') +
+        ` (source=${branding.brandingSource})`
     );
     return { status: 'synced', colors, logoUpdated, branding };
   } catch (err: any) {

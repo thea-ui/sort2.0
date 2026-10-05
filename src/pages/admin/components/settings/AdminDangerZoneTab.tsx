@@ -10,7 +10,6 @@ export const AdminDangerZoneTab: React.FC<AdminDangerZoneTabProps> = ({ onReset 
   <div className="space-y-6 animate-fade-in">
     <PageHeader
       title="Danger Zone"
-      description="Destructive and permanent maintenance actions for this campus database."
     />
 
     <div className="bg-rose-50 border border-rose-200 rounded-3xl p-6 shadow-sm space-y-4">

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { atlasAspectRatio, atlasBounds, fitContain } from '../fitContain';
+import {
+  ATLAS_VIEW_PADDING,
+  atlasBounds,
+  atlasRawBounds,
+  atlasViewAspectRatio,
+  atlasViewBounds,
+  fitContain,
+} from '../fitContain';
 import type { AtlasBuilding } from '../../types';
 
 function building(partial: Partial<AtlasBuilding>): AtlasBuilding {
@@ -59,12 +66,25 @@ describe('fitContain', () => {
 });
 
 describe('atlasBounds', () => {
-  it('computes exact bounds with no padding', () => {
+  it('computes exact drawn bounds for unrotated buildings', () => {
     const bounds = atlasBounds([
       building({ atlasId: 1, x: 20, y: 20, width: 180, height: 280 }),
       building({ atlasId: 2, x: 400, y: 40, width: 200, height: 160 }),
     ]);
     expect(bounds).toEqual({ x: 20, y: 20, w: 580, h: 280 });
+  });
+
+  it('expands bounds for rotated buildings so they are never clipped', () => {
+    // Vertical wing (rotation 90) reaching above the unrotated top edge.
+    const bounds = atlasBounds([
+      building({ atlasId: 1, x: 20, y: 20, width: 180, height: 280 }),
+      building({ atlasId: 2, x: 868, y: 28, width: 212, height: 79, rotation: 90 }),
+    ]);
+    expect(bounds).not.toBeNull();
+    expect(bounds!.y).toBeCloseTo(-38.5, 6);
+    expect(bounds!.h).toBeCloseTo(338.5, 6);
+    expect(bounds!.x).toBeCloseTo(20, 6);
+    expect(bounds!.w).toBeCloseTo(993.5, 6);
   });
 
   it('ignores zero-size and non-finite buildings', () => {
@@ -81,16 +101,56 @@ describe('atlasBounds', () => {
     expect(atlasBounds([building({ width: 0, height: 0 })])).toBeNull();
   });
 
-  it('derives a stable aspect ratio', () => {
-    const ratio = atlasAspectRatio([
-      building({ atlasId: 1, x: 0, y: 0, width: 902, height: 451 }),
-    ]);
-    expect(ratio).toBeCloseTo(2, 6);
-    expect(atlasAspectRatio([])).toBeNull();
-  });
-
   it('single zero-room building still yields bounds (Speech Lab case)', () => {
     const bounds = atlasBounds([building({ atlasId: 60, x: 836, y: 87, width: 66, height: 74 })]);
     expect(bounds).toEqual({ x: 836, y: 87, w: 66, h: 74 });
+  });
+});
+
+describe('atlasRawBounds', () => {
+  it('ignores rotation (campus image underlay space)', () => {
+    const raw = atlasRawBounds([
+      building({ atlasId: 1, x: 20, y: 20, width: 180, height: 280 }),
+      building({ atlasId: 2, x: 868, y: 28, width: 212, height: 79, rotation: 90 }),
+    ]);
+    expect(raw).toEqual({ x: 20, y: 20, w: 1060, h: 280 });
+  });
+});
+
+describe('atlasViewBounds', () => {
+  it('pads every side by a fraction of the longest side', () => {
+    const view = atlasViewBounds(
+      [building({ atlasId: 1, x: 100, y: 200, width: 900, height: 400 })],
+      0.04
+    );
+    expect(view).toEqual({ x: 64, y: 164, w: 972, h: 472 });
+  });
+
+  it('defaults to the ATLAS editor padding and keeps all drawn corners inside', () => {
+    const buildings = [
+      building({ atlasId: 1, x: 54, y: 24, width: 229, height: 80 }),
+      building({ atlasId: 2, x: 868, y: 28, width: 212, height: 79, rotation: 90 }),
+      building({ atlasId: 73, x: 882, y: 276, width: 102, height: 200 }),
+    ];
+    const view = atlasViewBounds(buildings)!;
+    const drawn = atlasBounds(buildings)!;
+    expect(drawn.x).toBeGreaterThan(view.x);
+    expect(drawn.y).toBeGreaterThan(view.y);
+    expect(drawn.x + drawn.w).toBeLessThan(view.x + view.w);
+    expect(drawn.y + drawn.h).toBeLessThan(view.y + view.h);
+    expect(ATLAS_VIEW_PADDING).toBe(0.04);
+  });
+
+  it('returns null without valid buildings', () => {
+    expect(atlasViewBounds([])).toBeNull();
+  });
+
+  it('derives a padded aspect ratio', () => {
+    const ratio = atlasViewAspectRatio(
+      [building({ atlasId: 1, x: 0, y: 0, width: 902, height: 451 })],
+      0.04
+    );
+    expect(ratio).toBeCloseTo((902 + 2 * 36.08) / (451 + 2 * 36.08), 6);
+    expect(atlasViewAspectRatio([])).toBeNull();
   });
 });

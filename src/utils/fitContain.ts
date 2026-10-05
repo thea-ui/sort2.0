@@ -48,13 +48,16 @@ export interface AtlasBounds {
 }
 
 /**
- * Exact drawing bounds of the ATLAS buildings (no padding). This is the
- * coordinate space percentage pins are mapped against.
+ * Padding (fraction of the longest map side) added around the drawn ATLAS
+ * buildings. Mirrors the ATLAS editor, which always shows the plan with
+ * breathing room instead of flush against the viewport edges — and guarantees
+ * pins/labels at 0% or 100% are never half-clipped.
  */
-export function atlasBounds(buildings: AtlasBuilding[]): AtlasBounds | null {
-  if (!Array.isArray(buildings)) return null;
+export const ATLAS_VIEW_PADDING = 0.04;
 
-  const valid = buildings.filter(
+function validBuildings(buildings: AtlasBuilding[]): AtlasBuilding[] {
+  if (!Array.isArray(buildings)) return [];
+  return buildings.filter(
     (b) =>
       b &&
       Number.isFinite(b.x) &&
@@ -64,12 +67,47 @@ export function atlasBounds(buildings: AtlasBuilding[]): AtlasBounds | null {
       b.width > 0 &&
       b.height > 0
   );
+}
+
+/**
+ * Axis-aligned box a building actually occupies after its rotation is applied
+ * (rotation is degrees around the building centre). Without this, rotated
+ * buildings (e.g. the vertical Grade 8 wing, rotation 90°) overflow the viewBox
+ * and get clipped by the SVG viewport.
+ */
+function rotatedExtent(b: AtlasBuilding): { minX: number; minY: number; maxX: number; maxY: number } {
+  const centerX = b.x + b.width / 2;
+  const centerY = b.y + b.height / 2;
+  const degrees = Number.isFinite(b.rotation) ? b.rotation : 0;
+  const radians = (degrees * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(radians));
+  const sin = Math.abs(Math.sin(radians));
+  const halfW = (b.width / 2) * cos + (b.height / 2) * sin;
+  const halfH = (b.width / 2) * sin + (b.height / 2) * cos;
+  return {
+    minX: centerX - halfW,
+    minY: centerY - halfH,
+    maxX: centerX + halfW,
+    maxY: centerY + halfH,
+  };
+}
+
+function extentOf(buildings: AtlasBuilding[], rotate: boolean): AtlasBounds | null {
+  const valid = validBuildings(buildings);
   if (valid.length === 0) return null;
 
-  const minX = Math.min(...valid.map((b) => b.x));
-  const minY = Math.min(...valid.map((b) => b.y));
-  const maxX = Math.max(...valid.map((b) => b.x + b.width));
-  const maxY = Math.max(...valid.map((b) => b.y + b.height));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const b of valid) {
+    const box = rotate ? rotatedExtent(b) : { minX: b.x, minY: b.y, maxX: b.x + b.width, maxY: b.y + b.height };
+    minX = Math.min(minX, box.minX);
+    minY = Math.min(minY, box.minY);
+    maxX = Math.max(maxX, box.maxX);
+    maxY = Math.max(maxY, box.maxY);
+  }
 
   return {
     x: minX,
@@ -79,8 +117,41 @@ export function atlasBounds(buildings: AtlasBuilding[]): AtlasBounds | null {
   };
 }
 
-export function atlasAspectRatio(buildings: AtlasBuilding[]): number | null {
+/**
+ * Exact drawn bounds of the ATLAS buildings (rotation-aware, no padding).
+ * The campus image underlay is aligned to this coordinate space.
+ */
+export function atlasBounds(buildings: AtlasBuilding[]): AtlasBounds | null {
+  return extentOf(buildings, true);
+}
+
+/**
+ * Raw axis-aligned extent of the building definitions, ignoring rotation.
+ * Used for the campus image underlay, which is authored in ATLAS photo space.
+ */
+export function atlasRawBounds(buildings: AtlasBuilding[]): AtlasBounds | null {
+  return extentOf(buildings, false);
+}
+
+/**
+ * ViewBox bounds for the ATLAS base layer: rotation-aware drawn bounds plus
+ * uniform `padding`. Percentage-based pins are mapped against this space.
+ */
+export function atlasViewBounds(
+  buildings: AtlasBuilding[],
+  padding: number = ATLAS_VIEW_PADDING
+): AtlasBounds | null {
   const bounds = atlasBounds(buildings);
+  if (!bounds) return null;
+  const pad = Math.max(bounds.w, bounds.h) * Math.max(0, padding);
+  return { x: bounds.x - pad, y: bounds.y - pad, w: bounds.w + pad * 2, h: bounds.h + pad * 2 };
+}
+
+export function atlasViewAspectRatio(
+  buildings: AtlasBuilding[],
+  padding: number = ATLAS_VIEW_PADDING
+): number | null {
+  const bounds = atlasViewBounds(buildings, padding);
   if (!bounds) return null;
   return bounds.w / bounds.h;
 }

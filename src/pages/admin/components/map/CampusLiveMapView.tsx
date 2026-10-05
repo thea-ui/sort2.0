@@ -127,7 +127,6 @@ export const CampusLiveMapView: React.FC<CampusLiveMapViewProps> = () => {
     <div className="space-y-6 animate-fade-in pb-8">
       <PageHeader
         title="Campus Bin Map"
-        description="Real-time monitoring of campus waste stations, stream availability, and coordinates."
         actions={
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shrink-0">
             <span className="h-2 w-2 rounded-full bg-[var(--impact)] animate-pulse motion-reduce:animate-none" />

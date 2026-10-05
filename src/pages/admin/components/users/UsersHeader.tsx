@@ -17,7 +17,6 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
 }) => (
   <PageHeader
     title="User & Role Management"
-    description="Audit user accounts by system role hierarchy."
     badge={
       <span className="text-[10px] font-bold text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_10%,white)] border border-[var(--gold)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">
         {isLoading ? 'Loading accounts…' : `${accountCount} Registered Accounts`}

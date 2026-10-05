@@ -13,7 +13,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
   const studentCount = students.length;
   const totalEcoPoints = students.reduce((sum, u) => sum + (u.points || 0), 0);
   const topReporter = students.reduce<(typeof students)[number] | null>(
-    (best, u) => (best === null || (u.points || 0) > (best.points || 0) ? u : best),
+    (best, u) =>
+      (u.points || 0) > 0 && (best === null || (u.points || 0) > (best.points || 0)) ? u : best,
     null
   );
   const resolvedCount = reports.filter(r => r.status === 'COLLECTED' || r.status === 'RESOLVED').length;
@@ -38,7 +39,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
       icon: Trophy,
       value: topReporter ? topReporter.name.split(',')[0].trim().split(/\s+/)[0] : '—',
       label: 'Top Reporter',
-      trend: topReporter ? `${(topReporter.points || 0).toLocaleString()} pts` : 'No reports yet',
+      trend: topReporter ? `${(topReporter.points || 0).toLocaleString()} pts` : 'No reporters yet',
       accent: 'violet',
       valueClass: 'text-lg',
     },

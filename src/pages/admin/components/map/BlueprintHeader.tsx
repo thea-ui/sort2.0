@@ -39,7 +39,6 @@ export const BlueprintHeader: React.FC<BlueprintHeaderProps> = ({
   <>
     <PageHeader
       title="Campus Bin Map & Blueprint Editor"
-      description="The map is synced from ATLAS. Drag the pins to align stations with the buildings. Upload a custom background only if ATLAS is unavailable."
       actions={
         <>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />

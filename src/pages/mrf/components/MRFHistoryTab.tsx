@@ -48,7 +48,7 @@ export const MRFHistoryTab: React.FC<MRFHistoryTabProps> = ({ reports }) => {
   );
 
   const totalKgCollected = useMemo(
-    () => completedDispatches.reduce((sum, r) => sum + (r.weightCollected || 0), 0),
+    () => Math.round(completedDispatches.reduce((sum, r) => sum + (r.weightCollected || 0), 0) * 100) / 100,
     [completedDispatches]
   );
 

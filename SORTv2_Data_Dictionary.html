@@ -253,7 +253,7 @@
 <td class="field-name">password_hash</td>
 <td><span class="type-badge">TEXT</span></td>
 <td>Nullable</td>
-<td>Cryptographic hash of the user password (bcrypt, 10 salt rounds)</td>
+<td>Bcrypt (12 rounds) hash of the last EnrollPro-verified password; used only for offline sign-in fallback, never plaintext</td>
 </tr>
 <tr>
 <td class="field-name">employee_id</td>
@@ -374,6 +374,12 @@
 <td><span class="type-badge">TIMESTAMP</span></td>
 <td>Nullable</td>
 <td>Timestamp when record was archived during academic rollover</td>
+</tr>
+<tr>
+<td class="field-name">password_cached_at</td>
+<td><span class="type-badge">TIMESTAMP</span></td>
+<td>Nullable</td>
+<td>When the offline password hash was last refreshed from a successful EnrollPro login; null disables offline sign-in for the account</td>
 </tr>
 <tr>
 <td class="field-name">created_at</td>
@@ -932,6 +938,18 @@
 <td><span class="type-badge">VARCHAR</span></td>
 <td>10, Default: "18:00"</td>
 <td>Scheduled 24-hour time of daily bin capacity reset</td>
+</tr>
+<tr>
+<td class="field-name">offline_auth_cache_enabled</td>
+<td><span class="type-badge">BOOLEAN</span></td>
+<td>Default: true</td>
+<td>Admin kill-switch for offline sign-in against the last EnrollPro-verified password hash</td>
+</tr>
+<tr>
+<td class="field-name">offline_auth_cache_max_days</td>
+<td><span class="type-badge">INTEGER</span></td>
+<td>Default: 30</td>
+<td>Maximum age (days) of the cached password hash accepted during an EnrollPro outage</td>
 </tr>
 <tr>
 <td class="field-name">updated_at</td>

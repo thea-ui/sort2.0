@@ -17,6 +17,8 @@ const DEFAULT_TERMS: TermItem[] = [
   { id: 't-3', quarterName: 'Term 3', quarterCode: 'T3', startDate: 'Jan 4, 2027', endDate: 'Apr 8, 2027', isActive: false },
 ];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function formatDate(d: string): string {
   if (!d) return '—';
   const date = new Date(d);
@@ -24,10 +26,40 @@ function formatDate(d: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function getDaysRemaining(endDate: string): number {
-  const end = new Date(endDate);
-  const now = new Date();
-  return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+function parseDateOnly(value: string | Date): Date {
+  if (typeof value === 'string') {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+  const d = new Date(value);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * EnrollPro is authoritative for which term is current — its dev instances
+ * time-travel the clock (the mirrored `isActive` flag follows `/active-term`).
+ * Day counters use real time while it falls inside that term and clamp to its
+ * nearest day boundary when it does not, so the term still reads "In progress".
+ */
+function resolveMirroredNow(terms: TermItem[]): { now: Date; timeShifted: boolean } {
+  const realNow = new Date();
+  const active = terms.find(t => t.isActive);
+  if (!active) return { now: realNow, timeShifted: false };
+
+  const start = parseDateOnly(active.startDate);
+  const end = parseDateOnly(active.endDate);
+  end.setHours(23, 59, 59, 999);
+
+  if (realNow < start) return { now: start, timeShifted: true };
+  if (realNow > end) return { now: end, timeShifted: true };
+  return { now: realNow, timeShifted: false };
+}
+
+function getDaysRemaining(endDate: string, from: Date): number {
+  if (!endDate) return 0;
+  const days = Math.round((parseDateOnly(endDate).getTime() - parseDateOnly(from).getTime()) / DAY_MS);
+  return Math.max(0, days);
 }
 
 export const AdminAcademicCalendarTab: React.FC = () => {
@@ -68,7 +100,9 @@ export const AdminAcademicCalendarTab: React.FC = () => {
   };
 
   const activeTerm = terms.find(t => t.isActive);
-  const activeDays = activeTerm ? getDaysRemaining(activeTerm.endDate) : 0;
+  const { now: termNow, timeShifted } = resolveMirroredNow(terms);
+  const activeDays = activeTerm ? getDaysRemaining(activeTerm.endDate, termNow) : 0;
+  const showActiveDays = Boolean(activeTerm) && activeDays > 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -118,8 +152,12 @@ export const AdminAcademicCalendarTab: React.FC = () => {
             </div>
 
             <div className="flex flex-col items-center md:items-end gap-1 bg-white/10 backdrop-blur-sm rounded-2xl px-8 py-5 border border-white/10">
-              <span className="text-6xl font-black leading-none">{activeDays}</span>
-              <span className="text-sm font-bold text-white/70 uppercase tracking-wider">days remaining</span>
+              <span className={`${showActiveDays ? 'text-6xl' : 'text-2xl'} font-black leading-none text-center`}>
+                {showActiveDays ? activeDays : 'In progress'}
+              </span>
+              <span className="text-sm font-bold text-white/70 uppercase tracking-wider">
+                {showActiveDays ? 'days remaining' : timeShifted ? 'mirrors EnrollPro clock' : 'final day'}
+              </span>
             </div>
           </div>
         </div>
@@ -127,10 +165,22 @@ export const AdminAcademicCalendarTab: React.FC = () => {
 
       {/* All Terms */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {terms.map((t, idx) => {
-          const days = getDaysRemaining(t.endDate);
-          const isPast = days < 0;
+        {terms.map((t) => {
+          const days = getDaysRemaining(t.endDate, termNow);
           const isCurrent = t.isActive;
+          const hasEnded = !isCurrent && parseDateOnly(t.endDate).getTime() < parseDateOnly(termNow).getTime();
+          const statusText = isCurrent
+            ? (days > 0 ? `${days} days left` : 'In progress')
+            : hasEnded
+              ? 'Completed'
+              : days > 0
+                ? `In ${days} days`
+                : 'Starts today';
+          const statusColor = hasEnded
+            ? 'text-gray-400'
+            : isCurrent
+              ? 'text-[var(--accent)]'
+              : 'text-[var(--text-strong)]/40';
 
           return (
             <div
@@ -138,7 +188,7 @@ export const AdminAcademicCalendarTab: React.FC = () => {
               className={`rounded-3xl p-6 border-2 transition-all relative group ${
                 isCurrent
                   ? 'bg-white border-[var(--accent)] shadow-lg shadow-[var(--accent)]/10'
-                  : isPast
+                  : hasEnded
                     ? 'bg-gray-50 border-gray-200 opacity-60'
                     : 'bg-white border-gray-200 hover:border-[var(--accent)]/40 hover:shadow-md'
               }`}
@@ -164,8 +214,8 @@ export const AdminAcademicCalendarTab: React.FC = () => {
               </div>
 
               <div className="mt-4 flex items-center justify-between">
-                <span className={`text-xs font-bold ${isPast ? 'text-gray-400' : isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-strong)]/40'}`}>
-                  {isPast ? 'Completed' : isCurrent ? `${days} days left` : `In ${Math.abs(days)} days`}
+                <span className={`text-xs font-bold ${statusColor}`}>
+                  {statusText}
                 </span>
                 <button
                   type="button"

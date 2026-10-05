@@ -1,11 +1,30 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User, Report, BinStatus, Challenge, PointHistory, Offense, SystemSettings, CalendarEvent, SyncLog, Role, ReportStatus, AppNotification } from '../types';
 import { apiService, storeRefreshToken, clearRefreshToken } from '../services/api';
-import { getStoredLocations, saveLocations, locationsToBins } from '../services/locationStore';
+import { getStoredLocations, saveLocations, saveLocationsLocal, locationsToBins } from '../services/locationStore';
 import { useAuthState, LoginResult } from './useAuthState';
 import { useNotifications } from './useNotifications';
-import { buildDispatchNotifications, buildVerifiedNotifications, NOTIFICATIONS_STORAGE_KEY } from '../utils/notifications';
+import { buildDispatchNotifications, buildVerifiedNotifications, NOTIFICATIONS_STORAGE_KEY, pruneStaleReportNotifications } from '../utils/notifications';
+import { clearAllDismissals } from '../utils/notificationDismissals';
 import { isTerminalReport, isDispatchableStreamMember } from '../utils/reportUtils';
+import { safeGetJSON, safeSetItem } from '../utils/safeStorage';
+
+/**
+ * Base64 photo evidence can be several MB per report, so the reports cache is
+ * slimmed when the localStorage quota is tight: photo payloads are dropped
+ * (the server keeps the originals and re-syncs them) and only the newest
+ * `MAX_CACHED_REPORTS` rows are kept (server returns newest-first).
+ */
+const MAX_CACHED_REPORTS = 80;
+
+const slimReportsCache = (reports: Report[]): Report[] => {
+  const capped = reports.length > MAX_CACHED_REPORTS ? reports.slice(0, MAX_CACHED_REPORTS) : reports;
+  return capped.map((report) =>
+    typeof report.imageUrl === 'string' && report.imageUrl.startsWith('data:')
+      ? { ...report, imageUrl: undefined }
+      : report
+  );
+};
 
 
 interface MockDataContextType {
@@ -69,7 +88,8 @@ const DEFAULT_SETTINGS: SystemSettings = {
   binResetTime: '18:00',
   walkInPointsPer500ml: 1,
   walkInEnabled: true,
-  schoolName: 'School Name',
+  // Mirrors the server contract: null identity = SORT default branding.
+  schoolName: null,
   schoolAcronym: null,
   schoolId: null,
   division: null,
@@ -150,8 +170,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Load database from localStorage or initialize with defaults
   useEffect(() => {
     function loadFromStorage<T>(key: string, defaultValue: T): T {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : defaultValue;
+      return safeGetJSON<T>(key, defaultValue);
     }
 
     const loadedSettings = loadFromStorage('sort_settings', DEFAULT_SETTINGS);
@@ -175,7 +194,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           // Only cache the full (authenticated) projection. Anonymous responses
           // are privacy-minimised and must not pollute the local cache.
           if (isFullUserProjection(formatted)) {
-            localStorage.setItem('sort_users', JSON.stringify(formatted));
+            safeSetItem('sort_users', formatted);
           }
       } else if (loadedUsers.length > 0) {
         setUsers((prev) => reconcileUsers(prev, loadedUsers));
@@ -202,19 +221,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const storedLocations = getStoredLocations();
     const loadedBins = storedLocations.length > 0 ? locationsToBins(storedLocations) : loadFromStorage('sort_bins', DEFAULT_BINS);
 
-    let loadedChallenges = loadFromStorage('sort_challenges', DEFAULT_CHALLENGES);
-
-    // Fetch challenges from server API (requires auth — skip while signed out)
-    if (sessionStorage.getItem('sortv2_token')) {
-      apiService.getChallenges().then(serverChallenges => {
-        // An empty array is authoritative (e.g. the term ended) and must
-        // overwrite the stale cache, so only reject non-array responses.
-        if (Array.isArray(serverChallenges)) {
-          setChallenges(serverChallenges);
-          localStorage.setItem('sort_challenges', JSON.stringify(serverChallenges));
-        }
-      }).catch(() => {});
-    }
+    // Cached list renders instantly; the authenticated poll below replaces it
+    // with the server's authoritative, term-scoped list.
+    const loadedChallenges = loadFromStorage('sort_challenges', DEFAULT_CHALLENGES);
 
     const loadedPointHistory = loadFromStorage('sort_point_history', DEFAULT_HISTORY);
     const loadedOffenses = loadFromStorage('sort_offenses', [] as Offense[]);
@@ -249,8 +258,29 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const isSignedIn = Boolean(sessionStorage.getItem('sortv2_token'));
 
         if (isSignedIn) {
-          const serverReports = await apiService.getReports();
+          const [serverReports, serverChallenges] = await Promise.all([
+            apiService.getReports(),
+            // Challenge sync must not break report sync if it fails (e.g. 401).
+            apiService.getChallenges().catch(() => null),
+          ]);
+
+          // An empty array is authoritative (e.g. the term ended, wipe) and must
+          // overwrite the stale cache, so only reject non-array responses.
+          if (Array.isArray(serverChallenges)) {
+            setChallenges(serverChallenges);
+            safeSetItem('sort_challenges', serverChallenges);
+          }
+
           if (serverReports && Array.isArray(serverReports)) {
+            // The server decides which reports still exist, so a wipe (tenant
+            // reset, purge, term rollover) must also clear the report alerts
+            // the bell still holds in this browser's localStorage.
+            setNotifications(prev =>
+              pruneStaleReportNotifications(
+                prev,
+                new Set(serverReports.map((report: Report) => report.id))
+              )
+            );
             setReports(prev => {
             if (serverReports.length === 0) return prev;
 
@@ -317,7 +347,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setUsers((prev) => reconcileUsers(prev, formattedUsers));
           // Cache only the full projection (see mount effect above).
           if (isFullUserProjection(formattedUsers)) {
-            localStorage.setItem('sort_users', JSON.stringify(formattedUsers));
+            safeSetItem('sort_users', formattedUsers);
           }
         }
       } catch {
@@ -347,6 +377,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (e.key === 'sort_point_history') setPointHistory(JSON.parse(newValue));
         if (e.key === 'sort_challenges') setChallenges(JSON.parse(newValue));
         if (e.key === 'sort_offenses') setOffenses(JSON.parse(newValue));
+        // A reset in another tab writes an empty feed; mirror it here so the
+        // bell does not keep showing pre-wipe alerts in this tab.
+        if (e.key === NOTIFICATIONS_STORAGE_KEY) setNotifications(JSON.parse(newValue));
       } catch (err) {
         console.warn('Cross-session sync notice:', err);
       }
@@ -372,7 +405,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Save to localStorage when state changes
   useEffect(() => {
-    if (settings) localStorage.setItem('sort_settings', JSON.stringify(settings));
+    if (settings) safeSetItem('sort_settings', settings);
   }, [settings]);
 
   useEffect(() => {
@@ -381,7 +414,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } else if (users.length > 0 && isFullUserProjection(users)) {
       // Never persist the anonymised public projection: another tab would ingest
       // it via the storage event and blank its richer admin user list.
-      localStorage.setItem('sort_users', JSON.stringify(users));
+      safeSetItem('sort_users', users);
     }
   }, [users]);
 
@@ -389,7 +422,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (skipStorageKeysRef.current.has('sort_reports')) {
       skipStorageKeysRef.current.delete('sort_reports');
     } else {
-      localStorage.setItem('sort_reports', JSON.stringify(reports));
+      safeSetItem('sort_reports', reports, { slim: slimReportsCache });
     }
 
     // Synchronize location bin statuses with active (PENDING or DISPATCHED) reports
@@ -431,7 +464,13 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     if (hasChanges) {
-      saveLocations(updatedLocations);
+      // Only admins own the persisted campus locations; every other role just
+      // mirrors the derived status locally (the API rejects them with a 403).
+      if (currentUser?.role === 'ADMIN') {
+        saveLocations(updatedLocations);
+      } else {
+        saveLocationsLocal(updatedLocations);
+      }
       setBins(locationsToBins(updatedLocations));
     }
   }, [reports]);
@@ -440,7 +479,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (skipStorageKeysRef.current.has('sort_bins')) {
       skipStorageKeysRef.current.delete('sort_bins');
     } else if (bins.length > 0) {
-      localStorage.setItem('sort_bins', JSON.stringify(bins));
+      safeSetItem('sort_bins', bins);
     }
   }, [bins]);
 
@@ -449,24 +488,24 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       skipStorageKeysRef.current.delete('sort_challenges');
     } else {
       // Persist even when empty so a term-end wipe is not resurrected on reload.
-      localStorage.setItem('sort_challenges', JSON.stringify(challenges));
+      safeSetItem('sort_challenges', challenges);
     }
   }, [challenges]);
 
   useEffect(() => {
-    localStorage.setItem('sort_point_history', JSON.stringify(pointHistory));
+    safeSetItem('sort_point_history', pointHistory);
   }, [pointHistory]);
 
   useEffect(() => {
-    localStorage.setItem('sort_offenses', JSON.stringify(offenses));
+    safeSetItem('sort_offenses', offenses);
   }, [offenses]);
 
   useEffect(() => {
-    if (calendarEvents.length > 0) localStorage.setItem('sort_calendar', JSON.stringify(calendarEvents));
+    if (calendarEvents.length > 0) safeSetItem('sort_calendar', calendarEvents);
   }, [calendarEvents]);
 
   useEffect(() => {
-    if (syncLogs.length > 0) localStorage.setItem('sort_sync_logs', JSON.stringify(syncLogs));
+    if (syncLogs.length > 0) safeSetItem('sort_sync_logs', syncLogs);
   }, [syncLogs]);
 
   // Keep server-side settings in sync for every signed-in user. Previously the
@@ -477,7 +516,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     apiService.getSettings().then((serverSettings) => {
       if (serverSettings && typeof serverSettings === 'object') {
         setSettings(prev => ({ ...prev, ...serverSettings }));
-        localStorage.setItem('sort_settings', JSON.stringify(serverSettings));
+        safeSetItem('sort_settings', serverSettings);
       }
     }).catch(() => {});
   }, [isAuthenticated]);
@@ -917,6 +956,9 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.removeItem('sort_market_stocks');
     localStorage.removeItem('sort_market_sales');
     localStorage.removeItem('sort_market_version');
+    // Stale dismissal ids would hide nothing once the feed is cleared, but
+    // leaving them behind would mark any recycled notification id as read.
+    clearAllDismissals();
 
     // Ensure all student points and warnings are zeroed out
     const cleanUsers = DEFAULT_USERS.map(u => ({
@@ -1058,8 +1100,11 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } : r));
 
     // Approve first, then dispatch. The server rejects dispatch of an unverified
-    // report, so this preserves the "verify before dispatch" guarantee.
-    apiService.verifyReport(reportId)
+    // report, so this preserves the "verify before dispatch" guarantee. Both
+    // verification and dispatch are stream-wide server-side, so approve every
+    // sibling up front to keep the optimistic stream update consistent.
+    const streamMemberIds = streamMembers.map((r) => r.id);
+    apiService.verifyReportsBatch(streamMemberIds)
       .then(() => apiService.updateReportStatus(reportId, {
         status: 'DISPATCHED',
         assignedMrfId: mrfId,

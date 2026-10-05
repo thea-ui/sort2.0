@@ -32,7 +32,6 @@ export const ReportSetupPage: React.FC<ReportSetupPageProps> = ({ initialSection
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Report Setup"
-        description="Categories, item presets, waste types, urgency levels and asset conditions."
       />
       <SettingsSectionTabs sections={SECTIONS} active={section} onChange={setSection} />
       {section === 'asset-categories' && <AdminAssetCategoriesTab />}

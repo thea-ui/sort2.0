@@ -121,7 +121,6 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Eco-Points Leaderboard"
-        description="Top student eco-champions ranked by verified report points"
       />
 
       {/* Points System Banner */}
