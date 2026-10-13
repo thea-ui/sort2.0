@@ -28,12 +28,25 @@ interface OverviewTabProps {
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, offenses = [], settings, setActiveTab }) => {
   const [campusNews, setCampusNews] = useState<any[]>([]);
+  const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
 
   useEffect(() => {
     apiService.getCampusNews().then(data => {
       if (Array.isArray(data)) setCampusNews(data.filter((n: any) => n.isPublished));
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiService.getLeaderboard()
+      .then(list => {
+        if (cancelled || !Array.isArray(list)) return;
+        const idx = list.findIndex((u: any) => u.id === currentUser.id);
+        setLeaderboardRank(idx >= 0 ? idx + 1 : null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currentUser.id, currentUser.points]);
 
   const personalReports = reports.filter(r =>
     r.reporterId === currentUser.id ||
@@ -45,6 +58,22 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
   const userOffenses = offenses.filter(
     o => o.userId === currentUser.id || (currentUser.email && o.userId === currentUser.email)
   );
+
+  // Today's campus activity must be date-filtered, not "all reports ever".
+  const todayKey = new Date().toDateString();
+  const reportsToday = reports.filter(r => {
+    if (!r.timestamp) return false;
+    const d = new Date(r.timestamp);
+    return !Number.isNaN(d.getTime()) && d.toDateString() === todayKey;
+  }).length;
+
+  // "Most reported material" is the modal category, not the newest report's.
+  const categoryCounts = reports.reduce<Record<string, number>>((acc, r) => {
+    const key = r.category || 'GENERAL';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-9 pb-12">
@@ -77,7 +106,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             <div className="text-center min-w-[60px]">
               <p className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider mb-0.5">Rank</p>
               <p className="text-2xl font-heading font-black text-[var(--text-strong)]">
-                <span className="text-[var(--gold)] font-black mr-0.5">#</span>{currentUser.points === 0 ? '-' : '1'}
+                <span className="text-[var(--gold)] font-black mr-0.5">#</span>{currentUser.points === 0 ? '-' : (leaderboardRank ?? '-')}
               </p>
             </div>
             <div className="text-center min-w-[80px]">
@@ -220,7 +249,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             </div>
             <div>
               <div className="flex items-baseline gap-2.5">
-                <p className="text-3xl sm:text-4xl font-heading font-black text-[var(--text-strong)]">{reports.length}</p>
+                <p className="text-3xl sm:text-4xl font-heading font-black text-[var(--text-strong)]">{reportsToday}</p>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse" />
                   Live Volume
@@ -244,7 +273,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             </div>
             <div>
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-100/80 text-emerald-900 border border-emerald-200 text-xs font-black">
-                <Recycle size={13} className="text-emerald-700" /> {reports.length > 0 ? (reports[0].category || 'Recyclables') : 'None Logged Yet'}
+                <Recycle size={13} className="text-emerald-700" /> {topCategory || 'None Logged Yet'}
               </span>
               <p className="text-xs text-[var(--text-strong)]/60 mt-2.5 font-medium leading-relaxed">
                 {reports.length > 0 ? 'Top material category from active campus reports.' : 'Submit new waste reports to track campus material trends.'}
@@ -360,7 +389,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-[var(--text-strong)]/70">Status</span>
               <span className="text-emerald-800 bg-emerald-100/80 border border-emerald-200 px-3 py-0.5 rounded-full text-[10px] font-extrabold">
-                {currentUser.points === 0 ? 'Rank #1 (Tied)' : 'Rank #1'}
+                {currentUser.points === 0 ? 'Unranked' : (leaderboardRank ? `Rank #${leaderboardRank}` : 'Rank —')}
               </span>
             </div>
             <div

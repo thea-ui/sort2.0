@@ -75,8 +75,16 @@ export const DialogContent: React.FC<DialogContentProps> = ({
 }) => {
   const { open, onOpenChange } = useDialog('DialogContent');
   const panelRef = useRef<HTMLDivElement>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
   useBackgroundScrollLock(open);
 
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
+
+  // Depends on `open` only: callers pass inline `onOpenChange` handlers, and
+  // re-running this effect on unrelated re-renders (e.g. each keystroke in a
+  // controlled input) would steal focus back to the pre-modal element.
   useEffect(() => {
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -84,7 +92,7 @@ export const DialogContent: React.FC<DialogContentProps> = ({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onOpenChange(false);
+        onOpenChangeRef.current(false);
         return;
       }
       if (event.key !== 'Tab' || !panelRef.current) return;
@@ -106,7 +114,7 @@ export const DialogContent: React.FC<DialogContentProps> = ({
       document.removeEventListener('keydown', onKeyDown);
       previouslyFocused?.focus?.();
     };
-  }, [open, onOpenChange]);
+  }, [open]);
 
   if (!open) return null;
 

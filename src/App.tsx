@@ -8,6 +8,7 @@ import { MRFLogin } from './pages/mrf/MRFLogin';
 import { StudentLayout } from './components/layout/StudentLayout';
 import { ToastViewport } from './components/common/Toast';
 import { primeAtlasMapCache } from './hooks/useAtlasMap';
+import { usePathRoute } from './hooks/usePathRoute';
 
 // Route-level code splitting: each role dashboard is loaded on demand so the
 // public landing page never ships the admin/MRF bundles.
@@ -60,7 +61,7 @@ function DashboardContent({ activeTab, setActiveTab }: { activeTab: string; setA
 
 function AppShell({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (tab: string) => void }) {
   const { isAuthenticated, currentUser } = useMockData();
-  const [currentRoute, setCurrentRoute] = useState<'landing' | 'admin-login' | 'mrf-login'>('landing');
+  const { route: currentRoute, navigate } = usePathRoute();
 
   // Automatically scroll to top of window on login, navigation, or tab changes
   useEffect(() => {
@@ -99,11 +100,11 @@ function AppShell({ activeTab, setActiveTab }: { activeTab: string; setActiveTab
 
   switch (currentRoute) {
     case 'admin-login':
-      return <AdminLogin onNavigate={(route) => setCurrentRoute(route as any)} />;
+      return <AdminLogin onNavigate={navigate} />;
     case 'mrf-login':
-      return <MRFLogin onNavigate={(route) => setCurrentRoute(route as any)} />;
+      return <MRFLogin onNavigate={navigate} />;
     default:
-      return <PublicLanding onNavigate={(route) => setCurrentRoute(route as any)} />;
+      return <PublicLanding onNavigate={navigate} />;
   }
 }
 

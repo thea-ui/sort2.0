@@ -134,8 +134,9 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
   // All MRF feedback routes through the global toast wrapper (Part 4 §5) so the
   // portal has a single toast implementation; the `showToast` prop signature is
   // kept for every tab that already consumes it.
-  const showToast = (msg: string) => {
-    toast.success(msg);
+  const showToast = (msg: string, variant: 'success' | 'error' = 'success') => {
+    if (variant === 'error') toast.error(msg);
+    else toast.success(msg);
   };
 
   const getTimeMs = (r: Report) => {
@@ -201,16 +202,20 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     const stockItem = stocksRecord[cat.id];
     const currentKg = stockItem ? stockItem.accumulatedKg : 0;
     if (currentKg <= 0) {
-      showToast(`No accumulated weight to sell for ${cat.shortName}.`);
+      showToast(`No accumulated weight to sell for ${cat.shortName}.`, 'error');
       return;
     }
 
-    const tx = await sellBatch(cat.id, 'GreenCycle Recycling Vendor');
-    const soldKg = tx ? tx.weightKg : (currentKg >= cat.thresholdLimitKg ? cat.thresholdLimitKg : currentKg);
-    const revenue = tx ? tx.totalRevenue : Math.round(soldKg * cat.marketPricePerKg);
-    const remainingKg = Math.max(0, currentKg - soldKg);
+    try {
+      const tx = await sellBatch(cat.id, 'GreenCycle Recycling Vendor');
+      const soldKg = tx ? tx.weightKg : 0;
+      const revenue = tx ? tx.totalRevenue : 0;
+      const remainingKg = Math.max(0, currentKg - soldKg);
 
-    showToast(`🎉 Sold ${soldKg.toFixed(1)} kg batch of ${cat.shortName} for ₱${revenue.toLocaleString()}! (${remainingKg.toFixed(1)} kg remaining in stock)`);
+      showToast(`🎉 Sold ${soldKg.toFixed(1)} kg batch of ${cat.shortName} for ₱${revenue.toLocaleString()}! (${remainingKg.toFixed(1)} kg remaining in stock)`);
+    } catch (err: any) {
+      showToast(err?.message || `Vendor sale for ${cat.shortName} could not be completed.`, 'error');
+    }
   };
 
   const mrfNeededCount = activeDispatches.length;

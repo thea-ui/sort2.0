@@ -118,20 +118,11 @@ export const AdminSyncSettingsTab: React.FC = () => {
   const handleRunSync = async () => {
     setSyncing(true);
     try {
-      const token = sessionStorage.getItem('sortv2_token');
-      const res = await fetch('http://localhost:5000/api/sync/all', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        showToast('success', 'Sync completed successfully');
-        await loadStatus();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast('error', data.error || 'Sync failed');
-      }
-    } catch (err) {
-      showToast('error', 'Sync failed — server unreachable');
+      await apiService.runBulkSync();
+      showToast('success', 'Sync completed successfully');
+      await loadStatus();
+    } catch (err: any) {
+      showToast('error', err?.message || 'Sync failed — server unreachable');
     }
     setSyncing(false);
   };
@@ -267,10 +258,11 @@ export const AdminSyncSettingsTab: React.FC = () => {
           Daily Bin Reset
         </h4>
         <p className="text-sm text-[var(--text-strong)]/50">
-          The school clears all bins at the configured time each day. At reset, bin fill levels return to 0 and
-          stale waste reports still pending (not yet dispatched) are auto-expired — neutral, no penalties,
-          no point changes. Dispatched and asset reports are never touched. Reporter ranks also restart at this
-          time each day, so the next collected report counts as 1st Reporter again.
+          The school clears all bins at the configured time each day. At reset, bin fill levels return to 0.
+          Stale waste reports still pending are auto-expired, and waste dispatches that MRF has not completed
+          during the day expire too — neutral, no penalties, no point changes. Asset reports are never touched.
+          Reporter ranks also restart at this time each day, so the next collected report counts as 1st
+          Reporter again.
         </p>
 
         <div className="flex flex-wrap items-center gap-5">

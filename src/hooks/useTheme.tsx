@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   DEFAULT_BRAND_LOGO,
   resolveBrandIdentity,
@@ -19,6 +19,9 @@ const PUBLIC_STREAM_URL = `${API_BASE_URL}/settings/public/stream`;
 // v2: the v1 cache could hold pre-fix placeholder data ("School Name" / no
 // brandingSource). Bumping the key discards it instead of migrating it.
 const THEME_CACHE_KEY = 'sortv2_theme_cache_v2';
+// Fully resolved CSS variables, applied by the inline boot script in
+// index.html before first paint (see ThemeProvider's commit/mount).
+const THEME_VARS_KEY = 'sortv2_theme_vars_v2';
 
 export interface ThemeColors {
   primary: string;
@@ -303,6 +306,14 @@ function saveThemeCache(state: ThemeState): void {
   }
 }
 
+function saveResolvedVars(colors: ThemeColors): void {
+  try {
+    localStorage.setItem(THEME_VARS_KEY, JSON.stringify(resolveThemeVariables(colors)));
+  } catch {
+    // Best effort: private mode / quota errors must not break theming.
+  }
+}
+
 function readString(source: Record<string, unknown>, key: string): string | null {
   const value = source[key];
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
@@ -414,12 +425,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Apply the cached brand before the network call resolves.
-  useEffect(() => {
+  // Apply the cached brand before first paint (layout effect), so the default
+  // green palette in index.css is never shown on a branded deployment.
+  useLayoutEffect(() => {
     const cached = loadCachedTheme();
     const initial = cached ?? DEFAULT_THEME_STATE;
     applyThemeToDocument(initial.colors);
     applyBrowserMetadata(initial);
+    saveResolvedVars(initial.colors);
     logAppliedIdentity(initial, Boolean(cached));
   }, []);
 
@@ -428,6 +441,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveThemeCache(next);
     applyThemeToDocument(next.colors);
     applyBrowserMetadata(next);
+    saveResolvedVars(next.colors);
     logAppliedIdentity(next, false);
   }, []);
 

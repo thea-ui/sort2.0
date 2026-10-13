@@ -3,7 +3,9 @@ import { Edit2, Package, Plus, Trash2 } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { broadcastPresetChange } from '../../../../hooks/useSystemPresets';
 import { AppModal } from '../../../../components/common/AppModal';
-import { DEFAULT_PRESET_GROUPS, PresetGroup } from './presetDefaults';
+import { ConfirmDialog } from '../../../../components/common/ConfirmDialog';
+import { toast } from '../../../../hooks/useToast';
+import { DEFAULT_PRESET_GROUPS, PresetGroup, PresetItem } from './presetDefaults';
 
 interface EditingPreset {
   groupCat: string;
@@ -21,10 +23,15 @@ export const AdminItemPresetsTab: React.FC = () => {
     }
   });
 
-  const [newItemCategory, setNewItemCategory] = useState('Furniture');
+  const [newItemCategory, setNewItemCategory] = useState('');
   const [newItemName, setNewItemName] = useState('');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [editingPreset, setEditingPreset] = useState<EditingPreset | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ category: string; item: PresetItem } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const effectiveCategory = newItemCategory || presetGroups[0]?.category || '';
 
   // Fetch preset groups from DB on mount
   useEffect(() => {
@@ -32,7 +39,7 @@ export const AdminItemPresetsTab: React.FC = () => {
     apiService
       .getPresetGroups()
       .then((data) => {
-        if (isMounted && Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           setPresetGroups(data);
           localStorage.setItem('sort_item_presets', JSON.stringify(data));
         }
@@ -57,6 +64,7 @@ export const AdminItemPresetsTab: React.FC = () => {
     const targetGroup = presetGroups.find((g) => g.category === catName);
     const targetItem = targetGroup?.items.find((it) => it.id === itemId);
     const newStatus = targetItem ? !targetItem.enabled : true;
+    const snapshot = presetGroups;
 
     const updated = presetGroups.map((g) => {
       if (g.category !== catName) return g;
@@ -69,42 +77,44 @@ export const AdminItemPresetsTab: React.FC = () => {
 
     try {
       await apiService.updatePresetItem(itemId, { enabled: newStatus });
+      toast.success('Preset item updated — live for all users.');
     } catch (err) {
       console.warn('API preset toggle failed:', err);
+      savePresetGroups(snapshot);
+      toast.error('Could not update the preset item — reverted.');
     }
   };
 
   const handleAddItemPreset = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!newItemName.trim()) return;
+    if (!newItemName.trim() || saving) return;
 
     const name = newItemName.trim();
-    setNewItemName('');
-    setShowAddItemModal(false);
+    if (!effectiveCategory) {
+      toast.error('Add an asset category first.');
+      return;
+    }
+
+    setSaving(true);
 
     try {
-      const created = await apiService.addPresetItem(newItemCategory, name);
+      const created = await apiService.addPresetItem(effectiveCategory, name);
       const updated = presetGroups.map((g) => {
-        if (g.category !== newItemCategory) return g;
+        if (g.category !== effectiveCategory) return g;
         return {
           ...g,
-          items: [
-            ...g.items,
-            { id: created.id || `preset-${Date.now()}`, name: created.name || name, enabled: true },
-          ],
+          items: [...g.items, { id: created.id, name: created.name || name, enabled: true }],
         };
       });
       savePresetGroups(updated);
+      setNewItemName('');
+      setShowAddItemModal(false);
+      toast.success(`Preset item "${name}" added — live for all users.`);
     } catch (err) {
-      console.warn('API add preset failed, adding locally:', err);
-      const updated = presetGroups.map((g) => {
-        if (g.category !== newItemCategory) return g;
-        return {
-          ...g,
-          items: [...g.items, { id: `preset-${Date.now()}`, name, enabled: true }],
-        };
-      });
-      savePresetGroups(updated);
+      console.warn('API add preset failed:', err);
+      toast.error(`Could not add "${name}". Please try again.`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -113,6 +123,7 @@ export const AdminItemPresetsTab: React.FC = () => {
     if (!editingPreset || !editingPreset.name.trim()) return;
 
     const { id, groupCat, name } = editingPreset;
+    const snapshot = presetGroups;
     setEditingPreset(null);
 
     const updated = presetGroups.map((g) => {
@@ -126,25 +137,39 @@ export const AdminItemPresetsTab: React.FC = () => {
 
     try {
       await apiService.updatePresetItem(id, { name: name.trim() });
+      toast.success('Preset item updated — live for all users.');
     } catch (err) {
       console.warn('API update preset failed:', err);
+      savePresetGroups(snapshot);
+      toast.error('Update failed — the preset item was reverted.');
     }
   };
 
-  const handleDeletePreset = async (catName: string, itemId: string) => {
+  const confirmDeletePreset = async () => {
+    if (!pendingDelete) return;
+    const { category, item } = pendingDelete;
+    const snapshot = presetGroups;
+    setDeleting(true);
+
     const updated = presetGroups.map((g) => {
-      if (g.category !== catName) return g;
+      if (g.category !== category) return g;
       return {
         ...g,
-        items: g.items.filter((it) => it.id !== itemId),
+        items: g.items.filter((it) => it.id !== item.id),
       };
     });
     savePresetGroups(updated);
 
     try {
-      await apiService.deletePresetItem(itemId);
+      await apiService.deletePresetItem(item.id);
+      toast.success(`"${item.name}" deleted for all users.`);
     } catch (err) {
       console.warn('API delete preset failed:', err);
+      savePresetGroups(snapshot);
+      toast.error(`Could not delete "${item.name}" — it was restored.`);
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -156,7 +181,9 @@ export const AdminItemPresetsTab: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowAddItemModal(true)}
-          className="px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-dark)] cursor-pointer transition-colors"
+          disabled={presetGroups.length === 0}
+          title={presetGroups.length === 0 ? 'Add an asset category first' : undefined}
+          className="px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-dark)] cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={16} /> Add Preset Item
         </button>
@@ -217,7 +244,7 @@ export const AdminItemPresetsTab: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDeletePreset(group.category, item.id)}
+                      onClick={() => setPendingDelete({ category: group.category, item })}
                       className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5 rounded-xl hover:bg-rose-50 transition-all"
                       title="Delete Preset Item"
                     >
@@ -237,15 +264,16 @@ export const AdminItemPresetsTab: React.FC = () => {
         icon={<Plus size={18} />}
         title="Add Preset Item"
         size="sm"
-        confirmLabel="Add Item"
+        confirmLabel={saving ? 'Adding...' : 'Add Item'}
         onConfirm={() => handleAddItemPreset()}
-        confirmDisabled={!newItemName.trim()}
+        confirmDisabled={!newItemName.trim() || !effectiveCategory}
+        loading={saving}
       >
         <div className="space-y-4">
           <div>
             <label className="text-xs font-bold text-[var(--text-strong)]/60">Asset Category</label>
             <select
-              value={newItemCategory}
+              value={effectiveCategory}
               onChange={(e) => setNewItemCategory(e.target.value)}
               className="w-full mt-1.5 p-3 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-xl text-sm font-semibold outline-none cursor-pointer focus:border-[var(--accent)]"
             >
@@ -308,6 +336,23 @@ export const AdminItemPresetsTab: React.FC = () => {
           </div>
         </div>
       </AppModal>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+        title="Delete preset item?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.item.name}" will be removed from "${pendingDelete.category}" for every teacher and student. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Item'}
+        destructive
+        loading={deleting}
+        onConfirm={confirmDeletePreset}
+      />
     </div>
   );
 };

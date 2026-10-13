@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Send, ChevronLeft } from 'lucide-react';
+import { Send, ChevronLeft, AlertTriangle } from 'lucide-react';
 import {
   InfrastructurePillar,
-  CATEGORY_DETAILS,
+  PillarMeta,
+  buildCategoryDetails,
   CONDITIONS,
   URGENCIES,
   getBinLocations,
@@ -61,19 +62,7 @@ interface TeacherSubmitReportTabProps {
   assignedLocationText: string;
   setAssignedLocationText: (txt: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
-  PILLAR_META: Record<
-    InfrastructurePillar,
-    {
-      emoji?: string;
-      icon?: React.ComponentType<any>;
-      label: string;
-      desc: string;
-      accent: string;
-      iconBg: string;
-      iconText: string;
-      border: string;
-    }
-  >;
+  PILLAR_META: Record<string, PillarMeta>;
   OBSERVATION_OPTIONS: string[];
   STEPS: string[];
   isWasteCategory: boolean;
@@ -124,7 +113,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
   const [wasteCategory, setWasteCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>(
-    roomNumber ? `${selectedBuilding} – ${roomNumber}` : 'Room 101 – Science Hall'
+    roomNumber && selectedBuilding ? `${selectedBuilding} – ${roomNumber}` : ''
   );
   const [locationSearch, setLocationSearch] = useState<string>('');
   const [assetRoomList, setAssetRoomList] = useState<string[]>(getAssetRoomLocations);
@@ -212,6 +201,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
     if (submitSuccess) {
       setSelectedCategoryState(null);
       setSelectedItem('');
+      setSelectedLocation('');
       setLocationSearch('');
       setNotes('');
       setCapturedImage(null);
@@ -225,6 +215,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
     setSubmitSuccess?.(false);
     setSelectedCategoryState(null);
     setSelectedItem('');
+    setSelectedLocation('');
     setLocationSearch('');
     setNotes('');
     setCapturedImage(null);
@@ -233,46 +224,19 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
     setSelectedUrgencyState('MEDIUM');
   };
 
-  const { presetGroups, categories, assetConditions, urgencyLevels } = useSystemPresets();
+  const { presetGroups, categories, categoriesLoaded, presetGroupsLoaded, assetConditions, urgencyLevels } = useSystemPresets();
 
-  const dynamicCategoryDetails = useMemo(() => {
-    const details = { ...CATEGORY_DETAILS };
+  const dynamicCategoryDetails = useMemo(
+    () => buildCategoryDetails(categories, presetGroups, categoriesLoaded, presetGroupsLoaded),
+    [presetGroups, categories, categoriesLoaded, presetGroupsLoaded]
+  );
 
-    presetGroups.forEach((group: any) => {
-      const codeKey = (group.code || group.category.toLowerCase()) as InfrastructurePillar;
-      if (codeKey && details[codeKey]) {
-        const catLabel = group.category || details[codeKey].label;
-        const groupItems = (group.items || [])
-          .filter((it: any) => it.enabled)
-          .map((it: any) => ({
-            id: it.id,
-            label: it.name,
-            icon: details[codeKey].icon,
-          }));
-
-        details[codeKey] = {
-          ...details[codeKey],
-          label: catLabel,
-          title: `Report ${catLabel}`,
-          items: groupItems.length > 0 ? groupItems : details[codeKey].items,
-        };
-      }
-    });
-
-    categories.forEach((cat: any) => {
-      const codeKey = (cat.code || cat.name.toLowerCase()) as InfrastructurePillar;
-      if (codeKey && details[codeKey]) {
-        const catLabel = cat.name || details[codeKey].label;
-        details[codeKey] = {
-          ...details[codeKey],
-          label: catLabel,
-          title: `Report ${catLabel}`,
-        };
-      }
-    });
-
-    return details;
-  }, [presetGroups, categories]);
+  useEffect(() => {
+    if (selectedCategory && !dynamicCategoryDetails[selectedCategory]) {
+      setSelectedCategoryState(null);
+      setSelectedItem('');
+    }
+  }, [dynamicCategoryDetails, selectedCategory]);
 
   const dynamicConditions = useMemo(() => {
     if (assetConditions && assetConditions.length > 0) {
@@ -327,7 +291,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
         lastSubmittedReport={lastSubmittedReport}
         PILLAR_META={PILLAR_META}
         onReset={handleResetForm}
-        onViewHistory={setActiveTab ? () => setActiveTab('report-history') : undefined}
+        onViewHistory={setActiveTab ? () => { setSubmitSuccess?.(false); setActiveTab('report-history'); } : undefined}
       />
     );
   }
@@ -351,7 +315,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
             {activeMeta && (
               <div className="flex items-center gap-3.5">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-inner">
-                  {React.createElement(CATEGORY_DETAILS[selectedCategory].icon, { size: 24 })}
+                  {React.createElement(activeMeta.icon, { size: 24 })}
                 </div>
                 <div>
                   <h2 className="text-xl font-heading font-black text-white tracking-tight">{activeMeta.title}</h2>
@@ -437,9 +401,16 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                 </>
               )}
             </button>
-            <p className="text-center text-[10px] text-gray-400 font-medium">
-              Reports are reviewed by the appropriate department within 24 hours.
-            </p>
+            {!selectedLocation ? (
+              <p className="text-center text-[11px] text-amber-700 font-bold flex items-center justify-center gap-1">
+                <AlertTriangle size={12} />
+                <span>Select a {isWasteCategory ? 'bin' : 'room'} location to enable submission.</span>
+              </p>
+            ) : (
+              <p className="text-center text-[10px] text-gray-400 font-medium">
+                Reports are reviewed by the appropriate department within 24 hours.
+              </p>
+            )}
           </div>
         </form>
       )}

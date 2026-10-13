@@ -61,6 +61,7 @@ await check('leaderboard is public but PII-free', 'GET', '/api/users/leaderboard
 // ── 2. Anonymous callers must be rejected ───────────────────────────────
 const anonymousProtected = [
   ['GET', '/api/settings'],
+  ['GET', '/api/settings/audit-logs'],
   ['GET', '/api/bins'],
   ['GET', '/api/market/stocks'],
   ['GET', '/api/market/sales'],
@@ -68,6 +69,14 @@ const anonymousProtected = [
   ['GET', '/api/sync/status'],
   ['GET', '/api/certificates'],
   ['GET', '/api/assets'],
+  ['GET', '/api/data-seed/status'],
+  ['GET', '/api/school-years'],
+  ['GET', '/api/rewards'],
+  ['GET', '/api/challenges'],
+  ['GET', '/api/walk-ins'],
+  ['GET', '/api/asset-scrap/stocks'],
+  ['POST', '/api/users/00000000-0000-0000-0000-000000000000/warn'],
+  ['POST', '/api/users/00000000-0000-0000-0000-000000000000/deduct-points'],
   ['PATCH', '/api/settings'],
   ['POST', '/api/settings/asset-categories'],
   ['POST', '/api/settings/waste-types'],
@@ -91,6 +100,19 @@ if (existsSync(localCreds) && cfg.accounts?.student?.identifier && !cfg.accounts
     await check('student cannot mutate market', 'PATCH', '/api/market/stocks/pet_plastic', [403], { token: student.token, body: {} });
     await check('student cannot mutate bins', 'PATCH', '/api/bins/00000000-0000-0000-0000-000000000000', [403], { token: student.token, body: {} });
     await check('student PII-stripped user list', 'GET', '/api/users', [200], { token: student.token, forbidPii: true });
+    // Audit logs carry actor names, details and IP addresses: admin only.
+    await check('student cannot read audit logs', 'GET', '/api/settings/audit-logs', [403], { token: student.token });
+    // Invalid enums must be rejected as 400, never crash the server with a 500.
+    await check('student invalid report urgency rejected', 'POST', '/api/reports', [400], {
+      token: student.token,
+      body: {
+        title: 'Invalid urgency probe (smoke)',
+        description: 'no-op probe',
+        urgency: 'BANANA',
+        coordinates: { lat: 14.6, lng: 120.98 },
+        locationName: 'ATLAS Smoke Room',
+      },
+    });
     // Students may view the campus map but never file asset reports (403, no data written).
     await check('student cannot file asset reports', 'POST', '/api/reports', [403], {
       token: student.token,

@@ -71,10 +71,9 @@ interface SubmitReportTabProps {
   handleSubmit: (e: React.FormEvent) => void;
 }
 
-// DepEd Order No. 5, s. 2014 requires segregation into biodegradable,
-// non-biodegradable and hazardous/toxic waste. Recyclable is retained as an
-// additional RA 9003 stream. Bin colours follow the DO 5 colour coding.
-type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE' | 'HAZARDOUS';
+// The campus operates the three admin-managed streams: biodegradable,
+// non-biodegradable and recyclable. Hazardous is intentionally not offered.
+type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
 export type BinReportStatusState = 'AVAILABLE' | 'REPORTED_FULL' | 'DISPATCHED' | 'LIMIT_REACHED' | 'NO_BIN' | 'UNAVAILABLE';
 
 interface BinSlot {
@@ -92,17 +91,15 @@ interface StationCluster {
   coordinates: { lat: number; lng: number };
   x?: number;
   y?: number;
-  slots: [BinSlot, BinSlot, BinSlot, BinSlot];
+  slots: BinSlot[];
 }
 
-const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE', 'HAZARDOUS'];
+const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE'];
 
 const CAT_META: Record<BinCategory, { label: string; short: string; bg: string; border: string; text: string; Icon: React.FC<{ size?: number; className?: string }>; desc: string }> = {
-  // DO 5 s. 2014 colour coding: green/yellow = biodegradable, black/blue = non-biodegradable, red/orange = hazardous.
   BIODEGRADABLE:     { label: 'Biodegradable',     short: 'Bio', bg: 'bg-emerald-500', border: 'border-emerald-400', text: 'text-emerald-600', Icon: Droplets,     desc: 'Food scraps, organic waste & plant leaves' },
   NON_BIODEGRADABLE: { label: 'Non-Biodegradable', short: 'Non', bg: 'bg-slate-800',   border: 'border-slate-600',   text: 'text-slate-700',   Icon: PackageX,     desc: 'Wrappers, plastic films & residual waste (black/blue bin)' },
   RECYCLABLE:        { label: 'Recyclable',         short: 'Rec', bg: 'bg-sky-500',     border: 'border-sky-400',     text: 'text-sky-600',     Icon: Recycle,      desc: 'PET bottles, aluminum cans, glass & cardboard' },
-  HAZARDOUS:         { label: 'Hazardous',          short: 'Haz', bg: 'bg-orange-500',  border: 'border-orange-400',  text: 'text-orange-600',  Icon: AlertTriangle, desc: 'Batteries, bulbs, chemicals, sharps & e-waste (red/orange bin)' },
 };
 
 function getBinSlotDetails(bin: Bin | null, reports: Report[] = []): {
@@ -181,7 +178,7 @@ function groupStations(bins: Bin[], reports: Report[] = []): StationCluster[] {
         unverifiedCount: details.unverifiedCount,
         activeReport: details.activeReport,
       };
-    }) as [BinSlot, BinSlot, BinSlot, BinSlot],
+    }),
   }));
 }
 
@@ -255,8 +252,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
   const handleSelectCategoryAndBin = (selectedCat: WasteCategory, targetBinId?: string | null) => {
     setCategory?.(selectedCat);
     // Normalise legacy aliases, then take the label from the single source of
-    // truth (CAT_META). The previous hand-rolled ternary had no HAZARDOUS
-    // branch and silently titled hazardous reports "Recyclable".
+    // truth (CAT_META) so the report title always matches the selected stream.
     const canonical: BinCategory =
       selectedCat === 'ORGANIC' ? 'BIODEGRADABLE'
       : selectedCat === 'GENERAL' ? 'NON_BIODEGRADABLE'

@@ -263,6 +263,12 @@ router.patch('/:id', requireAdmin, async (req: Request, res: Response): Promise<
     }
 
     if (startDate !== undefined || endDate !== undefined) {
+      if (startDate !== undefined && Number.isNaN(new Date(startDate).getTime())) {
+        return res.status(400).json({ error: { code: 'INVALID_DATES', message: 'startDate is not a valid date' } });
+      }
+      if (endDate !== undefined && Number.isNaN(new Date(endDate).getTime())) {
+        return res.status(400).json({ error: { code: 'INVALID_DATES', message: 'endDate is not a valid date' } });
+      }
       const newStart = startDate ? new Date(startDate) : new Date(sy.startDate);
       const newEnd = endDate ? new Date(endDate) : new Date(sy.endDate);
       const dateError = validateDates(newStart.toISOString(), newEnd.toISOString());

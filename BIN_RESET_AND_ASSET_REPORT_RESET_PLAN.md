@@ -117,6 +117,8 @@ The reset must only ever consider `reportType = WASTE`, **and** defensively excl
 
 ### 3.3 Reset expiry criteria — final policy
 
+> **Amended 2026-10-05:** dispatched WASTE reports that MRF has not completed by the reset now expire too — see §11. Asset dispatches still never expire.
+
 **Expire all PENDING waste reports (verified or not); never assets; never dispatched:**
 
 ```
@@ -312,3 +314,75 @@ No schema migration is required for the reset change itself; only the optional d
 - Manual admin "Run reset now / Preview (dry-run)" endpoint (`§4 Phase 5`).
 - Bin `activeDispatch` reconciliation for surviving `DISPATCHED` reports (no reliable bin↔report link exists today).
 - `AdminSyncSettingsTab` sends `syncMode`/`syncIntervalMinutes`, but `PATCH /settings` ignores them (pre-existing, unrelated to this change).
+
+---
+
+## 11. Amendment (2026-10-05) — Dispatched waste expires with the day
+
+**Policy change:** WASTE reports that were dispatched to MRF but not completed by the daily reset now expire with that day's reset. Previously `DISPATCHED` was never expired, so an unfinished dispatch lingered on the MRF "Assigned Dispatches" list indefinitely (observed: a Sept 30 dispatch still active on Oct 5). An unfinished dispatch must not carry over to the next day.
+
+**Unchanged:** ASSET reports (pending or dispatched) are still never touched, and both expiry update sets defensively exclude legacy rows whose description contains an asset pillar marker.
+
+**Implementation:**
+- `server/src/services/bin-reset.service.ts`: `executeDailyBinReset()` now performs two `updateMany` calls in the same transaction — `PENDING` waste (unchanged) and `DISPATCHED` waste (new) → `status = EXPIRED`, `completedAt = now`.
+- `BinResetResult` now returns `dispatchesExpired` alongside `reportsExpired`; the `DAILY_BIN_RESET` audit log records both counts.
+- `src/pages/admin/components/settings/AdminSyncSettingsTab.tsx`: policy copy updated.
+- No schema/migration change. Points (awarded at verification) are unaffected; expiring the dispatch does not remove points.
+
+---
+
+## 12. Rollout Plan — make dispatched expiry live on tenants (2026-10-08)
+
+**Problem.** The HINIGARAN tenant still lists `DISPATCHED` waste reports from September. The §11 amendment exists only in the working tree; the tenant runs the last committed build, where `DISPATCHED` is never expired, so unfinished dispatches linger indefinitely.
+
+**Scope.** Ship the working-tree `bin-reset.service.ts` change, verify the predicate on the tenant DB, execute one reset, confirm assets are untouched. No schema change; no frontend change required for correctness.
+
+### Phase 1 — Land the code (repo)
+1. Review the working-tree diff of `server/src/services/bin-reset.service.ts` (PENDING + DISPATCHED expiry, marker exclusions, `dispatchesExpired` in result and audit log).
+2. Confirm consumers compile (`BinResetResult.dispatchesExpired` is additive): `npm run lint`, `npm --prefix server run build`.
+3. Add regression coverage (recommended): extract the expiry predicate into an exported pure helper (e.g. `buildExpirableWasteWhere()`) and unit test it with `node:test` + `tsx` (matching server test style):
+   - WASTE + PENDING → expires
+   - WASTE + DISPATCHED → expires
+   - ASSET (type) → never
+   - WASTE + `[PILLAR: …]` marker → never
+4. Commit only the relevant files (`bin-reset.service.ts`, test, this doc). Do not sweep the unrelated working-tree modifications into the commit.
+
+### Phase 2 — Pre-deploy verification (read-only)
+1. Run the read-only predicate script against the tenant DB (same WHERE clauses as `executeDailyBinReset`):
+   - expect every stale `DISPATCHED` WASTE row → `wouldExpire=true`; every ASSET / pillar-marked row → spared.
+2. Snapshot active counts by status/type for the acceptance check, and record the IDs of rows that will expire (for rollback).
+
+### Phase 3 — Deploy
+1. Build the server (`npm --prefix server run build`) and deploy the artifact.
+2. Restart the server process on the tenant host — required: `rescheduleBinReset()` runs at boot and schedules the 18:00 Asia/Manila cron.
+3. Confirm the startup log `[BinReset] Scheduled daily reset at 18:00 (Asia/Manila)`.
+4. Confirm tenant settings `binResetEnabled = true`, `binResetTime = 18:00` (Admin → Settings).
+
+### Phase 4 — Execute & verify
+- **Option A (automatic):** the next 18:00 reset expires the dispatches. First automatic run is the next day if the server restarted after 18:00.
+- **Option B (immediate, recommended for demo):** add a one-off script `server/src/scripts/run-bin-reset.ts` that calls `executeDailyBinReset()` and prints the result; run it once on the tenant host. Expect `dispatchesExpired = <stale dispatch count>`, assets untouched.
+
+Acceptance checks:
+- Reports page with an active-status filter → no leftover PENDING/DISPATCHED; stale rows now `EXPIRED` (visible only under All Status / Done).
+- The asset report (ceiling fan) remains `DISPATCHED` — never touched.
+- Admin → Audit Logs shows `DAILY_BIN_RESET` with both counts.
+- Bins reset to empty (expected side effect).
+
+### Phase 5 — Post-deploy hygiene
+1. Re-run the read-only predicate: active waste = 0, asset rows intact.
+2. The list is never deleted — if a truly empty Reports page is needed, use the tenant/DB reset, not the daily reset.
+3. **Rollback:** redeploy the previous build; the change is status-only. Restore `EXPIRED → DISPATCHED` for the recorded IDs if needed.
+
+### Risks & mitigations
+| Risk | Mitigation |
+| --- | --- |
+| Asset report expired | Two independent guards (reportType + pillar markers); predicate unit test + read-only dry run before enabling |
+| Server down at 18:00 → cron missed | Option B manual run, or wait for the next day |
+| Server restarted after 18:00 → no run today | Use Option B |
+| Users confused by EXPIRED rows under All Status | Expected: history is retained; communicate that the daily reset expires, never deletes |
+
+### Status (2026-10-08)
+- **Phase 1 — done locally:** predicate extracted to `server/src/services/report-expiry.ts` (`ASSET_DESCRIPTION_MARKERS` + `buildExpirableWasteWhere()`), shared by `bin-reset.service.ts` and `report.routes.ts` (single marker source). Unit test `server/src/services/__tests__/report-expiry.test.ts` covers E1–E4; wired as `npm --prefix server run test:report-expiry` and added to the root `verify` script.
+- **Phase 2 — tooling done:** `npm --prefix server run db:verify-reset-predicate` (read-only classification using the exact reset predicate).
+- **Phase 4 — tooling done:** `npm --prefix server run db:run-bin-reset` (manual one-off reset, same code path as the cron).
+- **Pending:** commit + deploy the server build, restart the tenant process, then run the Phase 2/4 scripts on the tenant host and complete the acceptance checks.

@@ -1,12 +1,13 @@
 import type { Report } from '../types';
 
 /**
- * Residual waste (RA 9003 / DepEd Order No. 5, s. 2014) is what remains after the
- * biodegradable, recyclable and hazardous streams are separated. In SORT that is
- * exactly the NON_BIODEGRADABLE bin (wrappers, plastic films, sanitary waste).
+ * Residual waste (RA 9003) is what remains after the biodegradable and
+ * recyclable streams are separated. In SORT that is exactly the
+ * NON_BIODEGRADABLE bin (wrappers, plastic films, sanitary waste).
  *
- * HAZARDOUS is a separate mandated stream and must never be folded into residual.
- * The legacy values GENERAL and ORGANIC no longer exist in the database.
+ * A legacy HAZARDOUS value may still exist on old report records, but no bin
+ * stream is configured for it anymore. The legacy values GENERAL and ORGANIC
+ * no longer exist in the database.
  *
  * This helper is the single source of truth — every screen must use it so the
  * same number is shown everywhere.

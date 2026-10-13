@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Clock,
   MapPin,
@@ -12,13 +12,13 @@ import {
   Eye,
   X,
   Navigation,
-  Target,
   Map as MapIcon,
   Maximize2,
 } from 'lucide-react';
 import { Report } from '../../../types';
 import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
+import { ReportLocationMiniMap } from '../../../components/map/ReportLocationMiniMap';
 
 interface TeacherReportHistoryTabProps {
   timelineReports: Report[];
@@ -51,6 +51,15 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
 }) => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedReport) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedReport(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedReport]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
@@ -152,7 +161,7 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
                     {rep.imageUrl && (
                       <button
                         type="button"
-                        onClick={() => setLightboxSrc(rep.imageUrl ?? null)}
+                        onClick={(e) => { e.stopPropagation(); setLightboxSrc(rep.imageUrl ?? null); }}
                         aria-label="View evidence photo full screen"
                         className="h-9 w-14 overflow-hidden rounded-xl border border-[var(--primary)]/10 shadow-2xs cursor-zoom-in"
                       >
@@ -171,9 +180,6 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
       {selectedReport && (() => {
         const lat = selectedReport.coordinates?.lat || 14.6000;
         const lng = selectedReport.coordinates?.lng || 120.9850;
-        const minLat = 14.5975, maxLat = 14.6035, minLng = 120.9815, maxLng = 120.9885;
-        const pctY = Math.max(8, Math.min(92, ((maxLat - lat) / (maxLat - minLat)) * 100));
-        const pctX = Math.max(8, Math.min(92, ((lng - minLng) / (maxLng - minLng)) * 100));
 
         const isScattered = selectedReport.isScatteredDebris === true ||
           selectedReport.title.toLowerCase().includes('scattered debris') ||
@@ -182,7 +188,12 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
           selectedReport.description.toLowerCase().includes('[custom debris pin]');
 
         return (
-          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+          <div
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Report details"
+          >
             <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl space-y-4 relative my-auto max-h-[92dvh] overflow-y-auto">
               
               <button
@@ -244,27 +255,7 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
                     </span>
                   </div>
 
-                  <div className="relative w-full h-[200px] rounded-2xl border border-gray-200 bg-[#f8fafc] overflow-hidden shadow-inner flex items-center justify-center">
-                    <svg className="absolute inset-0 w-full h-full opacity-60 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-                      <defs>
-                        <pattern id="light-grid-teacher-hist" width="24" height="24" patternUnits="userSpaceOnUse">
-                          <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#CBD5E1" strokeWidth="1" />
-                        </pattern>
-                      </defs>
-                      <rect width="100%" height="100%" fill="url(#light-grid-teacher-hist)" />
-                    </svg>
-
-                    <div style={{ left: `${pctX}%`, top: `${pctY}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
-                      <div className="flex flex-col items-center animate-bounce">
-                        <span className="bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg border border-white whitespace-nowrap mb-0.5 flex items-center gap-1">
-                          <MapPin size={9} /> Pinned Debris Location
-                        </span>
-                        <div className="h-9 w-9 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-xl border-2 border-white ring-4 ring-rose-400/40">
-                          <Target size={18} className="stroke-[2.5]" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <ReportLocationMiniMap lat={lat} lng={lng} heightClassName="h-[200px]" />
                 </div>
               )}
 

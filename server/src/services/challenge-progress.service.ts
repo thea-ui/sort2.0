@@ -41,46 +41,36 @@ async function handleChallengeCompletion(
     return null;
   }
 
+  // Compare-and-swap: only one transaction can flip completedAt from null, so
+  // concurrent completions (same user, different streams) can never double-pay
+  // or hit the point_histories unique index inside an open transaction.
   const [updatedCount] = await Promise.all([
     tx.userChallengeProgress.updateMany({
       where: { userId, challengeId, completedAt: null },
-      data: { completedAt: new Date() },
+      data: {
+        completedAt: new Date(),
+        ...(challengePoints > 0 ? { rewardedAt: new Date() } : {}),
+      },
     }),
   ]);
 
   if (updatedCount.count === 0) return null;
 
   if (challengePoints > 0) {
-    const alreadyRewarded = await tx.pointHistory.findFirst({
-      where: { userId, challengeId },
-      select: { id: true },
+    await tx.user.update({
+      where: { id: userId },
+      data: { points: { increment: challengePoints } },
     });
 
-    if (!alreadyRewarded) {
-      try {
-        await tx.user.update({
-          where: { id: userId },
-          data: { points: { increment: challengePoints } },
-        });
-
-        await tx.pointHistory.create({
-          data: {
-            userId,
-            amount: challengePoints,
-            reason: `Challenge Completed: ${challengeTitle} (+${challengePoints} pts)`,
-            challengeId,
-            schoolYearId,
-          },
-        });
-
-        await tx.userChallengeProgress.update({
-          where: { userId_challengeId: { userId, challengeId } },
-          data: { rewardedAt: new Date() },
-        });
-      } catch (err: any) {
-        if (err?.code !== 'P2002') throw err;
-      }
-    }
+    await tx.pointHistory.create({
+      data: {
+        userId,
+        amount: challengePoints,
+        reason: `Challenge Completed: ${challengeTitle} (+${challengePoints} pts)`,
+        challengeId,
+        schoolYearId,
+      },
+    });
   }
 
   return { userId, challengeId, title: challengeTitle, pointsAwarded: challengePoints };
@@ -122,19 +112,30 @@ export async function recordReportContribution(
   const challenges = await findActiveChallenges(tx, challengeType);
 
   for (const challenge of challenges) {
-    try {
-      await tx.challengeContribution.create({
-        data: {
+    // A contribution is one (user, challenge, report) row. Re-submitting the
+    // same report must not attempt a duplicate insert: inside a Postgres
+    // transaction a P2002 aborts the whole transaction, so a catch-and-continue
+    // would corrupt every following statement (the original bug).
+    const alreadyCounted = await tx.challengeContribution.findUnique({
+      where: {
+        userId_challengeId_reportId: {
           userId: report.reporterId,
           challengeId: challenge.id,
           reportId: report.id,
-          value: 1,
         },
-      });
-    } catch (err: any) {
-      if (err?.code === 'P2002') continue;
-      throw err;
-    }
+      },
+      select: { id: true },
+    });
+    if (alreadyCounted) continue;
+
+    await tx.challengeContribution.create({
+      data: {
+        userId: report.reporterId,
+        challengeId: challenge.id,
+        reportId: report.id,
+        value: 1,
+      },
+    });
 
     await tx.userChallengeProgress.upsert({
       where: { userId_challengeId: { userId: report.reporterId, challengeId: challenge.id } },
@@ -177,19 +178,28 @@ export async function recordWeightContribution(
   const challenges = await findActiveChallenges(tx, ChallengeType.WEIGHT_COLLECTED);
 
   for (const challenge of challenges) {
-    try {
-      await tx.challengeContribution.create({
-        data: {
+    // Same duplicate guard as recordReportContribution: a re-saved weight edit
+    // must not insert a second contribution (or abort the transaction).
+    const alreadyCounted = await tx.challengeContribution.findUnique({
+      where: {
+        userId_challengeId_reportId: {
           userId: report.reporterId,
           challengeId: challenge.id,
           reportId: report.id,
-          value: kg,
         },
-      });
-    } catch (err: any) {
-      if (err?.code === 'P2002') continue;
-      throw err;
-    }
+      },
+      select: { id: true },
+    });
+    if (alreadyCounted) continue;
+
+    await tx.challengeContribution.create({
+      data: {
+        userId: report.reporterId,
+        challengeId: challenge.id,
+        reportId: report.id,
+        value: kg,
+      },
+    });
 
     const grams = Math.round(kg * 1000);
     await tx.userChallengeProgress.upsert({

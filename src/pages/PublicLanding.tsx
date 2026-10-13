@@ -14,7 +14,7 @@ interface PublicLandingProps {
 export const PublicLanding: React.FC<PublicLandingProps> = ({ onNavigate }) => {
   return (
     <div className="min-h-screen bg-[var(--background)] font-sans text-[#012625]">
-      <LandingHeader onNavigate={onNavigate} />
+      <LandingHeader />
 
       {/* TIER 1: THE COMMAND HERO (60/40 Split) */}
       <HeroSection onNavigate={onNavigate} />

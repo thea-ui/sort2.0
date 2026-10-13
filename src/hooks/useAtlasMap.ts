@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiService, fetchAtlasCampusImageObjectUrl } from '../services/api';
+import { setAtlasBuildings } from '../services/atlasStationAlignment';
 import { AtlasBuilding, AtlasMapPayload } from '../types';
 
 const REVALIDATE_MS = 5 * 60 * 1000;
@@ -101,6 +102,7 @@ export function useAtlasMap(): UseAtlasMapResult {
         if (!mountedRef.current) return;
         setPayload(data);
         setError(null);
+        setAtlasBuildings(data.buildings);
 
         if (!data.campusImageUrl) {
           replaceImage(null);

@@ -1,26 +1,18 @@
 import { PrismaClient, ReportStatus } from '@prisma/client';
 import { BIN_RESET_TZ, RESET_TIME_REGEX } from './reset-cycle.service.js';
+import { buildExpirableWasteWhere } from './report-expiry.js';
 
 const prisma = new PrismaClient();
 
 // ── Concurrency Guard ──────────────────────────────────────────────────────
 let binResetInProgress = false;
 
-// Asset reports are identified by pillar markers in the description. Even if a
-// legacy row is mis-typed as WASTE, the reset must never touch it.
-const ASSET_DESCRIPTION_MARKERS = [
-  '[PILLAR: FURNITURE]',
-  '[PILLAR: ELECTRONICS]',
-  '[PILLAR: FIXTURES]',
-  '[PILLAR: EQUIPMENT]',
-  '[PILLAR: OTHER]',
-];
-
 let scheduledTask: any = null;
 
 export interface BinResetResult {
   binsReset: number;
   reportsExpired: number;
+  dispatchesExpired: number;
   error?: string;
 }
 
@@ -28,17 +20,18 @@ export interface BinResetResult {
  * Daily 6:00 PM cleanup:
  * 1. Reset every waste bin to empty (fillLevel 0, no active dispatch,
  *    lastEmptied stamped).
- * 2. Expire stale WASTE reports that are still PENDING (verified or not) —
- *    the school has physically cleared the trash, so these are moot. This is
- *    neutral: no points are removed. ASSET reports are NEVER touched, and
- *    DISPATCHED reports are NEVER expired (MRF has an active task). This also
- *    unblocks the duplicate-report guard so students can report again.
+ * 2. Expire stale WASTE reports still PENDING (verified or not) — the school
+ *    has physically cleared the trash, so these are moot. This is neutral: no
+ *    points are removed. WASTE reports that were DISPATCHED but never
+ *    completed during the day are expired too — an unfinished MRF task does
+ *    not carry over to the next day. ASSET reports are NEVER touched. This
+ *    also unblocks the duplicate-report guard so students can report again.
  * 3. Audit the whole operation.
  */
 export async function executeDailyBinReset(): Promise<BinResetResult> {
   if (binResetInProgress) {
     console.warn('[BinReset] Attempted concurrent reset — rejected');
-    return { binsReset: 0, reportsExpired: 0, error: 'A bin reset is already in progress.' };
+    return { binsReset: 0, reportsExpired: 0, dispatchesExpired: 0, error: 'A bin reset is already in progress.' };
   }
 
   binResetInProgress = true;
@@ -50,18 +43,22 @@ export async function executeDailyBinReset(): Promise<BinResetResult> {
         data: { fillLevel: 0, activeDispatch: false, lastEmptied: now },
       });
 
-      const expired = await tx.report.updateMany({
-        where: {
-          status: ReportStatus.PENDING,
-          reportType: 'WASTE',
-          NOT: {
-            OR: ASSET_DESCRIPTION_MARKERS.map((marker) => ({
-              description: { contains: marker, mode: 'insensitive' as const },
-            })),
-          },
-        },
+      // Waste-only, with a defensive exclusion of asset reports that legacy
+      // rows may have mis-typed as WASTE. Applied to both PENDING and
+      // DISPATCHED reports so unfinished dispatches expire with the day.
+      const expirableWaste = buildExpirableWasteWhere();
+
+      const expiredPending = await tx.report.updateMany({
+        where: { ...expirableWaste, status: ReportStatus.PENDING },
         data: { status: ReportStatus.EXPIRED, completedAt: now },
       });
+
+      const expiredDispatches = await tx.report.updateMany({
+        where: { ...expirableWaste, status: ReportStatus.DISPATCHED },
+        data: { status: ReportStatus.EXPIRED, completedAt: now },
+      });
+
+      const expiredCount = expiredPending.count + expiredDispatches.count;
 
       const activeSY = await tx.schoolYear.findFirst({
         where: { isActive: true, isArchived: false },
@@ -73,19 +70,19 @@ export async function executeDailyBinReset(): Promise<BinResetResult> {
           actorName: 'System',
           actorRole: 'SYSTEM',
           actionType: 'DAILY_BIN_RESET',
-          details: `Daily bin reset: ${bins.count} bins cleared, ${expired.count} pending waste reports expired (asset + dispatched reports untouched).`,
+          details: `Daily bin reset: ${bins.count} bins cleared, ${expiredPending.count} pending + ${expiredDispatches.count} dispatched waste reports expired (asset reports untouched).`,
           schoolYearId: activeSY?.id || null,
         },
       });
 
-      return { bins: bins.count, reports: expired.count };
+      return { bins: bins.count, reports: expiredCount, dispatches: expiredDispatches.count };
     });
 
-    console.log(`[BinReset] Cleared ${result.bins} bins, expired ${result.reports} waste reports`);
-    return { binsReset: result.bins, reportsExpired: result.reports };
+    console.log(`[BinReset] Cleared ${result.bins} bins, expired ${result.reports} waste reports (${result.dispatches} dispatched)`);
+    return { binsReset: result.bins, reportsExpired: result.reports, dispatchesExpired: result.dispatches };
   } catch (error: any) {
     console.error('[BinReset] Failed:', error.message);
-    return { binsReset: 0, reportsExpired: 0, error: error.message };
+    return { binsReset: 0, reportsExpired: 0, dispatchesExpired: 0, error: error.message };
   } finally {
     binResetInProgress = false;
   }

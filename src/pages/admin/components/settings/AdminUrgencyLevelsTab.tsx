@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Gauge } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { broadcastPresetChange } from '../../../../hooks/useSystemPresets';
+import { ConfirmDialog } from '../../../../components/common/ConfirmDialog';
+import { toast } from '../../../../hooks/useToast';
 
 interface UrgencyItem {
   id: string;
@@ -27,10 +29,13 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
   const [level, setLevel] = useState('');
   const [slaHours, setSlaHours] = useState(24);
   const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<UrgencyItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     apiService.getUrgencyLevels().then((data) => {
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setUrgencyLevels(data);
       }
     }).catch(err => console.warn('Failed to fetch urgency levels:', err));
@@ -38,15 +43,12 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
 
   const handleAddUrgency = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!level.trim()) return;
+    if (!level.trim() || saving) return;
 
-    setShowAddModal(false);
     const newLevel = level.trim();
     const newSla = Number(slaHours || 24);
     const newDesc = description.trim();
-
-    setLevel('');
-    setDescription('');
+    setSaving(true);
 
     try {
       const created = await apiService.createUrgencyLevel({
@@ -56,10 +58,16 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
         badgeStyle: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] border-[var(--gold)]/25',
       });
       setUrgencyLevels(prev => [...prev, created]);
+      setShowAddModal(false);
+      setLevel('');
+      setDescription('');
+      toast.success(`Urgency level "${newLevel}" added — live for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to create urgency level:', err);
+      toast.error(`Could not add "${newLevel}". Please try again.`);
     } finally {
-      broadcastPresetChange();
+      setSaving(false);
     }
   };
 
@@ -73,40 +81,54 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
       slaHours: Number(editingItem.slaHours),
       description: editingItem.description.trim(),
     };
+    const snapshot = urgencyLevels;
 
     setEditingItem(null);
     setUrgencyLevels(prev => prev.map(u => u.id === id ? { ...u, ...updateData } : u));
 
     try {
       await apiService.updateUrgencyLevel(id, updateData);
+      toast.success('Urgency level updated — live for all users.');
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to update urgency level:', err);
-    } finally {
-      broadcastPresetChange();
+      setUrgencyLevels(snapshot);
+      toast.error('Update failed — the urgency level was reverted.');
     }
   };
 
   const handleToggleEnabled = async (id: string, currentEnabled: boolean) => {
     const nextEnabled = !currentEnabled;
+    const snapshot = urgencyLevels;
     setUrgencyLevels(prev => prev.map(u => u.id === id ? { ...u, enabled: nextEnabled } : u));
 
     try {
       await apiService.updateUrgencyLevel(id, { enabled: nextEnabled });
+      toast.success(`Urgency level ${nextEnabled ? 'enabled' : 'disabled'} — live for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to toggle urgency level:', err);
-    } finally {
-      broadcastPresetChange();
+      setUrgencyLevels(snapshot);
+      toast.error('Could not change the urgency level status — reverted.');
     }
   };
 
-  const handleDeleteUrgency = async (id: string) => {
-    setUrgencyLevels(prev => prev.filter(u => u.id !== id));
+  const confirmDeleteUrgency = async () => {
+    if (!pendingDelete) return;
+    const target = pendingDelete;
+    setDeleting(true);
+
     try {
-      await apiService.deleteUrgencyLevel(id);
+      await apiService.deleteUrgencyLevel(target.id);
+      setUrgencyLevels(prev => prev.filter(u => u.id !== target.id));
+      toast.success(`Urgency level "${target.level}" deleted for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to delete urgency level:', err);
+      toast.error(`Could not delete "${target.level}". It was kept.`);
     } finally {
-      broadcastPresetChange();
+      setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -154,7 +176,7 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
               <button type="button" onClick={() => setEditingItem(urg)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] cursor-pointer p-1.5">
                 <Edit2 size={15} />
               </button>
-              <button type="button" onClick={() => handleDeleteUrgency(urg.id)} className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5">
+              <button type="button" onClick={() => setPendingDelete(urg)} className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5">
                 <Trash2 size={15} />
               </button>
             </div>
@@ -213,8 +235,8 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 cursor-pointer text-sm">
                   Cancel
                 </button>
-                <button type="submit" className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm">
-                  Save Urgency Level
+                <button type="submit" disabled={saving} className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  {saving ? 'Saving...' : 'Save Urgency Level'}
                 </button>
               </div>
             </form>
@@ -279,6 +301,23 @@ export const AdminUrgencyLevelsTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+        title="Delete urgency level?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.level}" will be removed from the urgency options shown to every user. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Urgency Level'}
+        destructive
+        loading={deleting}
+        onConfirm={confirmDeleteUrgency}
+      />
     </div>
   );
 };

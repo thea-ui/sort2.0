@@ -52,17 +52,18 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
     return () => clearInterval(timer);
   }, [onReset]);
 
-  const formattedCat = lastSubmittedReport?.category
-    ? lastSubmittedReport.category === 'BIODEGRADABLE'
-      ? 'Biodegradable'
-      : lastSubmittedReport.category === 'NON_BIODEGRADABLE'
-      ? 'Non-Biodegradable'
-      : 'Recyclable'
-    : category === 'BIODEGRADABLE'
-    ? 'Biodegradable'
-    : category === 'NON_BIODEGRADABLE'
-    ? 'Non-Biodegradable'
-    : 'Recyclable';
+  const categoryLabels: Record<string, string> = {
+    BIODEGRADABLE: 'Biodegradable',
+    NON_BIODEGRADABLE: 'Non-Biodegradable',
+    RECYCLABLE: 'Recyclable',
+    HAZARDOUS: 'Hazardous',
+    ORGANIC: 'Organic',
+    GENERAL: 'General',
+  };
+  const formattedCat: string =
+    categoryLabels[lastSubmittedReport?.category || category] ||
+    categoryLabels[category] ||
+    'Recyclable';
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-12 pt-4">

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { User, Report, BinStatus, Challenge, PointHistory, Offense, SystemSettings, CalendarEvent, SyncLog, Role, ReportStatus, AppNotification } from '../types';
+import { User, Report, BinStatus, BinLocationItem, Challenge, PointHistory, Offense, SystemSettings, CalendarEvent, SyncLog, Role, ReportStatus, AppNotification } from '../types';
 import { apiService, storeRefreshToken, clearRefreshToken } from '../services/api';
 import { getStoredLocations, saveLocations, saveLocationsLocal, locationsToBins } from '../services/locationStore';
+import { alignLocationsToAtlas } from '../services/atlasStationAlignment';
 import { useAuthState, LoginResult } from './useAuthState';
 import { useNotifications } from './useNotifications';
 import { buildDispatchNotifications, buildVerifiedNotifications, NOTIFICATIONS_STORAGE_KEY, pruneStaleReportNotifications } from '../utils/notifications';
@@ -56,8 +57,8 @@ interface MockDataContextType {
   triggerSync: (system: string) => void;
   updateSettings: (newSettings: Partial<SystemSettings>) => void;
   resetDatabase: () => void;
-  addOffense: (userId: string, description: string, severity?: 'WARNING' | 'DEDUCT' | 'SUSPENSION') => void;
-  deductPoints: (userId: string, amount: number) => void;
+  addOffense: (userId: string, description: string, severity?: 'WARNING' | 'DEDUCT' | 'SUSPENSION', reportId?: string) => Promise<any>;
+  deductPoints: (userId: string, amount: number, reason?: string) => Promise<any>;
   claimCertificate: (certName: string) => Promise<void>;
   dismissNotification: (notificationId: string) => void;
   clearNotificationsForUser: () => void;
@@ -166,6 +167,7 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
 
   const skipStorageKeysRef = useRef(new Set<string>());
+  const locationsSyncedRef = useRef(false);
 
   // Load database from localStorage or initialize with defaults
   useEffect(() => {
@@ -173,8 +175,19 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return safeGetJSON<T>(key, defaultValue);
     }
 
-    const loadedSettings = loadFromStorage('sort_settings', DEFAULT_SETTINGS);
-    let loadedUsers = loadFromStorage('sort_users', DEFAULT_USERS);
+    // Parseable-but-wrong shapes (e.g. `{}` where an array is expected) must not
+    // crash the provider tree; fall back to the default on any type mismatch.
+    function loadArrayFromStorage<T>(key: string, defaultValue: T[]): T[] {
+      const value = safeGetJSON<unknown>(key, defaultValue);
+      return Array.isArray(value) ? (value as T[]) : defaultValue;
+    }
+
+    const rawSettings = loadFromStorage<unknown>('sort_settings', DEFAULT_SETTINGS);
+    const loadedSettings =
+      rawSettings && typeof rawSettings === 'object' && !Array.isArray(rawSettings)
+        ? (rawSettings as SystemSettings)
+        : DEFAULT_SETTINGS;
+    let loadedUsers = loadArrayFromStorage<User>('sort_users', DEFAULT_USERS);
 
     // Sanitize and deduplicate users. Anonymous API responses omit `email`
     // (data minimisation), so the key must fall back to `id` and never crash.
@@ -206,8 +219,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setUsers((prev) => reconcileUsers(prev, loadedUsers));
     });
 
-    const rawReports = loadFromStorage('sort_reports', DEFAULT_REPORTS);
-    const loadedReports: Report[] = (rawReports || []).map((r: Report) => {
+    const rawReports = loadArrayFromStorage<Report>('sort_reports', DEFAULT_REPORTS);
+    const loadedReports: Report[] = rawReports.map((r: Report) => {
       let title = r.title;
       let locationName = r.locationName;
       if (title && (title.includes('Grid [') || title.toLowerCase().includes('scattered debris at grid'))) {
@@ -223,12 +236,12 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Cached list renders instantly; the authenticated poll below replaces it
     // with the server's authoritative, term-scoped list.
-    const loadedChallenges = loadFromStorage('sort_challenges', DEFAULT_CHALLENGES);
+    const loadedChallenges = loadArrayFromStorage<Challenge>('sort_challenges', DEFAULT_CHALLENGES);
 
-    const loadedPointHistory = loadFromStorage('sort_point_history', DEFAULT_HISTORY);
-    const loadedOffenses = loadFromStorage('sort_offenses', [] as Offense[]);
-    const loadedCalendar = loadFromStorage('sort_calendar', DEFAULT_CALENDAR);
-    const loadedSyncLogs = loadFromStorage('sort_sync_logs', [] as SyncLog[]);
+    const loadedPointHistory = loadArrayFromStorage<PointHistory>('sort_point_history', DEFAULT_HISTORY);
+    const loadedOffenses = loadArrayFromStorage<Offense>('sort_offenses', []);
+    const loadedCalendar = loadArrayFromStorage<CalendarEvent>('sort_calendar', DEFAULT_CALENDAR);
+    const loadedSyncLogs = loadArrayFromStorage<SyncLog>('sort_sync_logs', []);
 
     setSettings(loadedSettings);
     setUsers((prev) => reconcileUsers(prev, loadedUsers));
@@ -257,6 +270,22 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // landing page never spams the console with 401s.
         const isSignedIn = Boolean(sessionStorage.getItem('sortv2_token'));
 
+        // The server owns the campus station list so every device (desktop,
+        // phone) renders the same bin map. Pull it once per session; legacy
+        // anchors are re-aligned onto their ATLAS building before caching.
+        if (isSignedIn && !locationsSyncedRef.current) {
+          locationsSyncedRef.current = true;
+          void apiService
+            .getCampusLocations()
+            .then((serverLocations) => {
+              if (!Array.isArray(serverLocations) || serverLocations.length === 0) return;
+              saveLocationsLocal(alignLocationsToAtlas(serverLocations as BinLocationItem[]));
+            })
+            .catch(() => {
+              // Offline/cold server: keep the cached local station list.
+            });
+        }
+
         if (isSignedIn) {
           const [serverReports, serverChallenges] = await Promise.all([
             apiService.getReports(),
@@ -282,13 +311,15 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               )
             );
             setReports(prev => {
-            if (serverReports.length === 0) return prev;
+            // An empty server response is authoritative (purge, tenant reset,
+            // rollover): clear the cache instead of trusting stale rows.
+            // Optimistic `rep-` rows are retained below until the POST settles.
+            const result: Report[] = serverReports.length === 0 ? [] : [...serverReports];
 
-            // Server reports are authoritative
-            const result = [...serverReports];
-
-            // Preserve local optimistic dispatches when server state lags behind
-            // (avoids UI flicker when backend PATCH /reports/:id/status is slow or fails silently)
+            // Preserve local optimistic dispatches and verifications when the
+            // server state lags behind (avoids UI flicker when the verify or
+            // PATCH /reports/:id/status write has not been committed when the
+            // 2s poll's GET was served).
             result.forEach((sr, idx) => {
               const localMatch = prev.find(pr =>
                 pr.id === sr.id ||
@@ -296,15 +327,14 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                  pr.category === sr.category &&
                  pr.reporterId === sr.reporterId)
               );
+              if (!localMatch || isTerminalReport(sr)) return;
               if (
-                localMatch &&
                 localMatch.status === 'DISPATCHED' &&
-                sr.status !== 'DISPATCHED' &&
+                sr.status !== 'DISPATCHED'
+              ) {
                 // Never resurrect a report the server has finished: terminal
                 // statuses are immutable and must win over a stale optimistic
                 // DISPATCHED left over from an older session.
-                !isTerminalReport(sr)
-              ) {
                 result[idx] = {
                   ...sr,
                   status: 'DISPATCHED',
@@ -312,6 +342,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   assignedMrfId: localMatch.assignedMrfId ?? sr.assignedMrfId,
                   assignedMrfName: localMatch.assignedMrfName ?? sr.assignedMrfName,
                 };
+              } else if (localMatch.isVerified && !sr.isVerified) {
+                // Optimistic verify awaiting the server commit; a lagging poll
+                // must not flip the row back to unverified.
+                result[idx] = { ...sr, isVerified: true };
               }
             });
 
@@ -659,6 +693,10 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }).catch(err => {
       console.warn('PostgreSQL database create report notice:', err);
+      // The optimistic row never reached the server. Drop it and its alerts so
+      // it cannot block a retry (duplicate guard) or resurrect after a reload.
+      setReports(prev => prev.filter(r => r.id !== newReport.id));
+      setNotifications(prev => prev.filter(n => n.reportId !== newReport.id));
     });
 
     return newReport;
@@ -714,31 +752,32 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } : r);
     });
 
-    // Generate notifications based on status change (reporter only)
-    if (status === 'COLLECTED' || status === 'RESOLVED') {
-      addNotification({
-        type: 'REPORT_COMPLETED',
-        title: 'Cleanup Completed!',
-        message: `MRF has completed cleanup at ${targetReport.locationName}.`,
-        reportId,
-        recipientId: targetReport.reporterId,
-      });
-    } else if (status === 'DISMISSED') {
-      addNotification({
-        type: 'REPORT_DISMISSED',
-        title: 'Report Dismissed',
-        message: `Your report at ${targetReport.locationName} was dismissed by admin.`,
-        reportId,
-        recipientId: targetReport.reporterId,
-      });
-    }
-
     // Persist status update to PostgreSQL Express backend
-    // Server is the single source of truth for points
+    // Server is the single source of truth for points. Reporter notifications
+    // are emitted only after the server accepts the transition, so a rejected
+    // PATCH can never leave a false "Cleanup Completed!" alert in the bell.
     apiService.updateReportStatus(reportId, {
       status,
       weightCollected,
     }).then(async () => {
+      if (status === 'COLLECTED' || status === 'RESOLVED') {
+        addNotification({
+          type: 'REPORT_COMPLETED',
+          title: 'Cleanup Completed!',
+          message: `MRF has completed cleanup at ${targetReport.locationName}.`,
+          reportId,
+          recipientId: targetReport.reporterId,
+        });
+      } else if (status === 'DISMISSED') {
+        addNotification({
+          type: 'REPORT_DISMISSED',
+          title: 'Report Dismissed',
+          message: `Your report at ${targetReport.locationName} was dismissed by admin.`,
+          reportId,
+          recipientId: targetReport.reporterId,
+        });
+      }
+
       // Full refresh: the server may have awarded points to the entire stream.
       // A full refresh guarantees authoritative data for all reports and users.
       try {
@@ -758,8 +797,16 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } catch (err) {
         console.warn('Sync after status update notice:', err);
       }
-    }).catch(err => {
+    }).catch(async (err) => {
       console.warn('PostgreSQL updateReportStatus error:', err);
+      // Roll the optimistic status back so the UI never shows a transition the
+      // server refused (e.g. terminal-immutability or role rejection).
+      try {
+        const serverReports = await apiService.getReports();
+        if (serverReports && Array.isArray(serverReports)) {
+          setReports(serverReports);
+        }
+      } catch { /* ignore */ }
     });
   };
 
@@ -805,99 +852,48 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       level === 1 ? 'WARNING' : level === 2 ? 'DEDUCT' : 'SUSPENSION';
     const effectiveSeverity = severity || autoSeverity;
 
-    // Call backend API
-    try {
-      const token = sessionStorage.getItem('sortv2_token');
-      if (token) {
-        const res = await fetch(`http://localhost:5000/api/users/${userId}/warn`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ description, severity: effectiveSeverity, reportId }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          // Update local state from backend response
-          setUsers(prev => prev.map(u => {
-            if (u.id === userId) {
-              const updated: any = { ...u, warningsCount: data.warningsCount || u.warningsCount + 1 };
-              if (data.pointsDeducted > 0) updated.points = Math.max(0, u.points - data.pointsDeducted);
-              if (effectiveSeverity === 'SUSPENSION') {
-                updated.accountStatus = 'SUSPENDED';
-                updated.suspendedUntil = data.offense?.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-              }
-              return updated;
-            }
-            return u;
-          }));
-          const newOffense: Offense = {
-            id: data.offense?.id || `off-${Date.now()}`,
-            userId,
-            userName: users.find(u => u.id === userId)?.name || 'Unknown User',
-            description,
-            severity: effectiveSeverity,
-            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-            expiresAt: data.offense?.expiresAt,
-          };
-          setOffenses(prev => [newOffense, ...prev]);
-          return data;
-        }
-      }
-    } catch (err) {
-      console.warn('Backend warn API failed:', err);
+    if (!sessionStorage.getItem('sortv2_token')) {
+      throw new Error('You must be signed in to file a sanction.');
     }
 
-    // Fallback: local only
-    const expiresAt = effectiveSeverity === 'SUSPENSION' ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : undefined;
-    const newOffense: Offense = {
-      id: `off-${Date.now()}`,
-      userId,
-      userName: users.find(u => u.id === userId)?.name || 'Unknown User',
-      description,
-      severity: effectiveSeverity,
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      expiresAt,
-    };
-    setOffenses(prev => [newOffense, ...prev]);
+    // The server is the source of truth. Never fall back to a local-only write:
+    // it would show a sanction that does not exist for anyone else.
+    const data = await apiService.warnUser(userId, { description, severity: effectiveSeverity, reportId });
+
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
-        const updated: any = { ...u, warningsCount: u.warningsCount + 1 };
+        const updated: any = { ...u, warningsCount: data.warningsCount ?? u.warningsCount + 1 };
+        if (data.pointsDeducted > 0) updated.points = Math.max(0, u.points - data.pointsDeducted);
         if (effectiveSeverity === 'SUSPENSION') {
           updated.accountStatus = 'SUSPENDED';
-          updated.suspendedUntil = expiresAt;
+          updated.suspendedUntil = data.offense?.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         }
         return updated;
       }
       return u;
     }));
+
+    const newOffense: Offense = {
+      id: data.offense?.id || `off-${Date.now()}`,
+      userId,
+      userName: users.find(u => u.id === userId)?.name || 'Unknown User',
+      description,
+      severity: effectiveSeverity,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      expiresAt: data.offense?.expiresAt,
+    };
+    setOffenses(prev => [newOffense, ...prev]);
+    return data;
   };
 
   const deductPoints = async (userId: string, amount: number, reason?: string) => {
-    // Call backend API
-    try {
-      const token = sessionStorage.getItem('sortv2_token');
-      if (token) {
-        const res = await fetch(`http://localhost:5000/api/users/${userId}/deduct-points`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ amount, reason }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(prev => prev.map(u => u.id === userId ? { ...u, points: data.points ?? Math.max(0, u.points - amount) } : u));
-          return data;
-        }
-      }
-    } catch (err) {
-      console.warn('Backend deduct API failed:', err);
+    if (!sessionStorage.getItem('sortv2_token')) {
+      throw new Error('You must be signed in to deduct points.');
     }
 
-    // Fallback: local only
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        return { ...u, points: Math.max(0, u.points - amount) };
-      }
-      return u;
-    }));
+    const data = await apiService.deductUserPoints(userId, { amount, reason });
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, points: data.points ?? Math.max(0, u.points - amount) } : u));
+    return data;
   };
 
   const claimCertificate = async (certName: string) => {
@@ -1074,7 +1070,17 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } catch (err) {
         console.warn('Sync after verify error:', err);
       }
-    }).catch(() => {});
+    }).catch(async (err) => {
+      console.warn('Verify report rejected by server:', err);
+      // Reconcile so an optimistic verification does not survive a server
+      // rejection (e.g. permission or invalid-report errors).
+      try {
+        const serverReports = await apiService.getReports();
+        if (serverReports && Array.isArray(serverReports)) {
+          setReports(serverReports);
+        }
+      } catch { /* ignore */ }
+    });
   };
 
   const dispatchReport = (reportId: string, mrfId: string, mrfName: string) => {
@@ -1172,6 +1178,14 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     } catch (err) {
       console.warn('Batch verify error:', err);
+      // Reconcile so an optimistic verification does not survive a server
+      // rejection (e.g. permission, dismissed report, misconfigured points).
+      try {
+        const serverReports = await apiService.getReports();
+        if (serverReports && Array.isArray(serverReports)) {
+          setReports(serverReports);
+        }
+      } catch { /* ignore */ }
       throw err;
     }
   };

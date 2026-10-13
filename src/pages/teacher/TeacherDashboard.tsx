@@ -2,13 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { Report } from '../../types';
 import {
-  Recycle,
-  Armchair,
-  Monitor,
-  Zap,
-  Wrench,
-  FileText,
-} from 'lucide-react';
+  buildPillarMeta,
+  type InfrastructurePillar,
+} from './components/teacherReportData';
+import { prettifyPillarTag } from './components/reportSetupMerge';
 
 // Sub-components matching StudentDashboard architecture
 import { TeacherOverviewTab } from './components/TeacherOverviewTab';
@@ -18,23 +15,14 @@ import { TeacherReportHistoryTab } from './components/TeacherReportHistoryTab';
 import { SubmittedReportDetails } from './components/TeacherSubmitSuccessView';
 
 import { useSystemPresets } from '../../hooks/useSystemPresets';
+import { toast } from '../../hooks/useToast';
 
-type InfrastructurePillar = 'waste' | 'furniture' | 'electronics' | 'fixtures' | 'equipment' | 'other';
 type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
 
 interface TeacherDashboardProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
-
-const BASE_PILLAR_META: Record<InfrastructurePillar, { icon: React.ComponentType<any>; label: string; desc: string; accent: string; iconBg: string; iconText: string; border: string }> = {
-  waste:       { icon: Recycle,  label: 'Waste / Bin',  desc: 'Litter issues, overflows',       accent: 'emerald', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', border: 'border-emerald-200' },
-  furniture:   { icon: Armchair, label: 'Furniture',    desc: 'Desks, classroom chairs',         accent: 'amber',   iconBg: 'bg-amber-50',   iconText: 'text-amber-600',   border: 'border-amber-200'   },
-  electronics: { icon: Monitor,  label: 'Electronics',  desc: 'Projectors, display screens',     accent: 'sky',     iconBg: 'bg-[var(--primary)]/10',     iconText: 'text-[var(--text-strong)]',     border: 'border-[var(--primary)]/25'     },
-  fixtures:    { icon: Zap,      label: 'Fixtures',     desc: 'AC fans, lights, switches',       accent: 'violet',  iconBg: 'bg-[var(--gold)]/10',  iconText: 'text-[var(--gold)]',  border: 'border-[var(--gold)]/25'  },
-  equipment:   { icon: Wrench,   label: 'Equipment',    desc: 'Lab tool, janitorial asset',      accent: 'rose',    iconBg: 'bg-rose-50',    iconText: 'text-rose-600',    border: 'border-rose-200'    },
-  other:       { icon: FileText, label: 'Other',        desc: 'General structural repair',       accent: 'zinc',    iconBg: 'bg-zinc-50',    iconText: 'text-[var(--text-strong)]',   border: 'border-zinc-200'    },
-};
 
 const OBSERVATION_OPTIONS = [
   'Damaged',
@@ -47,7 +35,7 @@ const OBSERVATION_OPTIONS = [
   'Other',
 ];
 
-const mockImages: Record<InfrastructurePillar, string> = {
+const mockImages: Record<string, string> = {
   waste:       'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&w=400&q=80',
   furniture:   'https://images.unsplash.com/photo-1581428982868-e410dd047a90?auto=format&fit=crop&w=400&q=80',
   electronics: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80',
@@ -73,33 +61,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     createReport,
   } = useMockData();
 
-  const { presetGroups, categories } = useSystemPresets();
+  const { categories, categoriesLoaded } = useSystemPresets();
 
-  const PILLAR_META = useMemo(() => {
-    const meta = { ...BASE_PILLAR_META };
-
-    presetGroups.forEach((group) => {
-      const codeKey = (group.code || group.category.toLowerCase()) as InfrastructurePillar;
-      if (codeKey && meta[codeKey]) {
-        meta[codeKey] = {
-          ...meta[codeKey],
-          label: group.category,
-        };
-      }
-    });
-
-    categories.forEach((cat) => {
-      const codeKey = (cat.code || cat.name.toLowerCase()) as InfrastructurePillar;
-      if (codeKey && meta[codeKey]) {
-        meta[codeKey] = {
-          ...meta[codeKey],
-          label: cat.name,
-        };
-      }
-    });
-
-    return meta;
-  }, [presetGroups, categories]);
+  const PILLAR_META = useMemo(
+    () => buildPillarMeta(categories, categoriesLoaded),
+    [categories, categoriesLoaded]
+  );
 
   // Map state
   const [selectedBinId, setSelectedBinId] = useState<string | null>('bin-1');
@@ -112,7 +79,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
   const [reportTitle, setReportTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [observation, setObservation] = useState('Damaged');
-  const [selectedBuilding, setSelectedBuilding] = useState('Admin and Learning Commons');
+  const [selectedBuilding, setSelectedBuilding] = useState('');
   const [roomNumber, setRoomNumber] = useState('');
   const [wizardStep, setWizardStep] = useState(1);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -162,7 +129,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
   const handleCapture = () => {
     setIsCapturing(true);
     setTimeout(() => {
-      setCapturedImage(mockImages[pillarCategory]);
+      setCapturedImage(mockImages[pillarCategory] || mockImages.other);
       setIsCapturing(false);
     }, 900);
   };
@@ -184,6 +151,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isCustomDebrisPin && !selectedBuilding.trim()) {
+      toast.error(pillarCategory === 'waste' ? 'Select a bin location on the map before submitting.' : 'Select a room location before submitting.');
+      return;
+    }
+    if (!capturedImage) {
+      toast.error('Attach photo evidence before submitting.');
+      return;
+    }
+
     setIsSubmitting(true);
     setTimeout(() => {
       const isWaste = pillarCategory === 'waste';
@@ -206,18 +183,27 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
       const buildingAndRoom = isCustomDebrisPin
         ? 'Scattered Debris'
         : (trimmedRoom && trimmedRoom !== trimmedBuilding ? `${trimmedBuilding} - ${trimmedRoom}` : trimmedBuilding);
-      const titleToUse = reportTitle || (isCustomDebrisPin ? 'Scattered Debris' : (isWaste ? 'Waste Report' : `${pillarCategory.toUpperCase()} Infrastructure Issue`));
+      const categoryLabel = PILLAR_META[pillarCategory]?.label || pillarCategory;
+      const titleToUse = reportTitle || (isCustomDebrisPin ? 'Scattered Debris' : (isWaste ? 'Waste Report' : `${categoryLabel} Infrastructure Issue`));
 
-      createReport({
-        title: titleToUse,
-        description: formattedDesc,
-        category: reportCat,
-        urgency: urgency || 'MEDIUM',
-        locationName: buildingAndRoom,
-        coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
-        imageUrl: capturedImage || undefined,
-        reportType: isWaste ? 'WASTE' : 'ASSET',
-      });
+      try {
+        createReport({
+          title: titleToUse,
+          description: formattedDesc,
+          category: reportCat,
+          urgency: urgency || 'MEDIUM',
+          locationName: buildingAndRoom,
+          coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
+          imageUrl: capturedImage || undefined,
+          reportType: isWaste ? 'WASTE' : 'ASSET',
+        });
+      } catch (err: any) {
+        // createReport throws on duplicate/dispatched/unverified-limit guards:
+        // report the reason and always release the submit button.
+        setIsSubmitting(false);
+        toast.error(err?.message || 'Unable to submit this report. Please try again.');
+        return;
+      }
 
       const now = new Date();
       const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -243,7 +229,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
       setGpsCoords(null);
       setIsCustomDebrisPin(false);
       setPillarCategory('waste');
-      setSelectedBuilding('Admin and Learning Commons');
+      setSelectedBuilding('');
       setRoomNumber('');
       setWizardStep(1);
     }, 1200);
@@ -262,14 +248,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
   };
 
   const getDisplayCategory = (desc: string) => {
-    const u = desc.toUpperCase();
-    if (u.includes('[PILLAR: WASTE]'))       return 'Waste/Bin';
-    if (u.includes('[PILLAR: FURNITURE]'))   return 'Furniture';
-    if (u.includes('[PILLAR: ELECTRONICS]')) return 'Electronics';
-    if (u.includes('[PILLAR: FIXTURES]'))    return 'Fixtures';
-    if (u.includes('[PILLAR: EQUIPMENT]'))   return 'Equipment';
-    if (u.includes('[PILLAR: OTHER]'))       return 'Other';
-    return 'Waste/Bin';
+    const match = desc.match(/\[PILLAR:\s*([^\]]+)\]/i);
+    if (!match) return 'Waste/Bin';
+    const code = match[1].trim().toLowerCase();
+    if (code === 'waste') return 'Waste/Bin';
+    return PILLAR_META[code]?.label || prettifyPillarTag(match[1]);
   };
 
   const STATUS_BADGE: Record<string, string> = {

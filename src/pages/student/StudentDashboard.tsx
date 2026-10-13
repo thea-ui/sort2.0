@@ -3,6 +3,7 @@ import { useMockData } from '../../hooks/useMockData';
 import { WasteCategory } from '../../types';
 import { Scale, Sparkles, Flame, Trash2 } from 'lucide-react';
 import { downscaleImageFile } from '../../utils/imageDownscale';
+import { toast } from '../../hooks/useToast';
 
 // Sub-components
 import { OverviewTab } from './components/OverviewTab';
@@ -59,7 +60,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
   const [reportDesc, setReportDesc] = useState('');
   const [category, setCategory] = useState<WasteCategory>('RECYCLABLE');
   const [urgency, setUrgency] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
-  const [locationName, setLocationName] = useState('Cafeteria – Block A');
+  const [locationName, setLocationName] = useState('');
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -118,6 +119,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!locationName) {
+      toast.error('Select a bin location on the map before submitting.');
+      return;
+    }
+    if (!capturedImage) {
+      toast.error('Attach photo evidence before submitting.');
+      return;
+    }
+
     setIsSubmitting(true);
     setTimeout(() => {
       const subcategoriesText = selectedMaterials.length > 0 
@@ -128,17 +138,25 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
       const locToUse = isScatteredDebris ? 'Scattered Debris' : (locationName || 'Campus Station');
       const titleToUse = reportTitle || (isScatteredDebris ? 'Scattered Debris' : `Waste Report at ${locToUse}`);
 
-      createReport({
-        title: titleToUse,
-        description: formattedDesc,
-        category: category,
-        urgency,
-        locationName: locToUse,
-        coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
-        imageUrl: capturedImage || undefined,
-        isScatteredDebris: isScatteredDebris,
-        reportType: 'WASTE',
-      });
+      try {
+        createReport({
+          title: titleToUse,
+          description: formattedDesc,
+          category: category,
+          urgency,
+          locationName: locToUse,
+          coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
+          imageUrl: capturedImage || undefined,
+          isScatteredDebris: isScatteredDebris,
+          reportType: 'WASTE',
+        });
+      } catch (err: any) {
+        // The duplicate / 3-unverified / dispatched-bin guards throw: surface
+        // the reason and release the submit button instead of hanging forever.
+        setIsSubmitting(false);
+        toast.error(err?.message || 'Unable to submit this report. Please check the bin and try again.');
+        return;
+      }
 
       const now = new Date();
       const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;

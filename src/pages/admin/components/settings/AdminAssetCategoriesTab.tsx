@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Layers } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { broadcastPresetChange } from '../../../../hooks/useSystemPresets';
+import { ConfirmDialog } from '../../../../components/common/ConfirmDialog';
+import { toast } from '../../../../hooks/useToast';
 
 interface CategoryItem {
   id: string;
@@ -24,11 +26,20 @@ export const AdminAssetCategoriesTab: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [catName, setCatName] = useState('');
   const [catCode, setCatCode] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<CategoryItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const broadcastChanges = () => {
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('sort_categories_updated'));
+    broadcastPresetChange();
+  };
 
   const loadCategories = async () => {
     try {
       const data = await apiService.getAssetCategories();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setCategories(data);
       }
     } catch (err) {
@@ -42,25 +53,25 @@ export const AdminAssetCategoriesTab: React.FC = () => {
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!catName.trim()) return;
+    if (!catName.trim() || saving) return;
 
     const name = catName.trim();
     const code = catCode.trim() || name.toLowerCase().replace(/\s+/g, '-');
-    setShowAddModal(false);
-    setCatName('');
-    setCatCode('');
+    setSaving(true);
 
     try {
       const created = await apiService.createAssetCategory({ name, code });
-      setCategories((prev) => [...prev, created]);
+      setCategories((prev) => [...prev, { ...created, enabled: created.enabled ?? true }]);
+      setShowAddModal(false);
+      setCatName('');
+      setCatCode('');
+      toast.success(`Category "${name}" added — live for all users.`);
+      broadcastChanges();
     } catch (err) {
       console.error('Failed to create category:', err);
-      const fallback = { id: `cat-${Date.now()}`, name, code, enabled: true };
-      setCategories((prev) => [...prev, fallback]);
+      toast.error(`Could not add "${name}". The code may already be in use.`);
     } finally {
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('sort_categories_updated'));
-      broadcastPresetChange();
+      setSaving(false);
     }
   };
 
@@ -71,47 +82,55 @@ export const AdminAssetCategoriesTab: React.FC = () => {
     const id = editingCategory.id;
     const name = editingCategory.name.trim();
     const code = editingCategory.code.trim() || name.toLowerCase().replace(/\s+/g, '-');
+    const snapshot = categories;
 
     setEditingCategory(null);
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name, code } : c)));
 
     try {
       await apiService.updateAssetCategory(id, { name, code });
+      toast.success('Category updated — live for all users.');
+      broadcastChanges();
     } catch (err) {
       console.error('Failed to update category:', err);
-    } finally {
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('sort_categories_updated'));
-      broadcastPresetChange();
+      setCategories(snapshot);
+      toast.error('Update failed — the category was reverted.');
     }
   };
 
   const handleToggleEnabled = async (id: string, currentEnabled: boolean) => {
     const nextEnabled = !currentEnabled;
+    const snapshot = categories;
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, enabled: nextEnabled } : c)));
 
     try {
       await apiService.updateAssetCategory(id, { enabled: nextEnabled });
+      toast.success(`Category ${nextEnabled ? 'enabled' : 'disabled'} — live for all users.`);
+      broadcastChanges();
     } catch (err) {
       console.error('Failed to toggle category state:', err);
-    } finally {
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('sort_categories_updated'));
-      broadcastPresetChange();
+      setCategories(snapshot);
+      toast.error('Could not change the category status — reverted.');
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
+  const confirmDeleteCategory = async () => {
+    if (!pendingDelete) return;
+    const target = pendingDelete;
+    setDeleting(true);
 
     try {
-      await apiService.deleteAssetCategory(id);
+      await apiService.deleteAssetCategory(target.id);
+      setCategories((prev) => prev.filter((c) => c.id !== target.id));
+      toast.success(`Category "${target.name}" deleted for all users.`);
+      broadcastChanges();
     } catch (err) {
       console.error('Failed to delete category:', err);
+      toast.error(`Could not delete "${target.name}". The category was kept.`);
+      await loadCategories();
     } finally {
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('sort_categories_updated'));
-      broadcastPresetChange();
+      setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -163,7 +182,7 @@ export const AdminAssetCategoriesTab: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => handleDeleteCategory(cat.id)}
+                onClick={() => setPendingDelete(cat)}
                 className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5"
                 title="Delete Category"
               >
@@ -219,9 +238,10 @@ export const AdminAssetCategoriesTab: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm"
+                  disabled={saving}
+                  className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Add Category
+                  {saving ? 'Adding...' : 'Add Category'}
                 </button>
               </div>
             </form>
@@ -282,6 +302,23 @@ export const AdminAssetCategoriesTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+        title="Delete asset category?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.name}" and all of its preset items will be removed for every teacher and student. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Category'}
+        destructive
+        loading={deleting}
+        onConfirm={confirmDeleteCategory}
+      />
     </div>
   );
 };

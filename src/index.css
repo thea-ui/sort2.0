@@ -66,6 +66,13 @@
      primary (brand text when dark, neutral near-black when light). See
      UI_POLISH_PLAN.md §2.4. */
   --text-strong: #111827;
+
+  /* Accessibility text scale (1 = 100%) — driven by TextScaleProvider /
+     AccessibilityMenu. Only rem-based text scales; px-fixed text is untouched,
+     and @media print pins the scale at 1 so printouts never change size. */
+  --text-scale: 1;
+
+  font-size: calc(16px * var(--text-scale));
 }
 
 @theme {
@@ -115,7 +122,9 @@
     font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #F9F3F0;
     color: var(--text-strong);
-    font-size: 16px;
+    /* 1rem tracks the root accessibility text scale; equals the previous fixed
+       16px at the default scale. */
+    font-size: 1rem;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -290,27 +299,30 @@
   }
 }
 
-/* Standard dialog / app modal: 100ms fade + zoom from 95%. The keyframes carry
-   the centering translate so they compose with `top-1/2 left-1/2`. */
+/* Standard dialog / app modal: 100ms fade + zoom from 95%. Centering comes from
+   Tailwind v4's `translate` property (`-translate-x/y-1/2`), which composes with
+   `transform` — so the keyframes must animate scale only. A translate here would
+   double the offset during the animation and the panel would flash up-left
+   before snapping to center when the animation ends. */
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 }
 
 @keyframes dialog-out {
   from {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
   to {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: scale(0.95);
   }
 }
 
@@ -433,6 +445,13 @@
 @media print {
   .print-hide {
     display: none !important;
+  }
+
+  /* Official printouts stay at a fixed size — the on-screen text scale never
+     affects print. The author !important declaration beats the inline custom
+     property TextScaleProvider writes to <html>. */
+  :root {
+    --text-scale: 1 !important;
   }
 }
 

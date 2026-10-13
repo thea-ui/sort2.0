@@ -101,6 +101,13 @@ router.post('/:id/warn', requireAdmin, async (req: Request, res: Response): Prom
     const { description, severity, deductPoints, reportId } = req.body;
     const sev = (severity || 'WARNING') as string;
 
+    if (!['WARNING', 'DEDUCT', 'SUSPENSION'].includes(sev)) {
+      return res.status(400).json({ error: `Invalid severity "${sev}"`, code: 'INVALID_SEVERITY' });
+    }
+    if (deductPoints !== undefined && (!Number.isFinite(Number(deductPoints)) || Number(deductPoints) < 0)) {
+      return res.status(400).json({ error: 'deductPoints must be a non-negative number', code: 'INVALID_DEDUCTION' });
+    }
+
     const targetId = Array.isArray(id) ? id[0] : id;
     const user = await prisma.user.findUnique({ where: { id: targetId } });
     if (!user) {
@@ -404,7 +411,7 @@ router.get('/:id/certificate/:certName/download', authenticate, async (req: Requ
 
     // Get leaderboard rank for this user
     const students = await prisma.user.findMany({
-      where: { role: 'STUDENT', syncSource: 'ENROLLPRO' },
+      where: { role: 'STUDENT', syncSource: 'ENROLLPRO', archivedAt: null, enrollmentStatus: { notIn: ['NOT_ENROLLED', 'ALUMNI'] } },
       orderBy: { points: 'desc' },
       select: { id: true },
     });
@@ -462,7 +469,7 @@ router.get('/:id/certificate/:certName/view', authenticate, async (req: Request,
     const schoolYearLabel = activeSY?.label || 'Current';
 
     const students = await prisma.user.findMany({
-      where: { role: 'STUDENT', syncSource: 'ENROLLPRO' },
+      where: { role: 'STUDENT', syncSource: 'ENROLLPRO', archivedAt: null, enrollmentStatus: { notIn: ['NOT_ENROLLED', 'ALUMNI'] } },
       orderBy: { points: 'desc' },
       select: { id: true },
     });

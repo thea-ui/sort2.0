@@ -231,30 +231,47 @@ export async function ensureChallengesForSchoolYear(
   let windowRefreshed = 0;
   let retiredGlobal = 0;
 
+  // Provisioning can run concurrently (sync scheduler runs EnrollPro sync and
+  // term sync in parallel, and both call this). Serialize on the school year so
+  // the existence checks below stay truthful; a P2002 caught inside a Postgres
+  // transaction would abort every statement that follows it.
+  let lockKey = 0;
+  for (let i = 0; i < schoolYearId.length; i++) {
+    lockKey = ((lockKey << 5) - lockKey + schoolYearId.charCodeAt(i)) | 0;
+  }
+  lockKey = Math.abs(lockKey) % 2147483647;
+
   await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
+
     for (const entry of plan.creates) {
-      try {
-        await tx.challenge.create({
-          data: {
-            code: entry.definition.code,
-            title: entry.definition.title,
-            description: entry.definition.description,
-            challengeType: entry.definition.challengeType,
-            pointsAwarded: entry.definition.pointsAwarded,
-            target: entry.definition.target,
-            iconName: entry.definition.iconName,
-            quarterCode: entry.quarterCode,
-            schoolYearId,
-            startDate: entry.startDate,
-            endDate: entry.endDate,
-            isActive: true,
-          },
-        });
-        created++;
-      } catch (error: any) {
-        // Concurrent provisioning race: the row now exists, nothing to do.
-        if (error?.code !== 'P2002') throw error;
-      }
+      const exists = await tx.challenge.findFirst({
+        where: {
+          code: entry.definition.code,
+          quarterCode: entry.quarterCode,
+          schoolYearId,
+        },
+        select: { id: true },
+      });
+      if (exists) continue;
+
+      await tx.challenge.create({
+        data: {
+          code: entry.definition.code,
+          title: entry.definition.title,
+          description: entry.definition.description,
+          challengeType: entry.definition.challengeType,
+          pointsAwarded: entry.definition.pointsAwarded,
+          target: entry.definition.target,
+          iconName: entry.definition.iconName,
+          quarterCode: entry.quarterCode,
+          schoolYearId,
+          startDate: entry.startDate,
+          endDate: entry.endDate,
+          isActive: true,
+        },
+      });
+      created++;
     }
 
     for (const entry of plan.updates) {

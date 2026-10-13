@@ -288,17 +288,12 @@ router.post('/preset-groups/items', requireAdmin, async (req: Request, res: Resp
       return res.status(400).json({ error: 'categoryName and name are required' });
     }
 
-    let category = await prisma.assetCategory.findFirst({
+    const category = await prisma.assetCategory.findFirst({
       where: { name: categoryName },
     });
 
     if (!category) {
-      category = await prisma.assetCategory.create({
-        data: {
-          name: categoryName,
-          code: categoryName.toLowerCase().replace(/\s+/g, '-'),
-        },
-      });
+      return res.status(404).json({ error: 'Asset category not found. Create it in Report Setup first.' });
     }
 
     const newItem = await prisma.itemPreset.create({
@@ -342,6 +337,9 @@ router.delete('/preset-groups/items/:id', requireAdmin, async (req: Request, res
     await prisma.itemPreset.delete({ where: { id } });
     res.json({ message: 'Preset item deleted successfully' });
   } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Preset item not found' });
+    }
     res.status(500).json({ error: error.message || 'Failed to delete preset item' });
   }
 });
@@ -458,6 +456,9 @@ router.delete('/asset-categories/:id', requireAdmin, async (req: Request, res: R
     await prisma.assetCategory.delete({ where: { id } });
     res.json({ message: 'Category deleted successfully' });
   } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Asset category not found' });
+    }
     res.status(500).json({ error: error.message || 'Failed to delete asset category' });
   }
 });
@@ -709,8 +710,10 @@ router.patch('/academic-quarters/:id', requireAdmin, async (req: Request, res: R
 
 // ─── Audit Logs ────────────────────────────────────────────────────────
 
-// GET /api/settings/audit-logs
-router.get('/audit-logs', authenticate, async (req: Request, res: Response): Promise<any> => {
+// GET /api/settings/audit-logs — admin only: rows carry actor names, roles,
+// action details and IP addresses, so they must not be readable by any
+// authenticated user (students included).
+router.get('/audit-logs', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const { schoolYearId } = req.query;

@@ -92,7 +92,7 @@ export const RewardLadderCard: React.FC = () => {
         {rewards.map((reward) => {
           const claim = reward.claim;
           const unlocked = Boolean(reward.unlocked);
-          const pct = Math.min(100, Math.round((yearGrams / reward.requiredGrams) * 100));
+          const pct = reward.requiredGrams > 0 ? Math.min(100, Math.round((yearGrams / reward.requiredGrams) * 100)) : 0;
           const remaining = Math.max(0, reward.requiredGrams - yearGrams);
           const claimState = claim ? CLAIM_STATE[claim.status] : null;
 

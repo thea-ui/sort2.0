@@ -88,7 +88,6 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
-      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
   {
@@ -102,7 +101,6 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
-      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
   {
@@ -116,7 +114,6 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
-      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
   {
@@ -130,7 +127,6 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
-      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
   {
@@ -144,7 +140,6 @@ export const DEFAULT_CAMPUS_LOCATIONS: BinLocationItem[] = [
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'Available' },
       { type: 'RECYCLABLE', status: 'Available' },
-      { type: 'HAZARDOUS', status: 'Available' },
     ],
   },
 ];
@@ -164,6 +159,25 @@ export const ATLAS_BUILDING_STATION_RENAMES: Record<string, { from: string; to: 
   'LOC-05': { from: 'Sports Complex Entrance B', to: 'Science and Innovation Center' },
 };
 
+/**
+ * The campus only operates the three admin-managed streams. Early builds shipped
+ * a fourth HAZARDOUS stream and admin-setup payloads can still carry it, so every
+ * read/write path strips it to keep the phantom bin from resurfacing.
+ */
+export function stripHazardousStreams(locations: BinLocationItem[]): BinLocationItem[] {
+  let changed = false;
+  const next = locations.map((loc) => {
+    const streams = loc.streams.filter((st) => (st.type as string) !== 'HAZARDOUS');
+    if (streams.length === loc.streams.length) return loc;
+    changed = true;
+    const allUnavailable =
+      streams.length > 0 &&
+      streams.every((s) => s.status === 'Unavailable' || s.status === 'No Bin');
+    return { ...loc, streams, status: allUnavailable ? ('Unavailable' as const) : ('Available' as const) };
+  });
+  return changed ? next : locations;
+}
+
 export function getStoredLocations(): BinLocationItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LOCATIONS);
@@ -171,17 +185,19 @@ export function getStoredLocations(): BinLocationItem[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_CAMPUS_LOCATIONS;
 
-    let renamed = false;
-    const aligned = parsed.map((loc: BinLocationItem) => {
+    const sanitized = stripHazardousStreams(parsed);
+    let dirty = sanitized !== parsed;
+
+    const aligned = sanitized.map((loc: BinLocationItem) => {
       const rule = loc.code ? ATLAS_BUILDING_STATION_RENAMES[loc.code] : undefined;
       if (rule && loc.name === rule.from) {
-        renamed = true;
+        dirty = true;
         return { ...loc, name: rule.to };
       }
       return loc;
     });
 
-    if (renamed) {
+    if (dirty) {
       localStorage.setItem(STORAGE_KEY_LOCATIONS, JSON.stringify(aligned));
     }
     return aligned;
@@ -199,9 +215,10 @@ import { apiService } from './api';
  */
 export function saveLocationsLocal(locations: BinLocationItem[]) {
   try {
-    localStorage.setItem(STORAGE_KEY_LOCATIONS, JSON.stringify(locations));
+    const clean = stripHazardousStreams(locations);
+    localStorage.setItem(STORAGE_KEY_LOCATIONS, JSON.stringify(clean));
     window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new CustomEvent('sort_locations_updated', { detail: locations }));
+    window.dispatchEvent(new CustomEvent('sort_locations_updated', { detail: clean }));
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         const ch = new BroadcastChannel('sort_preset_channel');
@@ -215,11 +232,12 @@ export function saveLocationsLocal(locations: BinLocationItem[]) {
 }
 
 export function saveLocations(locations: BinLocationItem[]) {
-  saveLocationsLocal(locations);
+  const clean = stripHazardousStreams(locations);
+  saveLocationsLocal(clean);
   // The campus-locations endpoint is admin-only; other roles keep the local
   // copy only (a 403 here would otherwise surface as a console error on every
   // status flip).
-  apiService.saveCampusLocations(locations).catch((err) => {
+  apiService.saveCampusLocations(clean).catch((err) => {
     console.warn('Backend API location save failed, cached in localStorage:', err);
   });
 }
@@ -233,7 +251,7 @@ export function locationsToBins(locations: BinLocationItem[]): BinStatus[] {
     const calculatedLng = minLng + (loc.x / 100) * (maxLng - minLng);
 
     loc.streams.forEach((st) => {
-      const isUnavailable = st.status === 'Unavailable' || st.status === 'No Bin';
+      if ((st.type as string) === 'HAZARDOUS') return;
       const fillLevel = st.status === 'Unavailable' ? 90 : 20;
 
       nextBins.push({

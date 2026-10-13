@@ -52,8 +52,12 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
   const [approving, setApproving] = useState(false);
 
   const handleApproveSale = async (item: ItemizedRecyclable) => {
-    await approveSaleBatch(item.code, true);
-    toast.success(`Authorized sale of ${item.shortName} batch. Dispatched notification to MRF.`);
+    try {
+      await approveSaleBatch(item.code, true);
+      toast.success(`Authorized sale of ${item.shortName} batch. Dispatched notification to MRF.`);
+    } catch (err: any) {
+      toast.error(err?.message || `Failed to authorize the ${item.shortName} sale. Please try again.`);
+    }
   };
 
   const handleApproveScrap = async () => {

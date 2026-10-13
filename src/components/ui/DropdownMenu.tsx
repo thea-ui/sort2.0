@@ -154,8 +154,8 @@ export const DropdownMenuLabel: React.FC<React.ComponentProps<'div'>> = ({ class
 );
 
 export const DropdownMenuItem: React.FC<
-  React.ComponentProps<'button'> & { destructive?: boolean }
-> = ({ className, destructive = false, onClick, ...props }) => {
+  React.ComponentProps<'button'> & { destructive?: boolean; closeOnClick?: boolean }
+> = ({ className, destructive = false, closeOnClick = true, onClick, ...props }) => {
   const { setOpen } = useDropdown('DropdownMenuItem');
   return (
     <button
@@ -164,7 +164,7 @@ export const DropdownMenuItem: React.FC<
       data-slot="dropdown-menu-item"
       onClick={(event) => {
         onClick?.(event);
-        setOpen(false);
+        if (closeOnClick) setOpen(false);
       }}
       className={cn(
         'relative flex w-full cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-none select-none hover:bg-muted focus:bg-muted focus:text-foreground disabled:pointer-events-none disabled:opacity-50',

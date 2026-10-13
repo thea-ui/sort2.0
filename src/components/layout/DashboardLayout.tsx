@@ -8,10 +8,12 @@ import { readDismissed, writeDismissed } from '../../utils/notificationDismissal
 import { ROLE_LABELS } from '../../utils/userDisplay';
 import { NotificationBell } from '../common/NotificationBell';
 import type { BellNotification, NotificationSeverity } from '../common/NotificationBell';
+import { AccessibilityMenu } from '../common/AccessibilityMenu';
 import type { NotificationType } from '../../types';
 import { AppShell, ShellNavFooter, ShellNavList } from './AppShell';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileNavSheet } from './MobileNavSheet';
+import { LogoutConfirmDialog } from '../common/LogoutConfirmDialog';
 import {
   ADMIN_NAV_GROUPS,
   MOBILE_PRIMARY_ITEMS,
@@ -59,6 +61,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const { logoUrl, schoolName, schoolAcronym, brandingSource, currentSchoolYear, currentTerm } = useTheme();
   const brandIdentity = resolveBrandIdentity({ schoolName, schoolAcronym, logoUrl, brandingSource });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const isMRF = currentUser?.role === 'MRF';
@@ -114,12 +117,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   const notificationsButton = (
-    <NotificationBell
-      notifications={bellNotifications}
-      onDismiss={handleDismissNotification}
-      onDismissAll={handleDismissAllNotifications}
-      onSelect={handleSelectNotification}
-    />
+    <>
+      <AccessibilityMenu userId={currentUser.id} />
+      <NotificationBell
+        notifications={bellNotifications}
+        onDismiss={handleDismissNotification}
+        onDismissAll={handleDismissAllNotifications}
+        onSelect={handleSelectNotification}
+      />
+    </>
   );
 
   return (
@@ -138,7 +144,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         currentTerm={currentTerm}
         activeTab={activeTab}
         onNavigate={handleNavSelect}
-        onLogout={() => logout()}
+        onLogout={() => setLogoutConfirmOpen(true)}
         headerActions={notificationsButton}
       >
         {children}
@@ -155,10 +161,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
         title={isMRF ? 'MRF Operations' : 'Admin Control'}
-        footer={<ShellNavFooter user={shellUser} onLogout={() => logout()} />}
+        footer={<ShellNavFooter user={shellUser} onLogout={() => setLogoutConfirmOpen(true)} />}
       >
         <ShellNavList groups={navGroups} activeTab={activeTab} onNavigate={handleNavSelect} />
       </MobileNavSheet>
+
+      <LogoutConfirmDialog
+        open={logoutConfirmOpen}
+        onOpenChange={setLogoutConfirmOpen}
+        onConfirm={logout}
+      />
     </>
   );
 };

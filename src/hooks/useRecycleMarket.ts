@@ -67,8 +67,11 @@ export function useRecycleMarket() {
     try {
       const stocksList = await apiService.getMarketStocks();
       if (Array.isArray(stocksList) && stocksList.length > 0) {
-        setStocksRecord(prev => {
-          const rec = { ...prev };
+        setStocksRecord(() => {
+          // The server list is authoritative: rebuilding from it (instead of
+          // merging into the previous record) removes categories that were
+          // deleted or renamed server-side.
+          const rec: Record<string, MarketStockItem> = {};
           stocksList.forEach((s: any) => {
             rec[s.categoryCode] = s;
           });
@@ -102,7 +105,8 @@ export function useRecycleMarket() {
 
     try {
       const settings = await apiService.getSettings();
-      if (settings?.rewardsReservePercent) {
+      // 0 is a legitimate reserve percentage; only null/undefined keep the default.
+      if (settings?.rewardsReservePercent !== undefined && settings?.rewardsReservePercent !== null) {
         setReservePercent(settings.rewardsReservePercent);
       }
     } catch {
@@ -150,70 +154,27 @@ export function useRecycleMarket() {
 
   // Actions
   const approveSaleBatch = async (categoryCode: string, isApproved: boolean = true) => {
-    try {
-      await apiService.approveMarketSale({ categoryCode, isApproved });
-      await reloadMarketData();
-      broadcastChange();
-    } catch (err) {
-      console.error('Failed to approve sale batch via API:', err);
-      setStocksRecord((prev) => {
-        const item = prev[categoryCode];
-        if (!item) return prev;
-        return {
-          ...prev,
-          [categoryCode]: { ...item, isApprovedForSale: isApproved, approvedAt: isApproved ? new Date().toISOString() : null },
-        };
-      });
-      broadcastChange();
-    }
+    // No local fallback: silently flipping local approval while the server
+    // rejects the request would show an approval that does not exist (and the
+    // MRF's sale would then fail server-side).
+    await apiService.approveMarketSale({ categoryCode, isApproved });
+    await reloadMarketData();
+    broadcastChange();
   };
 
   const sellBatch = async (categoryCode: string, buyerName?: string) => {
     const currentItem = stocksRecord[categoryCode];
     if (!currentItem || currentItem.accumulatedKg <= 0) return null;
 
-    try {
-      const res = await apiService.sellMarketBatch({ categoryCode, buyerName });
-      if (res && res.transaction) {
-        await reloadMarketData();
-        broadcastChange();
-        return res.transaction;
-      }
-    } catch (err) {
-      console.error('Failed to sell batch via API:', err);
+    // No fabricated local transaction: the callers display the returned sale as
+    // revenue, so a failed API call must reject instead of inventing one.
+    const res = await apiService.sellMarketBatch({ categoryCode, buyerName });
+    if (!res || !res.transaction) {
+      throw new Error('The vendor sale was not recorded by the server.');
     }
-
-    // Local state fallback (Cap sold weight at threshold, leave remainder in inventory)
-    const weightSold = currentItem.accumulatedKg >= currentItem.thresholdLimitKg
-      ? currentItem.thresholdLimitKg
-      : currentItem.accumulatedKg;
-    const remainingKg = Math.max(0, currentItem.accumulatedKg - weightSold);
-    const revenue = Math.round(weightSold * currentItem.marketPricePerKg);
-
-    const fallbackTx: SaleTransaction = {
-      id: `sale-${Date.now()}`,
-      categoryCode,
-      categoryName: currentItem.categoryName,
-      weightKg: parseFloat(weightSold.toFixed(1)),
-      marketPriceKg: currentItem.marketPricePerKg,
-      totalRevenue: revenue,
-      buyerName: buyerName || 'GreenCycle Recycling Vendor',
-      soldAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-    };
-
-    setSalesHistory((prev) => [fallbackTx, ...prev]);
-    setStocksRecord((prev) => ({
-      ...prev,
-      [categoryCode]: {
-        ...prev[categoryCode],
-        accumulatedKg: parseFloat(remainingKg.toFixed(2)),
-        isApprovedForSale: false,
-        approvedAt: null,
-      },
-    }));
-
+    await reloadMarketData();
     broadcastChange();
-    return fallbackTx;
+    return res.transaction;
   };
 
   const addStockKg = async (categoryCode: string, addKg: number) => {

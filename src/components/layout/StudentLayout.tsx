@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { SortLogo } from '../common/SortLogo';
 import { ProfileMenu } from '../common/ProfileMenu';
+import { AccessibilityMenu } from '../common/AccessibilityMenu';
+import { LogoutConfirmDialog } from '../common/LogoutConfirmDialog';
 import { filterNotificationsForUser } from '../../utils/notifications';
 import { getInitials } from '../../utils/userDisplay';
 
@@ -37,6 +39,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
   const { currentUser, logout, reports, notifications, dismissNotification } = useMockData();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   if (!currentUser) return null;
 
@@ -89,6 +92,9 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                 Faculty Staff
               </span>
             )}
+
+            {/* Accessibility text size */}
+            <AccessibilityMenu userId={currentUser.id} />
 
             {/* Notifications */}
             <div className="relative">
@@ -184,7 +190,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                   <ProfileMenu
                     user={currentUser}
                     onClose={() => setProfileDropdownOpen(false)}
-                    onLogout={() => logout()}
+                    onLogout={() => setLogoutConfirmOpen(true)}
                   />
                 </div>
               )}
@@ -261,6 +267,12 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
           })}
         </nav>
       </div>
+
+      <LogoutConfirmDialog
+        open={logoutConfirmOpen}
+        onOpenChange={setLogoutConfirmOpen}
+        onConfirm={logout}
+      />
 
     </div>
   );

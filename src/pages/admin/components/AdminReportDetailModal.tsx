@@ -10,7 +10,6 @@ import {
   MapPin,
   Navigation,
   Package,
-  Target,
   AlertTriangle,
   Map as MapIcon,
   Maximize2,
@@ -20,6 +19,7 @@ import { Report } from '../../../types';
 import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
 import { ModalPortal } from '../../../components/common/ModalPortal';
+import { ReportLocationMiniMap } from '../../../components/map/ReportLocationMiniMap';
 
 interface AdminReportDetailModalProps {
   report: Report;
@@ -38,11 +38,8 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
 }) => {
   const [showPhotoFull, setShowPhotoFull] = useState(false);
 
-  const minLat = 14.5975, maxLat = 14.6035, minLng = 120.9815, maxLng = 120.9885;
   const lat = report.coordinates?.lat || 14.6000;
   const lng = report.coordinates?.lng || 120.9850;
-  const pctY = Math.max(8, Math.min(92, ((maxLat - lat) / (maxLat - minLat)) * 100));
-  const pctX = Math.max(8, Math.min(92, ((lng - minLng) / (maxLng - minLng)) * 100));
 
   const isScattered = report.isScatteredDebris === true ||
     (
@@ -222,53 +219,20 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
               </span>
             </div>
 
-            <div className="relative w-full h-[220px] rounded-2xl border border-gray-200 bg-[#f8fafc] overflow-hidden shadow-inner flex items-center justify-center">
-              {/* SVG Grid Canvas Overlay */}
-              <svg className="absolute inset-0 w-full h-full opacity-60 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <pattern id="light-grid-inspection" width="24" height="24" patternUnits="userSpaceOnUse">
-                    <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#CBD5E1" strokeWidth="1" />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#light-grid-inspection)" />
-                <rect x="15%" y="10%" width="20%" height="15%" rx="6" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                <text x="25%" y="19%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Sports Gym</text>
-
-                <rect x="65%" y="12%" width="22%" height="18%" rx="6" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                <text x="76%" y="22%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Science Hall</text>
-
-                <circle cx="50%" cy="50%" r="28" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                <text x="50%" y="51%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Quad</text>
-
-                <rect x="10%" y="70%" width="25%" height="18%" rx="6" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                <text x="22%" y="81%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Chemistry Lab</text>
-
-                <rect x="60%" y="72%" width="28%" height="18%" rx="6" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                <text x="74%" y="83%" fill="#475569" fontSize="9" fontWeight="bold" textAnchor="middle">Main Library</text>
-              </svg>
-
-              {/* Pinned Location Marker */}
-              <div style={{ left: `${pctX}%`, top: `${pctY}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
-                <div className="flex flex-col items-center animate-bounce">
-                  <span className="bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg border border-white whitespace-nowrap mb-0.5 flex items-center gap-1">
-                    <MapPin size={9} /> Pinned Debris Location
+            <ReportLocationMiniMap
+              lat={lat}
+              lng={lng}
+              overlay={
+                <div className="absolute top-2 left-2 right-2 bg-rose-500 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10px] font-bold border border-rose-400 shadow-md flex items-center justify-between z-30">
+                  <span className="flex items-center gap-1">
+                    <AlertTriangle size={12} /> Scattered Debris Report (No Trash Cans)
                   </span>
-                  <div className="h-9 w-9 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-xl border-2 border-white ring-4 ring-rose-400/40">
-                    <Target size={18} className="stroke-[2.5]" />
-                  </div>
+                  <span className="font-mono text-[9px] bg-black/30 px-2 py-0.5 rounded-md font-bold">
+                    Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                  </span>
                 </div>
-              </div>
-
-              {/* Scattered Debris Banner Overlay */}
-              <div className="absolute top-2 left-2 right-2 bg-rose-500 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10px] font-bold border border-rose-400 shadow-md flex items-center justify-between z-30">
-                <span className="flex items-center gap-1">
-                  <AlertTriangle size={12} /> Scattered Debris Report (No Trash Cans)
-                </span>
-                <span className="font-mono text-[9px] bg-black/30 px-2 py-0.5 rounded-md font-bold">
-                  Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
-                </span>
-              </div>
-            </div>
+              }
+            />
           </div>
         )}
 

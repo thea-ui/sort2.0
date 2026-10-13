@@ -2,9 +2,11 @@ export type Role = 'STUDENT' | 'TEACHER' | 'MRF' | 'ADMIN';
 
 export type ReportStatus = 'PENDING' | 'DISPATCHED' | 'COLLECTED' | 'RESOLVED' | 'DISMISSED' | 'EXPIRED';
 
-// Canonical waste streams mirror the Prisma `WasteCategory` enum
-// (DepEd Order No. 5, s. 2014: biodegradable / non-biodegradable / hazardous;
-//  RA 9003 additionally recognises recyclable).
+// Canonical waste streams mirror the Prisma `WasteCategory` enum.
+// The campus operates exactly three admin-managed streams: BIODEGRADABLE,
+// NON_BIODEGRADABLE and RECYCLABLE.
+// `HAZARDOUS` is retained only so legacy reports stored before the three-bin
+// setup can still be displayed; it is not selectable anywhere.
 // `ORGANIC` and `GENERAL` are LEGACY aliases still present in older cached
 // records. The API normalises ORGANIC -> BIODEGRADABLE and GENERAL ->
 // NON_BIODEGRADABLE on write, so new records must never use them.
@@ -12,7 +14,7 @@ export type WasteCategory =
   | 'RECYCLABLE'
   | 'BIODEGRADABLE'
   | 'NON_BIODEGRADABLE'
-  | 'HAZARDOUS'
+  | 'HAZARDOUS' // legacy display only — no bin stream exists
   | 'ORGANIC' // legacy alias -> BIODEGRADABLE
   | 'GENERAL'; // legacy alias -> NON_BIODEGRADABLE
 
@@ -327,9 +329,9 @@ export interface AuditLogEntry {
   details: string;
 }
 
-// Segregation streams at a campus location. HAZARDOUS is required by
-// DepEd Order No. 5, s. 2014 (red/orange bin).
-export type CategoryStreamType = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE' | 'HAZARDOUS';
+// Segregation streams at a campus location. Exactly the three streams the
+// admin configures: biodegradable, non-biodegradable and recyclable.
+export type CategoryStreamType = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
 
 export interface StreamBinStatus {
   type: CategoryStreamType;

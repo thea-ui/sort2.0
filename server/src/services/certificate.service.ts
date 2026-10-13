@@ -161,8 +161,12 @@ export async function getTermStatus(quarterCode?: string): Promise<TermStatus> {
   else if (now > end) state = 'GRACE';
 
   const daysRemaining = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / DAY_MS));
+  // Awards are per school year: term codes repeat every year (T1, T2, ...), and
+  // certificates survive rollover, so an unscoped count would report a fresh
+  // year's term as already awarded.
+  const activeSY = await prisma.schoolYear.findFirst({ where: { isActive: true } });
   const awardedCount = await prisma.certificate.count({
-    where: { termCode: quarter.quarterCode, type: 'RANK' },
+    where: { termCode: quarter.quarterCode, type: 'RANK', schoolYearId: activeSY?.id ?? null },
   });
 
   return {
@@ -199,7 +203,12 @@ export async function computeTermStandings(
   const end = quarter.isActive && realNow > baseEnd ? realNow : baseEnd;
 
   const students = await prisma.user.findMany({
-    where: { role: 'STUDENT', syncSource: 'ENROLLPRO' },
+    where: {
+      role: 'STUDENT',
+      syncSource: 'ENROLLPRO',
+      archivedAt: null,
+      enrollmentStatus: { notIn: ['NOT_ENROLLED', 'ALUMNI'] },
+    },
     select: {
       id: true,
       name: true,
@@ -301,7 +310,12 @@ export async function issueTermCertificates(opts: {
     const tier = tiers[i];
 
     const existing = await prisma.certificate.findFirst({
-      where: { userId: standing.userId, termCode: quarter.quarterCode, type: 'RANK' },
+      where: {
+        userId: standing.userId,
+        termCode: quarter.quarterCode,
+        type: 'RANK',
+        schoolYearId: activeSY?.id ?? null,
+      },
     });
     if (existing) {
       alreadyIssued += 1;
@@ -383,8 +397,12 @@ export async function claimMilestoneCertificate(
     };
   }
 
+  const names = await getCertificateNames();
+  // Milestones are per school year: points reset at rollover, so a student who
+  // qualified last year must be able to qualify (and claim) again this year.
+  const activeSY = await prisma.schoolYear.findFirst({ where: { isActive: true } });
   const existing = await prisma.certificate.findFirst({
-    where: { userId, type: 'MILESTONE' },
+    where: { userId, type: 'MILESTONE', schoolYearId: activeSY?.id ?? null },
   });
   if (existing) {
     return {
@@ -403,8 +421,6 @@ export async function claimMilestoneCertificate(
     };
   }
 
-  const names = await getCertificateNames();
-  const activeSY = await prisma.schoolYear.findFirst({ where: { isActive: true } });
   const cleanYear = (activeSY?.label || String(new Date().getFullYear())).split('-')[0];
   const serial = await buildSerial(`SORT-HNHS-${cleanYear}-MILESTONE-P${user.points}`);
 

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Recycle } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { broadcastPresetChange } from '../../../../hooks/useSystemPresets';
+import { ConfirmDialog } from '../../../../components/common/ConfirmDialog';
+import { toast } from '../../../../hooks/useToast';
 
 interface WasteTypeItem {
   id: string;
@@ -26,10 +28,13 @@ export const AdminWasteTypesTab: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [hexColor, setHexColor] = useState('#10B981');
+  const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<WasteTypeItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     apiService.getWasteTypes().then((data) => {
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setWasteTypes(data);
       }
     }).catch(err => console.warn('Failed to fetch waste types:', err));
@@ -37,23 +42,26 @@ export const AdminWasteTypesTab: React.FC = () => {
 
   const handleAddWasteType = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || saving) return;
 
-    setShowAddModal(false);
     const newName = name.trim();
     const newDesc = description.trim();
     const newHex = hexColor;
-
-    setName('');
-    setDescription('');
+    setSaving(true);
 
     try {
       const created = await apiService.createWasteType({ name: newName, description: newDesc, hexColor: newHex });
       setWasteTypes(prev => [...prev, created]);
+      setShowAddModal(false);
+      setName('');
+      setDescription('');
+      toast.success(`Waste type "${newName}" added — live for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to create waste type:', err);
+      toast.error(`Could not add "${newName}". Please try again.`);
     } finally {
-      broadcastPresetChange();
+      setSaving(false);
     }
   };
 
@@ -67,40 +75,54 @@ export const AdminWasteTypesTab: React.FC = () => {
       description: editingType.description.trim(),
       hexColor: editingType.hexColor,
     };
+    const snapshot = wasteTypes;
 
     setEditingType(null);
     setWasteTypes(prev => prev.map(wt => wt.id === id ? { ...wt, ...updateData } : wt));
 
     try {
       await apiService.updateWasteType(id, updateData);
+      toast.success('Waste type updated — live for all users.');
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to update waste type:', err);
-    } finally {
-      broadcastPresetChange();
+      setWasteTypes(snapshot);
+      toast.error('Update failed — the waste type was reverted.');
     }
   };
 
   const handleToggleEnabled = async (id: string, currentEnabled: boolean) => {
     const nextEnabled = !currentEnabled;
+    const snapshot = wasteTypes;
     setWasteTypes(prev => prev.map(wt => wt.id === id ? { ...wt, enabled: nextEnabled } : wt));
 
     try {
       await apiService.updateWasteType(id, { enabled: nextEnabled });
+      toast.success(`Waste type ${nextEnabled ? 'enabled' : 'disabled'} — live for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to toggle waste type:', err);
-    } finally {
-      broadcastPresetChange();
+      setWasteTypes(snapshot);
+      toast.error('Could not change the waste type status — reverted.');
     }
   };
 
-  const handleDeleteWasteType = async (id: string) => {
-    setWasteTypes(prev => prev.filter(wt => wt.id !== id));
+  const confirmDeleteWasteType = async () => {
+    if (!pendingDelete) return;
+    const target = pendingDelete;
+    setDeleting(true);
+
     try {
-      await apiService.deleteWasteType(id);
+      await apiService.deleteWasteType(target.id);
+      setWasteTypes(prev => prev.filter(wt => wt.id !== target.id));
+      toast.success(`Waste type "${target.name}" deleted for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to delete waste type:', err);
+      toast.error(`Could not delete "${target.name}". It was kept.`);
     } finally {
-      broadcastPresetChange();
+      setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -148,7 +170,7 @@ export const AdminWasteTypesTab: React.FC = () => {
               <button type="button" onClick={() => setEditingType(wt)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] cursor-pointer p-1.5">
                 <Edit2 size={15} />
               </button>
-              <button type="button" onClick={() => handleDeleteWasteType(wt.id)} className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5">
+              <button type="button" onClick={() => setPendingDelete(wt)} className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5">
                 <Trash2 size={15} />
               </button>
             </div>
@@ -213,8 +235,8 @@ export const AdminWasteTypesTab: React.FC = () => {
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 cursor-pointer text-sm">
                   Cancel
                 </button>
-                <button type="submit" className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm">
-                  Save Waste Type
+                <button type="submit" disabled={saving} className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  {saving ? 'Saving...' : 'Save Waste Type'}
                 </button>
               </div>
             </form>
@@ -285,6 +307,23 @@ export const AdminWasteTypesTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+        title="Delete waste type?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.name}" will be removed from the waste category options for every user. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Waste Type'}
+        destructive
+        loading={deleting}
+        onConfirm={confirmDeleteWasteType}
+      />
     </div>
   );
 };

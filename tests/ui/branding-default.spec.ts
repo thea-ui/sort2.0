@@ -94,6 +94,22 @@ test('broken tenant logo: image and favicon fall back to the SORT mark', async (
   await expect.poll(async () => faviconHref(page)).toMatch(/SORT_LOGO\.png$/);
 });
 
+test('pre-hydration boot applies cached theme variables before the app bundle loads', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'sortv2_theme_vars_v2',
+      JSON.stringify({ '--primary': '#123456', '--accent': '#123456' })
+    );
+  });
+  await page.route('**/src/main.tsx*', (route) => route.abort());
+  await page.goto('/');
+
+  const primary = await page.evaluate(() =>
+    document.documentElement.style.getPropertyValue('--primary')
+  );
+  expect(primary).toBe('#123456');
+});
+
 test('legacy v1 cache with placeholder data is ignored', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(

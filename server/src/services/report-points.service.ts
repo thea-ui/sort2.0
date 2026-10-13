@@ -48,20 +48,41 @@ export async function approveReports(reportIds: string[]): Promise<ApproveResult
   });
 
   // Approving a report approves its whole stream (same behaviour as before).
+  // The whole stream is also re-checked for reports that were collected while
+  // still unverified: verification must not strand their points forever.
   const seenStreams = new Set<string>();
   for (const target of targets) {
     const key = `${target.locationKey}::${target.category}::${target.schoolYearId ?? 'null'}`;
     if (seenStreams.has(key)) continue;
     seenStreams.add(key);
 
-    await prisma.report.updateMany({
-      where: {
-        locationKey: target.locationKey,
-        category: target.category,
-        schoolYearId: target.schoolYearId,
-        status: { not: ReportStatus.DISMISSED },
-      },
-      data: { isVerified: true },
+    await prisma.$transaction(async (tx) => {
+      await tx.report.updateMany({
+        where: {
+          locationKey: target.locationKey,
+          category: target.category,
+          schoolYearId: target.schoolYearId,
+          status: { not: ReportStatus.DISMISSED },
+        },
+        data: { isVerified: true },
+      });
+
+      const collectedUncredited = await tx.report.count({
+        where: {
+          locationKey: target.locationKey,
+          category: target.category,
+          schoolYearId: target.schoolYearId,
+          status: { in: [ReportStatus.COLLECTED, ReportStatus.RESOLVED] },
+          pointsAwardedAt: null,
+        },
+      });
+      if (collectedUncredited > 0) {
+        await awardCollectedReportsWithinTransaction(tx, {
+          locationKey: target.locationKey,
+          category: target.category,
+          schoolYearId: target.schoolYearId,
+        });
+      }
     });
   }
 
@@ -244,6 +265,7 @@ export function formatReportResponse(report: any) {
     reporterRank: report.reporterRank,
     pointsAwardedAt: report.pointsAwardedAt?.toISOString() || null,
     timestamp: report.createdAt?.toISOString() || report.timestamp,
+    completedAt: report.completedAt?.toISOString() || null,
     imageUrl: report.imageUrl,
     weightCollected: report.weightCollected,
     isVerified: report.isVerified,

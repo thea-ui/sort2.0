@@ -129,9 +129,9 @@ export function useReportQueue({
     await runBatchVerify(targetReports, `Verified ${targetReports.length} selected report(s).`);
   };
 
-  const handleVerify = (report: Report) => {
-    verifyReport(report.id);
-    toast.success(
+  const handleVerify = async (report: Report) => {
+    await runBatchVerify(
+      [report],
       `Report at "${report.locationName}" (${report.category}) verified. Points awarded to ${report.reporterName} based on rank.`,
     );
   };
@@ -172,26 +172,32 @@ export function useReportQueue({
     const reporter = users.find((u) => u.id === report.reporterId);
     const autoSeverity = computeOffenseSeverity(reporter?.warningsCount ?? 0);
 
-    if (report.reporterId) {
-      await addOffense(
-        report.reporterId,
-        rejectJustification ||
-          `False or improper report: "${report.title}" at ${report.locationName}`,
-        autoSeverity,
-        report.id,
-      );
-      if (autoSeverity === 'DEDUCT') {
-        await deductPoints(report.reporterId, dismissPenalty, `Marked fake: ${report.title}`);
+    try {
+      if (report.reporterId) {
+        await addOffense(
+          report.reporterId,
+          rejectJustification ||
+            `False or improper report: "${report.title}" at ${report.locationName}`,
+          autoSeverity,
+          report.id,
+        );
+        if (autoSeverity === 'DEDUCT') {
+          await deductPoints(report.reporterId, dismissPenalty, `Marked fake: ${report.title}`);
+        }
       }
+      if (updateReportStatus) {
+        await updateReportStatus(
+          report.id,
+          'DISMISSED' as ReportStatus,
+          undefined,
+          'Marked as fake/dismissed by admin',
+        );
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to dismiss the report. Please try again.');
+      return;
     }
-    if (updateReportStatus) {
-      await updateReportStatus(
-        report.id,
-        'DISMISSED' as ReportStatus,
-        undefined,
-        'Marked as fake/dismissed by admin',
-      );
-    }
+
     const sevLabel =
       autoSeverity === 'WARNING'
         ? 'Warning'

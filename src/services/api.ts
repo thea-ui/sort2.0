@@ -191,6 +191,26 @@ export const apiService = {
     return fetchAPI('/users/leaderboard');
   },
 
+  warnUser: async (
+    userId: string,
+    payload: { description: string; severity: 'WARNING' | 'DEDUCT' | 'SUSPENSION'; reportId?: string }
+  ): Promise<any> => {
+    return fetchAPI(`/users/${userId}/warn`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deductUserPoints: async (
+    userId: string,
+    payload: { amount: number; reason?: string }
+  ): Promise<any> => {
+    return fetchAPI(`/users/${userId}/deduct-points`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   // Reports API
   getReports: async (filters?: { status?: string; category?: string; reporterId?: string }): Promise<Report[]> => {
     const query = new URLSearchParams(filters as Record<string, string>).toString();
@@ -346,6 +366,10 @@ export const apiService = {
 
   syncAcademicTerms: async (): Promise<any> => {
     return fetchAPI('/sync/terms', { method: 'POST' });
+  },
+
+  runBulkSync: async (): Promise<any> => {
+    return fetchAPI('/sync/all', { method: 'POST' });
   },
 
   getSyncStatus: async (): Promise<any> => {

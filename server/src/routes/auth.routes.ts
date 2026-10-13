@@ -113,6 +113,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
     // verified. Online responses — including 401 — never fall back, so a password
     // change on EnrollPro always wins while it is reachable.
     let offlineAuth = false;
+    let mustChangePassword = false;
     if (authResult.unreachable) {
       const offline = await verifyOfflinePassword(user, loginPassword);
       if (!offline.ok) {
@@ -128,16 +129,6 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
       offlineAuth = true;
       console.warn(`[Auth] Offline login accepted for "${maskId(loginId)}" using cached password verifier`);
     } else {
-      if (authResult.mustChangePassword) {
-        // A forced EnrollPro password change must not be bypassable offline.
-        await clearCachedPassword(user.id);
-        console.log(`[Auth] Login failed: user "${maskId(loginId)}" must change password in EnrollPro`);
-        return res.status(403).json({
-          error: 'Please change your password in EnrollPro first, then sign in.',
-          code: 'PASSWORD_CHANGE_REQUIRED',
-        });
-      }
-
       if (authResult.accountInactive) {
         await clearCachedPassword(user.id);
         console.log(`[Auth] Login failed: student "${maskId(loginId)}" EnrollPro portal account inactive`);
@@ -152,6 +143,18 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
         // the client response generic so we never leak which part was wrong.
         console.warn(`[Auth] Login failed for "${maskId(loginId)}": ${authResult.error || 'invalid credentials'}`);
         return res.status(401).json({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' });
+      }
+
+      // EnrollPro accepts default-password logins and carries a must-change
+      // flag (it opens its own change-password flow after login). Mirror that
+      // contract: sign the user in and surface the flag, but never cache the
+      // default password for offline use and never write an offline verifier.
+      if (authResult.mustChangePassword) {
+        mustChangePassword = true;
+        await clearCachedPassword(user.id);
+        console.warn(
+          `[Auth] Login accepted for "${maskId(loginId)}" with must-change flag — EnrollPro default password still in use`
+        );
       }
     }
 
@@ -181,8 +184,8 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
 
     // Password verified by EnrollPro: refresh the offline verifier for the next
     // outage. Cached only after every gate passed, so blocked accounts can never
-    // gain offline access.
-    if (!offlineAuth) {
+    // gain offline access — and a must-change (default) password is never cached.
+    if (!offlineAuth && !mustChangePassword) {
       await cacheVerifiedPassword(user.id, loginPassword);
     }
 
@@ -231,6 +234,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
       refreshToken,
       expiresIn: `${ACCESS_EXPIRY_SECONDS}s`,
       ...(offlineAuth ? { offlineAuth: true } : {}),
+      ...(mustChangePassword ? { mustChangePassword: true } : {}),
       user: safeUser(user),
     });
   } catch (error) {

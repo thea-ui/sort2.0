@@ -44,7 +44,9 @@ export async function executeRollover(
   newStartDate: Date,
   newEndDate: Date
 ): Promise<RolloverResult> {
-  // Concurrency guard
+  // Concurrency guard. The flag is set synchronously BEFORE any await so a
+  // second caller cannot slip past the check while the first one is still
+  // awaiting its idempotency lookup (which would run two full rollovers).
   if (rolloverInProgress) {
     console.warn('[Rollover] Attempted concurrent rollover — rejected');
     return {
@@ -57,16 +59,24 @@ export async function executeRollover(
       errorCode: 'ROLLOVER_CONCURRENT',
     };
   }
+  rolloverInProgress = true;
 
   // Idempotency check: only skip when the target year is ALREADY the active one.
   // The EnrollPro mirror pre-creates the upcoming year as an inactive row, so a
   // plain "row exists" check would wrongly skip the rollover — the outgoing year
   // would never close and its points/stock would silently carry over.
-  const existingTarget = await prisma.schoolYear.findUnique({
-    where: { enrollproId: newEnrollproId },
-  });
+  let existingTarget;
+  try {
+    existingTarget = await prisma.schoolYear.findUnique({
+      where: { enrollproId: newEnrollproId },
+    });
+  } catch (err) {
+    rolloverInProgress = false;
+    throw err;
+  }
   if (existingTarget?.isActive && !existingTarget.isArchived) {
     console.log(`[Rollover] School year "${existingTarget.label}" is already active — skipping`);
+    rolloverInProgress = false;
     return {
       success: true,
       previousSchoolYear: '',
@@ -76,7 +86,6 @@ export async function executeRollover(
     };
   }
 
-  rolloverInProgress = true;
   console.log(`[Rollover] Starting school year rollover to "${newLabel}" (EnrollPro ID: ${newEnrollproId})`);
 
   let snapshotsCreated = 0;
@@ -248,9 +257,19 @@ export async function executeRollover(
         data: { isApprovedForSale: false, approvedAt: null, approvalReference: null },
       });
 
-      // 7b. Reset challenge progress for all students (per-term)
-      const challengeContributionsDeleted = await tx.challengeContribution.deleteMany({});
-      const challengeProgressDeleted = await tx.userChallengeProgress.deleteMany({});
+      // 7b. Reset challenge progress for the OUTGOING year only. Challenges are
+      //     school-year scoped and archived years keep their history, so a global
+      //     deleteMany would erase prior-year progress while its ledgers remain.
+      let challengeContributionsDeleted = { count: 0 };
+      let challengeProgressDeleted = { count: 0 };
+      if (currentSY) {
+        challengeContributionsDeleted = await tx.challengeContribution.deleteMany({
+          where: { challenge: { schoolYearId: currentSY.id } },
+        });
+        challengeProgressDeleted = await tx.userChallengeProgress.deleteMany({
+          where: { challenge: { schoolYearId: currentSY.id } },
+        });
+      }
       console.log(`[Rollover] Challenge progress reset: ${challengeProgressDeleted.count} progress records, ${challengeContributionsDeleted.count} contributions deleted`);
 
       // 8. Reset user points to 0 (certificates are historical and MUST survive

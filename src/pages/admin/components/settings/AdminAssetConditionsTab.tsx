@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, ShieldCheck } from 'lucide-react';
 import { apiService } from '../../../../services/api';
 import { broadcastPresetChange } from '../../../../hooks/useSystemPresets';
+import { ConfirmDialog } from '../../../../components/common/ConfirmDialog';
+import { toast } from '../../../../hooks/useToast';
 
 interface ConditionItem {
   id: string;
@@ -26,10 +28,13 @@ export const AdminAssetConditionsTab: React.FC = () => {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<ConditionItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     apiService.getAssetConditions().then((data) => {
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setConditions(data);
       }
     }).catch(err => console.warn('Failed to fetch asset conditions:', err));
@@ -37,13 +42,11 @@ export const AdminAssetConditionsTab: React.FC = () => {
 
   const handleAddCondition = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || saving) return;
 
-    setShowAddModal(false);
     const newName = name.trim();
     const newDesc = description.trim();
-    setName('');
-    setDescription('');
+    setSaving(true);
 
     try {
       const created = await apiService.createAssetCondition({
@@ -52,10 +55,16 @@ export const AdminAssetConditionsTab: React.FC = () => {
         badgeStyle: 'bg-emerald-100 text-emerald-800 border-emerald-300',
       });
       setConditions(prev => [...prev, created]);
+      setShowAddModal(false);
+      setName('');
+      setDescription('');
+      toast.success(`Condition "${newName}" added — live for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to create condition:', err);
+      toast.error(`Could not add "${newName}". Please try again.`);
     } finally {
-      broadcastPresetChange();
+      setSaving(false);
     }
   };
 
@@ -68,40 +77,54 @@ export const AdminAssetConditionsTab: React.FC = () => {
       name: editingItem.name.trim(),
       description: editingItem.description.trim(),
     };
+    const snapshot = conditions;
 
     setEditingItem(null);
     setConditions(prev => prev.map(c => c.id === id ? { ...c, ...updateData } : c));
 
     try {
       await apiService.updateAssetCondition(id, updateData);
+      toast.success('Condition updated — live for all users.');
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to update asset condition:', err);
-    } finally {
-      broadcastPresetChange();
+      setConditions(snapshot);
+      toast.error('Update failed — the condition was reverted.');
     }
   };
 
   const handleToggleEnabled = async (id: string, currentEnabled: boolean) => {
     const nextEnabled = !currentEnabled;
-    setConditions(prev => prev.map(c => c.id === id ? { ...c, enabled: nextEnabled } : c));
+    const snapshot = conditions;
+    setConditions(prev => prev.map(c => (c.id === id ? { ...c, enabled: nextEnabled } : c)));
 
     try {
       await apiService.updateAssetCondition(id, { enabled: nextEnabled });
+      toast.success(`Condition ${nextEnabled ? 'enabled' : 'disabled'} — live for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to toggle condition:', err);
-    } finally {
-      broadcastPresetChange();
+      setConditions(snapshot);
+      toast.error('Could not change the condition status — reverted.');
     }
   };
 
-  const handleDeleteCondition = async (id: string) => {
-    setConditions(prev => prev.filter(c => c.id !== id));
+  const confirmDeleteCondition = async () => {
+    if (!pendingDelete) return;
+    const target = pendingDelete;
+    setDeleting(true);
+
     try {
-      await apiService.deleteAssetCondition(id);
+      await apiService.deleteAssetCondition(target.id);
+      setConditions(prev => prev.filter(c => c.id !== target.id));
+      toast.success(`Condition "${target.name}" deleted for all users.`);
+      broadcastPresetChange();
     } catch (err) {
       console.error('Failed to delete condition:', err);
+      toast.error(`Could not delete "${target.name}". It was kept.`);
     } finally {
-      broadcastPresetChange();
+      setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -149,7 +172,7 @@ export const AdminAssetConditionsTab: React.FC = () => {
               <button type="button" onClick={() => setEditingItem(cond)} className="text-[var(--text-strong)]/40 hover:text-[var(--text-strong)] cursor-pointer p-1.5">
                 <Edit2 size={15} />
               </button>
-              <button type="button" onClick={() => handleDeleteCondition(cond.id)} className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5">
+              <button type="button" onClick={() => setPendingDelete(cond)} className="text-[var(--text-strong)]/40 hover:text-rose-600 cursor-pointer p-1.5">
                 <Trash2 size={15} />
               </button>
             </div>
@@ -196,8 +219,8 @@ export const AdminAssetConditionsTab: React.FC = () => {
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 cursor-pointer text-sm">
                   Cancel
                 </button>
-                <button type="submit" className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm">
-                  Save Condition
+                <button type="submit" disabled={saving} className="px-6 py-2.5 bg-[var(--accent)] text-white font-extrabold rounded-xl shadow-md hover:bg-[var(--accent-dark)] cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  {saving ? 'Saving...' : 'Save Condition'}
                 </button>
               </div>
             </form>
@@ -250,6 +273,23 @@ export const AdminAssetConditionsTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+        title="Delete asset condition?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.name}" will be removed from the condition options shown to every teacher. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Condition'}
+        destructive
+        loading={deleting}
+        onConfirm={confirmDeleteCondition}
+      />
     </div>
   );
 };

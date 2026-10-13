@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
 import { useMockData } from '../../hooks/useMockData';
 import { useTheme } from '../../hooks/useTheme';
 import { resolveBrandIdentity } from '../../utils/brandIdentity';
@@ -181,15 +181,6 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({ config, onNavigate }) 
               <p className="text-xs text-muted-foreground">{brandIdentity.displayName}</p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('landing')}
-            className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            <ArrowLeft size={14} />
-            Back to Landing
-          </button>
 
           <div className={`bg-card border border-border rounded-2xl overflow-hidden ${CARD_SHADOW}`}>
             <div className="flex flex-col items-center space-y-1 text-center px-8 pt-8">

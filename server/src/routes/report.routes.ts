@@ -4,6 +4,7 @@ import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { approveReports, awardCollectedReportsWithinTransaction, formatReportResponse } from '../services/report-points.service.js';
 import { countUnverifiedActiveStreamReports, dispatchStreamWithinTransaction } from '../services/report-dispatch.service.js';
 import { recordWeightContribution } from '../services/challenge-progress.service.js';
+import { ASSET_DESCRIPTION_MARKERS } from '../services/report-expiry.js';
 import { authenticate, requireAdmin, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
@@ -88,14 +89,7 @@ function mapWasteCategory(cat?: string): WasteCategory {
 
 // Asset reports are described with a pillar marker by the teacher portal. The
 // client may omit `reportType`, so derive it server-side as defense-in-depth.
-const ASSET_DESCRIPTION_MARKERS = [
-  '[PILLAR: FURNITURE]',
-  '[PILLAR: ELECTRONICS]',
-  '[PILLAR: FIXTURES]',
-  '[PILLAR: EQUIPMENT]',
-  '[PILLAR: OTHER]',
-];
-
+// The marker list is shared with the daily-reset expiry predicate.
 function deriveReportType(rawType: unknown, description?: string): ReportType {
   const normalized = typeof rawType === 'string' ? rawType.trim().toUpperCase() : '';
   if (normalized === 'ASSET') return ReportType.ASSET;
@@ -125,6 +119,10 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
 
     if (!title || !coordinates) {
       return res.status(400).json({ error: 'Title and coordinates are required' });
+    }
+
+    if (urgency !== undefined && !Object.values(Urgency).includes(urgency as Urgency)) {
+      return res.status(400).json({ error: `Invalid urgency "${urgency}"`, code: 'INVALID_URGENCY' });
     }
 
     // Students may view the campus map but must never file asset reports.
@@ -252,6 +250,12 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
 
     const data: any = {};
     if (status) {
+      if (!Object.values(ReportStatus).includes(status as ReportStatus)) {
+        return res.status(400).json({
+          error: `Invalid status "${status}"`,
+          code: 'INVALID_STATUS',
+        });
+      }
       data.status = status as ReportStatus;
       if (status === 'COLLECTED' || status === 'RESOLVED') {
         data.completedAt = new Date();
@@ -278,6 +282,7 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
       }
     }
 
+    let normalizedWeight: number | undefined;
     if (weightCollected !== undefined) {
       const kg = Number(weightCollected);
       if (!Number.isFinite(kg) || kg < 0 || kg > 100000) {
@@ -287,12 +292,13 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
         });
       }
       data.weightCollected = kg;
+      normalizedWeight = kg;
     }
 
     const becomesTerminal = status === 'COLLECTED' || status === 'RESOLVED';
     const shouldContributeWeight =
-      weightCollected !== undefined &&
-      weightCollected > 0 &&
+      normalizedWeight !== undefined &&
+      normalizedWeight > 0 &&
       (becomesTerminal || targetReport.status === 'COLLECTED' || targetReport.status === 'RESOLVED');
 
     const allChallengeCompletions: { userId: string; challengeId: string; title: string; pointsAwarded: number }[] = [];
@@ -315,7 +321,7 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
           category: result.category,
           locationKey: result.locationKey,
           schoolYearId: result.schoolYearId,
-        }, weightCollected);
+        }, normalizedWeight!);
         allChallengeCompletions.push(...completions);
       }
 

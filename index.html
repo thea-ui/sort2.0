@@ -5,6 +5,25 @@
     <link rel="icon" type="image/png" href="/SORT_LOGO.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>S.O.R.T. — Smart Operational Recovery & Tracking</title>
+    <script>
+      // Pre-hydration theme boot: apply the last resolved tenant variables
+      // before first paint so a branded deployment never flashes the default
+      // green palette while React boots. Written by ThemeProvider on commit.
+      (function () {
+        try {
+          var raw = localStorage.getItem('sortv2_theme_vars_v2');
+          if (!raw) return;
+          var vars = JSON.parse(raw);
+          if (!vars || typeof vars !== 'object') return;
+          var root = document.documentElement;
+          for (var key in vars) {
+            if (Object.prototype.hasOwnProperty.call(vars, key) && typeof vars[key] === 'string') {
+              root.style.setProperty(key, vars[key]);
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

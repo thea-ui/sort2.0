@@ -44,6 +44,8 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
     certificateAdvocateName: settings.certificateAdvocateName ?? 'Eco-Advocate Certificate',
   });
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [termStatus, setTermStatus] = useState<TermStatus | null>(null);
   const [standings, setStandings] = useState<TermStanding[]>([]);
   const [history, setHistory] = useState<Certificate[]>([]);
@@ -70,18 +72,33 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
     loadData();
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings({
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+
+    const patch: Partial<SystemSettings> = {
       certificatePointThreshold: Number(form.certificatePointThreshold),
       certificateGraceDays: Number(form.certificateGraceDays),
       certificateMilestoneName: form.certificateMilestoneName.trim(),
       certificateChampionName: form.certificateChampionName.trim(),
       certificateLeaderName: form.certificateLeaderName.trim(),
       certificateAdvocateName: form.certificateAdvocateName.trim(),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    };
+
+    try {
+      // The server is the source of truth: term issuance reads these values.
+      // A local-only save would silently revert on the next settings refresh.
+      await apiService.updateSettings(patch);
+      updateSettings(patch);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to save certificate settings');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleIssue = async (force = false) => {
@@ -259,12 +276,14 @@ export const AdminCertificateTab: React.FC<AdminCertificateTabProps> = ({ settin
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            className="px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all"
+            disabled={saving}
+            className="px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
           >
             <Save size={14} />
-            Save Certificate Settings
+            {saving ? 'Saving…' : 'Save Certificate Settings'}
           </button>
           {saved && <span className="text-xs font-bold text-emerald-600">Saved!</span>}
+          {saveError && <span className="text-xs font-bold text-rose-600" role="alert">{saveError}</span>}
         </div>
       </form>
 

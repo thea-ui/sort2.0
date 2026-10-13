@@ -242,7 +242,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {challenges.map(ch => {
-            const pct = Math.round((ch.currentCount / ch.target) * 100);
+            const pct = ch.target > 0 ? Math.min(100, Math.round((ch.currentCount / ch.target) * 100)) : 0;
 
             return (
               <div key={ch.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">

@@ -6,7 +6,7 @@ import { PageHeader } from '../../../../components/layout/PageHeader';
 interface AdminWarningsTabProps {
   users: User[];
   offenses: Offense[];
-  addOffense: (userId: string, description: string) => void;
+  addOffense: (userId: string, description: string) => Promise<unknown>;
 }
 
 export const AdminWarningsTab: React.FC<AdminWarningsTabProps> = ({
@@ -17,17 +17,26 @@ export const AdminWarningsTab: React.FC<AdminWarningsTabProps> = ({
   const [targetUserId, setTargetUserId] = useState('');
   const [warnDesc, setWarnDesc] = useState('');
   const [warningSuccess, setWarningSuccess] = useState(false);
+  const [warningError, setWarningError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleWarningSubmit = (e: React.FormEvent) => {
+  const handleWarningSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetUserId || !warnDesc.trim()) return;
+    if (!targetUserId || !warnDesc.trim() || submitting) return;
 
-    addOffense(targetUserId, warnDesc);
-    setWarningSuccess(true);
-    setWarnDesc('');
-    setTargetUserId('');
-
-    setTimeout(() => setWarningSuccess(false), 3000);
+    setSubmitting(true);
+    setWarningError(null);
+    try {
+      await addOffense(targetUserId, warnDesc);
+      setWarningSuccess(true);
+      setWarnDesc('');
+      setTargetUserId('');
+      setTimeout(() => setWarningSuccess(false), 3000);
+    } catch (err: any) {
+      setWarningError(err?.message || 'Failed to log the sanction. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -51,6 +60,13 @@ export const AdminWarningsTab: React.FC<AdminWarningsTabProps> = ({
                 <p className="font-bold">Sanction Registered!</p>
                 <p className="text-[10px] opacity-80 mt-0.5">Offense logged to database successfully.</p>
               </div>
+            </div>
+          )}
+
+          {warningError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex gap-2 mb-4" role="alert">
+              <AlertOctagon size={16} className="shrink-0 mt-0.5" />
+              <p className="font-semibold">{warningError}</p>
             </div>
           )}
 

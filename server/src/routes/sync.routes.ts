@@ -144,8 +144,6 @@ router.get('/health', requireAdmin, async (_req: Request, res: Response): Promis
       healthStatus: healthData?.data?.status || 'unknown',
       integrationKeyConfigured: !!integrationKey,
       integrationKeyValid: testRes.ok,
-      integrationKeyLength: integrationKey.length,
-      integrationKeyPreview: integrationKey.substring(0, 10) + '...',
       integrationError: testRes.ok ? null : testBody,
       systems: healthData?.data?.systems || [],
     });

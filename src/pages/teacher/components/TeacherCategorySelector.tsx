@@ -1,9 +1,9 @@
 import React from 'react';
-import { InfrastructurePillar, CATEGORY_DETAILS } from './teacherReportData';
+import { type PillarMeta } from './teacherReportData';
 
 interface TeacherCategorySelectorProps {
-  pillarMeta: Record<InfrastructurePillar, { emoji?: string; label: string; desc: string }>;
-  onSelect: (cat: InfrastructurePillar) => void;
+  pillarMeta: Record<string, PillarMeta>;
+  onSelect: (cat: string) => void;
 }
 
 export const TeacherCategorySelector: React.FC<TeacherCategorySelectorProps> = ({ pillarMeta, onSelect }) => (
@@ -26,18 +26,21 @@ export const TeacherCategorySelector: React.FC<TeacherCategorySelectorProps> = (
         1. Select Recovery Category
       </label>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {(Object.entries(pillarMeta) as [InfrastructurePillar, typeof pillarMeta.waste][]).map(([id, meta]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onSelect(id)}
-            className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200/80 bg-white p-5 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 hover:shadow-md cursor-pointer select-none"
-          >
-            <span className="text-2xl">{meta.emoji}</span>
-            <span className="text-sm font-bold text-[var(--text-strong)]">{meta.label}</span>
-            <span className="text-[10px] text-[var(--text-strong)]/50 font-medium">{meta.desc}</span>
-          </button>
-        ))}
+        {(Object.entries(pillarMeta) as [string, PillarMeta][]).map(([id, meta]) => {
+          const Icon = meta.icon;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onSelect(id)}
+              className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200/80 bg-white p-5 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 hover:shadow-md cursor-pointer select-none"
+            >
+              <Icon size={22} className="text-[var(--accent)]" />
+              <span className="text-sm font-bold text-[var(--text-strong)]">{meta.label}</span>
+              <span className="text-[10px] text-[var(--text-strong)]/50 font-medium">{meta.desc}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   </div>

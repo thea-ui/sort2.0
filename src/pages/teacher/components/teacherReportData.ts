@@ -35,13 +35,102 @@ import {
   FlaskConical,
   Target,
 } from 'lucide-react';
-// DepEd Order No. 5, s. 2014 requires segregation into biodegradable,
-// non-biodegradable and hazardous/toxic waste. Recyclable is retained as an
-// additional RA 9003 stream. Bin colours follow the DO 5 colour coding.
-export type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE' | 'HAZARDOUS';
+import {
+  normalizePillarCode,
+  selectVisibleCategoryCodes,
+  resolveCategoryItems,
+  type SetupCategory,
+  type SetupPresetGroup,
+} from './reportSetupMerge';
+// The campus operates the three admin-managed streams: biodegradable,
+// non-biodegradable and recyclable. Hazardous is intentionally not offered.
+export type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
 
-export type InfrastructurePillar = 'waste' | 'furniture' | 'electronics' | 'fixtures' | 'equipment' | 'other';
+export type InfrastructurePillar =
+  | 'waste'
+  | 'furniture'
+  | 'electronics'
+  | 'fixtures'
+  | 'equipment'
+  | 'other'
+  | (string & {});
 export type BinReportStatusState = 'AVAILABLE' | 'REPORTED_FULL' | 'LIMIT_REACHED' | 'DISPATCHED' | 'NO_BIN' | 'UNAVAILABLE';
+
+export interface PillarMeta {
+  icon: React.ComponentType<any>;
+  label: string;
+  desc: string;
+  accent: string;
+  iconBg: string;
+  iconText: string;
+  border: string;
+}
+
+export interface CategoryDetail {
+  label: string;
+  title: string;
+  subtitle: string;
+  icon: React.ComponentType<any>;
+  itemsLabel: string;
+  items: { id: string; label: string; icon: React.ComponentType<any> }[];
+}
+
+export const DEFAULT_ASSET_CODES = ['furniture', 'electronics', 'fixtures', 'equipment', 'other'];
+
+export const GENERIC_PILLAR_META: PillarMeta = {
+  icon: Package,
+  label: 'Asset',
+  desc: 'Other school assets',
+  accent: 'zinc',
+  iconBg: 'bg-zinc-50',
+  iconText: 'text-[var(--text-strong)]',
+  border: 'border-zinc-200',
+};
+
+export const BASE_PILLAR_META: Record<string, PillarMeta> = {
+  waste:       { icon: Recycle,  label: 'Waste / Bin',  desc: 'Litter issues, overflows',       accent: 'emerald', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', border: 'border-emerald-200' },
+  furniture:   { icon: Armchair, label: 'Furniture',    desc: 'Desks, classroom chairs',         accent: 'amber',   iconBg: 'bg-amber-50',   iconText: 'text-amber-600',   border: 'border-amber-200'   },
+  electronics: { icon: Monitor,  label: 'Electronics',  desc: 'Projectors, display screens',     accent: 'sky',     iconBg: 'bg-[var(--primary)]/10',     iconText: 'text-[var(--text-strong)]',     border: 'border-[var(--primary)]/25'     },
+  fixtures:    { icon: Zap,      label: 'Fixtures',     desc: 'AC fans, lights, switches',       accent: 'violet',  iconBg: 'bg-[var(--gold)]/10',  iconText: 'text-[var(--gold)]',  border: 'border-[var(--gold)]/25'  },
+  equipment:   { icon: Wrench,   label: 'Equipment',    desc: 'Lab tool, janitorial asset',      accent: 'rose',    iconBg: 'bg-rose-50',    iconText: 'text-rose-600',    border: 'border-rose-200'    },
+  other:       { icon: FileText, label: 'Other',        desc: 'General structural repair',       accent: 'zinc',    iconBg: 'bg-zinc-50',    iconText: 'text-[var(--text-strong)]',   border: 'border-zinc-200'    },
+};
+
+/**
+ * Tiles shown on the report form. Once the admin-managed category list has
+ * loaded, it is authoritative: deleted categories disappear, disabled ones are
+ * hidden, and newly added ones appear with a generic asset style.
+ */
+export function buildPillarMeta(
+  categories: SetupCategory[],
+  categoriesLoaded: boolean
+): Record<string, PillarMeta> {
+  const meta: Record<string, PillarMeta> = { waste: BASE_PILLAR_META.waste };
+  const visible = selectVisibleCategoryCodes(categories, categoriesLoaded, DEFAULT_ASSET_CODES);
+  const visibleSet = new Set(visible);
+  const ordered = [
+    ...DEFAULT_ASSET_CODES.filter((code) => visibleSet.has(code)),
+    ...visible.filter((code) => !DEFAULT_ASSET_CODES.includes(code)),
+  ];
+  const byCode = new Map(categories.map((cat) => [normalizePillarCode(cat.code || cat.name), cat]));
+
+  for (const code of ordered) {
+    const base = BASE_PILLAR_META[code] ?? GENERIC_PILLAR_META;
+    const label = categoriesLoaded ? byCode.get(code)?.name || base.label : base.label;
+    meta[code] = { ...base, label };
+  }
+
+  return meta;
+}
+
+const GENERIC_ASSET_DETAIL: CategoryDetail = {
+  label: 'Asset',
+  title: 'Report Asset',
+  subtitle: 'General asset maintenance',
+  icon: Package,
+  itemsLabel: 'Select Item *',
+  items: [],
+};
 
 export interface BinSlot {
   type: BinCategory;
@@ -56,10 +145,10 @@ export interface BinSlot {
 export interface StationCluster {
   locationName: string;
   coordinates: { lat: number; lng: number };
-  slots: [BinSlot, BinSlot, BinSlot, BinSlot];
+  slots: BinSlot[];
 }
 
-export const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE', 'HAZARDOUS'];
+export const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE'];
 
 export const CAT_META: Record<
   BinCategory,
@@ -100,28 +189,9 @@ export const CAT_META: Record<
     Icon: Recycle,
     desc: 'PET bottles, aluminum cans, glass & cardboard',
   },
-  HAZARDOUS: {
-    label: 'Hazardous',
-    short: 'Haz',
-    bg: 'bg-orange-500',
-    border: 'border-orange-400',
-    text: 'text-orange-600',
-    Icon: AlertTriangle,
-    desc: 'Batteries, bulbs, chemicals, sharps & e-waste (red/orange bin)',
-  },
 };
 
-export const CATEGORY_DETAILS: Record<
-  InfrastructurePillar,
-  {
-    label: string;
-    title: string;
-    subtitle: string;
-    icon: React.ComponentType<any>;
-    itemsLabel: string;
-    items: { id: string; label: string; icon: React.ComponentType<any> }[];
-  }
-> = {
+export const CATEGORY_DETAILS: Record<string, CategoryDetail> = {
   furniture: {
     label: 'Furniture',
     title: 'Report Furniture',
@@ -150,7 +220,6 @@ export const CATEGORY_DETAILS: Record<
       { id: 'biodegradable', label: 'Biodegradable', icon: Droplets },
       { id: 'non-biodegradable', label: 'Non-Biodegradable', icon: PackageX },
       { id: 'recyclable', label: 'Recyclable', icon: Recycle },
-      { id: 'hazardous', label: 'Hazardous / Toxic', icon: AlertTriangle },
       { id: 'plastic-bottles', label: 'Plastic Bottles', icon: Trash },
       { id: 'glass-bottles', label: 'Glass Bottles / Containers', icon: Wine },
       { id: 'aluminum-cans', label: 'Aluminum Cans', icon: Trash },
@@ -230,6 +299,61 @@ export const CATEGORY_DETAILS: Record<
     ],
   },
 };
+
+/**
+ * Full per-category form config. With the admin-managed categories loaded the
+ * server list is authoritative (deleted categories/items never resurface from
+ * the hardcoded defaults); before that first load the legacy defaults keep the
+ * form usable offline.
+ */
+export function buildCategoryDetails(
+  categories: SetupCategory[],
+  presetGroups: SetupPresetGroup[],
+  categoriesLoaded: boolean,
+  presetGroupsLoaded: boolean
+): Record<string, CategoryDetail> {
+  if (!categoriesLoaded) {
+    const fallback: Record<string, CategoryDetail> = { ...CATEGORY_DETAILS };
+    presetGroups.forEach((group) => {
+      const code = normalizePillarCode(group.code || group.category);
+      const base = fallback[code];
+      if (!base) return;
+      const groupItems = (group.items || [])
+        .filter((item) => item.enabled)
+        .map((item) => ({ id: item.id, label: item.name, icon: base.icon }));
+      fallback[code] = {
+        ...base,
+        label: group.category || base.label,
+        title: `Report ${group.category || base.label}`,
+        items: groupItems.length > 0 ? groupItems : base.items,
+      };
+    });
+    return fallback;
+  }
+
+  const details: Record<string, CategoryDetail> = { waste: CATEGORY_DETAILS.waste };
+  const byCode = new Map(categories.map((cat) => [normalizePillarCode(cat.code || cat.name), cat]));
+
+  for (const code of selectVisibleCategoryCodes(categories, true, [])) {
+    const category = byCode.get(code);
+    if (!category) continue;
+    const base = CATEGORY_DETAILS[code] ?? GENERIC_ASSET_DETAIL;
+    const fallbackItems = (CATEGORY_DETAILS[code]?.items ?? []).map((item) => ({
+      id: item.id,
+      name: item.label,
+      enabled: true,
+    }));
+    const items = resolveCategoryItems(category, presetGroups, presetGroupsLoaded, fallbackItems);
+    details[code] = {
+      ...base,
+      label: category.name || base.label,
+      title: `Report ${category.name || base.label}`,
+      items: items.map((item) => ({ id: item.id, label: item.name, icon: base.icon })),
+    };
+  }
+
+  return details;
+}
 
 import { getStoredRoomLocations, DEFAULT_ROOM_LOCATIONS } from '../../../services/locationStore';
 
@@ -335,6 +459,6 @@ export function groupStations(bins: any[], reports: any[] = []): StationCluster[
         unverifiedCount: details.unverifiedCount,
         activeReport: details.activeReport,
       };
-    }) as [BinSlot, BinSlot, BinSlot, BinSlot],
+    }),
   }));
 }
