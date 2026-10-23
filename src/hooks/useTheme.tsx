@@ -133,8 +133,10 @@ function hexToRgb(hexColor: string): string {
 
 // Factors are calibrated so the default brand produces the exact shades the
 // UI already used before theming: #003A2B, #008F6A, #00C491 (#007B5B replaces
-// a legacy #007A5C gradient stop, a 1/255 shift).
+// a legacy #007A5C gradient stop, a 1/255 shift). --accent-bright extends the
+// family with one clearly lighter step for multi-card accent ramps.
 const PRIMARY_LIGHT_FACTOR = 1.487;
+const ACCENT_BRIGHT_FACTOR = 1.34;
 const ACCENT_DARK_FACTOR = 0.856;
 const ACCENT_LIGHT_FACTOR = 1.172;
 const ACCENT_DARKER_FACTOR = 0.735;
@@ -157,6 +159,7 @@ export function resolveThemeVariables(colors: ThemeColors): Record<string, strin
     '--primary-light': scaleColor(colors.primary, PRIMARY_LIGHT_FACTOR),
     '--secondary': colors.secondary,
     '--accent': accent,
+    '--accent-bright': scaleColor(accent, ACCENT_BRIGHT_FACTOR),
     '--accent-light': scaleColor(accent, ACCENT_LIGHT_FACTOR),
     '--accent-dark': scaleColor(accent, ACCENT_DARK_FACTOR),
     '--accent-darker': scaleColor(accent, ACCENT_DARKER_FACTOR),

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
+import { PrismaRateLimitStore } from '../lib/rate-limit-store.js';
 import {
   WalkInError,
   recordWalkIn,
@@ -17,6 +18,7 @@ const walkInLimiter = rateLimit({
   limit: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PrismaRateLimitStore(),
   handler: (_req, res) => res.status(429).json({
     error: 'Too many walk-in submissions. Please slow down.',
     code: 'RATE_LIMITED',
@@ -53,12 +55,15 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<any
   }
 });
 
-// GET /api/walk-ins?date=YYYY-MM-DD&studentId= — station history (MRF/ADMIN)
+// GET /api/walk-ins?date=YYYY-MM-DD&studentId=&schoolYearId=&from=&to= — history (MRF/ADMIN)
 router.get('/', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response): Promise<any> => {
   try {
     const rows = await listWalkIns({
       date: req.query.date ? String(req.query.date) : undefined,
       studentId: req.query.studentId ? String(req.query.studentId) : undefined,
+      schoolYearId: req.query.schoolYearId ? String(req.query.schoolYearId) : undefined,
+      from: req.query.from ? String(req.query.from) : undefined,
+      to: req.query.to ? String(req.query.to) : undefined,
       limit: Number(req.query.limit) || 100,
     });
     return res.json({ turnovers: rows });

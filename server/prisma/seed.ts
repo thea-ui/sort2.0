@@ -1,8 +1,7 @@
-import { PrismaClient, Role, WasteCategory } from '@prisma/client';
+import { Role, WasteCategory } from '@prisma/client';
+import { prisma } from '../src/lib/prisma.js';
 import { seedWalkInRewards } from '../src/services/walk-in-rewards.seed.js';
 import { ensureChallengesForSchoolYear } from '../src/services/challenge-catalog.service.js';
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting PostgreSQL database seed for SORTv2...');
@@ -65,15 +64,6 @@ async function main() {
           lat: 14.6001,
           lng: 120.985,
           activeDispatch: true,
-        },
-        {
-          name: 'IT Bldg E-Waste Collector',
-          locationName: 'IT Building Lobby',
-          fillLevel: 35,
-          type: WasteCategory.HAZARDOUS,
-          lat: 14.5988,
-          lng: 120.9835,
-          activeDispatch: false,
         },
         {
           name: 'Gymnasium General Waste',

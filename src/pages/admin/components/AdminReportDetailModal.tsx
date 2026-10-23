@@ -20,6 +20,7 @@ import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils'
 import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
 import { ModalPortal } from '../../../components/common/ModalPortal';
 import { ReportLocationMiniMap } from '../../../components/map/ReportLocationMiniMap';
+import { useReportPhoto } from '../../../hooks/useReportPhoto';
 
 interface AdminReportDetailModalProps {
   report: Report;
@@ -37,6 +38,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
   onDispatch,
 }) => {
   const [showPhotoFull, setShowPhotoFull] = useState(false);
+  const photoSrc = useReportPhoto(report.photoUrl, report.imageUrl);
 
   const lat = report.coordinates?.lat || 14.6000;
   const lng = report.coordinates?.lng || 120.9850;
@@ -238,13 +240,13 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
 
         {/* Photo Evidence & Report Description Card */}
         <div className="space-y-2">
-          {report.imageUrl && (
+          {photoSrc && (
             <button
               type="button"
               onClick={() => setShowPhotoFull(true)}
               className="group relative block w-full rounded-2xl overflow-hidden border border-gray-200 h-44 sm:h-52 bg-gray-100 shadow-inner cursor-zoom-in"
             >
-              <img src={report.imageUrl} alt="Waste report evidence" className="w-full h-full object-cover" />
+              <img src={photoSrc} alt="Waste report evidence" className="w-full h-full object-cover" />
               <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg font-mono flex items-center gap-1.5">
                 <Maximize2 size={11} /> Tap to view full screen
               </span>
@@ -343,7 +345,7 @@ export const AdminReportDetailModal: React.FC<AdminReportDetailModalProps> = ({
       </div>
 
       <PhotoLightbox
-        src={showPhotoFull ? report.imageUrl ?? null : null}
+        src={showPhotoFull ? photoSrc : null}
         alt="Waste report evidence full view"
         caption="Photo Evidence"
         onClose={() => setShowPhotoFull(false)}

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type AppRoute = 'landing' | 'admin-login' | 'mrf-login';
+export type AppRoute = 'landing' | 'admin-login' | 'mrf-login' | 'report-print';
 
 const ROUTE_PATHS: Record<AppRoute, string> = {
   landing: '/',
   'admin-login': '/admin',
   'mrf-login': '/mrf',
+  'report-print': '/reports/print',
 };
 
 export function normalizePath(pathname: string): string {
@@ -16,6 +17,7 @@ export function routeFromPath(pathname: string): AppRoute {
   const normalized = normalizePath(pathname);
   if (normalized === '/admin') return 'admin-login';
   if (normalized === '/mrf') return 'mrf-login';
+  if (normalized === '/reports/print') return 'report-print';
   return 'landing';
 }
 

@@ -75,7 +75,7 @@ describe('isDispatchableStreamMember (dispatch regression)', () => {
     ).toBe(false);
     expect(
       isDispatchableStreamMember(
-        report({ id: 'other-cat', locationName: 'G7 Room 303', category: 'HAZARDOUS', status: 'PENDING' }),
+        report({ id: 'other-cat', locationName: 'G7 Room 303', category: 'NON_BIODEGRADABLE', status: 'PENDING' }),
         target
       )
     ).toBe(false);

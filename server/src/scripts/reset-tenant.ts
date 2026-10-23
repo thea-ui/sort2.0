@@ -1,5 +1,6 @@
+import { prisma } from '../lib/prisma.js';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,8 +8,6 @@ import { fileURLToPath } from 'node:url';
 const SERVER_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 dotenv.config({ path: path.join(SERVER_ROOT, '.env') });
-
-const prisma = new PrismaClient();
 
 const CONFIRM_PHRASE = 'WIPE-EMEMS';
 const DEFAULT_ENROLLPRO_BASE = 'https://dev-jegs.buru-degree.ts.net/api';

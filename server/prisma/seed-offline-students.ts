@@ -13,9 +13,8 @@
  *
  * Usage: npx tsx prisma/seed-offline-students.ts [count]
  */
-import { PrismaClient, Role, SyncSource } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Role, SyncSource } from '@prisma/client';
+import { prisma } from '../src/lib/prisma.js';
 
 const FIRST_NAMES = ['Juan', 'Maria', 'Jose', 'Andrea', 'Miguel', 'Sofia', 'Gabriel', 'Isabella', 'Rafael', 'Camila', 'Luis', 'Bianca'];
 const LAST_NAMES = ['Dela Cruz', 'Santos', 'Reyes', 'Garcia', 'Mendoza', 'Torres', 'Flores', 'Ramos', 'Villanueva', 'Aquino', 'Navarro', 'Domingo'];

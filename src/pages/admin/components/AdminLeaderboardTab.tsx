@@ -61,11 +61,11 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
         <span
           className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-[11px] font-black ${
             row.rank === 1
-              ? 'bg-amber-500 text-white'
+              ? 'bg-[var(--ramp-1)] text-white'
               : row.rank === 2
-                ? 'bg-[var(--primary)] text-white'
+                ? 'bg-[var(--ramp-2)] text-white'
                 : row.rank === 3
-                  ? 'bg-amber-700 text-white'
+                  ? 'bg-[var(--ramp-3)] text-white'
                   : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]/60'
           }`}
         >
@@ -109,7 +109,17 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
       align: 'right',
       skeleton: 'number',
       cell: (row) => (
-        <span className="font-black text-amber-600 inline-flex items-center gap-1">
+        <span
+          className={`font-black inline-flex items-center gap-1 ${
+            row.rank === 1
+              ? 'text-[var(--ramp-1-strong)]'
+              : row.rank === 2
+                ? 'text-[var(--ramp-2-strong)]'
+                : row.rank === 3
+                  ? 'text-[var(--ramp-3-strong)]'
+                  : 'text-[var(--text-strong)]/60'
+          }`}
+        >
           <Flame size={14} fill="currentColor" />
           {row.points}
         </span>
@@ -123,20 +133,21 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
         title="Eco-Points Leaderboard"
       />
 
-      {/* Points System Banner */}
-      <div className="bg-[color-mix(in_srgb,var(--color-amber-500)_10%,white)] border border-amber-500/20 rounded-2xl p-4 flex flex-wrap items-center gap-3 text-xs">
-        <div className="flex items-center gap-1.5 font-bold text-amber-800">
-          <Award size={15} className="text-amber-600" />
+      {/* Points System Banner — neutral surface; the accent carries the
+          recognition values themselves (podium, points, ranks). */}
+      <div className="bg-white/90 border border-[var(--primary)]/10 rounded-2xl p-4 flex flex-wrap items-center gap-3 text-xs">
+        <div className="flex items-center gap-1.5 font-bold text-[var(--text-strong)]">
+          <Award size={15} className="text-[var(--accent)]" />
           <span>Points System:</span>
         </div>
-        <span className="px-3 py-1 bg-amber-100 text-amber-800 font-bold rounded-full text-[11px] flex items-center gap-1">
-          <Flame size={12} className="text-amber-600 fill-amber-600" /> 15 pts — 1st reporter
+        <span className="px-3 py-1 bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/70 font-bold rounded-full text-[11px] flex items-center gap-1">
+          <Flame size={12} className="text-[var(--ramp-1)] fill-[var(--ramp-1)]" /> 15 pts — 1st reporter
         </span>
-        <span className="px-3 py-1 bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] font-bold rounded-full text-[11px] flex items-center gap-1">
-          <Flame size={12} className="text-[var(--text-strong)] fill-[var(--primary)]" /> 10 pts — 2nd reporter
+        <span className="px-3 py-1 bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/70 font-bold rounded-full text-[11px] flex items-center gap-1">
+          <Flame size={12} className="text-[var(--ramp-2)] fill-[var(--ramp-2)]" /> 10 pts — 2nd reporter
         </span>
-        <span className="px-3 py-1 bg-orange-100 text-orange-800 font-bold rounded-full text-[11px] flex items-center gap-1">
-          <Flame size={12} className="text-orange-600 fill-orange-600" /> 5 pts — 3rd reporter
+        <span className="px-3 py-1 bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/70 font-bold rounded-full text-[11px] flex items-center gap-1">
+          <Flame size={12} className="text-[var(--ramp-3)] fill-[var(--ramp-3)]" /> 5 pts — 3rd reporter
         </span>
         <span className="px-3 py-1 bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/60 font-medium rounded-full text-[11px]">
           4th+ reporter — no points
@@ -147,12 +158,12 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
         {top2 && (
           <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm text-center space-y-2 relative">
-            <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white font-black text-xs flex items-center justify-center mx-auto -mt-8 border-2 border-white shadow-md">
+            <div className="w-8 h-8 rounded-full bg-[var(--ramp-2)] text-white font-black text-xs flex items-center justify-center mx-auto -mt-8 border-2 border-white shadow-md">
               2
             </div>
             <p className="font-extrabold text-[var(--text-strong)] text-sm mt-1">{top2.name}</p>
             <p className="text-[11px] text-[var(--text-strong)]/40 font-semibold">{top2.role}</p>
-            <p className="text-lg font-black text-amber-600 flex items-center justify-center gap-1">
+            <p className="text-lg font-black text-[var(--ramp-2-strong)] flex items-center justify-center gap-1">
               <Flame size={16} fill="currentColor" /> {top2.points}
             </p>
             <p className="text-[10px] text-[var(--text-strong)]/50 font-bold">{top2.reports} reports</p>
@@ -160,13 +171,13 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
         )}
 
         {top1 && (
-          <div className="bg-[color-mix(in_srgb,var(--color-amber-500)_10%,white)] border border-amber-500/30 rounded-2xl p-6 shadow-md text-center space-y-2 relative md:-translate-y-2">
-            <div className="w-9 h-9 rounded-full bg-amber-500 text-white font-black text-sm flex items-center justify-center mx-auto -mt-10 border-2 border-white shadow-md">
+          <div className="bg-white/95 border border-[var(--ramp-1)]/40 rounded-2xl p-6 shadow-md text-center space-y-2 relative md:-translate-y-2">
+            <div className="w-9 h-9 rounded-full bg-[var(--ramp-1)] text-white font-black text-sm flex items-center justify-center mx-auto -mt-10 border-2 border-white shadow-md">
               1
             </div>
             <p className="font-black text-[var(--text-strong)] text-base mt-1">{top1.name}</p>
             <p className="text-[11px] text-[var(--text-strong)]/50 font-semibold">{top1.role}</p>
-            <p className="text-2xl font-black text-amber-600 flex items-center justify-center gap-1">
+            <p className="text-2xl font-black text-[var(--ramp-1-strong)] flex items-center justify-center gap-1">
               <Flame size={20} fill="currentColor" /> {top1.points}
             </p>
             <p className="text-xs text-[var(--text-strong)]/60 font-bold">{top1.reports} reports</p>
@@ -175,12 +186,12 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
 
         {top3 && (
           <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 shadow-sm text-center space-y-2 relative">
-            <div className="w-8 h-8 rounded-full bg-amber-700 text-white font-black text-xs flex items-center justify-center mx-auto -mt-8 border-2 border-white shadow-md">
+            <div className="w-8 h-8 rounded-full bg-[var(--ramp-3)] text-white font-black text-xs flex items-center justify-center mx-auto -mt-8 border-2 border-white shadow-md">
               3
             </div>
             <p className="font-extrabold text-[var(--text-strong)] text-sm mt-1">{top3.name}</p>
             <p className="text-[11px] text-[var(--text-strong)]/40 font-semibold">{top3.role}</p>
-            <p className="text-lg font-black text-amber-600 flex items-center justify-center gap-1">
+            <p className="text-lg font-black text-[var(--ramp-3-strong)] flex items-center justify-center gap-1">
               <Flame size={16} fill="currentColor" /> {top3.points}
             </p>
             <p className="text-[10px] text-[var(--text-strong)]/50 font-bold">{top3.reports} reports</p>

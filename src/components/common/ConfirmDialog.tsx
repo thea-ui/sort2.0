@@ -18,7 +18,7 @@ interface ConfirmDialogProps {
 
 /**
  * Confirmation wrapper over AppModal (SMART master handoff Part 3 §8):
- * `AlertTriangle` + red confirm for destructive, `CheckCircle2` + primary for
+ * `AlertTriangle` + red confirm for destructive, `CheckCircle2` + green for
  * normal, always size `sm`.
  */
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({

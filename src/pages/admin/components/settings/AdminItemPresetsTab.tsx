@@ -55,7 +55,6 @@ export const AdminItemPresetsTab: React.FC = () => {
   const savePresetGroups = (updated: PresetGroup[]) => {
     setPresetGroups(updated);
     localStorage.setItem('sort_item_presets', JSON.stringify(updated));
-    window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('sort_item_presets_updated'));
     broadcastPresetChange();
   };

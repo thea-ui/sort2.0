@@ -497,11 +497,11 @@ export const AppShell: React.FC<AppShellProps> = ({
                 <Menu className="w-5 h-5" />
               </button>
 
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  {portalLabel}
+              <div className="flex items-center min-w-0">
+                <span className="sr-only">{portalLabel}</span>
+                <span className="text-[15px] font-extrabold text-slate-900 uppercase tracking-[0.08em] truncate">
+                  {pageTitle}
                 </span>
-                <span className="text-base font-bold text-slate-900 -mt-1 truncate">{pageTitle}</span>
               </div>
             </div>
 

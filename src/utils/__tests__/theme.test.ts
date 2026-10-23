@@ -15,6 +15,7 @@ describe('resolveThemeVariables', () => {
     expect(vars['--accent']).toBe('#00A77C');
     expect(vars['--gold']).toBe('#C69B26');
     expect(vars['--primary-light']).toBe('#003a2b');
+    expect(vars['--accent-bright']).toBe('#00e0a6');
     expect(vars['--accent-dark']).toBe('#008f6a');
     expect(vars['--accent-light']).toBe('#00c491');
     expect(vars['--accent-darker']).toBe('#007b5b');

@@ -1,14 +1,31 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient, ReportStatus, WasteCategory, Urgency, ReportType, Role } from '@prisma/client';
+import crypto from 'node:crypto';
+import { ReportStatus, WasteCategory, Urgency, ReportType, Role } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
+import {
+  deleteReportPhoto,
+  parseLegacyPhotoDataUrl,
+  ReportPhotoError,
+  reportPhotoContentType,
+  resolveReportPhotoFile,
+  storeReportPhoto,
+} from '../services/report-photo-storage.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { approveReports, awardCollectedReportsWithinTransaction, formatReportResponse } from '../services/report-points.service.js';
 import { countUnverifiedActiveStreamReports, dispatchStreamWithinTransaction } from '../services/report-dispatch.service.js';
 import { recordWeightContribution } from '../services/challenge-progress.service.js';
 import { ASSET_DESCRIPTION_MARKERS } from '../services/report-expiry.js';
 import { authenticate, requireAdmin, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
+import {
+  createReportPdfTempPath,
+  generateReportPdfToFile,
+  normalizeReportPdfPayload,
+  reportPdfFileName,
+  ReportPdfError,
+} from '../services/report-pdf.service.js';
+import { promises as fsPromises } from 'node:fs';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 function normalizeLocation(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -43,10 +60,12 @@ router.delete('/purge', requireAdmin, async (req: Request, res: Response): Promi
   }
 });
 
-// GET /api/reports — any authenticated role
+// GET /api/reports — any authenticated role.
+// Optional pagination: ?limit=N (1..5000) & ?offset=N. Photo evidence is
+// never embedded in this payload — rows carry photoUrl instead.
 router.get('/', authenticate, async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status, category, reporterId, schoolYearId } = req.query;
+    const { status, category, reporterId, schoolYearId, limit, offset } = req.query;
 
     const where: any = {};
     if (status) where.status = status as ReportStatus;
@@ -60,12 +79,19 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<any> 
       if (activeSyId) where.schoolYearId = activeSyId;
     }
 
+    const take = limit ? Math.min(Math.max(parseInt(String(limit), 10) || 0, 1), 5000) : undefined;
+    const skip = offset ? Math.max(parseInt(String(offset), 10) || 0, 0) : undefined;
+
     const reports = await prisma.report.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take,
+      skip,
+      // Base64 photo evidence is fetched per report via /reports/:id/photo.
+      omit: { imageUrl: true },
       include: {
         // Never expose reporter email in list payloads.
-        reporter: { select: { id: true, name: true, role: true } },
+        reporter: { select: { id: true, name: true, role: true, gradeLevel: true, sectionName: true } },
         assignedMrf: { select: { id: true, name: true } },
       },
     });
@@ -83,7 +109,6 @@ function mapWasteCategory(cat?: string): WasteCategory {
   const upper = cat.toUpperCase();
   if (upper === 'BIODEGRADABLE' || upper === 'ORGANIC') return WasteCategory.BIODEGRADABLE;
   if (upper === 'RECYCLABLE') return WasteCategory.RECYCLABLE;
-  if (upper === 'HAZARDOUS') return WasteCategory.HAZARDOUS;
   return WasteCategory.NON_BIODEGRADABLE;
 }
 
@@ -147,6 +172,7 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
         category: cat,
         status: { in: [ReportStatus.PENDING, ReportStatus.DISPATCHED] },
       },
+      select: { id: true },
     });
 
     if (existingActive) {
@@ -156,26 +182,63 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
     let cleanTitle = (title || 'Waste Report').replace(/\s*at\s*Grid\s*\[[^\]]+\]/gi, '').replace(/\s*Grid\s*\[[^\]]+\]/gi, '').trim() || 'Scattered Debris';
     let cleanLoc = locName.replace(/\s*at\s*Grid\s*\[[^\]]+\]/gi, '').replace(/\s*Grid\s*\[[^\]]+\]/gi, '').trim() || 'Campus Location';
 
-    const report = await prisma.report.create({
-      data: {
-        title: cleanTitle,
-        description: description || '',
-        urgency: (urgency as Urgency) || Urgency.MEDIUM,
-        category: cat,
-        lat: coordinates.lat || 14.5995,
-        lng: coordinates.lng || 120.9842,
-        locationName: cleanLoc,
-        locationKey: normalizeLocation(cleanLoc),
-        reporterId: userId,
-        imageUrl: imageUrl || null,
-        reportType: derivedType,
-        pointsAwarded: 0,
-        schoolYearId: await getActiveSchoolYearId(),
-      },
-      include: {
-        reporter: { select: { id: true, name: true, role: true } },
-      },
-    });
+    // Photo evidence: new uploads are written to disk (the DB stores only the
+    // path). Legacy external URLs (mock/dev image links) stay in image_url.
+    const reportId = crypto.randomUUID();
+    let storedPhotoPath: string | null = null;
+    let externalImageUrl: string | null = null;
+
+    if (typeof imageUrl === 'string' && imageUrl.trim().length > 0) {
+      const value = imageUrl.trim();
+      if (value.startsWith('data:')) {
+        try {
+          storedPhotoPath = storeReportPhoto(reportId, value).photoPath;
+        } catch (error: any) {
+          const status = error instanceof ReportPhotoError ? error.status : 400;
+          return res.status(status).json({
+            error: error.message || 'Invalid photo evidence',
+            code: 'INVALID_PHOTO',
+          });
+        }
+      } else if (/^https?:\/\//i.test(value) && value.length <= 2000) {
+        externalImageUrl = value;
+      } else {
+        return res.status(400).json({
+          error: 'imageUrl must be an image data URL or an http(s) URL.',
+          code: 'INVALID_PHOTO_URL',
+        });
+      }
+    }
+
+    let report;
+    try {
+      report = await prisma.report.create({
+        data: {
+          id: reportId,
+          title: cleanTitle,
+          description: description || '',
+          urgency: (urgency as Urgency) || Urgency.MEDIUM,
+          category: cat,
+          lat: coordinates.lat || 14.5995,
+          lng: coordinates.lng || 120.9842,
+          locationName: cleanLoc,
+          locationKey: normalizeLocation(cleanLoc),
+          reporterId: userId,
+          photoPath: storedPhotoPath,
+          imageUrl: externalImageUrl,
+          reportType: derivedType,
+          pointsAwarded: 0,
+          schoolYearId: await getActiveSchoolYearId(),
+        },
+        include: {
+          reporter: { select: { id: true, name: true, role: true } },
+        },
+      });
+    } catch (createError) {
+      // Never leave an orphan photo file behind when the row insert fails.
+      if (storedPhotoPath) deleteReportPhoto(storedPhotoPath);
+      throw createError;
+    }
 
     return res.status(201).json(formatReportResponse(report));
   } catch (error) {
@@ -201,7 +264,14 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
 
     const targetReport = await prisma.report.findUnique({
       where: { id: targetId },
-      include: { reporter: { select: { id: true, role: true } } },
+      select: {
+        id: true,
+        status: true,
+        isVerified: true,
+        locationKey: true,
+        category: true,
+        schoolYearId: true,
+      },
     });
     if (!targetReport) {
       return res.status(404).json({ error: 'Report not found' });
@@ -308,6 +378,7 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
       const result = await tx.report.update({
         where: { id: targetId },
         data,
+        omit: { imageUrl: true },
         include: {
           reporter: { select: { id: true, name: true, role: true } },
           assignedMrf: { select: { id: true, name: true } },
@@ -364,7 +435,7 @@ router.patch('/:id/status', requireRole('ADMIN', 'MRF'), async (req: Request, re
       }
 
       return result;
-    });
+    }, { timeout: 15_000 }); // stream collection performs per-stream award work; 5s default is too tight
 
     return res.json({
       ...formatReportResponse(updated),
@@ -383,7 +454,10 @@ router.post('/:id/verify', requireAdmin, async (req: Request, res: Response): Pr
     const { id } = req.params;
     const targetId = Array.isArray(id) ? id[0] : id;
 
-    const report = await prisma.report.findUnique({ where: { id: targetId } });
+    const report = await prisma.report.findUnique({
+      where: { id: targetId },
+      select: { id: true, status: true },
+    });
     if (!report) {
       return res.status(404).json({ error: 'Report not found' });
     }
@@ -457,6 +531,109 @@ router.post('/verify-batch', requireAdmin, async (req: Request, res: Response): 
       return res.status(500).json({ error: 'Point system not configured', code: 'CONFIGURATION_ERROR' });
     }
     return res.status(500).json({ error: 'Failed to verify reports' });
+  }
+});
+
+// GET /api/reports/:id/photo — authenticated photo evidence for one report.
+// New rows stream the file from disk; legacy rows fall back to the base64
+// data URL (until the backfill script has moved them); external URLs redirect.
+router.get('/:id/photo', authenticate, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const targetId = Array.isArray(id) ? id[0] : id;
+
+    const report = await prisma.report.findUnique({
+      where: { id: targetId },
+      select: { imageUrl: true, photoPath: true },
+    });
+    if (!report) {
+      return res.status(404).json({ error: 'No photo for this report' });
+    }
+
+    if (report.photoPath) {
+      const absolute = resolveReportPhotoFile(report.photoPath);
+      const contentType = absolute ? reportPhotoContentType(absolute) : null;
+      if (!absolute || !contentType) {
+        return res.status(404).json({ error: 'Photo file is missing' });
+      }
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'private, max-age=86400, immutable');
+      return res.sendFile(absolute, (error) => {
+        if (error) console.error('Report photo send error:', error.message);
+      });
+    }
+
+    const imageUrl = report.imageUrl;
+    if (!imageUrl) {
+      return res.status(404).json({ error: 'No photo for this report' });
+    }
+
+    if (/^https?:\/\//i.test(imageUrl)) {
+      return res.redirect(imageUrl);
+    }
+
+    const legacy = parseLegacyPhotoDataUrl(imageUrl);
+    if (!legacy) {
+      return res.status(404).json({ error: 'Unsupported photo format' });
+    }
+
+    res.setHeader('Content-Type', legacy.mime);
+    res.setHeader('Cache-Control', 'private, max-age=86400, immutable');
+    res.setHeader('Content-Length', legacy.buffer.length.toString());
+    return res.send(legacy.buffer);
+  } catch (error) {
+    console.error('Report photo error:', error);
+    return res.status(500).json({ error: 'Failed to load report photo' });
+  }
+});
+
+// POST /api/reports/export-pdf — render the exactly-filtered report table the
+// client posts into a letterhead PDF (same flow as certificate view/download).
+// At most two renders run at once; each streams to a temp file so the server
+// never holds the document chunks + concatenated buffer + response copy.
+let activePdfExports = 0;
+const MAX_CONCURRENT_PDF_EXPORTS = 2;
+
+router.post('/export-pdf', authenticate, async (req: Request, res: Response): Promise<any> => {
+  if (activePdfExports >= MAX_CONCURRENT_PDF_EXPORTS) {
+    res.setHeader('Retry-After', '5');
+    return res.status(429).json({
+      error: 'Too many PDF exports in progress. Please try again shortly.',
+      code: 'PDF_BUSY',
+    });
+  }
+
+  activePdfExports += 1;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    activePdfExports = Math.max(0, activePdfExports - 1);
+  };
+
+  let tempPath: string | null = null;
+  try {
+    const payload = normalizeReportPdfPayload(req.body);
+    tempPath = createReportPdfTempPath();
+    await generateReportPdfToFile(payload, tempPath);
+    const fileName = reportPdfFileName(payload.title);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+
+    const fileToSend = tempPath;
+    return res.sendFile(fileToSend, (error) => {
+      release();
+      void fsPromises.rm(fileToSend, { force: true }).catch(() => undefined);
+      if (error) console.error('Report PDF send error:', error.message);
+    });
+  } catch (error: any) {
+    release();
+    if (tempPath) void fsPromises.rm(tempPath, { force: true }).catch(() => undefined);
+    if (error instanceof ReportPdfError) {
+      return res.status(error.status).json({ error: error.message, code: 'REPORT_PDF_INVALID' });
+    }
+    console.error('Report PDF export error:', error);
+    return res.status(500).json({ error: 'Failed to generate report PDF' });
   }
 });
 

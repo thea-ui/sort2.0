@@ -147,11 +147,37 @@ function formatRecipientName(rawName: string): string {
     .join(' ');
 }
 
+let activeCertificateRenders = 0;
+const MAX_CONCURRENT_CERTIFICATE_RENDERS = 2;
+
+export class CertificatePdfBusyError extends Error {
+  code = 'CERTIFICATE_PDF_BUSY';
+  constructor() {
+    super('Too many certificate PDFs are being generated. Please try again shortly.');
+    this.name = 'CertificatePdfBusyError';
+  }
+}
+
 /**
  * `brandingOverride` is injectable so tests (and callers that already hold a
  * branding snapshot) can skip the DB round trip.
  */
 export async function generateCertificatePDF(
+  data: CertificateData,
+  brandingOverride?: CertificateBranding
+): Promise<Buffer> {
+  if (activeCertificateRenders >= MAX_CONCURRENT_CERTIFICATE_RENDERS) {
+    throw new CertificatePdfBusyError();
+  }
+  activeCertificateRenders += 1;
+  try {
+    return await renderCertificatePDFInternal(data, brandingOverride);
+  } finally {
+    activeCertificateRenders = Math.max(0, activeCertificateRenders - 1);
+  }
+}
+
+async function renderCertificatePDFInternal(
   data: CertificateData,
   brandingOverride?: CertificateBranding
 ): Promise<Buffer> {

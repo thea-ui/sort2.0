@@ -2,8 +2,10 @@ import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { requireAdmin, requireRole } from '../middleware/auth.js';
+import { PrismaRateLimitStore } from '../lib/rate-limit-store.js';
 import { getAtlasConfig, syncAtlasMap } from '../services/atlas-map.service.js';
 import { ATLAS_ASSETS_DIR } from '../services/atlas-map-image.service.js';
 import {
@@ -12,7 +14,6 @@ import {
 } from '../services/atlas-sync-scheduler.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const ALL_VIEWER_ROLES = ['STUDENT', 'TEACHER', 'MRF', 'ADMIN'] as const;
 
@@ -25,8 +26,11 @@ const CONTENT_TYPES: Record<string, string> = {
 
 const atlasSyncLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 8, // admin-only manual trigger; protects ATLAS from hammering while keeping smoke+audit runs green
-
+  // Admin-only manual trigger. The shared DB store persists this budget across
+  // processes, and the smoke + audit suites together trigger several syncs, so
+  // keep headroom while still protecting ATLAS from hammering.
+  limit: 30,
+  store: new PrismaRateLimitStore(),
   standardHeaders: false,
   legacyHeaders: false,
   handler: (_req, res) =>
@@ -139,11 +143,14 @@ router.get(
         return res.status(304).end();
       }
 
-      const body = fs.readFileSync(absolute);
+      // Stream from disk instead of reading the whole image into memory per
+      // request (sendFile also serves Range requests).
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'private, max-age=300');
       if (etag) res.setHeader('ETag', etag);
-      return res.send(body);
+      return res.sendFile(absolute, (error) => {
+        if (error) console.error('[Atlas] Campus image send error:', error.message);
+      });
     } catch (error: any) {
       console.error('[Atlas] Fetch campus image error:', error?.message);
       return res.status(500).json({ error: 'Failed to load campus image' });

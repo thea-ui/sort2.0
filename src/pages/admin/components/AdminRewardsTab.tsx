@@ -8,7 +8,6 @@ import { RewardEditModal } from './RewardEditModal';
 import type { RewardPatch } from '../../../utils/rewardCatalog';
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { LoadingState } from '../../../components/common/LoadingState';
-import { PageHeader } from '../../../components/layout/PageHeader';
 
 interface AdminRewardsTabProps {
   showToast: (msg: string) => void;
@@ -157,26 +156,7 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Rewards & Prize Claims"
-        actions={
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={loading}
-            className="px-3.5 py-2 rounded-xl bg-white border border-[var(--primary)]/10 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-          >
-            {loading ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <RefreshCw size={13} className="text-[var(--accent)]" />
-            )}
-            Refresh
-          </button>
-        }
-      />
-
+    <div className="space-y-4 animate-fade-in">
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
@@ -219,22 +199,37 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
         ))}
       </div>
 
-      {/* View toggle */}
-      <div className="flex items-center gap-2">
-        {(['claims', 'catalog'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setView(tab)}
-            className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-              view === tab
-                ? 'bg-[var(--primary)] text-white shadow-sm'
-                : 'bg-white text-[var(--text-strong)]/60 border border-[var(--primary)]/10 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)]'
-            }`}
-          >
-            {tab === 'claims' ? `Claims Queue (${claims.length})` : `Prize Catalog (${catalog.length})`}
-          </button>
-        ))}
+      {/* View toggle + refresh */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {(['claims', 'catalog'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setView(tab)}
+              className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                view === tab
+                  ? 'bg-[var(--primary)] text-white shadow-sm'
+                  : 'bg-white text-[var(--text-strong)]/60 border border-[var(--primary)]/10 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)]'
+              }`}
+            >
+              {tab === 'claims' ? `Claims Queue (${claims.length})` : `Prize Catalog (${catalog.length})`}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={loading}
+          className="px-3.5 py-2 rounded-xl bg-white border border-[var(--primary)]/10 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+        >
+          {loading ? (
+            <Loader2 size={13} className="animate-spin" />
+          ) : (
+            <RefreshCw size={13} className="text-[var(--accent)]" />
+          )}
+          Refresh
+        </button>
       </div>
 
       {error && (

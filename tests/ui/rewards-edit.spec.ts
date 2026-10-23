@@ -10,7 +10,8 @@ import { seedSession } from './helpers/session';
 async function openCatalog(page: import('@playwright/test').Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Rewards' }).first().click();
-  await expect(page.getByText('Rewards & Prize Claims')).toBeVisible();
+  // The card title varies; the catalog tab button is the stable anchor.
+  await expect(page.getByRole('button', { name: /^Prize Catalog/ })).toBeVisible();
   await page.getByRole('button', { name: /^Prize Catalog/ }).click();
 }
 

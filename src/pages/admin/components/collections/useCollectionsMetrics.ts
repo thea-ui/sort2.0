@@ -4,10 +4,10 @@ import {
   ArrowUpRight,
   Award,
   Coins,
+  Cylinder,
   FileText,
   Package,
   Scale,
-  Sparkles,
   Truck,
   Wine,
 } from 'lucide-react';
@@ -41,14 +41,18 @@ export interface ItemizedRecyclable {
   stock?: MarketStockItem;
   soldRevenuePhp: number;
   icon: React.ElementType;
+  /** Raw ramp shade — icon tile and progress bar. */
   color: string;
+  /** Readable text shade of the same ramp step (revenue, %) . */
+  strongColor: string;
+  barColor: string;
   bgColor: string;
   borderColor: string;
 }
 
 export interface ResidualWasteSummary {
   category: string;
-  countLabel: string;
+  count: number;
   weightKg: number;
   avgKg: number;
   unweighed: number;
@@ -90,6 +94,13 @@ export function useCollectionsMetrics({
     [scrapMaterials, scrapSalesHistory],
   );
 
+  // Market approvals use the same WMR series as scrap batches, continuing past
+  // whatever reference is already stored on the recyclable stocks.
+  const nextMarketApprovalReference = useMemo(
+    () => generateScrapApprovalReference(Object.values(stocksRecord)),
+    [stocksRecord],
+  );
+
   const totalMRFRevenuePhp = totalVendorSales;
   const grandTotalRevenuePhp = totalMRFRevenuePhp + totalScrapSales;
 
@@ -118,6 +129,9 @@ export function useCollectionsMetrics({
   const residualCount = residualReports.length;
   const residualUnweighed = countUnweighedResidual(residualReports);
 
+  // Material accents follow the Overview card ramp (red → terracotta → amber
+  // → gold, `--ramp-1..4`): one shade per card, stepping lighter left to
+  // right — the same scheme as the Campus Analytics KPI row.
   const itemizedRecyclables: ItemizedRecyclable[] = [
     {
       code: 'pet_plastic',
@@ -126,9 +140,11 @@ export function useCollectionsMetrics({
       stock: stocksRecord['pet_plastic'],
       soldRevenuePhp: categoryRevenueMap['pet_plastic'] || 0,
       icon: Package,
-      color: 'text-[var(--text-strong)]',
-      bgColor: 'bg-[var(--primary)]/10',
-      borderColor: 'border-[var(--primary)]/25',
+      color: 'text-[var(--ramp-1)]',
+      strongColor: 'text-[var(--ramp-1-strong)]',
+      barColor: 'bg-[var(--ramp-1)]',
+      bgColor: 'bg-[var(--ramp-1)]/10',
+      borderColor: 'border-[var(--ramp-1)]/25',
     },
     {
       code: 'glass',
@@ -137,9 +153,11 @@ export function useCollectionsMetrics({
       stock: stocksRecord['glass'],
       soldRevenuePhp: categoryRevenueMap['glass'] || 0,
       icon: Wine,
-      color: 'text-[var(--accent)]',
-      bgColor: 'bg-[var(--primary)]/10',
-      borderColor: 'border-emerald-200',
+      color: 'text-[var(--ramp-2)]',
+      strongColor: 'text-[var(--ramp-2-strong)]',
+      barColor: 'bg-[var(--ramp-2)]',
+      bgColor: 'bg-[var(--ramp-2)]/10',
+      borderColor: 'border-[var(--ramp-2)]/25',
     },
     {
       code: 'aluminum_cans',
@@ -147,10 +165,12 @@ export function useCollectionsMetrics({
       shortName: 'Aluminum Cans',
       stock: stocksRecord['aluminum_cans'],
       soldRevenuePhp: categoryRevenueMap['aluminum_cans'] || 0,
-      icon: Sparkles,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200',
+      icon: Cylinder,
+      color: 'text-[var(--ramp-3)]',
+      strongColor: 'text-[var(--ramp-3-strong)]',
+      barColor: 'bg-[var(--ramp-3)]',
+      bgColor: 'bg-[var(--ramp-3)]/10',
+      borderColor: 'border-[var(--ramp-3)]/25',
     },
     {
       code: 'cardboard',
@@ -159,15 +179,17 @@ export function useCollectionsMetrics({
       stock: stocksRecord['cardboard'],
       soldRevenuePhp: categoryRevenueMap['cardboard'] || 0,
       icon: FileText,
-      color: 'text-[var(--gold)]',
-      bgColor: 'bg-[var(--gold)]/10',
-      borderColor: 'border-[var(--gold)]/25',
+      color: 'text-[var(--ramp-4)]',
+      strongColor: 'text-[var(--ramp-4-strong)]',
+      barColor: 'bg-[var(--ramp-4)]',
+      bgColor: 'bg-[var(--ramp-4)]/10',
+      borderColor: 'border-[var(--ramp-4)]/25',
     },
   ];
 
   const residualWaste: ResidualWasteSummary = {
     category: 'Residual Waste Volume',
-    countLabel: `${residualCount} Non-Recyclable Batch${residualCount === 1 ? '' : 'es'}`,
+    count: residualCount,
     weightKg: residualWeightKg > 0 ? residualWeightKg : 0.0,
     avgKg:
       residualCount - residualUnweighed > 0
@@ -245,6 +267,7 @@ export function useCollectionsMetrics({
     totalMRFRevenuePhp,
     grandTotalRevenuePhp,
     approveSaleBatch,
+    nextMarketApprovalReference,
     scrapMaterials,
     totalScrapSales,
     approveScrapSale,

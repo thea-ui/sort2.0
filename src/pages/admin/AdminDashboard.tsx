@@ -10,8 +10,7 @@ import { AdminSettingsTab } from './components/AdminSettingsTab';
 import { AdminCampusNewsTab } from './components/AdminCampusNewsTab';
 import { AdminUsersTab } from './components/AdminUsersTab';
 import { AdminAuditLogsTab } from './components/AdminAuditLogsTab';
-import { AdminLedgerPage } from './components/AdminLedgerPage';
-import { AdminOverviewTab } from './components/overview/AdminOverviewTab';
+import { ReportsHubTab } from './components/reports-hub/ReportsHubTab';
 import { AdminWarningsTab } from './components/warnings/AdminWarningsTab';
 import { AdminSyncLogsTab } from './components/sync/AdminSyncLogsTab';
 import { SETTINGS_SUBITEMS } from '../../components/layout/DashboardLayout';
@@ -24,7 +23,7 @@ export interface AdminDashboardProps {
 
 /**
  * Admin console shell. Views live in dedicated modules:
- * overview/AdminOverviewTab, warnings/AdminWarningsTab, sync/AdminSyncLogsTab,
+ * warnings/AdminWarningsTab, sync/AdminSyncLogsTab,
  * plus the per-domain tabs under components/.
  */
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setActiveTab }) => {
@@ -51,17 +50,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
   return (
     <div className="space-y-6">
-      {/* OVERVIEW / ANALYTICS DASHBOARD VIEW FOR ADMIN */}
+      {/* OVERVIEW / OPERATIONAL ANALYTICS DASHBOARD VIEW FOR ADMIN */}
       {(activeTab === 'overview' || activeTab === 'admin-analytics') && (
-        <AdminOverviewTab
-          reports={reports}
-          users={users}
-          onNavigate={(tab) => setActiveTab?.(tab)}
-        />
-      )}
-
-      {/* OPERATIONAL ANALYTICS / IMPACT TAB */}
-      {activeTab === 'admin-impact' && (
         <AdminImpactTab
           reports={reports}
           users={users}
@@ -87,6 +77,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
         />
       )}
 
+      {/* REPORTS HUB — folder browser, print/PDF archive, ledger + year records */}
+      {activeTab === 'admin-reports-hub' && <ReportsHubTab />}
+
       {/* COLLECTIONS MANAGEMENT TAB */}
       {activeTab === 'admin-collections' && (
         <AdminCollectionsTab reports={reports} users={users} settings={settings} />
@@ -100,9 +93,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
       {/* CAMPUS NEWS TAB */}
       {activeTab === 'admin-campus-news' && <AdminCampusNewsTab />}
-
-      {/* SCHOOL YEAR LEDGER + MANAGEMENT */}
-      {activeTab === 'admin-ledger' && <AdminLedgerPage showToast={showAdminToast} />}
 
       {/* USER ACCOUNTS & ROLE MANAGEMENT */}
       {activeTab === 'admin-users' && <AdminUsersTab users={users} />}

@@ -72,7 +72,7 @@ interface SubmitReportTabProps {
 }
 
 // The campus operates the three admin-managed streams: biodegradable,
-// non-biodegradable and recyclable. Hazardous is intentionally not offered.
+// non-biodegradable and recyclable.
 type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
 export type BinReportStatusState = 'AVAILABLE' | 'REPORTED_FULL' | 'DISPATCHED' | 'LIMIT_REACHED' | 'NO_BIN' | 'UNAVAILABLE';
 

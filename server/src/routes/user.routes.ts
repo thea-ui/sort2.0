@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { authenticate, optionalAuthenticate, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
-import { generateCertificatePDF } from '../services/certificate-pdf.service.js';
+import { generateCertificatePDF, CertificatePdfBusyError } from '../services/certificate-pdf.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // GET /api/users
 // Privacy: anonymous callers get a minimised projection (no email, employee ID,
@@ -15,11 +15,20 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response): Promi
     const role = (req as AuthenticatedRequest).userRole;
     const isStaff = role === 'ADMIN' || role === 'TEACHER' || role === 'MRF';
 
+    // Bounded list: tenants can hold thousands of synced users, and the old
+    // unbounded response materialised every row on each 20s poll.
+    const rawLimit = Number.parseInt(String(req.query.limit ?? ''), 10);
+    const rawOffset = Number.parseInt(String(req.query.offset ?? ''), 10);
+    const take = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 500;
+    const skip = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
+
     const users = await prisma.user.findMany({
       where: {
         syncSource: 'ENROLLPRO',
       },
       orderBy: { name: 'asc' },
+      take,
+      skip,
       select: isStaff
         ? {
             id: true,
@@ -410,12 +419,18 @@ router.get('/:id/certificate/:certName/download', authenticate, async (req: Requ
     const schoolYearLabel = activeSY?.label || 'Current';
 
     // Get leaderboard rank for this user
-    const students = await prisma.user.findMany({
-      where: { role: 'STUDENT', syncSource: 'ENROLLPRO', archivedAt: null, enrollmentStatus: { notIn: ['NOT_ENROLLED', 'ALUMNI'] } },
-      orderBy: { points: 'desc' },
-      select: { id: true },
+    // Rank without materialising the whole leaderboard: count the students
+    // ahead of this user's points (ties share the rank).
+    const studentsAhead = await prisma.user.count({
+      where: {
+        role: 'STUDENT',
+        syncSource: 'ENROLLPRO',
+        archivedAt: null,
+        enrollmentStatus: { notIn: ['NOT_ENROLLED', 'ALUMNI'] },
+        points: { gt: user.points },
+      },
     });
-    const rank = students.findIndex(s => s.id === targetId) + 1;
+    const rank = studentsAhead + 1;
 
     const pdfBuffer = await generateCertificatePDF({
       studentName: user.name,
@@ -436,6 +451,10 @@ router.get('/:id/certificate/:certName/download', authenticate, async (req: Requ
 
     return res.send(pdfBuffer);
   } catch (error) {
+    if (error instanceof CertificatePdfBusyError) {
+      res.setHeader('Retry-After', '5');
+      return res.status(429).json({ error: error.message, code: error.code });
+    }
     console.error('Download certificate error:', error);
     return res.status(500).json({ error: 'Failed to generate certificate PDF' });
   }
@@ -468,12 +487,18 @@ router.get('/:id/certificate/:certName/view', authenticate, async (req: Request,
     const activeSY = await prisma.schoolYear.findFirst({ where: { isActive: true } });
     const schoolYearLabel = activeSY?.label || 'Current';
 
-    const students = await prisma.user.findMany({
-      where: { role: 'STUDENT', syncSource: 'ENROLLPRO', archivedAt: null, enrollmentStatus: { notIn: ['NOT_ENROLLED', 'ALUMNI'] } },
-      orderBy: { points: 'desc' },
-      select: { id: true },
+    // Rank without materialising the whole leaderboard: count the students
+    // ahead of this user's points (ties share the rank).
+    const studentsAhead = await prisma.user.count({
+      where: {
+        role: 'STUDENT',
+        syncSource: 'ENROLLPRO',
+        archivedAt: null,
+        enrollmentStatus: { notIn: ['NOT_ENROLLED', 'ALUMNI'] },
+        points: { gt: user.points },
+      },
     });
-    const rank = students.findIndex(s => s.id === targetId) + 1;
+    const rank = studentsAhead + 1;
 
     const pdfBuffer = await generateCertificatePDF({
       studentName: user.name,
@@ -493,6 +518,10 @@ router.get('/:id/certificate/:certName/view', authenticate, async (req: Request,
 
     return res.send(pdfBuffer);
   } catch (error) {
+    if (error instanceof CertificatePdfBusyError) {
+      res.setHeader('Retry-After', '5');
+      return res.status(429).json({ error: error.message, code: error.code });
+    }
     console.error('View certificate error:', error);
     return res.status(500).json({ error: 'Failed to generate certificate PDF' });
   }

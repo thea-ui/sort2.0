@@ -31,7 +31,9 @@ import {
 } from '../../../utils/reportUtils';
 import { formatDateTime } from '../../../utils/dateFormat';
 import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
+import { EvidenceThumbnail } from '../../../components/common/EvidenceImage';
 import { ReportLocationMiniMap } from '../../../components/map/ReportLocationMiniMap';
+import { useReportPhoto } from '../../../hooks/useReportPhoto';
 
 type DisplayStatus = 'Pending' | 'Verified' | 'Dispatched' | 'Resolved' | 'Dismissed' | 'Expired';
 type StatusFilter = 'All' | DisplayStatus;
@@ -202,6 +204,7 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
   const [localStatusFilter, setLocalStatusFilter] = useState<StatusFilter>('All');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const selectedPhotoSrc = useReportPhoto(selectedReport?.photoUrl, selectedReport?.imageUrl);
 
   // The inline detail modal has no Dialog primitive: support Escape like the
   // rest of the app so keyboard users can dismiss it.
@@ -404,19 +407,13 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
                     </div>
                   </div>
 
-                  {rep.imageUrl && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLightboxSrc(rep.imageUrl ?? null);
-                      }}
-                      aria-label="View evidence photo full screen"
-                      className="h-12 w-12 shrink-0 cursor-zoom-in overflow-hidden rounded-xl border border-[var(--primary)]/10 shadow-2xs transition-transform hover:scale-[1.04] sm:h-14 sm:w-14"
-                    >
-                      <img src={rep.imageUrl} alt="Evidence" className="h-full w-full object-cover" />
-                    </button>
-                  )}
+                  <EvidenceThumbnail
+                    photoUrl={rep.photoUrl}
+                    imageUrl={rep.imageUrl}
+                    alt="Evidence"
+                    onOpen={setLightboxSrc}
+                    className="h-12 w-12 shrink-0 cursor-zoom-in overflow-hidden rounded-xl border border-[var(--primary)]/10 shadow-2xs transition-transform hover:scale-[1.04] sm:h-14 sm:w-14"
+                  />
                 </div>
               </div>
             );
@@ -540,13 +537,13 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
 
               {/* Photo Evidence & Notes */}
               <div className="space-y-2">
-                {selectedReport.imageUrl && (
+                {selectedPhotoSrc && (
                   <button
                     type="button"
-                    onClick={() => setLightboxSrc(selectedReport.imageUrl ?? null)}
+                    onClick={() => setLightboxSrc(selectedPhotoSrc)}
                     className="group relative block w-full rounded-2xl overflow-hidden border border-gray-200 h-44 sm:h-52 bg-gray-100 shadow-inner cursor-zoom-in"
                   >
-                    <img src={selectedReport.imageUrl} alt="Waste evidence" className="w-full h-full object-cover" />
+                    <img src={selectedPhotoSrc} alt="Waste evidence" className="w-full h-full object-cover" />
                     <span className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-[10px] font-mono text-white backdrop-blur-xs">
                       <Maximize2 size={11} /> Tap to view full screen
                     </span>

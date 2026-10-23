@@ -40,17 +40,37 @@ test('admin: report evidence opens fullscreen photo viewer @mobile', async ({ pa
   test.skip(!seeded, 'no admin identity');
 
   await page.goto('/');
-  await page.getByTestId('mobile-bottom-nav').getByRole('button', { name: 'Reports' }).click();
+  // The admin mobile bottom nav exposes the folder hub; the verify queue (with
+  // the per-report inspect modal) lives behind More → Verify Reports.
+  await page.getByTestId('mobile-bottom-nav').getByRole('button', { name: 'More navigation' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Verify Reports' }).click();
 
-  const eyeButton = page.locator('button[title="Inspect details"]').first();
-  const hasReports = await eyeButton.count();
-  test.skip(hasReports === 0, 'no reports available to inspect');
+  const inspectButtons = page.locator('button[title^="Inspect details"]');
+  await expect(inspectButtons.first()).toBeVisible({ timeout: 25_000 });
 
-  await expect(eyeButton).toBeVisible({ timeout: 25_000 });
-  await eyeButton.click();
+  // Seeded reports may not carry evidence; walk the visible queue (bounded)
+  // until a report with a photo is found.
+  const maxToTry = Math.min(await inspectButtons.count(), 8);
+  let openedEvidence = false;
 
-  const photoButton = page.getByRole('button', { name: /view full screen/i }).first();
-  await expect(photoButton).toBeVisible();
-  await photoButton.click();
-  await expect(page.getByRole('dialog', { name: 'Full screen photo viewer' })).toBeVisible();
+  for (let index = 0; index < maxToTry; index += 1) {
+    await inspectButtons.nth(index).click();
+
+    const photoButton = page.getByRole('button', { name: /view full screen/i }).first();
+    const hasPhoto = await photoButton
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasPhoto) {
+      await photoButton.click();
+      await expect(page.getByRole('dialog', { name: 'Full screen photo viewer' })).toBeVisible();
+      openedEvidence = true;
+      break;
+    }
+
+    await page.getByRole('button', { name: 'Close report details' }).click();
+  }
+
+  test.skip(!openedEvidence, 'no evidence-bearing report in the current verify queue');
 });

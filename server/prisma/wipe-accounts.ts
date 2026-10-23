@@ -1,7 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
+import { prisma } from '../src/lib/prisma.js';
 async function main() {
   console.log('=== Wipe Accounts & User Data ===\n');
   console.log('This will DELETE: users, sessions, and all user-owned data.');

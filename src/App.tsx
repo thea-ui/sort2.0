@@ -24,6 +24,10 @@ const MRFDashboard = lazy(() =>
 const AdminDashboard = lazy(() =>
   import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
 );
+// Standalone printable report page opened in a new tab from the Reports hub.
+const ReportPrintPage = lazy(() =>
+  import('./pages/report-print/ReportPrintPage').then((m) => ({ default: m.ReportPrintPage }))
+);
 
 function RouteFallback() {
   // Loading gate (SMART master handoff Part 1 §4): centered 48px primary ring
@@ -79,6 +83,14 @@ function AppShell({ activeTab, setActiveTab }: { activeTab: string; setActiveTab
       // Authenticated but user data not yet loaded — show a brief loading state
       return <RouteFallback />;
     }
+    if (currentRoute === 'report-print') {
+      // Standalone print view: no dashboard chrome, opened in its own tab.
+      return (
+        <Suspense fallback={<RouteFallback />}>
+          <ReportPrintPage />
+        </Suspense>
+      );
+    }
     if (currentUser?.role === 'STUDENT' || currentUser?.role === 'TEACHER') {
       return (
         <StudentLayout activeTab={activeTab} setActiveTab={setActiveTab}>
@@ -103,6 +115,13 @@ function AppShell({ activeTab, setActiveTab }: { activeTab: string; setActiveTab
       return <AdminLogin onNavigate={navigate} />;
     case 'mrf-login':
       return <MRFLogin onNavigate={navigate} />;
+    case 'report-print':
+      // The page renders its own "session not found" guidance when signed out.
+      return (
+        <Suspense fallback={<RouteFallback />}>
+          <ReportPrintPage />
+        </Suspense>
+      );
     default:
       return <PublicLanding onNavigate={navigate} />;
   }

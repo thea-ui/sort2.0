@@ -1,8 +1,7 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { getTermStatus, TermState } from './certificate.service.js';
 import { startOfDay, endOfDay } from './term-clock.service.js';
-
-const prisma = new PrismaClient();
 
 // Challenges with no academic-term scope are treated as global/legacy.
 export const GLOBAL_QUARTER_CODE = 'GLOBAL';

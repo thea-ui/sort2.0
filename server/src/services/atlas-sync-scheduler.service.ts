@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { syncAtlasMap } from './atlas-map.service.js';
-
-const prisma = new PrismaClient();
 
 export interface AtlasSyncSettings {
   atlasSyncMode: string;
@@ -12,6 +10,7 @@ export const DEFAULT_ATLAS_SYNC_MODE = 'AUTO';
 export const DEFAULT_ATLAS_SYNC_INTERVAL_MINUTES = 15;
 
 let scheduledTask: any = null;
+let rescheduleInFlight: Promise<void> | null = null;
 
 export async function getAtlasSyncSettings(): Promise<AtlasSyncSettings> {
   try {
@@ -67,25 +66,35 @@ export function stopScheduledAtlasSync() {
   }
 }
 
-export async function rescheduleAtlasSync(): Promise<void> {
-  stopScheduledAtlasSync();
+export function rescheduleAtlasSync(): Promise<void> {
+  // Serialize concurrent reschedules so boot + settings updates cannot both
+  // assign the task and orphan a cron schedule.
+  if (rescheduleInFlight) return rescheduleInFlight;
 
-  const { atlasSyncMode, atlasSyncIntervalMinutes } = await getAtlasSyncSettings();
+  rescheduleInFlight = (async () => {
+    stopScheduledAtlasSync();
 
-  if (atlasSyncMode === 'AUTO' && atlasSyncIntervalMinutes > 0) {
-    try {
-      const cron = await import('node-cron');
-      const cronExpression = buildCronExpression(atlasSyncIntervalMinutes);
-      scheduledTask = cron.default.schedule(cronExpression, executeAtlasSync);
-      console.log(
-        `[AtlasScheduler] Auto-sync scheduled every ${atlasSyncIntervalMinutes} minutes (cron: ${cronExpression})`
-      );
-    } catch (err) {
-      console.error('[AtlasScheduler] Failed to schedule cron:', err);
+    const { atlasSyncMode, atlasSyncIntervalMinutes } = await getAtlasSyncSettings();
+
+    if (atlasSyncMode === 'AUTO' && atlasSyncIntervalMinutes > 0) {
+      try {
+        const cron = await import('node-cron');
+        const cronExpression = buildCronExpression(atlasSyncIntervalMinutes);
+        scheduledTask = cron.default.schedule(cronExpression, executeAtlasSync);
+        console.log(
+          `[AtlasScheduler] Auto-sync scheduled every ${atlasSyncIntervalMinutes} minutes (cron: ${cronExpression})`
+        );
+      } catch (err) {
+        console.error('[AtlasScheduler] Failed to schedule cron:', err);
+      }
+    } else {
+      console.log('[AtlasScheduler] Manual mode — no ATLAS cron scheduled');
     }
-  } else {
-    console.log('[AtlasScheduler] Manual mode — no ATLAS cron scheduled');
-  }
+  })().finally(() => {
+    rescheduleInFlight = null;
+  });
+
+  return rescheduleInFlight;
 }
 
 export async function runScheduledAtlasSyncNow(): Promise<void> {

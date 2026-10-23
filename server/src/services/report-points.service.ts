@@ -1,9 +1,8 @@
-import { PrismaClient, Prisma, ReportStatus, Role } from '@prisma/client';
+import { Prisma, ReportStatus, Role } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { recordReportContribution } from './challenge-progress.service.js';
 import { BIN_RESET_TZ, computeResetCycleStart, DEFAULT_RESET_TIME } from './reset-cycle.service.js';
 import { buildStreamAwardPlan } from './report-award-plan.js';
-
-const prisma = new PrismaClient();
 
 function streamLockKey(locationKey: string, category: string, schoolYearId: string): number {
   const raw = `${locationKey}::${category}::${schoolYearId}`;
@@ -83,11 +82,12 @@ export async function approveReports(reportIds: string[]): Promise<ApproveResult
           schoolYearId: target.schoolYearId,
         });
       }
-    });
+    }, { timeout: 15_000 }); // stream-wide verify+award usually exceeds the 5s default
   }
 
   const updated = await prisma.report.findMany({
     where: { id: { in: uniqueIds } },
+    omit: { imageUrl: true },
     include: {
       reporter: { select: { id: true, name: true, role: true, email: true } },
       assignedMrf: { select: { id: true, name: true } },
@@ -157,7 +157,19 @@ export async function awardCollectedReportsWithinTransaction(
   const streamReports = await tx.report.findMany({
     where: streamWhere,
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    include: { reporter: { select: { id: true, role: true, name: true } } },
+    // Only the columns the award planner needs — the previous query loaded the
+    // full row (including reporter join) for every report in the stream.
+    select: {
+      id: true,
+      reporterId: true,
+      isVerified: true,
+      pointsAwardedAt: true,
+      reporterRank: true,
+      category: true,
+      locationKey: true,
+      locationName: true,
+      schoolYearId: true,
+    },
   });
 
   const reporterIds = [...new Set(streamReports.map((r) => r.reporterId))];
@@ -187,9 +199,19 @@ export async function awardCollectedReportsWithinTransaction(
     rankPointsMap,
   });
 
+  // Batch the ledger and balance writes: previously each awarded report issued
+  // its own report re-read, pointHistory insert and user increment.
   const updatedReports: any[] = [];
   const awards: VerifyAward[] = [];
   const challengeCompletions: AwardResult['challengeCompletions'] = [];
+  const pendingPointHistory: {
+    userId: string;
+    amount: number;
+    reason: string;
+    reportId: string;
+    schoolYearId: string | null;
+  }[] = [];
+  const pointsByUser = new Map<string, number>();
 
   for (const { report, rank, points } of streamUpdates) {
     const updateResult = await tx.report.updateMany({
@@ -204,47 +226,44 @@ export async function awardCollectedReportsWithinTransaction(
 
     if (updateResult.count === 0) continue;
 
-    const updatedReport = await tx.report.findUnique({
-      where: { id: report.id },
-      include: {
-        reporter: { select: { id: true, name: true, role: true, email: true } },
-        assignedMrf: { select: { id: true, name: true } },
-      },
-    });
-
-    if (updatedReport) updatedReports.push(updatedReport);
-
     if (points > 0 && rank !== null) {
-      await tx.user.update({
-        where: { id: report.reporterId },
-        data: { points: { increment: points } },
-      });
+      pointsByUser.set(report.reporterId, (pointsByUser.get(report.reporterId) ?? 0) + points);
 
       const ordinal = rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : `${rank}th`;
-      await tx.pointHistory.create({
-        data: {
-          userId: report.reporterId,
-          amount: points,
-          reason: `Collected Report: ${ordinal} Reporter Bonus (+${points} pts) for ${report.locationName}`,
-          reportId: report.id,
-          schoolYearId: report.schoolYearId,
-        },
+      pendingPointHistory.push({
+        userId: report.reporterId,
+        amount: points,
+        reason: `Collected Report: ${ordinal} Reporter Bonus (+${points} pts) for ${report.locationName}`,
+        reportId: report.id,
+        schoolYearId: report.schoolYearId,
       });
 
       awards.push({ reportId: report.id, userId: report.reporterId, amount: points, rank });
     }
 
-    const challengeEvent = report.category === 'HAZARDOUS' ? 'HAZARDOUS_REPORT' : 'REPORT_COUNT';
     const { completions } = await recordReportContribution(tx, {
       id: report.id,
       reporterId: report.reporterId,
       category: report.category,
       locationKey: report.locationKey,
       schoolYearId: report.schoolYearId,
-    }, challengeEvent);
+    });
     challengeCompletions.push(...completions);
   }
 
+  if (pendingPointHistory.length > 0) {
+    await tx.pointHistory.createMany({ data: pendingPointHistory });
+  }
+  for (const [userId, totalPoints] of pointsByUser) {
+    await tx.user.update({
+      where: { id: userId },
+      data: { points: { increment: totalPoints } },
+    });
+  }
+
+  // updatedReports is intentionally empty: the award path runs inside the
+  // caller's transaction and the returned row sets were never consumed
+  // (approval refreshes its own rows; collection returns the updated report).
   return { updatedReports, awards, challengeCompletions };
 }
 
@@ -261,12 +280,17 @@ export function formatReportResponse(report: any) {
     reporterId: report.reporterId,
     reporterName: report.reporter?.name || report.reporterName,
     reporterRole: (report.reporter?.role || report.reporterRole || 'STUDENT').toLowerCase(),
+    reporterGradeLevel: report.reporter?.gradeLevel ?? null,
+    reporterSection: report.reporter?.sectionName ?? null,
     pointsAwarded: report.pointsAwarded,
     reporterRank: report.reporterRank,
     pointsAwardedAt: report.pointsAwardedAt?.toISOString() || null,
     timestamp: report.createdAt?.toISOString() || report.timestamp,
     completedAt: report.completedAt?.toISOString() || null,
-    imageUrl: report.imageUrl,
+    // Photo evidence is served through the dedicated authenticated endpoint
+    // (GET /api/reports/:id/photo) so list and award payloads never carry
+    // multi-MB base64 blobs. Clients render it lazily; a 404 means "no photo".
+    photoUrl: `/api/reports/${report.id}/photo`,
     weightCollected: report.weightCollected,
     isVerified: report.isVerified,
     assignedMrfId: report.assignedMrfId,

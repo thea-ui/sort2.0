@@ -1,6 +1,6 @@
 import React from 'react';
 import { residualRecords, sumResidualKg } from '../../../utils/wasteStreams';
-import { FileText, Package, Sparkles, Trash2, Wine } from 'lucide-react';
+import { Cylinder, FileText, Package, Trash2, Wine } from 'lucide-react';
 import { Report, User as UserType } from '../../../types';
 import { useRecycleMarket } from '../../../hooks/useRecycleMarket';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -39,8 +39,6 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
     (r) => r.status === 'COLLECTED' || r.status === 'RESOLVED',
   );
   const pendingReports = activeReports.filter((r) => r.status === 'PENDING');
-  const dispatchResolutionRate =
-    totalReportsCount > 0 ? Math.round((collectedReports.length / totalReportsCount) * 100) : 100;
 
   // Dynamic Recyclable Waste Composition & Weigh-in Breakdown
   const plasticKg = stocksRecord['pet_plastic']?.accumulatedKg || 0;
@@ -59,51 +57,56 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
   const priceAluminum = stocksRecord['aluminum_cans']?.marketPricePerKg || 45;
   const pricePaper = stocksRecord['cardboard']?.marketPricePerKg || 12;
 
+  const wasteRampShades = [
+    { bgColor: 'bg-[var(--ramp-1)]/10', textColor: 'text-[var(--ramp-1)]', barColor: 'bg-[var(--ramp-1)]', valueColor: 'text-[var(--ramp-1-strong)]' },
+    { bgColor: 'bg-[var(--ramp-2)]/10', textColor: 'text-[var(--ramp-2)]', barColor: 'bg-[var(--ramp-2)]', valueColor: 'text-[var(--ramp-2-strong)]' },
+    { bgColor: 'bg-[var(--ramp-3)]/10', textColor: 'text-[var(--ramp-3)]', barColor: 'bg-[var(--ramp-3)]', valueColor: 'text-[var(--ramp-3-strong)]' },
+    { bgColor: 'bg-[var(--ramp-4)]/10', textColor: 'text-[var(--ramp-4)]', barColor: 'bg-[var(--ramp-4)]', valueColor: 'text-[var(--ramp-4-strong)]' },
+  ];
+
+  // Recoverable streams wear the ramp by volume rank — the largest stream takes
+  // the brand accent and the ramp steps toward gold; residual stays neutral.
   const wasteComposition = [
-    {
-      id: 'plastic',
-      name: 'Plastic Bottles (PET / HDPE)',
-      pct: totalCollectedKg > 0 ? Math.round((plasticKg / totalCollectedKg) * 100) : 0,
-      weightKg: plasticKg,
-      estValuePhp: Math.round(plasticKg * pricePet),
-      icon: Package,
-      bgColor: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
-      textColor: 'text-[var(--text-strong)]',
-      barColor: 'bg-[var(--primary)]',
-    },
-    {
-      id: 'glass',
-      name: 'Glass / Beverage Bottles',
-      pct: totalCollectedKg > 0 ? Math.round((glassKg / totalCollectedKg) * 100) : 0,
-      weightKg: glassKg,
-      estValuePhp: Math.round(glassKg * priceGlass),
-      icon: Wine,
-      bgColor: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
-      textColor: 'text-emerald-600',
-      barColor: 'bg-emerald-500',
-    },
-    {
-      id: 'aluminum',
-      name: 'Aluminum Cans',
-      pct: totalCollectedKg > 0 ? Math.round((aluminumKg / totalCollectedKg) * 100) : 0,
-      weightKg: aluminumKg,
-      estValuePhp: Math.round(aluminumKg * priceAluminum),
-      icon: Sparkles,
-      bgColor: 'bg-amber-50',
-      textColor: 'text-amber-600',
-      barColor: 'bg-amber-500',
-    },
-    {
-      id: 'paper',
-      name: 'Paper & Cardboard',
-      pct: totalCollectedKg > 0 ? Math.round((paperKg / totalCollectedKg) * 100) : 0,
-      weightKg: paperKg,
-      estValuePhp: Math.round(paperKg * pricePaper),
-      icon: FileText,
-      bgColor: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]',
-      textColor: 'text-[var(--gold)]',
-      barColor: 'bg-[var(--gold)]',
-    },
+    ...[
+      {
+        id: 'plastic',
+        name: 'Plastic Bottles (PET / HDPE)',
+        weightKg: plasticKg,
+        price: pricePet,
+        icon: Package,
+      },
+      {
+        id: 'glass',
+        name: 'Glass / Beverage Bottles',
+        weightKg: glassKg,
+        price: priceGlass,
+        icon: Wine,
+      },
+      {
+        id: 'aluminum',
+        name: 'Aluminum Cans',
+        weightKg: aluminumKg,
+        price: priceAluminum,
+        icon: Cylinder,
+      },
+      {
+        id: 'paper',
+        name: 'Paper & Cardboard',
+        weightKg: paperKg,
+        price: pricePaper,
+        icon: FileText,
+      },
+    ]
+      .sort((a, b) => b.weightKg - a.weightKg)
+      .map((item, idx) => ({
+        id: item.id,
+        name: item.name,
+        pct: totalCollectedKg > 0 ? Math.round((item.weightKg / totalCollectedKg) * 100) : 0,
+        weightKg: item.weightKg,
+        estValuePhp: Math.round(item.weightKg * item.price),
+        icon: item.icon,
+        ...wasteRampShades[idx % wasteRampShades.length],
+      })),
     {
       id: 'residual',
       name: 'Residual Waste',
@@ -111,9 +114,10 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
       weightKg: residualKg,
       estValuePhp: 0,
       icon: Trash2,
-      bgColor: 'bg-rose-50',
-      textColor: 'text-rose-600',
-      barColor: 'bg-rose-500',
+      bgColor: 'bg-[var(--text-strong)]/10',
+      textColor: 'text-[var(--text-strong)]/60',
+      barColor: 'bg-[var(--text-strong)]/30',
+      valueColor: 'text-[var(--text-strong)]/60',
     },
   ];
 
@@ -125,12 +129,10 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
   );
   const totalStudentReports = studentReports.length;
   const gradeColorPalette = [
-    { color: 'bg-[var(--accent)]', lightBg: 'bg-[color-mix(in_srgb,var(--accent)_10%,white)]', border: 'border-[var(--accent)]/30' },
-    { color: 'bg-[var(--primary)]', lightBg: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]', border: 'border-[var(--primary)]/25' },
-    { color: 'bg-[var(--gold)]', lightBg: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]', border: 'border-[var(--gold)]/25' },
-    { color: 'bg-amber-500', lightBg: 'bg-amber-50', border: 'border-amber-200' },
-    { color: 'bg-rose-500', lightBg: 'bg-rose-50', border: 'border-rose-200' },
-    { color: 'bg-[var(--primary)]', lightBg: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]', border: 'border-[var(--primary)]/25' },
+    { color: 'bg-[var(--ramp-1)]', lightBg: 'bg-[var(--ramp-1)]/10', border: 'border-[var(--ramp-1)]/30' },
+    { color: 'bg-[var(--ramp-2)]', lightBg: 'bg-[var(--ramp-2)]/10', border: 'border-[var(--ramp-2)]/25' },
+    { color: 'bg-[var(--ramp-3)]', lightBg: 'bg-[var(--ramp-3)]/10', border: 'border-[var(--ramp-3)]/25' },
+    { color: 'bg-[var(--ramp-4)]', lightBg: 'bg-[var(--ramp-4)]/10', border: 'border-[var(--ramp-4)]/25' },
   ];
 
   const gradeCountMap: Record<string, number> = {};
@@ -239,7 +241,6 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
         teacherReportsCount={teacherReportsCount}
         collectedCount={collectedReports.length}
         pendingCount={pendingReports.length}
-        dispatchResolutionRate={dispatchResolutionRate}
         topGradeKey={topGradeKey}
         topGradeSubmissions={topGradeSubmissions}
         topGradeShare={topGradeShare}

@@ -133,7 +133,7 @@ describe('groupReportsByLocation', () => {
     const groups = groupReportsByLocation([
       makeReport({ id: 'rep-1', locationName: 'Canteen', status: 'PENDING' }),
       makeReport({ id: 'rep-2', locationName: 'Canteen', status: 'COLLECTED' }),
-      makeReport({ id: 'rep-3', locationName: 'Gym', category: 'HAZARDOUS' }),
+      makeReport({ id: 'rep-3', locationName: 'Gym', category: 'BIODEGRADABLE' }),
     ]);
     expect(groups).toHaveLength(2);
     const canteen = groups.find((g) => g.locationName === 'Canteen');
@@ -146,7 +146,7 @@ describe('groupReportsByLocation', () => {
 describe('getCategoryLabel', () => {
   it('maps known categories and falls back', () => {
     expect(getCategoryLabel('RECYCLABLE')).toBe('Recyclable');
-    expect(getCategoryLabel('HAZARDOUS')).toBe('Hazardous');
+    expect(getCategoryLabel('UNKNOWN_LEGACY')).toBe('Non-Biodegradable');
     expect(getCategoryLabel(undefined)).toBe('Non-Biodegradable');
   });
 });

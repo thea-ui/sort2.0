@@ -1,3 +1,4 @@
+import { prisma } from '../lib/prisma.js';
 /**
  * Idempotent, non-destructive seeder for the walk-in milestone prize catalog.
  *
@@ -7,10 +8,8 @@
  *
  * Usage: npx tsx src/scripts/seed-walk-in-rewards.ts
  */
-import { PrismaClient } from '@prisma/client';
-import { seedWalkInRewards, PLACEHOLDER_WALK_IN_REWARDS } from '../services/walk-in-rewards.seed.js';
 
-const prisma = new PrismaClient();
+import { seedWalkInRewards, PLACEHOLDER_WALK_IN_REWARDS } from '../services/walk-in-rewards.seed.js';
 
 async function main() {
   const count = await seedWalkInRewards(prisma);

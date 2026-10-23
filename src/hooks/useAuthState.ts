@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { User, Role } from '../types';
-import { apiService, storeRefreshToken, clearRefreshToken } from '../services/api';
+import { apiService, storeRefreshToken, clearRefreshToken, type LoginPortal } from '../services/api';
 
 export type LoginResult =
   | { ok: true; user: User; offlineAuth?: boolean }
@@ -49,9 +49,9 @@ export function useAuthState() {
     return () => clearInterval(intervalId);
   }, [isAuthenticated]);
 
-  const login = async (password: string, identifier: string): Promise<LoginResult> => {
+  const login = async (password: string, identifier: string, portal?: LoginPortal): Promise<LoginResult> => {
     try {
-      const res = await apiService.login(identifier, password);
+      const res = await apiService.login(identifier, password, portal);
       if (res && res.token && res.user) {
         sessionStorage.setItem('sortv2_token', res.token);
         sessionStorage.setItem('sortv2_user_id', res.user.id);

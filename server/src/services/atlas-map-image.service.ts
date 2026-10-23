@@ -65,6 +65,35 @@ export function hashBytes(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }
 
+/** Read the body with a hard byte cap (Content-Length can lie / be absent). */
+async function readBodyWithCap(res: Response, maxBytes: number): Promise<Buffer> {
+  if (!res.body) return Buffer.alloc(0);
+
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new AtlasImageError(`Campus image exceeds ${maxBytes} bytes`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      /* already released after cancel */
+    }
+  }
+  return Buffer.concat(chunks);
+}
+
 export async function downloadCampusImage(
   url: URL,
   fetchImpl: FetchLike = fetch
@@ -84,12 +113,16 @@ export async function downloadCampusImage(
     throw new AtlasImageError(`Unsupported campus image content-type: ${contentType || 'unknown'}`);
   }
 
-  const buffer = Buffer.from(await res.arrayBuffer());
+  // Fail fast on a declared oversize body; the streamed read below still caps
+  // chunked responses that omit Content-Length.
+  const declaredLength = Number(res.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_CAMPUS_IMAGE_BYTES) {
+    throw new AtlasImageError(`Campus image exceeds ${MAX_CAMPUS_IMAGE_BYTES} bytes`);
+  }
+
+  const buffer = await readBodyWithCap(res, MAX_CAMPUS_IMAGE_BYTES);
   if (buffer.length === 0) {
     throw new AtlasImageError('Campus image is empty');
-  }
-  if (buffer.length > MAX_CAMPUS_IMAGE_BYTES) {
-    throw new AtlasImageError(`Campus image exceeds ${MAX_CAMPUS_IMAGE_BYTES} bytes`);
   }
 
   return { buffer, ext, contentType, hash: hashBytes(buffer) };

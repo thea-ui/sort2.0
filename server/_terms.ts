@@ -1,5 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-const p = new PrismaClient();
+import { prisma as p } from './src/lib/prisma.js';
 
 const ENROLLPRO_BASE = process.env.ENROLLPRO_BASE_URL || 'https://dev-jegs.buru-degree.ts.net/api';
 const INTEGRATION_KEY = process.env.ENROLLPRO_SYNC_SECRET || '';

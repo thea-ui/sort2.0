@@ -53,7 +53,7 @@ interface PortalLoginProps {
  * (`--theme-primary`) for the panel and primary action — never a hardcoded hex.
  */
 export const PortalLogin: React.FC<PortalLoginProps> = ({ config, onNavigate }) => {
-  const { login } = useMockData();
+  const { login, logout } = useMockData();
   const { schoolName, schoolAcronym, address, logoUrl, brandingSource } = useTheme();
   const brandIdentity = resolveBrandIdentity({ schoolName, schoolAcronym, logoUrl, brandingSource });
 
@@ -83,10 +83,13 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({ config, onNavigate }) 
     setLoading(true);
     setErrorMsg(null);
     try {
-      const result = await login(password, identifier);
+      const result = await login(password, identifier, config.portal);
       setLoading(false);
       if (result.ok) {
         if (result.user.role !== config.portal) {
+          // Server enforces portal admission; this is a legacy-server fallback
+          // that must never leave a wrong-portal session alive.
+          logout();
           setErrorMsg(ROLE_PORTAL_MESSAGE);
         } else {
           if (remember) localStorage.setItem(REMEMBERED_ID_KEY, identifier.trim());

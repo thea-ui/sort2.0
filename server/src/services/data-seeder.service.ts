@@ -1,6 +1,5 @@
 import {
   Prisma,
-  PrismaClient,
   ChallengeType,
   ReportStatus,
   ReportType,
@@ -11,14 +10,13 @@ import {
   Urgency,
   WasteCategory,
 } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import crypto from 'node:crypto';
 import { BIN_RESET_TZ, DEFAULT_RESET_TIME, computeResetCycleStart } from './reset-cycle.service.js';
 import { computeWalkInPoints, gramsForBottle } from './walk-in.service.js';
 import { resolveChallengeScope, challengeSchoolYearWhere } from './challenge-term.service.js';
 import { ensureChallengesForSchoolYear } from './challenge-catalog.service.js';
 import { isRolloverInProgress } from './rollover.service.js';
-
-const prisma = new PrismaClient();
 
 // ─── Public types ─────────────────────────────────────────────────────
 
@@ -404,7 +402,6 @@ const CATEGORY_POOL: WasteCategory[] = [
   WasteCategory.BIODEGRADABLE,
   WasteCategory.NON_BIODEGRADABLE,
   WasteCategory.NON_BIODEGRADABLE,
-  WasteCategory.HAZARDOUS,
 ];
 
 const WASTE_TITLES: Record<WasteCategory, string[]> = {
@@ -424,11 +421,6 @@ const WASTE_TITLES: Record<WasteCategory, string[]> = {
     'Wrappers and sachets scattered',
     'Overflowing residual waste bin',
   ],
-  [WasteCategory.HAZARDOUS]: [
-    'Discarded batteries found',
-    'Chemical container left unattended',
-    'Broken fluorescent tubes',
-  ],
 };
 
 const WASTE_NOTES = [
@@ -442,8 +434,8 @@ const WASTE_NOTES = [
 const ASSET_TEMPLATES = [
   { pillar: 'FURNITURE', name: 'Broken armchair', category: WasteCategory.NON_BIODEGRADABLE },
   { pillar: 'FURNITURE', name: 'Damaged student desk', category: WasteCategory.NON_BIODEGRADABLE },
-  { pillar: 'ELECTRONICS', name: 'Faulty LCD projector', category: WasteCategory.HAZARDOUS },
-  { pillar: 'ELECTRONICS', name: 'Non-working desktop computer', category: WasteCategory.HAZARDOUS },
+  { pillar: 'ELECTRONICS', name: 'Faulty LCD projector', category: WasteCategory.NON_BIODEGRADABLE },
+  { pillar: 'ELECTRONICS', name: 'Non-working desktop computer', category: WasteCategory.NON_BIODEGRADABLE },
   { pillar: 'FIXTURES', name: 'Damaged ceiling fan', category: WasteCategory.NON_BIODEGRADABLE },
   { pillar: 'FIXTURES', name: 'Leaking faucet assembly', category: WasteCategory.NON_BIODEGRADABLE },
   { pillar: 'EQUIPMENT', name: 'Defective science microscope', category: WasteCategory.NON_BIODEGRADABLE },
@@ -717,8 +709,6 @@ export function planDataSeed(input: SeedPlanInput): SeedPlan {
     for (const report of collectedReports) {
       if (report.reportType !== ReportType.WASTE) continue;
       if (report.createdAt.getTime() < windowStart || report.createdAt.getTime() > windowEnd) continue;
-      if (challenge.challengeType === ChallengeType.HAZARDOUS_REPORT && report.category !== WasteCategory.HAZARDOUS) continue;
-      if (challenge.challengeType === ChallengeType.REPORT_COUNT && report.category === WasteCategory.HAZARDOUS) continue;
       const list = eligibleByUser.get(report.reporterId) ?? [];
       list.push(report);
       eligibleByUser.set(report.reporterId, list);
@@ -1268,40 +1258,64 @@ function assignStatuses(
 // ─── Persistence ──────────────────────────────────────────────────────
 
 const BATCH = 500;
+const CREATE_CHUNK_SIZE = 1000;
+
+/** Insert large arrays in bounded chunks (Postgres bind-parameter limits). */
+async function insertInChunks<T>(
+  rows: T[],
+  insert: (chunk: T[]) => Promise<unknown>,
+  chunkSize = CREATE_CHUNK_SIZE
+): Promise<void> {
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    await insert(rows.slice(i, i + chunkSize));
+  }
+}
 
 async function persistPlan(tx: Prisma.TransactionClient, plan: SeedPlan): Promise<void> {
   // Insert order must respect foreign keys:
   // reports → walk-in turnovers/items → point histories (they reference both
   // reportId and walkInTurnoverId) → challenge rows → reward claims → offenses.
-  if (plan.reports.length > 0) await tx.report.createMany({ data: plan.reports });
-  if (plan.walkInTurnovers.length > 0) await tx.walkInTurnover.createMany({ data: plan.walkInTurnovers });
-  if (plan.walkInItems.length > 0) await tx.walkInTurnoverItem.createMany({ data: plan.walkInItems });
-  if (plan.pointHistories.length > 0) await tx.pointHistory.createMany({ data: plan.pointHistories });
+  console.log(
+    `[DataSeed] Persisting: ${plan.reports.length} reports, ${plan.walkInTurnovers.length} walk-in turnovers, ` +
+      `${plan.pointHistories.length} point rows, ${plan.progress.length} challenge progress rows`
+  );
+
+  await insertInChunks(plan.reports, (chunk) => tx.report.createMany({ data: chunk }));
+  await insertInChunks(plan.walkInTurnovers, (chunk) => tx.walkInTurnover.createMany({ data: chunk }));
+  await insertInChunks(plan.walkInItems, (chunk) => tx.walkInTurnoverItem.createMany({ data: chunk }));
+  await insertInChunks(plan.pointHistories, (chunk) => tx.pointHistory.createMany({ data: chunk }));
 
   for (let i = 0; i < plan.contributions.length; i += BATCH) {
     await tx.challengeContribution.createMany({ data: plan.contributions.slice(i, i + BATCH), skipDuplicates: true });
   }
-  for (const entry of plan.progress) {
-    await tx.userChallengeProgress.upsert({
-      where: { userId_challengeId: { userId: entry.userId, challengeId: entry.challengeId } },
-      create: {
-        userId: entry.userId,
-        challengeId: entry.challengeId,
-        currentCount: entry.currentCount,
-        completedAt: entry.completedAt,
-        rewardedAt: entry.rewardedAt,
-      },
-      update: {
-        currentCount: entry.currentCount,
-        completedAt: entry.completedAt,
-        rewardedAt: entry.rewardedAt,
-      },
-    });
+  // Challenge progress upserts in small parallel chunks: per-row upserts, but
+  // batched round-trips instead of one await per student.
+  for (let i = 0; i < plan.progress.length; i += 25) {
+    const chunk = plan.progress.slice(i, i + 25);
+    await Promise.all(
+      chunk.map((entry) =>
+        tx.userChallengeProgress.upsert({
+          where: { userId_challengeId: { userId: entry.userId, challengeId: entry.challengeId } },
+          create: {
+            userId: entry.userId,
+            challengeId: entry.challengeId,
+            currentCount: entry.currentCount,
+            completedAt: entry.completedAt,
+            rewardedAt: entry.rewardedAt,
+          },
+          update: {
+            currentCount: entry.currentCount,
+            completedAt: entry.completedAt,
+            rewardedAt: entry.rewardedAt,
+          },
+        })
+      )
+    );
   }
 
-  if (plan.rewardClaims.length > 0) await tx.rewardClaim.createMany({ data: plan.rewardClaims });
-  if (plan.offenses.length > 0) await tx.offense.createMany({ data: plan.offenses });
-  if (plan.assetRecords.length > 0) await tx.mrfAssetRecord.createMany({ data: plan.assetRecords });
+  await insertInChunks(plan.rewardClaims, (chunk) => tx.rewardClaim.createMany({ data: chunk }));
+  await insertInChunks(plan.offenses, (chunk) => tx.offense.createMany({ data: chunk }));
+  await insertInChunks(plan.assetRecords, (chunk) => tx.mrfAssetRecord.createMany({ data: chunk }));
 
   for (const fill of plan.marketFill) {
     await tx.recycleMarketStock.updateMany({
@@ -1309,7 +1323,9 @@ async function persistPlan(tx: Prisma.TransactionClient, plan: SeedPlan): Promis
       data: { accumulatedKg: fill.accumulatedKg, isApprovedForSale: fill.isApprovedForSale, approvedAt: null },
     });
   }
-  if (plan.sales.length > 0) await tx.recycleSaleTransaction.createMany({ data: plan.sales });
+  for (let i = 0; i < plan.sales.length; i += CREATE_CHUNK_SIZE) {
+    await tx.recycleSaleTransaction.createMany({ data: plan.sales.slice(i, i + CREATE_CHUNK_SIZE) });
+  }
 
   if (plan.scrapStocks.length > 0 || plan.scrapItems.length > 0 || plan.scrapSales.length > 0) {
     const existing = await tx.assetScrapStock.findMany({ select: { materialCode: true } });
@@ -1326,10 +1342,8 @@ async function persistPlan(tx: Prisma.TransactionClient, plan: SeedPlan): Promis
       });
     }
 
-    if (plan.scrapItems.length > 0) {
-      await tx.assetScrapItem.createMany({ data: plan.scrapItems });
-    }
-    if (plan.scrapSales.length > 0) await tx.assetScrapSaleTransaction.createMany({ data: plan.scrapSales });
+    await insertInChunks(plan.scrapItems, (chunk) => tx.assetScrapItem.createMany({ data: chunk }));
+    await insertInChunks(plan.scrapSales, (chunk) => tx.assetScrapSaleTransaction.createMany({ data: chunk }));
 
     for (const stock of plan.scrapStocks) {
       await tx.assetScrapStock.updateMany({
@@ -1346,17 +1360,29 @@ async function persistPlan(tx: Prisma.TransactionClient, plan: SeedPlan): Promis
     });
   }
 
-  for (const update of plan.userUpdates) {
-    const user = await tx.user.findUnique({ where: { id: update.userId }, select: { points: true } });
-    if (!user) continue;
-    const nextPoints = Math.max(0, user.points + update.points);
-    await tx.user.update({
-      where: { id: update.userId },
-      data: {
-        points: nextPoints,
-        ...(update.warningsDelta > 0 ? { warningsCount: { increment: update.warningsDelta } } : {}),
-      },
+  if (plan.userUpdates.length > 0) {
+    // Preload balances once: the old loop issued a findUnique per user inside
+    // the long transaction. userUpdates already holds one row per user.
+    const userIds = plan.userUpdates.map((update) => update.userId);
+    const users = await tx.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, points: true },
     });
+    const pointsById = new Map(users.map((user) => [user.id, user.points]));
+    console.log(`[DataSeed] Updating balances for ${users.length} users`);
+
+    for (const update of plan.userUpdates) {
+      const currentPoints = pointsById.get(update.userId);
+      if (currentPoints === undefined) continue;
+      const nextPoints = Math.max(0, currentPoints + update.points);
+      await tx.user.update({
+        where: { id: update.userId },
+        data: {
+          points: nextPoints,
+          ...(update.warningsDelta > 0 ? { warningsCount: { increment: update.warningsDelta } } : {}),
+        },
+      });
+    }
   }
 }
 

@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
-import { ensureChallengesForSchoolYear } from './challenge-catalog.service.js';
+import { prisma } from '../lib/prisma.js';
 
-const prisma = new PrismaClient();
+import { ensureChallengesForSchoolYear } from './challenge-catalog.service.js';
 
 // ── Concurrency Guard ──────────────────────────────────────────────────────
 let rolloverInProgress = false;
@@ -153,28 +152,46 @@ export async function executeRollover(
           }
         }
 
-        // 3. Snapshot user points (closing balances)
+        // 3. Snapshot user points (closing balances). Bulk-create new snapshots
+        //    and only re-write rows that already exist (retry path) instead of
+        //    one upsert per student inside the transaction.
         const studentsWithPoints = await tx.user.findMany({
           where: { role: 'STUDENT', syncSource: 'ENROLLPRO', points: { gt: 0 } },
+          select: { id: true, points: true },
         });
 
+        const existingSnapshots = await tx.userPointSnapshot.findMany({
+          where: { schoolYearId: currentSY.id },
+          select: { userId: true },
+        });
+        const existingSnapshotUsers = new Set(existingSnapshots.map((snapshot) => snapshot.userId));
+        const newSnapshots = studentsWithPoints
+          .filter((student) => !existingSnapshotUsers.has(student.id))
+          .map((student) => ({
+            schoolYearId: currentSY.id,
+            userId: student.id,
+            closingPoints: student.points,
+          }));
+
+        for (let i = 0; i < newSnapshots.length; i += 1000) {
+          await tx.userPointSnapshot.createMany({
+            data: newSnapshots.slice(i, i + 1000),
+            skipDuplicates: true,
+          });
+        }
         for (const student of studentsWithPoints) {
-          await tx.userPointSnapshot.upsert({
+          if (!existingSnapshotUsers.has(student.id)) continue;
+          await tx.userPointSnapshot.update({
             where: {
               schoolYearId_userId: {
                 schoolYearId: currentSY.id,
                 userId: student.id,
               },
             },
-            update: { closingPoints: student.points },
-            create: {
-              schoolYearId: currentSY.id,
-              userId: student.id,
-              closingPoints: student.points,
-            },
+            data: { closingPoints: student.points },
           });
-          snapshotsCreated++;
         }
+        snapshotsCreated += studentsWithPoints.length;
 
         // 3. Tag all untagged records with current school year
         await Promise.all([

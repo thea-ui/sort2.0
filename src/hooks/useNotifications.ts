@@ -11,7 +11,7 @@ function loadStoredNotifications(): AppNotification[] {
     // admin alerts to every other signed-in role on this browser.
     localStorage.removeItem(LEGACY_NOTIFICATIONS_STORAGE_KEY);
     const raw = safeGetJSON<unknown>(NOTIFICATIONS_STORAGE_KEY, []);
-    return Array.isArray(raw) ? raw : [];
+    return Array.isArray(raw) ? raw.slice(0, MAX_CACHED_NOTIFICATIONS) : [];
   } catch {
     return [];
   }
@@ -35,13 +35,19 @@ export function useNotifications() {
   }, [notifications]);
 
   const addNotification = (draft: NotificationDraft) => {
-    setNotifications(prev => [buildNotification(draft, new Date().toISOString()), ...prev]);
+    // Cap the in-memory feed too: the storage cap alone let long sessions grow
+    // the React state array without bound.
+    setNotifications(prev =>
+      [buildNotification(draft, new Date().toISOString()), ...prev].slice(0, MAX_CACHED_NOTIFICATIONS)
+    );
   };
 
   const addNotifications = (drafts: NotificationDraft[]) => {
     if (drafts.length === 0) return;
     const timestamp = new Date().toISOString();
-    setNotifications(prev => [...drafts.map(draft => buildNotification(draft, timestamp)), ...prev]);
+    setNotifications(prev =>
+      [...drafts.map(draft => buildNotification(draft, timestamp)), ...prev].slice(0, MAX_CACHED_NOTIFICATIONS)
+    );
   };
 
   const dismissNotification = (notificationId: string) => {

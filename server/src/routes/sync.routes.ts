@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { requireAdmin } from '../middleware/auth.js';
-import { runEnrollProSync, syncTermCalendar, mirrorEnrollProSchoolYears } from '../services/enrollpro-sync.service.js';
+import { runEnrollProSync, syncTermCalendar, mirrorEnrollProSchoolYears, isEnrollProSyncRunning } from '../services/enrollpro-sync.service.js';
 import { syncEnrollProBranding } from '../services/enrollpro-branding.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Branding rides along with admin-triggered sync runs; failures never fail the
 // sync itself (the branding scheduler also refreshes it hourly).
@@ -16,8 +16,16 @@ async function pullBrandingBestEffort(): Promise<boolean> {
 
 // POST /api/sync/enrollpro — trigger full sync manually
 router.post('/enrollpro', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
+  // The scheduler and /sync/all share the same single-flight guard; surface a
+  // controlled 409 instead of stacking a second full-roster run.
+  if (isEnrollProSyncRunning()) {
+    return res.status(409).json({ error: 'A sync is already in progress.', code: 'SYNC_IN_PROGRESS' });
+  }
   try {
     const result = await runEnrollProSync();
+    if (result.message === 'SYNC_IN_PROGRESS') {
+      return res.status(409).json({ error: 'A sync is already in progress.', code: 'SYNC_IN_PROGRESS' });
+    }
     const brandingUpdated = await pullBrandingBestEffort();
     return res.json({
       message: 'Sync completed',
@@ -60,11 +68,17 @@ router.post('/school-years', requireAdmin, async (_req: Request, res: Response):
 
 // POST /api/sync/all — sync everything (users + terms)
 router.post('/all', requireAdmin, async (_req: Request, res: Response): Promise<any> => {
+  if (isEnrollProSyncRunning()) {
+    return res.status(409).json({ error: 'A sync is already in progress.', code: 'SYNC_IN_PROGRESS' });
+  }
   try {
     const [syncResult, termResult] = await Promise.all([
       runEnrollProSync(),
       syncTermCalendar(),
     ]);
+    if (syncResult.message === 'SYNC_IN_PROGRESS') {
+      return res.status(409).json({ error: 'A sync is already in progress.', code: 'SYNC_IN_PROGRESS' });
+    }
     const brandingUpdated = await pullBrandingBestEffort();
 
     return res.json({

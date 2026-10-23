@@ -8,11 +8,12 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "verify": "npm run lint && npm run build && npm run test:unit && npm --prefix server run build && npm --prefix server run test:atlas && npm --prefix server run test:branding && npm --prefix server run test:offline-auth-unit && npm --prefix server run test:reset-cycle && npm --prefix server run test:report-expiry && npm --prefix server run test:term-clock && npm --prefix server run test:report-streams && npm --prefix server run test:data-seed && npm run test:auth && npm run test:atlas && npm run test:atlas:audit && npm run test:ui",
+    "verify": "npm run lint && npm run build && npm run test:unit && npm --prefix server run build && npm --prefix server run test:services && npm run test:auth && npm run test:atlas && npm run test:atlas:audit && npm run test:ui",
     "test:unit": "vitest run",
     "test:auth": "node scripts/auth-smoke.mjs",
     "test:atlas": "node scripts/atlas-smoke.mjs",
     "test:atlas:audit": "node scripts/atlas-audit.mjs",
+    "test:load": "node scripts/perf/load-test.mjs",
     "test:ui": "playwright test"
   },
   "dependencies": {

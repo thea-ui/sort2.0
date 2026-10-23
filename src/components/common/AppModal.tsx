@@ -9,9 +9,8 @@ import { Button } from '../ui/Button';
  * scroll, and the reference footer (outline Cancel + filled confirm with a
  * leading spinner/check icon; confirm stacks above Cancel on mobile).
  *
- * Confirm/tile colors come from `--theme-primary` (never a hardcoded brand
- * hex) with `--theme-primary-text` for contrast; destructive uses `#dc2626`
- * exactly as specified.
+ * Confirmation modals are green (`--success`) — "yes" is always a positive
+ * action; destructive modals stay red (`--danger`). Never a hardcoded hex.
  */
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -59,48 +58,55 @@ export const AppModal: React.FC<AppModalProps> = ({
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent
       overlayClassName="bg-black/40"
-      className={`${SIZE_CLASSES[size]} max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 border-0 ring-0 shadow-2xl bg-card rounded-xl sm:rounded-2xl gap-0!`}
+      className={`${SIZE_CLASSES[size]} max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-5 md:p-6 border-0 ring-0 shadow-2xl bg-card rounded-md sm:rounded-lg gap-0!`}
     >
-      <div className="pb-4 sm:pb-5">
-        <div className="flex items-start gap-3 sm:gap-4">
+      <div className="pb-4">
+        <div className="flex items-center gap-3">
           {icon && (
             <div
-              className="p-3 rounded-xl shadow-lg shrink-0 flex items-center justify-center leading-none [&>svg]:w-6 [&>svg]:h-6"
+              className="p-2.5 rounded-md shrink-0 flex items-center justify-center leading-none [&>svg]:w-5 [&>svg]:h-5"
               style={{
-                backgroundColor: destructive ? '#dc2626' : 'var(--theme-primary)',
-                color: destructive ? '#ffffff' : 'var(--theme-primary-text, #ffffff)',
+                backgroundColor: destructive ? 'var(--danger)' : 'var(--success)',
+                color: '#ffffff',
               }}
             >
               {icon}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <DialogTitle className="text-xl sm:text-2xl font-bold! text-foreground leading-tight">
+            <DialogTitle
+              className={`${size === 'sm' ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'} font-semibold! text-foreground leading-tight`}
+            >
               {title}
             </DialogTitle>
-            {description && (
-              <DialogDescription className="mt-1 text-sm text-muted-foreground">
-                {description}
-              </DialogDescription>
-            )}
           </div>
         </div>
+        {description && (
+          <DialogDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </DialogDescription>
+        )}
       </div>
 
       {children}
 
       {!hideFooter && (
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 mt-4 border-t border-border">
-          <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)} disabled={loading}>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 mt-3 border-t border-border">
+          <Button
+            variant="outline"
+            className="rounded-md px-4 h-9"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
             {cancelLabel}
           </Button>
           {onConfirm && (
             <Button
-              className="rounded-xl"
+              className="rounded-md px-4 h-9"
               style={
                 destructive
-                  ? { backgroundColor: '#dc2626', color: '#ffffff' }
-                  : { backgroundColor: 'var(--theme-primary)', color: 'var(--theme-primary-text, #ffffff)' }
+                  ? { backgroundColor: 'var(--danger)', color: '#ffffff' }
+                  : { backgroundColor: 'var(--success)', color: '#ffffff' }
               }
               disabled={loading || confirmDisabled}
               onClick={onConfirm}

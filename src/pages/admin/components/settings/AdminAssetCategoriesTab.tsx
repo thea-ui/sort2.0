@@ -31,7 +31,6 @@ export const AdminAssetCategoriesTab: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
 
   const broadcastChanges = () => {
-    window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('sort_categories_updated'));
     broadcastPresetChange();
   };

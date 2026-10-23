@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import {
@@ -10,7 +11,6 @@ import {
 } from '../services/data-seeder.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 function respondError(res: Response, error: unknown): any {
   if (error instanceof DataSeedError) {

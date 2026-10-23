@@ -5,9 +5,7 @@ import type { Report } from '../types';
  * recyclable streams are separated. In SORT that is exactly the
  * NON_BIODEGRADABLE bin (wrappers, plastic films, sanitary waste).
  *
- * A legacy HAZARDOUS value may still exist on old report records, but no bin
- * stream is configured for it anymore. The legacy values GENERAL and ORGANIC
- * no longer exist in the database.
+ * The legacy values GENERAL and ORGANIC no longer exist in the database.
  *
  * This helper is the single source of truth — every screen must use it so the
  * same number is shown everywhere.

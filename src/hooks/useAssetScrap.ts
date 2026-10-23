@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { apiService } from '../services/api';
+import { createPollScheduler } from '../utils/pollScheduler';
 
 export interface ScrapStockItem {
   id?: string;
@@ -67,83 +68,157 @@ const DEFAULT_SCRAP: Record<string, ScrapStockItem> = {
 };
 
 const SCRAP_UPDATED_EVENT = 'sort_scrap_updated';
+const POLL_INTERVAL_MS = 30_000;
+const POLL_HIDDEN_INTERVAL_MS = 90_000;
 
-function broadcastChange() {
-  window.dispatchEvent(new Event('storage'));
+interface ScrapCache {
+  stocksRecord: Record<string, ScrapStockItem>;
+  salesHistory: ScrapSaleTransaction[];
+  items: ScrapItem[];
+}
+
+// ── Shared store ─────────────────────────────────────────────────────────
+// One cache + one ref-counted poller for every consumer (MRF dashboard and
+// the scrap stock tab used to mount two independent 10s pollers). No
+// localStorage here: the data is server-backed, and writes are change-gated.
+
+let cache: ScrapCache | null = null;
+let inflight: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function notify(): void {
+  for (const listener of listeners) listener();
+}
+
+function loadCache(): ScrapCache {
+  if (!cache) {
+    cache = { stocksRecord: DEFAULT_SCRAP, salesHistory: [], items: [] };
+  }
+  return cache;
+}
+
+async function fetchScrapData(): Promise<void> {
+  if (inflight) return inflight;
+  const current = loadCache();
+
+  inflight = (async () => {
+    const [stocksResult, salesResult, itemsResult] = await Promise.allSettled([
+      apiService.getAssetScrapStocks(),
+      apiService.getAssetScrapSales(),
+      apiService.getAssetScrapItems(),
+    ]);
+
+    const next: ScrapCache = { ...current };
+    let changed = false;
+
+    if (stocksResult.status === 'fulfilled' && Array.isArray(stocksResult.value) && stocksResult.value.length > 0) {
+      const rec: Record<string, ScrapStockItem> = {};
+      stocksResult.value.forEach((s: any) => {
+        rec[s.materialCode] = s;
+      });
+      if (JSON.stringify(rec) !== JSON.stringify(current.stocksRecord)) {
+        next.stocksRecord = rec;
+        changed = true;
+      }
+    } else if (stocksResult.status === 'rejected') {
+      console.warn('Failed to fetch scrap stocks:', stocksResult.reason);
+    }
+
+    if (salesResult.status === 'fulfilled' && Array.isArray(salesResult.value)) {
+      const formatted = salesResult.value.map((st: any) => ({
+        id: st.id,
+        materialCode: st.materialCode,
+        materialName: st.materialName,
+        weightKg: st.weightKg,
+        marketPriceKg: st.marketPriceKg,
+        totalRevenue: st.totalRevenue,
+        buyerName: st.buyerName,
+        approvalReference: st.approvalReference || null,
+        soldAt: typeof st.soldAt === 'string' ? st.soldAt.replace('T', ' ').substring(0, 16) : new Date(st.soldAt).toISOString().replace('T', ' ').substring(0, 16),
+      }));
+      if (JSON.stringify(formatted) !== JSON.stringify(current.salesHistory)) {
+        next.salesHistory = formatted;
+        changed = true;
+      }
+    } else if (salesResult.status === 'rejected') {
+      console.warn('Failed to fetch scrap sales:', salesResult.reason);
+    }
+
+    if (itemsResult.status === 'fulfilled' && Array.isArray(itemsResult.value)) {
+      if (JSON.stringify(itemsResult.value) !== JSON.stringify(current.items)) {
+        next.items = itemsResult.value as ScrapItem[];
+        changed = true;
+      }
+    } else if (itemsResult.status === 'rejected') {
+      console.warn('Failed to fetch scrap items:', itemsResult.reason);
+    }
+
+    cache = next;
+    if (changed) notify();
+  })().finally(() => {
+    inflight = null;
+  });
+
+  return inflight;
+}
+
+const poller = createPollScheduler(fetchScrapData, {
+  intervalMs: POLL_INTERVAL_MS,
+  hiddenIntervalMs: POLL_HIDDEN_INTERVAL_MS,
+  immediate: false,
+});
+
+function broadcastChange(): void {
+  // Same-tab custom event only; no synthetic storage events (those woke every
+  // storage listener in the tab and triggered reload storms).
   window.dispatchEvent(new CustomEvent(SCRAP_UPDATED_EVENT));
 }
 
+function patchStockLocally(materialCode: string, patch: Partial<ScrapStockItem>): void {
+  const current = loadCache();
+  const item = current.stocksRecord[materialCode];
+  if (!item) return;
+  cache = {
+    ...current,
+    stocksRecord: { ...current.stocksRecord, [materialCode]: { ...item, ...patch } },
+  };
+  notify();
+}
+
 export function useAssetScrap() {
-  const [stocksRecord, setStocksRecord] = useState<Record<string, ScrapStockItem>>(DEFAULT_SCRAP);
-  const [salesHistory, setSalesHistory] = useState<ScrapSaleTransaction[]>([]);
-  const [items, setItems] = useState<ScrapItem[]>([]);
-
-  const reloadScrapData = useCallback(async () => {
-    try {
-      const list = await apiService.getAssetScrapStocks();
-      if (Array.isArray(list) && list.length > 0) {
-        const rec: Record<string, ScrapStockItem> = {};
-        list.forEach((s: any) => { rec[s.materialCode] = s; });
-        setStocksRecord(rec);
-      }
-    } catch (err) {
-      console.warn('Failed to fetch scrap stocks:', err);
-    }
-
-    try {
-      const sales = await apiService.getAssetScrapSales();
-      if (Array.isArray(sales)) {
-        setSalesHistory(
-          sales.map((st: any) => ({
-            id: st.id,
-            materialCode: st.materialCode,
-            materialName: st.materialName,
-            weightKg: st.weightKg,
-            marketPriceKg: st.marketPriceKg,
-            totalRevenue: st.totalRevenue,
-            buyerName: st.buyerName,
-            approvalReference: st.approvalReference || null,
-            soldAt: typeof st.soldAt === 'string' ? st.soldAt.replace('T', ' ').substring(0, 16) : new Date(st.soldAt).toISOString().replace('T', ' ').substring(0, 16),
-          }))
-        );
-      }
-    } catch (err) {
-      console.warn('Failed to fetch scrap sales:', err);
-    }
-
-    try {
-      const scrapItems = await apiService.getAssetScrapItems();
-      if (Array.isArray(scrapItems)) setItems(scrapItems as ScrapItem[]);
-    } catch (err) {
-      console.warn('Failed to fetch scrap items:', err);
-    }
-  }, []);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    reloadScrapData();
-    window.addEventListener('storage', reloadScrapData);
-    window.addEventListener(SCRAP_UPDATED_EVENT, reloadScrapData as EventListener);
-    const interval = setInterval(reloadScrapData, 10000);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('storage', reloadScrapData);
-      window.removeEventListener(SCRAP_UPDATED_EVENT, reloadScrapData as EventListener);
+    const rerender = () => setTick((n) => n + 1);
+    listeners.add(rerender);
+    poller.start();
+
+    const handleUpdate = () => {
+      void fetchScrapData();
     };
-  }, [reloadScrapData]);
+    window.addEventListener(SCRAP_UPDATED_EVENT, handleUpdate);
+
+    if (!cache) void fetchScrapData();
+
+    return () => {
+      listeners.delete(rerender);
+      poller.stop();
+      window.removeEventListener(SCRAP_UPDATED_EVENT, handleUpdate);
+    };
+  }, []);
+
+  const state = loadCache();
 
   const addScrapKg = async (materialCode: string, addKg: number) => {
     if (!materialCode || addKg <= 0) return;
     try {
       await apiService.updateAssetScrapStock(materialCode, { addKg });
-      await reloadScrapData();
+      await fetchScrapData();
       broadcastChange();
     } catch (err) {
       console.error('Failed to add scrap kg:', err);
-      setStocksRecord((prev) => {
-        const item = prev[materialCode];
-        if (!item) return prev;
-        return { ...prev, [materialCode]: { ...item, accumulatedKg: item.accumulatedKg + addKg } };
-      });
+      const item = loadCache().stocksRecord[materialCode];
+      if (item) patchStockLocally(materialCode, { accumulatedKg: item.accumulatedKg + addKg });
       broadcastChange();
     }
   };
@@ -151,7 +226,7 @@ export function useAssetScrap() {
   const approveSale = async (materialCode: string, isApproved: boolean, approvalReference?: string) => {
     try {
       await apiService.approveAssetScrapSale({ materialCode, isApproved, approvalReference });
-      await reloadScrapData();
+      await fetchScrapData();
       broadcastChange();
     } catch (err) {
       console.error('Failed to approve scrap sale:', err);
@@ -160,12 +235,12 @@ export function useAssetScrap() {
   };
 
   const sellBatch = async (materialCode: string, buyerName?: string, approvalReference?: string) => {
-    const item = stocksRecord[materialCode];
+    const item = state.stocksRecord[materialCode];
     if (!item || item.accumulatedKg <= 0) return null;
     try {
       const res = await apiService.sellAssetScrapBatch({ materialCode, buyerName, approvalReference });
       if (res?.transaction) {
-        await reloadScrapData();
+        await fetchScrapData();
         broadcastChange();
         return res.transaction as ScrapSaleTransaction;
       }
@@ -179,7 +254,7 @@ export function useAssetScrap() {
   const updateThresholdOrPrice = async (materialCode: string, thresholdLimitKg?: number, marketPricePerKg?: number) => {
     try {
       await apiService.updateAssetScrapStock(materialCode, { thresholdLimitKg, marketPricePerKg });
-      await reloadScrapData();
+      await fetchScrapData();
       broadcastChange();
     } catch (err) {
       console.error('Failed to update scrap threshold/price:', err);
@@ -188,58 +263,58 @@ export function useAssetScrap() {
 
   const createScrapItem = async (input: CreateScrapItemInput) => {
     const created = await apiService.createAssetScrapItem(input);
-    await reloadScrapData();
+    await fetchScrapData();
     broadcastChange();
     return created as ScrapItem;
   };
 
   const weighScrapItem = async (id: string, weightKg: number) => {
     const res = await apiService.weighAssetScrapItem(id, weightKg);
-    await reloadScrapData();
+    await fetchScrapData();
     broadcastChange();
     return res?.item as ScrapItem | undefined;
   };
 
   const disposeScrapItem = async (id: string, disposalReference?: string) => {
     const res = await apiService.disposeAssetScrapItem(id, disposalReference);
-    await reloadScrapData();
+    await fetchScrapData();
     broadcastChange();
     return res?.item as ScrapItem | undefined;
   };
 
   const totalScrapSales = useMemo(
-    () => salesHistory.reduce((sum, tx) => sum + (tx.totalRevenue || 0), 0),
-    [salesHistory]
+    () => state.salesHistory.reduce((sum, tx) => sum + (tx.totalRevenue || 0), 0),
+    [state.salesHistory]
   );
 
-  const materials = useMemo(() => Object.values(stocksRecord), [stocksRecord]);
+  const materials = useMemo(() => Object.values(state.stocksRecord), [state.stocksRecord]);
 
   const pendingItems = useMemo(
-    () => items.filter((it) => it.status === 'AWAITING_WEIGHT'),
-    [items]
+    () => state.items.filter((it) => it.status === 'AWAITING_WEIGHT'),
+    [state.items]
   );
 
   // Items that have already been weighed (in stock, sold, or disposed),
   // newest weighing first — used for the scrap weigh history.
   const weighedItems = useMemo(
     () =>
-      items
+      state.items
         .filter((it) => it.status !== 'AWAITING_WEIGHT')
         .sort((a, b) => {
           const aTime = new Date(a.weighedAt || a.updatedAt || a.createdAt).getTime();
           const bTime = new Date(b.weighedAt || b.updatedAt || b.createdAt).getTime();
           return bTime - aTime;
         }),
-    [items]
+    [state.items]
   );
 
   return {
-    stocksRecord,
+    stocksRecord: state.stocksRecord,
     materials,
-    items,
+    items: state.items,
     pendingItems,
     weighedItems,
-    salesHistory,
+    salesHistory: state.salesHistory,
     totalScrapSales,
     addScrapKg,
     createScrapItem,
@@ -248,6 +323,6 @@ export function useAssetScrap() {
     approveSale,
     sellBatch,
     updateThresholdOrPrice,
-    reloadScrapData,
+    reloadScrapData: fetchScrapData,
   };
 }

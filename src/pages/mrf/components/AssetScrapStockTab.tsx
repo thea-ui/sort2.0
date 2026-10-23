@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Scale, CheckCircle2, Clock, Coins, ShieldAlert, Loader2, PackageCheck, Plus, Trash2, Inbox } from 'lucide-react';
+import { AlertTriangle, Scale, CheckCircle2, ChevronDown, Clock, Coins, ShieldAlert, Loader2, PackageCheck, Plus, Trash2, Inbox } from 'lucide-react';
 import { useAssetScrap, type ScrapItem } from '../../../hooks/useAssetScrap';
 import { generateScrapApprovalReference } from '../../../utils/scrapReference';
+import { FALLBACK_SCRAP_META, SCRAP_MATERIAL_META } from '../../../utils/materialMeta';
 import { useMockData } from '../../../hooks/useMockData';
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { Input } from '../../../components/ui/Input';
@@ -12,6 +13,20 @@ interface AssetScrapStockTabProps {
 }
 
 const NEW_ENTRY = '__new__';
+
+const ROW_SHELL = 'overflow-hidden rounded-2xl border bg-white transition-colors';
+const PANEL = 'border-t border-[var(--primary)]/5 px-4 pb-4 pt-4';
+const MICRO_LABEL =
+  'block text-[10px] font-semibold uppercase tracking-wider text-[var(--text-strong)]/40';
+const NUMBER = 'font-mono font-bold tabular-nums';
+const SUCCESS_CHIP =
+  'inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--success)]/25 bg-[var(--success)]/10 px-2.5 py-1 text-[10px] font-bold text-[var(--success-strong)]';
+const WARNING_CHIP =
+  'inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-2.5 py-1 text-[10px] font-bold text-[var(--warning-strong)]';
+const DANGER_CHIP =
+  'inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--danger)]/25 bg-[var(--danger)]/10 px-2.5 py-1 text-[10px] font-bold text-[var(--danger-strong)]';
+const PRIMARY_BUTTON =
+  'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-[11px] font-bold text-white shadow-sm shadow-[var(--accent)]/25 transition-colors hover:bg-[var(--accent-dark)] disabled:opacity-50';
 
 function formatLogged(value?: string | null): string {
   if (!value) return '';
@@ -46,6 +61,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
   const [sellTarget, setSellTarget] = useState<{ code: string; name: string; kg: number } | null>(null);
   const [disposeTarget, setDisposeTarget] = useState<ScrapItem | null>(null);
   const [disposeRef, setDisposeRef] = useState('');
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -159,8 +175,7 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
             <span className="text-[10px] font-black text-[var(--text-strong)] bg-[color-mix(in_srgb,var(--primary)_15%,white)] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Asset Scrap Recovery Stock
             </span>
-            <h3 className="text-xl font-heading font-black text-[var(--text-strong)] mt-1">Unserviceable Asset Scrap & Junk Sale Tracker</h3>
-            <p className="text-xs text-[var(--text-strong)]/60">Weigh unserviceable assets, store at the MRF, and sell each material once the threshold is reached.</p>
+            <p className="text-xs text-[var(--text-strong)]/60 mt-1">Weigh unserviceable assets, store at the MRF, and sell each material once the threshold is reached.</p>
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -233,107 +248,187 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
         )}
       </div>
 
-      {/* Material cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {materials.map((mat) => {
-          const currentKg = mat.accumulatedKg || 0;
-          const thresholdKg = mat.thresholdLimitKg || 1;
-          const isApproved = mat.isApprovedForSale === true;
-          const isThresholdReached = currentKg >= thresholdKg;
-          const pct = Math.min(100, Math.round((currentKg / thresholdKg) * 100));
-          const hazmat = mat.hazmat === true;
+      {/* Material folders */}
+      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
+        <h4 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+          <Scale size={16} className="text-[var(--accent)]" />
+          <span>Scrap Material Batches</span>
+        </h4>
 
-          return (
-            <div
-              key={mat.materialCode}
-              className={`bg-white/95 backdrop-blur-md border rounded-3xl p-5 shadow-sm space-y-3 transition-all relative overflow-hidden ${
-                isApproved ? 'border-emerald-500 ring-2 ring-emerald-400/50 shadow-lg bg-emerald-50'
-                : isThresholdReached ? 'border-amber-300 ring-2 ring-amber-400/40 shadow-md bg-amber-50'
-                : 'border-gray-200'
-              }`}
-            >
-              {hazmat ? (
-                <div className="bg-rose-500 text-white font-black text-[9px] uppercase px-3 py-1 text-center tracking-wider -mx-5 -mt-5 mb-2 flex items-center justify-center gap-1.5">
-                  <ShieldAlert size={12} /> HAZARDOUS — ACCREDITED HANDLER ONLY (NOT SOLD AS JUNK)
-                </div>
-              ) : isApproved ? (
-                <div className="bg-[var(--accent)] text-white font-black text-[9px] uppercase px-3 py-1 text-center tracking-wider -mx-5 -mt-5 mb-2 flex items-center justify-center gap-1.5 animate-pulse">
-                  <CheckCircle2 size={12} /> APPROVED — READY FOR SCRAP SALE
-                </div>
-              ) : isThresholdReached ? (
-                <div className="bg-amber-400 text-amber-950 font-black text-[9px] uppercase px-3 py-1 text-center tracking-wider -mx-5 -mt-5 mb-2">
-                  THRESHOLD REACHED — AWAITING DISPOSAL COMMITTEE APPROVAL
-                </div>
-              ) : null}
+        <div className="space-y-3">
+          {materials.map((mat) => {
+            const meta = SCRAP_MATERIAL_META[mat.materialCode] || FALLBACK_SCRAP_META;
+            const MaterialIcon = meta.icon;
+            const currentKg = mat.accumulatedKg || 0;
+            const thresholdKg = mat.thresholdLimitKg || 1;
+            const isApproved = mat.isApprovedForSale === true;
+            const isThresholdReached = currentKg >= thresholdKg;
+            const hazmat = mat.hazmat === true;
+            const awaitingApproval = isThresholdReached && !isApproved && !hazmat;
+            const pct = Math.min(100, Math.round((currentKg / thresholdKg) * 100));
+            const remainingKg = Math.max(0, thresholdKg - currentKg);
+            const isOpen = openKey === mat.materialCode;
+            const panelId = `scrap-stock-folder-${mat.materialCode}`;
 
-              <div className="flex items-center justify-between">
-                <div className="min-w-0">
-                  <h4 className="text-sm font-extrabold text-[var(--text-strong)] truncate">{mat.materialName}</h4>
-                  <p className="text-[11px] text-gray-400 font-medium">Est. rate: ₱{mat.marketPricePerKg} / kg</p>
-                </div>
-                <span className={`text-xs font-black px-2.5 py-1 rounded-full shrink-0 ${
-                  isApproved ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                  : isThresholdReached ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                  : 'bg-gray-100 text-gray-700'
-                }`}>
-                  {currentKg.toFixed(1)} / {thresholdKg} kg
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] font-bold">
-                  <span className="text-gray-400">Scrap Batch Target</span>
-                  <span className={isApproved ? 'text-[var(--accent)] font-black' : isThresholdReached ? 'text-amber-700 font-black' : 'text-[var(--accent)]'}>{pct}%</span>
-                </div>
-                <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${isApproved ? 'bg-[var(--accent)]' : isThresholdReached ? 'bg-amber-400' : 'bg-[var(--primary)]'}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-gray-500 font-medium truncate">
-                  Est. value: <strong className="text-[var(--text-strong)]">₱{Math.round(currentKg * mat.marketPricePerKg).toLocaleString()}</strong>
-                </span>
-
-                {hazmat ? (
-                  <span className="px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1.5 shrink-0">
-                    <ShieldAlert size={12} /> Handler disposal
-                  </span>
-                ) : isApproved ? (
-                  <button
-                    type="button"
-                    onClick={() => handleSell(mat.materialCode, mat.materialName, currentKg, thresholdKg)}
-                    disabled={busy === mat.materialCode}
-                    className="px-4 py-2 rounded-xl text-xs font-black bg-[var(--gold)] hover:bg-[#b0881e] text-white shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+            return (
+              <div
+                key={mat.materialCode}
+                className={`${ROW_SHELL} ${
+                  hazmat
+                    ? 'border-[var(--danger)]/30'
+                    : isApproved
+                      ? 'border-[var(--success)]/40'
+                      : awaitingApproval && isAdmin
+                        ? 'border-[var(--warning)]/40'
+                        : 'border-[var(--primary)]/10 hover:border-[var(--primary)]/20'
+                }`}
+              >
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  onClick={() => setOpenKey(isOpen ? null : mat.materialCode)}
+                  className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left"
+                >
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${meta.bgColor} ${meta.color}`}
                   >
-                    {busy === mat.materialCode ? <Loader2 size={14} className="animate-spin" /> : <Coins size={14} />} Sell Scrap
-                  </button>
-                ) : isThresholdReached ? (
-                  isAdmin ? (
-                    <button
-                      type="button"
-                      onClick={() => { setApproveFor(mat.materialCode); setApprovalRef(generateScrapApprovalReference([...materials, ...salesHistory])); }}
-                      className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white flex items-center gap-1.5 cursor-pointer shrink-0"
-                    >
-                      <CheckCircle2 size={13} /> Approve Sale
-                    </button>
-                  ) : (
-                    <span className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-amber-100 border border-amber-300 text-amber-900 flex items-center gap-1.5 shrink-0">
-                      <Clock size={13} /> Awaiting approval
-                    </span>
-                  )
-                ) : (
-                  <span className="px-3.5 py-2 rounded-xl text-[11px] font-bold bg-gray-100 text-gray-400 flex items-center gap-1.5 shrink-0">
-                    <Coins size={13} /> Below threshold
+                    <MaterialIcon size={17} />
                   </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--text-strong)]">
+                    {mat.materialName}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2.5">
+                    {hazmat ? (
+                      <span className={DANGER_CHIP}>
+                        <ShieldAlert size={11} /> Handler disposal
+                      </span>
+                    ) : isApproved ? (
+                      <span className={SUCCESS_CHIP}>
+                        <CheckCircle2 size={11} /> Ready to sell
+                      </span>
+                    ) : awaitingApproval ? (
+                      isAdmin ? (
+                        <span className={WARNING_CHIP}>
+                          <AlertTriangle size={11} /> Ready to sell
+                        </span>
+                      ) : (
+                        <span className={WARNING_CHIP}>
+                          <Clock size={11} /> Awaiting approval
+                        </span>
+                      )
+                    ) : (
+                      <span className="hidden sm:inline font-mono text-[11px] font-semibold tabular-nums text-[var(--text-strong)]/35">
+                        {remainingKg.toFixed(1)} kg to go
+                      </span>
+                    )}
+                    <ChevronDown
+                      size={16}
+                      className={`text-[var(--text-strong)]/35 transition-transform duration-200 ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </span>
+                </button>
+
+                {isOpen && (
+                  <div id={panelId} className={PANEL}>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div>
+                        <span className={MICRO_LABEL}>Batch stock</span>
+                        <p className="mt-1 text-sm">
+                          <span className={`${NUMBER} text-[var(--text-strong)]`}>
+                            {currentKg.toFixed(1)}
+                          </span>
+                          <span className="text-[var(--text-strong)]/35">
+                            {' '}
+                            / {thresholdKg} kg threshold
+                          </span>
+                        </p>
+                        <div className="mt-2 flex items-center gap-2.5">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,white)]">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                awaitingApproval ? 'bg-[var(--warning)]' : meta.barColor
+                              }`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className={`${NUMBER} text-[11px] text-[var(--text-strong)]/70`}>
+                            {pct}%
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className={MICRO_LABEL}>Est. rate</span>
+                        <p className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
+                          <span className={NUMBER}>₱{mat.marketPricePerKg}</span>
+                          <span className="font-medium text-[var(--text-strong)]/40"> / kg</span>
+                        </p>
+                      </div>
+                      <div>
+                        <span className={MICRO_LABEL}>Est. value</span>
+                        <p className={`mt-1 text-sm ${NUMBER} text-[var(--text-strong)]`}>
+                          ₱{Math.round(currentKg * mat.marketPricePerKg).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-[var(--primary)]/5 pt-3">
+                      {hazmat ? (
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--danger-strong)]">
+                          <ShieldAlert size={12} /> E-waste — accredited handler disposal only, not
+                          sold as junk.
+                        </span>
+                      ) : isApproved ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSell(mat.materialCode, mat.materialName, currentKg, thresholdKg)
+                          }
+                          disabled={busy === mat.materialCode}
+                          className={PRIMARY_BUTTON}
+                        >
+                          {busy === mat.materialCode ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <Coins size={13} />
+                          )}{' '}
+                          Sell Scrap
+                        </button>
+                      ) : awaitingApproval ? (
+                        isAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setApproveFor(mat.materialCode);
+                              setApprovalRef(
+                                generateScrapApprovalReference([...materials, ...salesHistory]),
+                              );
+                            }}
+                            className={PRIMARY_BUTTON}
+                          >
+                            <CheckCircle2 size={13} /> Approve Sale
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-strong)]/45">
+                            <Clock size={12} /> Awaiting the Disposal Committee approval reference
+                            before this batch can be sold.
+                          </span>
+                        )
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-strong)]/45">
+                          <Clock size={12} /> {remainingKg.toFixed(1)} kg to go before this batch
+                          reaches the recovery threshold.
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Weighed history */}

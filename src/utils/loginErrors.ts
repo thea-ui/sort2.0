@@ -7,6 +7,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   PASSWORD_CHANGE_REQUIRED: 'Please change your password in EnrollPro first, then sign in.',
   NO_ENROLLPRO_ACCOUNT: 'Your EnrollPro portal account is not yet activated. Contact the registrar.',
   RATE_LIMITED: 'Too many login attempts. Please try again in 15 minutes.',
+  WRONG_PORTAL: 'This account does not have access to this portal.',
 };
 
 export const ROLE_PORTAL_MESSAGE = 'This account does not have access to this portal.';

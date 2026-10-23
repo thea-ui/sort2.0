@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { authenticate, requireAdmin, requireRole } from '../middleware/auth.js';
 import { mirrorEnrollProSchoolYears } from '../services/enrollpro-sync.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 function getParamId(req: Request): string {
   const raw = req.params.id;
@@ -376,9 +376,9 @@ router.get('/:id/ledger', requireAdmin, async (req: Request, res: Response): Pro
       awardedAgg,
       deductedAgg,
       pointSnapshots,
-      reportRows,
       pointRows,
       sales,
+      salesAgg,
       snapshots,
     ] = await Promise.all([
       prisma.report.groupBy({ by: ['status'], where: { schoolYearId: id }, _count: { _all: true } }),
@@ -392,35 +392,25 @@ router.get('/:id/ledger', requireAdmin, async (req: Request, res: Response): Pro
         orderBy: { closingPoints: 'desc' },
         take: 20,
       }),
-      prisma.report.findMany({
-        where: { schoolYearId: id },
-        orderBy: { createdAt: 'desc' },
-        take: 1000,
-        select: {
-          id: true,
-          title: true,
-          category: true,
-          status: true,
-          urgency: true,
-          weightCollected: true,
-          pointsAwarded: true,
-          createdAt: true,
-          locationName: true,
-          reporter: { select: { name: true, gradeLevel: true, sectionName: true } },
-        },
-      }),
       prisma.pointHistory.findMany({
         where: { schoolYearId: id },
         orderBy: { createdAt: 'desc' },
         take: 1000,
         include: { user: { select: { name: true, gradeLevel: true } } },
       }),
-      prisma.recycleSaleTransaction.findMany({ where: { schoolYearId: id }, orderBy: { soldAt: 'desc' } }),
+      // The listed rows are a bounded newest-first window for display; the
+      // revenue totals below come from the aggregate so archived years stay
+      // accurate even when they have more sales than the window.
+      prisma.recycleSaleTransaction.findMany({ where: { schoolYearId: id }, orderBy: { soldAt: 'desc' }, take: 1000 }),
+      prisma.recycleSaleTransaction.aggregate({
+        where: { schoolYearId: id },
+        _sum: { totalRevenue: true, weightKg: true },
+      }),
       prisma.marketStockSnapshot.findMany({ where: { schoolYearId: id }, orderBy: { categoryName: 'asc' } }),
     ]);
 
-    const revenuePhp = sales.reduce((sum, t) => sum + t.totalRevenue, 0);
-    const soldKg = sales.reduce((sum, t) => sum + t.weightKg, 0);
+    const revenuePhp = salesAgg._sum.totalRevenue || 0;
+    const soldKg = salesAgg._sum.weightKg || 0;
 
     res.json({
       schoolYear: {
@@ -438,21 +428,6 @@ router.get('/:id/ledger', requireAdmin, async (req: Request, res: Response): Pro
         byStatus: Object.fromEntries(statusGroups.map((g) => [g.status, g._count._all])),
         byCategory: Object.fromEntries(categoryGroups.map((g) => [g.category, g._count._all])),
         collectedWeightKg: reportAgg._sum.weightCollected || 0,
-        rows: reportRows.map((r) => ({
-          id: r.id,
-          title: r.title,
-          reporterName: r.reporter?.name || 'Unknown',
-          gradeLevel: r.reporter?.gradeLevel,
-          sectionName: r.reporter?.sectionName,
-          locationName: r.locationName,
-          category: r.category,
-          status: r.status,
-          urgency: r.urgency,
-          weightCollected: r.weightCollected || 0,
-          pointsAwarded: r.pointsAwarded,
-          createdAt: r.createdAt,
-        })),
-        rowsTruncated: reportRows.length >= 1000,
       },
       points: {
         totalAwarded: awardedAgg._sum.amount || 0,

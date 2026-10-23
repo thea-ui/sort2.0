@@ -1,9 +1,8 @@
+import { prisma } from '../lib/prisma.js';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
 
 dotenv.config();
 
-const prisma = new PrismaClient();
 const dryRun = process.argv.includes('--dry-run');
 
 // Mirror of the guard in school-year.routes.ts: a manually created year must sit

@@ -67,18 +67,6 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
 
   return (
     <div className="animate-fade-in space-y-4">
-      {/* Header */}
-      <div>
-        <span className="text-[10px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-          MRF Walk-in Station
-        </span>
-        <h3 className="text-lg font-heading font-black text-[var(--text-strong)] mt-1">Bottle Turn-in &amp; Points</h3>
-        <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
-          Search the student, tap bottle sizes, and credit points instantly. 500 ml = {ratePer500ml} pt
-          {ratePer500ml === 1 ? '' : 's'}.
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* LEFT: student + bottles */}

@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { authenticate, requireAdmin, requireRole } from '../middleware/auth.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const DEFAULT_STOCKS = [
   { categoryCode: 'pet_plastic', categoryName: 'PET Plastic Bottles', shortName: 'PET Bottles', thresholdLimitKg: 50.0, marketPricePerKg: 18.0, accumulatedKg: 0.0 },
@@ -77,7 +77,7 @@ router.patch('/stocks/:code', requireRole('ADMIN', 'MRF'), async (req: Request, 
 // (the MRF UI only ever shows "Awaiting Admin Approval").
 router.post('/approve-sale', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { categoryCode, isApproved } = req.body;
+    const { categoryCode, isApproved, approvalReference } = req.body;
     if (!categoryCode) {
       return res.status(400).json({ error: 'categoryCode is required' });
     }
@@ -89,6 +89,9 @@ router.post('/approve-sale', requireAdmin, async (req: Request, res: Response) =
       data: {
         isApprovedForSale: setApproval,
         approvedAt: setApproval ? new Date() : null,
+        ...(approvalReference !== undefined
+          ? { approvalReference: approvalReference ? String(approvalReference) : null }
+          : {}),
       },
     });
 
@@ -187,7 +190,8 @@ router.post('/sell-batch', requireRole('ADMIN', 'MRF'), async (req: Request, res
   }
 });
 
-// GET /api/market/sales - Get all logged sales transactions (Ledger)
+// GET /api/market/sales - Get logged sales transactions (Ledger)
+// Bounded newest-first window: ?limit=1..5000 (default 1000), ?before=ISO date.
 router.get('/sales', authenticate, async (req: Request, res: Response) => {
   try {
     const { schoolYearId } = req.query;
@@ -199,9 +203,18 @@ router.get('/sales', authenticate, async (req: Request, res: Response) => {
       if (activeSyId) where.schoolYearId = activeSyId;
     }
 
+    const rawLimit = Number.parseInt(String(req.query.limit ?? ''), 10);
+    const take = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 5000) : 1000;
+
+    if (typeof req.query.before === 'string') {
+      const before = new Date(req.query.before);
+      if (!Number.isNaN(before.getTime())) where.soldAt = { lt: before };
+    }
+
     const sales = await prisma.recycleSaleTransaction.findMany({
       where,
       orderBy: { soldAt: 'desc' },
+      take,
     });
     res.json(sales);
   } catch (error) {

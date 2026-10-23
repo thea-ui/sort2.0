@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { Report } from '../../types';
 import {
@@ -89,6 +89,23 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [lastSubmittedReport, setLastSubmittedReport] = useState<SubmittedReportDetails | null>(null);
+  const captureTimerRef = useRef<number | null>(null);
+  const gpsTimerRef = useRef<number | null>(null);
+  const submitTimerRef = useRef<number | null>(null);
+
+  // Clear pending timers on unmount so no delayed setState or stale submit
+  // closure (which holds the base64 photo) survives navigation.
+  useEffect(() => () => {
+    if (captureTimerRef.current !== null) clearTimeout(captureTimerRef.current);
+    if (gpsTimerRef.current !== null) clearTimeout(gpsTimerRef.current);
+    if (submitTimerRef.current !== null) clearTimeout(submitTimerRef.current);
+  }, []);
+
+  const handleDismissSubmitSuccess = () => {
+    setSubmitSuccess(false);
+    // Drop the retained base64 photo as soon as the success view is dismissed.
+    setLastSubmittedReport(null);
+  };
   const [urgency, setUrgency] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
 
   // Activity ledger filter
@@ -128,7 +145,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleCapture = () => {
     setIsCapturing(true);
-    setTimeout(() => {
+    captureTimerRef.current = window.setTimeout(() => {
       setCapturedImage(mockImages[pillarCategory] || mockImages.other);
       setIsCapturing(false);
     }, 900);
@@ -136,7 +153,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
 
   const handleGPSDetect = () => {
     setGpsLoading(true);
-    setTimeout(() => {
+    gpsTimerRef.current = window.setTimeout(() => {
       const offsets: Record<string, { lat: number; lng: number }> = {
         'Admin and Learning Commons':         { lat: 14.5995, lng: 120.9842 },
         'Grade 8 Academic Wing':              { lat: 14.6012, lng: 120.9856 },
@@ -162,7 +179,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    submitTimerRef.current = window.setTimeout(() => {
       const isWaste = pillarCategory === 'waste';
 
       let reportCat: BinCategory | 'GENERAL' = 'GENERAL';
@@ -318,7 +335,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
           handleGPSDetect={handleGPSDetect}
           isSubmitting={isSubmitting}
           submitSuccess={submitSuccess}
-          setSubmitSuccess={setSubmitSuccess}
+          setSubmitSuccess={handleDismissSubmitSuccess}
           lastSubmittedReport={lastSubmittedReport}
           urgency={urgency}
           setUrgency={setUrgency}

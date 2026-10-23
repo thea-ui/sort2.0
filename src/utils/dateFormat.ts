@@ -1,6 +1,6 @@
 /**
  * Shared date/time formatters (replaces the per-file implementations in
- * AdminReportsTab, AdminCollectionsTab, AdminReportDetailModal, AdminLedgerPage).
+ * AdminReportsTab, AdminCollectionsTab, AdminReportDetailModal).
  * All formatters are null-safe and return an em-dash for invalid input.
  */
 
@@ -29,6 +29,20 @@ export function formatShortDate(input: string | number | Date | null | undefined
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+  });
+}
+
+/**
+ * Long display date used by the Reports hub and its printouts:
+ * "Jan 01, 2026" (always two-digit day, never a numeric-only date).
+ */
+export function formatLongDate(input: string | number | Date | null | undefined): string {
+  const date = toDate(input);
+  if (!date) return '—';
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
   });
 }
 

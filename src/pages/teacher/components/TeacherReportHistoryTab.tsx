@@ -18,7 +18,9 @@ import {
 import { Report } from '../../../types';
 import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
+import { EvidenceThumbnail } from '../../../components/common/EvidenceImage';
 import { ReportLocationMiniMap } from '../../../components/map/ReportLocationMiniMap';
+import { useReportPhoto } from '../../../hooks/useReportPhoto';
 
 interface TeacherReportHistoryTabProps {
   timelineReports: Report[];
@@ -51,6 +53,7 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
 }) => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const selectedPhotoSrc = useReportPhoto(selectedReport?.photoUrl, selectedReport?.imageUrl);
 
   useEffect(() => {
     if (!selectedReport) return;
@@ -158,16 +161,13 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <span className={`rounded-full border px-3 py-0.5 text-[8px] font-black uppercase tracking-wider ${STATUS_BADGE[ds]}`}>{ds}</span>
-                    {rep.imageUrl && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setLightboxSrc(rep.imageUrl ?? null); }}
-                        aria-label="View evidence photo full screen"
-                        className="h-9 w-14 overflow-hidden rounded-xl border border-[var(--primary)]/10 shadow-2xs cursor-zoom-in"
-                      >
-                        <img src={rep.imageUrl} alt="Evidence" className="h-full w-full object-cover" />
-                      </button>
-                    )}
+                    <EvidenceThumbnail
+                      photoUrl={rep.photoUrl}
+                      imageUrl={rep.imageUrl}
+                      alt="Evidence"
+                      onOpen={setLightboxSrc}
+                      className="h-9 w-14 overflow-hidden rounded-xl border border-[var(--primary)]/10 shadow-2xs cursor-zoom-in"
+                    />
                   </div>
                 </div>
               );
@@ -261,13 +261,13 @@ export const TeacherReportHistoryTab: React.FC<TeacherReportHistoryTabProps> = (
 
               {/* Photo Evidence & Description */}
               <div className="space-y-2">
-                {selectedReport.imageUrl && (
+                {selectedPhotoSrc && (
                   <button
                     type="button"
-                    onClick={() => setLightboxSrc(selectedReport.imageUrl ?? null)}
+                    onClick={() => setLightboxSrc(selectedPhotoSrc)}
                     className="group relative block w-full rounded-2xl overflow-hidden border border-gray-200 h-44 sm:h-52 bg-gray-100 shadow-inner cursor-zoom-in"
                   >
-                    <img src={selectedReport.imageUrl} alt="Waste evidence" className="w-full h-full object-cover" />
+                    <img src={selectedPhotoSrc} alt="Waste evidence" className="w-full h-full object-cover" />
                     <span className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-[10px] font-mono text-white backdrop-blur-xs">
                       <Maximize2 size={11} /> Tap to view full screen
                     </span>

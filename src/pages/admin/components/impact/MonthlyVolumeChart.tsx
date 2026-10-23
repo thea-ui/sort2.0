@@ -13,6 +13,13 @@ interface MonthlyVolumeChartProps {
   collectedCount: number;
 }
 
+const BAR_SHADES = [
+  'bg-[var(--ramp-1)] group-hover:bg-[color-mix(in_srgb,var(--ramp-1)_80%,black)]',
+  'bg-[var(--ramp-2)] group-hover:bg-[color-mix(in_srgb,var(--ramp-2)_80%,black)]',
+  'bg-[var(--ramp-3)] group-hover:bg-[color-mix(in_srgb,var(--ramp-3)_80%,black)]',
+  'bg-[var(--ramp-4)] group-hover:bg-[color-mix(in_srgb,var(--ramp-4)_80%,black)]',
+];
+
 export const MonthlyVolumeChart: React.FC<MonthlyVolumeChartProps> = ({
   monthlyData,
   totalCollectedKg,
@@ -21,7 +28,7 @@ export const MonthlyVolumeChart: React.FC<MonthlyVolumeChartProps> = ({
   <div className="lg:col-span-7 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
       <div className="flex items-center gap-2.5">
-        <div className="p-2 bg-[color-mix(in_srgb,var(--primary)_10%,white)] rounded-xl text-[var(--accent)]">
+        <div className="p-2 bg-[var(--ramp-3)]/10 rounded-xl text-[var(--ramp-3)]">
           <Calendar size={18} />
         </div>
         <div>
@@ -35,10 +42,10 @@ export const MonthlyVolumeChart: React.FC<MonthlyVolumeChartProps> = ({
       </div>
 
       <div className="flex items-center gap-2 text-xs font-bold">
-        <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <span className="px-2.5 py-1 rounded-full bg-[var(--ramp-3)]/15 text-[var(--ramp-3-strong)] border border-[var(--ramp-3)]/30">
           {totalCollectedKg.toFixed(1)} kg Collected
         </span>
-        <span className="px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border border-[var(--primary)]/25">
+        <span className="px-2.5 py-1 rounded-full bg-[var(--ramp-3)]/10 text-[var(--ramp-3-strong)] border border-[var(--ramp-3)]/20">
           {collectedCount} Verified Reports
         </span>
       </div>
@@ -46,7 +53,7 @@ export const MonthlyVolumeChart: React.FC<MonthlyVolumeChartProps> = ({
 
     {/* Bar Chart */}
     <div className="h-52 flex items-end justify-between gap-3 pt-8 pb-2 border-b border-[var(--primary)]/10">
-      {monthlyData.map((m) => {
+      {monthlyData.map((m, idx) => {
         const heightPct = Math.min(100, Math.round((m.weight / 250) * 100));
         const hasData = m.weight > 0;
         return (
@@ -59,7 +66,7 @@ export const MonthlyVolumeChart: React.FC<MonthlyVolumeChartProps> = ({
             {hasData ? (
               <div className="w-full h-36 flex items-end justify-center">
                 <div
-                  className="w-7 bg-[var(--accent)] group-hover:bg-[var(--accent-dark)] rounded-t-md transition-all duration-500 shadow-sm"
+                  className={`w-7 ${BAR_SHADES[idx % BAR_SHADES.length]} rounded-t-md transition-all duration-500 shadow-sm`}
                   style={{ height: `${Math.max(heightPct, 8)}%` }}
                 />
               </div>
@@ -78,7 +85,7 @@ export const MonthlyVolumeChart: React.FC<MonthlyVolumeChartProps> = ({
       <span>
         Current Collection: <strong>{totalCollectedKg.toFixed(1)} kg</strong>
       </span>
-      <span className="text-[var(--accent)] font-bold">
+      <span className="text-[var(--ramp-3-strong)] font-bold">
         Total Processed: {totalCollectedKg.toFixed(1)} kg
       </span>
     </div>

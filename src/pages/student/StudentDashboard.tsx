@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { WasteCategory } from '../../types';
-import { Scale, Sparkles, Flame, Trash2 } from 'lucide-react';
+import { Scale, Sparkles, Trash2 } from 'lucide-react';
 import { downscaleImageFile } from '../../utils/imageDownscale';
 import { toast } from '../../hooks/useToast';
 
@@ -33,7 +33,6 @@ const CATEGORY_META: Record<WasteCategory, { label: string; icon: React.Componen
   BIODEGRADABLE: { label: 'Biodegradable', icon: Sparkles, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100' },
   NON_BIODEGRADABLE: { label: 'Non-Biodegradable', icon: Trash2, color: 'text-slate-700', bg: 'bg-slate-50/50', border: 'border-slate-200' },
   ORGANIC: { label: 'Organic', icon: Sparkles, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100' },
-  HAZARDOUS: { label: 'Hazardous', icon: Flame, color: 'text-orange-600', bg: 'bg-orange-50/50', border: 'border-orange-200' },
   GENERAL: { label: 'General', icon: Trash2, color: 'text-zinc-600', bg: 'bg-zinc-50/50', border: 'border-zinc-200' },
 };
 
@@ -85,13 +84,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
     BIODEGRADABLE: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80',
     NON_BIODEGRADABLE: 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&w=400&q=80',
     ORGANIC: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80',
-    HAZARDOUS: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80',
     GENERAL: 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&w=400&q=80',
   };
 
   const handleCapture = () => {
     setIsCapturing(true);
-    setTimeout(() => {
+    captureTimerRef.current = window.setTimeout(() => {
       setCapturedImage(mockImages[category] || mockImages.RECYCLABLE);
       setIsCapturing(false);
     }, 1000);
@@ -115,6 +113,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
   };
 
   const [lastSubmittedReport, setLastSubmittedReport] = useState<StudentSubmittedReportDetails | null>(null);
+  const captureTimerRef = useRef<number | null>(null);
+  const submitTimerRef = useRef<number | null>(null);
+
+  // Clear pending timers on unmount so no delayed setState or stale submit
+  // closure (which holds the base64 photo) survives navigation.
+  useEffect(() => () => {
+    if (captureTimerRef.current !== null) clearTimeout(captureTimerRef.current);
+    if (submitTimerRef.current !== null) clearTimeout(submitTimerRef.current);
+  }, []);
+
+  const handleDismissSubmitSuccess = () => {
+    setSubmitSuccess(false);
+    // Drop the retained base64 photo as soon as the success view is dismissed.
+    setLastSubmittedReport(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +142,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    submitTimerRef.current = window.setTimeout(() => {
       const subcategoriesText = selectedMaterials.length > 0 
         ? `[Materials: ${selectedMaterials.map(m => m.charAt(0).toUpperCase() + m.slice(1)).join(', ')}]` 
         : '';
@@ -232,7 +245,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
           setGpsCoords={setGpsCoords}
           isSubmitting={isSubmitting}
           submitSuccess={submitSuccess}
-          setSubmitSuccess={setSubmitSuccess}
+          setSubmitSuccess={handleDismissSubmitSuccess}
           lastSubmittedReport={lastSubmittedReport}
           binId={binId}
           setBinId={setBinId}

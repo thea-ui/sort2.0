@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { effectiveNowForTerm } from './term-clock.service.js';
-
-const prisma = new PrismaClient();
 
 export type CertificateTierValue = 'MILESTONE' | 'CHAMPION' | 'LEADER' | 'ADVOCATE';
 export type TermState = 'NO_TERM' | 'IN_TERM' | 'GRACE' | 'CLOSED';
@@ -202,8 +200,31 @@ export async function computeTermStandings(
   const start = quarter.isActive && realNow < baseStart ? realNow : baseStart;
   const end = quarter.isActive && realNow > baseEnd ? realNow : baseEnd;
 
+  // Term totals first (one row per participating student), then hydrate only
+  // the top candidates. Issuance needs the top 3 and the preview shows 10, so
+  // loading every student row (the old behaviour) was pure memory overhead.
+  const TERM_STANDING_LIMIT = 200;
+
+  const termTotals = await prisma.pointHistory.groupBy({
+    by: ['userId'],
+    where: {
+      createdAt: { gte: start, lte: end },
+      ...(schoolYearId ? { schoolYearId } : {}),
+    },
+    _sum: { amount: true },
+  });
+
+  const rankedCandidates = termTotals
+    .map((row) => ({ userId: row.userId, termPoints: row._sum.amount ?? 0 }))
+    .filter((row) => row.termPoints > 0)
+    .sort((a, b) => b.termPoints - a.termPoints)
+    .slice(0, TERM_STANDING_LIMIT);
+
+  if (rankedCandidates.length === 0) return [];
+
   const students = await prisma.user.findMany({
     where: {
+      id: { in: rankedCandidates.map((row) => row.userId) },
       role: 'STUDENT',
       syncSource: 'ENROLLPRO',
       archivedAt: null,
@@ -218,29 +239,22 @@ export async function computeTermStandings(
     },
   });
 
-  const termTotals = await prisma.pointHistory.groupBy({
-    by: ['userId'],
-    where: {
-      createdAt: { gte: start, lte: end },
-      ...(schoolYearId ? { schoolYearId } : {}),
-    },
-    _sum: { amount: true },
-  });
+  const studentById = new Map(students.map((student) => [student.id, student]));
 
-  const termByUser = new Map<string, number>();
-  for (const row of termTotals) {
-    termByUser.set(row.userId, row._sum.amount ?? 0);
-  }
-
-  return students
-    .map((s) => ({
-      userId: s.id,
-      name: s.name,
-      gradeLevel: s.gradeLevel,
-      sectionName: s.sectionName,
-      termPoints: termByUser.get(s.id) ?? 0,
-      totalPoints: s.points,
-    }))
+  return rankedCandidates
+    .map((candidate) => {
+      const student = studentById.get(candidate.userId);
+      if (!student) return null;
+      return {
+        userId: student.id,
+        name: student.name,
+        gradeLevel: student.gradeLevel,
+        sectionName: student.sectionName,
+        termPoints: candidate.termPoints,
+        totalPoints: student.points,
+      };
+    })
+    .filter((standing): standing is TermStanding => standing !== null)
     .sort((a, b) => {
       if (b.termPoints !== a.termPoints) return b.termPoints - a.termPoints;
       if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;

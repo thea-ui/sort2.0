@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { rescheduleBinReset } from '../services/bin-reset.service.js';
 import { rescheduleSync } from '../services/sync-scheduler.service.js';
@@ -10,12 +11,13 @@ import {
   broadcastBranding,
   addBrandingStreamClient,
   removeBrandingStreamClient,
+  getBrandingStreamClientCount,
+  MAX_BRANDING_STREAM_CLIENTS,
 } from '../services/branding.service.js';
 import { syncEnrollProBranding } from '../services/enrollpro-branding.service.js';
 import { clampMaxCacheDays } from '../services/offline-auth.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ─── Public branding (no auth) ─────────────────────────────────────────
 // Whitelisted payload consumed by the client ThemeProvider: fetch → cache →
@@ -32,6 +34,15 @@ router.get('/public', async (_req, res) => {
 });
 
 router.get('/public/stream', (req: Request, res: Response) => {
+  // Reject before writing SSE headers: this endpoint is public, so unlimited
+  // connections would otherwise hold socket buffers indefinitely.
+  if (getBrandingStreamClientCount() >= MAX_BRANDING_STREAM_CLIENTS) {
+    return res.status(503).json({
+      error: 'Too many live branding streams. Please retry shortly.',
+      code: 'STREAM_BUSY',
+    });
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
@@ -165,6 +176,30 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
       offlineAuthCacheMaxDays,
     } = req.body;
 
+    // Blueprint URLs are references, not payloads: reject inline data URLs and
+    // oversized strings so GET /settings can never return a multi-MB blob.
+    let normalizedBlueprintUrl: string | null | undefined;
+    if (blueprintUrl !== undefined) {
+      if (blueprintUrl === null || blueprintUrl === '') {
+        normalizedBlueprintUrl = null;
+      } else {
+        const value = String(blueprintUrl);
+        if (value.startsWith('data:')) {
+          return res.status(400).json({
+            error: 'Inline blueprint images are not accepted; store the image and send its URL.',
+            code: 'BLUEPRINT_URL_INLINE',
+          });
+        }
+        if (value.length > 2000) {
+          return res.status(400).json({
+            error: 'blueprintUrl must be 2000 characters or fewer.',
+            code: 'BLUEPRINT_URL_TOO_LONG',
+          });
+        }
+        normalizedBlueprintUrl = value;
+      }
+    }
+
     // Branding fields are whitelisted + normalised before touching the row.
     const brandingPatch = sanitizeBrandingPatch(req.body ?? {});
 
@@ -185,7 +220,7 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
         ...(syncMode !== undefined && { syncMode: normalizeSyncMode(syncMode) }),
         ...(syncIntervalMinutes !== undefined && { syncIntervalMinutes: clampSyncInterval(syncIntervalMinutes) }),
         ...(blueprintPreset !== undefined && { blueprintPreset: String(blueprintPreset) }),
-        ...(blueprintUrl !== undefined && { blueprintUrl: String(blueprintUrl) }),
+        ...(normalizedBlueprintUrl !== undefined && { blueprintUrl: normalizedBlueprintUrl }),
         ...(maxUnverifiedReports !== undefined && { maxUnverifiedReports: Number(maxUnverifiedReports) }),
         ...(dismissPointPenalty !== undefined && { dismissPointPenalty: Number(dismissPointPenalty) }),
         ...(falseReportPointPenalty !== undefined && { falseReportPointPenalty: Number(falseReportPointPenalty) }),
@@ -214,7 +249,7 @@ router.patch('/', requireAdmin, async (req: Request, res: Response) => {
         syncMode: normalizeSyncMode(syncMode),
         syncIntervalMinutes: clampSyncInterval(syncIntervalMinutes),
         blueprintPreset: String(blueprintPreset || 'DEFAULT'),
-        blueprintUrl: blueprintUrl ? String(blueprintUrl) : null,
+        blueprintUrl: normalizedBlueprintUrl ?? null,
         maxUnverifiedReports: Number(maxUnverifiedReports || 3),
         dismissPointPenalty: Number(dismissPointPenalty || 10),
         falseReportPointPenalty: Number(falseReportPointPenalty || 50),
@@ -363,30 +398,45 @@ router.post('/campus-locations', requireAdmin, async (req: Request, res: Respons
     if (!Array.isArray(locations)) {
       return res.status(400).json({ error: 'locations must be an array' });
     }
+    // A campus has a bounded number of stations; a huge client array would fan
+    // out hundreds of concurrent upserts through one connection pool.
+    const MAX_CAMPUS_LOCATIONS = 200;
+    if (locations.length > MAX_CAMPUS_LOCATIONS) {
+      return res.status(400).json({
+        error: `Too many locations (${locations.length}). Maximum is ${MAX_CAMPUS_LOCATIONS}.`,
+        code: 'TOO_MANY_LOCATIONS',
+      });
+    }
 
-    // Upsert locations
-    const results = await Promise.all(
-      locations.map((loc: any) =>
-        prisma.campusLocation.upsert({
-          where: { code: loc.code || loc.id },
-          update: {
-            name: loc.name,
-            status: loc.status || 'Available',
-            x: Number(loc.x),
-            y: Number(loc.y),
-            streams: loc.streams || [],
-          },
-          create: {
-            code: loc.code || loc.id,
-            name: loc.name,
-            status: loc.status || 'Available',
-            x: Number(loc.x),
-            y: Number(loc.y),
-            streams: loc.streams || [],
-          },
-        })
-      )
-    );
+    // Upsert in small sequential chunks (bounded concurrency).
+    const results: Awaited<ReturnType<typeof prisma.campusLocation.upsert>>[] = [];
+    for (let index = 0; index < locations.length; index += 10) {
+      const chunk = locations.slice(index, index + 10);
+      results.push(
+        ...(await Promise.all(
+          chunk.map((loc: any) =>
+            prisma.campusLocation.upsert({
+              where: { code: loc.code || loc.id },
+              update: {
+                name: loc.name,
+                status: loc.status || 'Available',
+                x: Number(loc.x),
+                y: Number(loc.y),
+                streams: loc.streams || [],
+              },
+              create: {
+                code: loc.code || loc.id,
+                name: loc.name,
+                status: loc.status || 'Available',
+                x: Number(loc.x),
+                y: Number(loc.y),
+                streams: loc.streams || [],
+              },
+            })
+          )
+        ))
+      );
+    }
 
     res.json(results);
   } catch (error: any) {
@@ -758,8 +808,11 @@ router.post('/audit-logs', requireAdmin, async (req: Request, res: Response): Pr
 // GET /api/settings/campus-news
 router.get('/campus-news', async (req: Request, res: Response): Promise<any> => {
   try {
+    const rawLimit = Number.parseInt(String(req.query.limit ?? ''), 10);
+    const take = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 200) : 100;
     const news = await prisma.campusNews.findMany({
       orderBy: { createdAt: 'desc' },
+      take,
     });
     res.json(news);
   } catch (error: any) {

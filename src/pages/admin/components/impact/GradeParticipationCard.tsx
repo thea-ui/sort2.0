@@ -30,7 +30,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
     <div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[color-mix(in_srgb,var(--gold)_10%,white)] rounded-xl text-[var(--gold)]">
+          <div className="p-2 bg-[var(--accent)]/10 rounded-xl text-[var(--accent)]">
             <BarChart2 size={18} />
           </div>
           <div>
@@ -42,7 +42,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
             </p>
           </div>
         </div>
-        <span className="text-[11px] font-medium text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_10%,white)] px-2 py-0.5 rounded-full border border-[var(--gold)]/60">
+        <span className="text-[11px] font-medium text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-full border border-[var(--accent)]/25">
           {activeStudentCount} Student Profiles
         </span>
       </div>
@@ -54,7 +54,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
             key={item.grade}
             className={`p-4 rounded-2xl border transition-all ${
               item.isTop
-                ? `${item.lightBg} ${item.border} ring-2 ring-[var(--gold)]/30 shadow-sm`
+                ? 'bg-[var(--gold)]/10 border-[var(--gold)]/30 ring-2 ring-[var(--gold)]/30 shadow-sm'
                 : 'bg-gray-50 border-gray-200/80 hover:bg-white'
             }`}
           >
@@ -67,7 +67,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
                 {item.label}
               </span>
               {item.isTop && (
-                <span className="text-[10px] font-extrabold text-[var(--gold)] bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-[10px] font-extrabold text-[var(--gold-strong)] bg-[var(--gold)]/10 border border-[var(--gold)]/25 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Award size={11} /> Top Leader
                 </span>
               )}
@@ -84,7 +84,7 @@ export const GradeParticipationCard: React.FC<GradeParticipationCardProps> = ({
             {/* Progress Bar */}
             <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mt-2.5">
               <div
-                className={`h-full ${item.color} rounded-full transition-all duration-500`}
+                className={`h-full ${item.isTop ? 'bg-[var(--gold)]' : item.color} rounded-full transition-all duration-500`}
                 style={{ width: `${Math.max(item.pct, 5)}%` }}
               />
             </div>

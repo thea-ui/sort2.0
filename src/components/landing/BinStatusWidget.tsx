@@ -11,7 +11,6 @@ const FILL_CONFIG = (level: number) => {
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   RECYCLABLE: { label: 'Recyclable', color: 'text-[var(--text-strong)]' },
   ORGANIC:    { label: 'Organic',    color: 'text-green-600' },
-  HAZARDOUS:  { label: 'Hazardous',  color: 'text-red-600' },
   GENERAL:    { label: 'General',    color: 'text-gray-500' },
 };
 

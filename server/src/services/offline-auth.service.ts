@@ -1,3 +1,4 @@
+import { prisma } from '../lib/prisma.js';
 /**
  * Offline password-cache authentication.
  *
@@ -9,9 +10,6 @@
  * a password change on EnrollPro always wins while it is reachable.
  */
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
 
 export const BCRYPT_COST = 12;
 export const DEFAULT_MAX_CACHE_DAYS = 30;

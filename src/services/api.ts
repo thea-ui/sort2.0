@@ -1,4 +1,4 @@
-import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult, Certificate, TermStatus, IssueTermResult, AtlasMapPayload, WalkInStudentOption, WalkInTurnover, WalkInProgress, RecordWalkInInput, RecordWalkInResult, Reward, RewardClaim } from '../types';
+import { User, Report, BinStatus, Challenge, AdminChallenge, VerifySingleResult, VerifyBatchResult, Certificate, TermStatus, IssueTermResult, AtlasMapPayload, WalkInStudentOption, WalkInTurnover, WalkInProgress, RecordWalkInInput, RecordWalkInResult, Reward, RewardClaim, ReportPdfPayload } from '../types';
 
 export type DataSeedVolume = 'LIGHT' | 'NORMAL' | 'HEAVY';
 export type DataSeedMode = 'SEED_EMPTY' | 'RESEED_YEAR';
@@ -160,12 +160,22 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
   return response.json();
 }
 
+/**
+ * Sign-in surfaces. The server admits exactly one role family per portal:
+ * ADMIN → admins, MRF → MRF staff, STAFF → students/teachers.
+ */
+export type LoginPortal = 'ADMIN' | 'MRF' | 'STAFF';
+
 export const apiService = {
   // Auth API
-  login: async (identifier: string, password: string): Promise<{ token: string; refreshToken: string; user: User; offlineAuth?: boolean }> => {
+  login: async (
+    identifier: string,
+    password: string,
+    portal?: LoginPortal,
+  ): Promise<{ token: string; refreshToken: string; user: User; offlineAuth?: boolean }> => {
     return fetchAPI('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier, password, ...(portal ? { portal } : {}) }),
     });
   },
 
@@ -212,7 +222,7 @@ export const apiService = {
   },
 
   // Reports API
-  getReports: async (filters?: { status?: string; category?: string; reporterId?: string }): Promise<Report[]> => {
+  getReports: async (filters?: { status?: string; category?: string; reporterId?: string; schoolYearId?: string }): Promise<Report[]> => {
     const query = new URLSearchParams(filters as Record<string, string>).toString();
     const endpoint = query ? `/reports?${query}` : '/reports';
     return fetchAPI(endpoint);
@@ -223,6 +233,33 @@ export const apiService = {
       method: 'POST',
       body: JSON.stringify(reportData),
     });
+  },
+
+  /**
+   * Reports hub PDF export. The server renders the posted table (same rows the
+   * hub shows) with the school letterhead and returns a PDF blob.
+   */
+  exportReportPdfBlob: async (payload: ReportPdfPayload): Promise<Blob> => {
+    return fetchReportPdfBlob(payload);
+  },
+
+  viewReportPdf: async (payload: ReportPdfPayload): Promise<void> => {
+    const buffer = await fetchReportPdfBlob(payload);
+    const url = window.URL.createObjectURL(buffer);
+    window.open(url, '_blank');
+    setTimeout(() => window.URL.revokeObjectURL(url), 30000);
+  },
+
+  downloadReportPdf: async (payload: ReportPdfPayload, fileName: string): Promise<void> => {
+    const blob = await fetchReportPdfBlob(payload);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 
   updateReportStatus: async (
@@ -538,7 +575,11 @@ export const apiService = {
     });
   },
 
-  approveMarketSale: async (params: { categoryCode: string; isApproved?: boolean }): Promise<any> => {
+  approveMarketSale: async (params: {
+    categoryCode: string;
+    isApproved?: boolean;
+    approvalReference?: string;
+  }): Promise<any> => {
     return fetchAPI('/market/approve-sale', {
       method: 'POST',
       body: JSON.stringify(params),
@@ -880,10 +921,20 @@ export const apiService = {
     return fetchAPI('/walk-ins', { method: 'POST', body: JSON.stringify(input) });
   },
 
-  getWalkIns: async (params?: { date?: string; studentId?: string; limit?: number }): Promise<{ turnovers: WalkInTurnover[] }> => {
+  getWalkIns: async (params?: {
+    date?: string;
+    studentId?: string;
+    schoolYearId?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+  }): Promise<{ turnovers: WalkInTurnover[] }> => {
     const query = new URLSearchParams();
     if (params?.date) query.set('date', params.date);
     if (params?.studentId) query.set('studentId', params.studentId);
+    if (params?.schoolYearId) query.set('schoolYearId', params.schoolYearId);
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
     if (params?.limit) query.set('limit', String(params.limit));
     const qs = query.toString();
     return fetchAPI(`/walk-ins${qs ? `?${qs}` : ''}`);
@@ -945,6 +996,53 @@ export async function fetchAtlasCampusImageObjectUrl(): Promise<string | null> {
   const blob = await response.blob();
   if (!blob.type.startsWith('image/')) return null;
   return window.URL.createObjectURL(blob);
+}
+
+/**
+ * Fetch one report's photo evidence as a blob object URL. The caller owns the
+ * object URL and must revoke it on eviction. 404 means "no photo".
+ */
+export async function fetchReportPhotoObjectUrl(photoPath: string): Promise<string | null> {
+  // Server paths are app-relative (e.g. /api/reports/:id/photo).
+  const endpoint = photoPath.startsWith('/api') ? photoPath.slice(4) : photoPath;
+  let token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  let response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+  if (response.status === 401 && getRefreshToken()) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      headers['Authorization'] = `Bearer ${refreshed.accessToken}`;
+      response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+    }
+  }
+
+  if (!response.ok) return null;
+
+  const blob = await response.blob();
+  if (!blob.type.startsWith('image/')) return null;
+  return window.URL.createObjectURL(blob);
+}
+
+/** Shared POST → PDF-blob fetch for the Reports hub export endpoints. */
+async function fetchReportPdfBlob(payload: ReportPdfPayload): Promise<Blob> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/reports/export-pdf`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `PDF export failed with status ${response.status}`);
+  }
+
+  return response.blob();
 }
 
 async function fetchCertificateBlob(

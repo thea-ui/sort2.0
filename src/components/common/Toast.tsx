@@ -17,11 +17,15 @@ const KIND_ICON: Record<ToastKind, typeof Info> = {
   info: Info,
 };
 
+/**
+ * Kinds wear the universal semantic tokens (AGENTS.md §3): success is always
+ * green, warnings amber, errors red, info blue — never tenant brand colors.
+ */
 const KIND_STYLE: Record<ToastKind, string> = {
-  success: 'bg-white border-primary/30 text-primary',
-  error: 'bg-white border-destructive/30 text-destructive',
-  warning: 'bg-amber-50 border-amber-300 text-amber-800',
-  info: 'bg-blue-50 border-blue-300 text-blue-800',
+  success: 'bg-white border-[var(--success)]/30 text-[var(--success-strong)]',
+  error: 'bg-white border-[var(--danger)]/30 text-[var(--danger-strong)]',
+  warning: 'bg-[var(--warning)]/10 border-[var(--warning)]/40 text-[var(--warning-strong)]',
+  info: 'bg-[var(--info)]/10 border-[var(--info)]/40 text-[var(--info-strong)]',
 };
 
 export const ToastViewport: React.FC = () => {

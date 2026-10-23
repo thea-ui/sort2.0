@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
+import { createPollScheduler } from '../utils/pollScheduler';
 
 export interface SchoolYear {
   id: string;
@@ -48,21 +49,6 @@ export interface LedgerSale {
   soldAt: string;
 }
 
-export interface LedgerReportRow {
-  id: string;
-  title: string;
-  reporterName: string;
-  gradeLevel?: string;
-  sectionName?: string;
-  locationName: string;
-  category: string;
-  status: string;
-  urgency: string;
-  weightCollected: number;
-  pointsAwarded: number;
-  createdAt: string;
-}
-
 export interface LedgerPointTxn {
   id: string;
   userName: string;
@@ -79,8 +65,6 @@ export interface SchoolYearLedger {
     byStatus: Record<string, number>;
     byCategory: Record<string, number>;
     collectedWeightKg: number;
-    rows: LedgerReportRow[];
-    rowsTruncated: boolean;
   };
   points: {
     totalAwarded: number;
@@ -116,9 +100,18 @@ interface SchoolYearCache {
 
 let cache: SchoolYearCache | null = null;
 let inflight: Promise<void> | null = null;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let lastSerialized: string | null = null;
 const CACHE_TTL_MS = 15000;
 const listeners = new Set<() => void>();
+
+// Ref-counted poller: starts with the first consumer and stops with the last
+// (the old module-level interval ran forever, even after all views unmounted,
+// and was duplicated by dev hot reloads).
+const poller = createPollScheduler(() => loadSchoolYears(true), {
+  intervalMs: 30_000,
+  hiddenIntervalMs: 90_000,
+  immediate: false,
+});
 
 function notify() {
   for (const listener of listeners) listener();
@@ -145,20 +138,19 @@ async function loadSchoolYears(force = false): Promise<void> {
   })();
 
   await inflight;
-  notify();
-}
 
-function ensurePolling() {
-  if (pollTimer !== null) return;
-  pollTimer = setInterval(() => {
-    void loadSchoolYears(true).catch(() => {});
-  }, 30000);
+  // Notify only when the payload actually changed, so the 30s poll does not
+  // re-render every consumer with identical data.
+  const serialized = JSON.stringify({ active: cache?.active ?? null, all: cache?.all ?? [] });
+  if (serialized !== lastSerialized) {
+    lastSerialized = serialized;
+    notify();
+  }
 }
 
 export function useSchoolYear() {
   const [, setTick] = useState(0);
   const [loading, setLoading] = useState(!cache);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const rerender = () => {
@@ -166,7 +158,7 @@ export function useSchoolYear() {
       setTick((n) => n + 1);
     };
     listeners.add(rerender);
-    ensurePolling();
+    poller.start();
 
     if (!cache) {
       setLoading(true);
@@ -177,74 +169,8 @@ export function useSchoolYear() {
 
     return () => {
       listeners.delete(rerender);
+      poller.stop();
     };
-  }, []);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    await loadSchoolYears(true);
-    setLoading(false);
-  }, []);
-
-  const createSchoolYear = useCallback(async (data: { label: string; startDate: string; endDate: string; enrollproId?: number }) => {
-    try {
-      setError(null);
-      const result = await apiService.createSchoolYear(data);
-      await loadSchoolYears(true);
-      return result;
-    } catch (err: any) {
-      const message = err.message || 'Failed to create school year';
-      setError(message);
-      throw new Error(message);
-    }
-  }, []);
-
-  const updateSchoolYear = useCallback(async (id: string, data: { label?: string; startDate?: string; endDate?: string }) => {
-    try {
-      setError(null);
-      const result = await apiService.updateSchoolYear(id, data);
-      await loadSchoolYears(true);
-      return result;
-    } catch (err: any) {
-      const message = err.message || 'Failed to update school year';
-      setError(message);
-      throw new Error(message);
-    }
-  }, []);
-
-  const activateSchoolYear = useCallback(async (id: string) => {
-    try {
-      setError(null);
-      const result = await apiService.activateSchoolYear(id);
-      await loadSchoolYears(true);
-      return result;
-    } catch (err: any) {
-      const message = err.message || 'Failed to activate school year';
-      setError(message);
-      throw new Error(message);
-    }
-  }, []);
-
-  const importSchoolYears = useCallback(async () => {
-    try {
-      setError(null);
-      const result = await apiService.importSchoolYears();
-      await loadSchoolYears(true);
-      return result;
-    } catch (err: any) {
-      const message = err.message || 'Failed to import school years';
-      setError(message);
-      throw new Error(message);
-    }
-  }, []);
-
-  const getSchoolYearDetails = useCallback(async (id: string) => {
-    try {
-      return await apiService.getSchoolYearDetails(id);
-    } catch (err: any) {
-      throw new Error(err.message || 'Failed to fetch school year details');
-    }
   }, []);
 
   const getSchoolYearLedger = useCallback(async (id: string): Promise<SchoolYearLedger> => {
@@ -259,13 +185,6 @@ export function useSchoolYear() {
     activeSchoolYear: cache?.active ?? null,
     allSchoolYears: cache?.all ?? [],
     loading,
-    error,
-    refresh,
-    createSchoolYear,
-    updateSchoolYear,
-    activateSchoolYear,
-    importSchoolYears,
-    getSchoolYearDetails,
     getSchoolYearLedger,
   };
 }

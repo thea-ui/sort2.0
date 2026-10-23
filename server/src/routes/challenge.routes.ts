@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient, ChallengeType } from '@prisma/client';
+import { ChallengeType } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { authenticate, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
 import {
   resolveChallengeScope,
@@ -10,7 +11,6 @@ import {
 } from '../services/challenge-term.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // GET /api/challenges — any authenticated user (definitions + caller's progress)
 router.get('/', authenticate, async (req: Request, res: Response): Promise<any> => {
@@ -86,21 +86,42 @@ router.get('/admin', requireAdmin, async (req: Request, res: Response): Promise<
         : challengeSchoolYearWhere(scope),
       orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
       include: {
-        progressRecords: {
-          select: { userId: true, currentCount: true, completedAt: true },
-        },
-        contributions: {
-          select: { userId: true },
-        },
         schoolYear: { select: { label: true } },
       },
     });
 
+    // Aggregate stats server-side. The previous version loaded every progress
+    // row and every contribution row per challenge (100k+ nested rows on a
+    // populated year). Progress has @@unique([userId, challengeId]), so the
+    // row count equals the distinct participant count.
+    const challengeIds = challenges.map((challenge) => challenge.id);
+    const [progressTotals, completedTotals, contributionTotals] = await Promise.all([
+      prisma.userChallengeProgress.groupBy({
+        by: ['challengeId'],
+        where: { challengeId: { in: challengeIds } },
+        _count: { _all: true },
+      }),
+      prisma.userChallengeProgress.groupBy({
+        by: ['challengeId'],
+        where: { challengeId: { in: challengeIds }, completedAt: { not: null } },
+        _count: { _all: true },
+      }),
+      prisma.challengeContribution.groupBy({
+        by: ['challengeId'],
+        where: { challengeId: { in: challengeIds } },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const progressByChallenge = new Map(progressTotals.map((row) => [row.challengeId, row._count._all]));
+    const completedByChallenge = new Map(completedTotals.map((row) => [row.challengeId, row._count._all]));
+    const contributionsByChallenge = new Map(contributionTotals.map((row) => [row.challengeId, row._count._all]));
+
     const result = challenges.map(c => {
-      const uniqueProgressUsers = new Set(c.progressRecords.map(p => p.userId));
-      const completedCount = c.progressRecords.filter(p => p.completedAt !== null).length;
-      const inProgressCount = uniqueProgressUsers.size - completedCount;
-      const totalContributions = c.contributions.length;
+      const totalProgressUsers = progressByChallenge.get(c.id) ?? 0;
+      const completedCount = completedByChallenge.get(c.id) ?? 0;
+      const inProgressCount = totalProgressUsers - completedCount;
+      const totalContributions = contributionsByChallenge.get(c.id) ?? 0;
 
       // Ended = its term is no longer in play, or its own window has passed.
       const offTerm = scope.quarterCode ? !scope.visibleQuarterCodes.includes(c.quarterCode) : false;
@@ -129,7 +150,7 @@ router.get('/admin', requireAdmin, async (req: Request, res: Response): Promise<
           completedCount,
           totalContributions,
         },
-        hasProgress: uniqueProgressUsers.size > 0,
+        hasProgress: totalProgressUsers > 0,
       };
     });
 

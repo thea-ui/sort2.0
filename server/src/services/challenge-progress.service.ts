@@ -98,7 +98,6 @@ async function findActiveChallenges(tx: Prisma.TransactionClient, challengeType:
 export async function recordReportContribution(
   tx: Prisma.TransactionClient,
   report: ReportInfo,
-  event: 'REPORT_COUNT' | 'HAZARDOUS_REPORT',
 ): Promise<ContributionResult> {
   const completions: ChallengeCompletion[] = [];
 
@@ -108,8 +107,7 @@ export async function recordReportContribution(
   });
   if (!reporter || reporter.role !== Role.STUDENT) return { completions };
 
-  const challengeType = event === 'HAZARDOUS_REPORT' ? ChallengeType.HAZARDOUS_REPORT : ChallengeType.REPORT_COUNT;
-  const challenges = await findActiveChallenges(tx, challengeType);
+  const challenges = await findActiveChallenges(tx, ChallengeType.REPORT_COUNT);
 
   for (const challenge of challenges) {
     // A contribution is one (user, challenge, report) row. Re-submitting the

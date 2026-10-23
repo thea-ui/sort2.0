@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
@@ -11,9 +12,9 @@ import {
 } from '../services/offline-auth.service.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { getJwtSecret } from '../config/env.js';
+import { PrismaRateLimitStore } from '../lib/rate-limit-store.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 const JWT_ALGORITHMS: jwt.Algorithm[] = ['HS256'];
 const ACCESS_EXPIRY_SECONDS = 15 * 60; // 15 minutes
 const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -27,6 +28,7 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+  store: new PrismaRateLimitStore(),
   handler: (_req, res) => res.status(429).json({
     error: 'Too many login attempts. Please try again in 15 minutes.',
     code: 'RATE_LIMITED',
@@ -59,12 +61,21 @@ function maskId(value: string | undefined | null): string {
   return `${id.slice(0, 2)}${'*'.repeat(id.length - 4)}${id.slice(-2)}`;
 }
 
+// Portal admission map: each sign-in surface admits exactly one role family.
+// ADMIN console → admin accounts only; MRF terminal → MRF accounts only;
+// Student/Faculty sign-in → learners and teachers only.
+const PORTAL_ROLES: Record<string, string[]> = {
+  ADMIN: ['ADMIN'],
+  MRF: ['MRF'],
+  STAFF: ['STUDENT', 'TEACHER'],
+};
+
 // POST /api/auth/login
 // Students login with LRN, Teachers/Admin/MRF login with Employee ID
 // Authentication is delegated to EnrollPro — no local password comparison
 router.post('/login', loginLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
-    const { identifier, password, lrn, employeeId, email } = req.body;
+    const { identifier, password, lrn, employeeId, email, portal } = req.body;
     const loginId = (identifier || lrn || employeeId || email || '').trim();
     const loginPassword = password || '';
 
@@ -180,6 +191,21 @@ router.post('/login', loginLimiter, async (req: Request, res: Response): Promise
       });
       user.accountStatus = 'ACTIVE';
       user.suspendedUntil = null;
+    }
+
+    // Password verified: admit the account only on portals that accept its
+    // role. A valid password used on the wrong surface stops here — no token,
+    // no session, no offline-verifier update. Unknown/omitted portals (older
+    // clients) skip the gate for backward compatibility.
+    const allowedRoles = PORTAL_ROLES[typeof portal === 'string' ? portal.toUpperCase() : ''];
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+      console.log(
+        `[Auth] Login denied: role ${user.role} attempted the ${String(portal).toUpperCase()} portal`
+      );
+      return res.status(403).json({
+        error: 'This account does not have access to this portal.',
+        code: 'WRONG_PORTAL',
+      });
     }
 
     // Password verified by EnrollPro: refresh the offline verifier for the next

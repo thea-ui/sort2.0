@@ -24,14 +24,13 @@ This configuration defines the strict operational rules and engineering guidelin
     - Hero Cards & Main Containers: `rounded-3xl` (`24px`)
     - Content Cards & Modules: `rounded-2xl` (`16px` / `20px`)
     - Buttons, Badges & Inputs: `rounded-xl` (`12px`) or `rounded-full`
-- **VIBRANT MULTI-COLOR INDICATOR SYSTEM:**
-  - **Action Triggers / Report:** Vibrant Red-Orange (`#FF5722` / `from-orange-500 to-rose-500`)
-  - **Bin Map / Facilities:** Vibrant Sky-Blue (`#0091EA` / `from-sky-400 to-blue-600`)
-  - **Activity / Programs:** Vibrant Violet-Purple (`#651FFF` / `from-purple-500 to-indigo-600`)
-  - **Leaderboard / Achievements / Points:** Vibrant Amber-Gold (`#FFAB00` / `from-amber-400 to-orange-500`)
-  - **Impact / Trees / Recycled:** Vibrant Emerald Green (`#10B981`)
-  - **Events:** Vibrant Rose-Pink (`#EC4899`)
-  - **Research:** Vibrant Electric Cyan (`#06B6D4`)
+- **SINGLE-ACCENT CONTENT SYSTEM (encodes tenant branding):**
+  - **Cards & content accents:** exactly one shade family for all content decoration — the tenant branding accent (`--accent`, `--accent-light`, `--accent-dark`, `--accent-darker`; default `#00A77C`) with `/5`–`/25` alpha tints for fills and borders. Never introduce per-module hues (no rainbow indicators, charts included).
+  - **Major UI displays (brand identity):** tenant branding (`--primary`, `--accent`, `--gold`, logo, school name) drives shell-level surfaces — sidebar/topbar, active nav pill, primary buttons, landing/login hero — so identity stays visible.
+  - **Universal semantic states (never tenant-branded):** Success = green `--success` (`#00A77C`), Warning = amber `--warning` (`#F59E0B`), Danger / Failed = red `--danger` (`#DC2626`), Info = blue `--info` (`#3B82F6`). Use only for state meaning (status pills, banners, toasts, alerts) — a red-branded tenant must still show green success and red failure.
+  - **Gold** (`--gold`, `#C69B26`): reserved for recognition moments (leaderboard, ranks, awards) only.
+  - **Eco accent (universal):** `--eco` (`#4E7A61`, muted forest) is reserved for recycling & recovery meaning (recovered volume, recyclable value, waste collection) — never for generic decoration or states.
+  - **Content ramp (identity → recognition):** multi-card rows may bridge the accent to gold with `--ramp-1..4` (accent → terracotta → amber → gold, derived in CSS from `--accent`/`--gold`). Each card still wears exactly one shade; use `--ramp-N-strong` for text.
 - **TYPOGRAPHY & FONT FAMILY SPECS:**
   - **Body / Primary Font:** `DM Sans` (Fallback: `system-ui, sans-serif`) — aligned to the SMART design handoff (see `UI_POLISH_PLAN.md` D7)
   - **Heading Font:** `DM Sans` (Fallback: `system-ui, sans-serif`) — SMART uses one family for both roles
@@ -46,7 +45,7 @@ This configuration defines the strict operational rules and engineering guidelin
   - **Tone:** Modern
   - **Energy:** Medium
   - **Target Audience:** Environmentally conscious consumers and businesses
-- **Styling Rules:** Use Tailwind CSS for all styling. Adhere strictly to these exact design tokens and vibrant color indicators. Ensure responsive, accessible, and clean class usage.
+- **Styling Rules:** Use Tailwind CSS for all styling. Adhere strictly to these exact design tokens, the single-accent content rule, and the universal semantic state palette. Ensure responsive, accessible, and clean class usage.
 
 ## 4. 🐛 Error Handling & Debugging
 - **Systematic Debugging:** Do not "random guess" or blindly change code when encountering errors.

@@ -1,13 +1,13 @@
-import { PrismaClient, ReportStatus } from '@prisma/client';
+import { ReportStatus } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { BIN_RESET_TZ, RESET_TIME_REGEX } from './reset-cycle.service.js';
 import { buildExpirableWasteWhere } from './report-expiry.js';
-
-const prisma = new PrismaClient();
 
 // ── Concurrency Guard ──────────────────────────────────────────────────────
 let binResetInProgress = false;
 
 let scheduledTask: any = null;
+let rescheduleInFlight: Promise<void> | null = null;
 
 export interface BinResetResult {
   binsReset: number;
@@ -100,37 +100,52 @@ async function runConfiguredReset() {
   }
 }
 
+export function stopScheduledBinReset() {
+  if (scheduledTask) {
+    scheduledTask.stop();
+    scheduledTask = null;
+    console.log('[BinReset] Scheduled daily reset stopped');
+  }
+}
+
 /**
  * Schedule the daily reset from System Settings. Reads binResetEnabled and
  * binResetTime; re-schedules whenever settings change.
  */
-export async function rescheduleBinReset() {
-  if (scheduledTask) {
-    scheduledTask.stop();
-    scheduledTask = null;
-  }
+export function rescheduleBinReset(): Promise<void> {
+  // Serialize concurrent reschedules so the latest settings win without
+  // orphaning a previously scheduled cron task.
+  if (rescheduleInFlight) return rescheduleInFlight;
 
-  try {
-    const settings = await prisma.systemSetting.findUnique({ where: { id: 'default_setting' } });
-    const enabled = settings ? settings.binResetEnabled : true;
-    const time = settings?.binResetTime || '18:00';
+  rescheduleInFlight = (async () => {
+    stopScheduledBinReset();
 
-    if (!enabled) {
-      console.log('[BinReset] Disabled in settings — no daily reset scheduled');
-      return;
+    try {
+      const settings = await prisma.systemSetting.findUnique({ where: { id: 'default_setting' } });
+      const enabled = settings ? settings.binResetEnabled : true;
+      const time = settings?.binResetTime || '18:00';
+
+      if (!enabled) {
+        console.log('[BinReset] Disabled in settings — no daily reset scheduled');
+        return;
+      }
+
+      const match = RESET_TIME_REGEX.exec(time.trim());
+      if (!match) {
+        console.warn(`[BinReset] Invalid binResetTime "${time}" — expected HH:MM (24h). No reset scheduled.`);
+        return;
+      }
+
+      const cronExpression = `${parseInt(match[2], 10)} ${parseInt(match[1], 10)} * * *`;
+      const cron = await import('node-cron');
+      scheduledTask = cron.default.schedule(cronExpression, runConfiguredReset, { timezone: BIN_RESET_TZ });
+      console.log(`[BinReset] Scheduled daily reset at ${time.trim()} (${BIN_RESET_TZ})`);
+    } catch (error: any) {
+      console.error('[BinReset] Failed to schedule:', error.message);
     }
+  })().finally(() => {
+    rescheduleInFlight = null;
+  });
 
-    const match = RESET_TIME_REGEX.exec(time.trim());
-    if (!match) {
-      console.warn(`[BinReset] Invalid binResetTime "${time}" — expected HH:MM (24h). No reset scheduled.`);
-      return;
-    }
-
-    const cronExpression = `${parseInt(match[2], 10)} ${parseInt(match[1], 10)} * * *`;
-    const cron = await import('node-cron');
-    scheduledTask = cron.default.schedule(cronExpression, runConfiguredReset, { timezone: BIN_RESET_TZ });
-    console.log(`[BinReset] Scheduled daily reset at ${time.trim()} (${BIN_RESET_TZ})`);
-  } catch (error: any) {
-    console.error('[BinReset] Failed to schedule:', error.message);
-  }
+  return rescheduleInFlight;
 }

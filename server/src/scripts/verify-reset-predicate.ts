@@ -1,5 +1,6 @@
+import { prisma } from '../lib/prisma.js';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildExpirableWasteWhere } from '../services/report-expiry.js';
@@ -16,8 +17,6 @@ import { buildExpirableWasteWhere } from '../services/report-expiry.js';
 
 const SERVER_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 dotenv.config({ path: path.join(SERVER_ROOT, '.env') });
-
-const prisma = new PrismaClient();
 
 const ACTIVE_STATUSES = ['PENDING', 'DISPATCHED'] as const;
 

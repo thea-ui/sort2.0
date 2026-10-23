@@ -56,7 +56,6 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
     BIODEGRADABLE: 'Biodegradable',
     NON_BIODEGRADABLE: 'Non-Biodegradable',
     RECYCLABLE: 'Recyclable',
-    HAZARDOUS: 'Hazardous',
     ORGANIC: 'Organic',
     GENERAL: 'General',
   };

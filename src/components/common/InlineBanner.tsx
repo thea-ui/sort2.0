@@ -6,6 +6,10 @@ import { Button } from '../ui/Button';
  * Inline banners (SMART master handoff Part 4 §6).
  * - `FormBanner`: form-level success/error block, 220ms enter animation.
  * - `PageStatusRow`: page-level status row with 5%/20% tints and a 2px border.
+ *
+ * Success/error states always use the universal semantic tokens (AGENTS.md §3)
+ * — never tenant brand colors, so a red-branded school never shows a red
+ * "success" banner.
  */
 
 export const FormBanner: React.FC<{
@@ -29,14 +33,14 @@ export const FormBanner: React.FC<{
   ) : (
     <div
       role="status"
-      className={`mb-4 p-3 rounded-xl border bg-primary/10 border-primary/25 animate-banner-in ${className}`}
+      className={`mb-4 p-3 rounded-xl border bg-[var(--success)]/10 border-[var(--success)]/25 animate-banner-in ${className}`}
     >
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
-          <CheckCircle className="w-4 h-4 text-primary" />
+        <div className="w-8 h-8 rounded-lg bg-[var(--success)]/15 flex items-center justify-center flex-shrink-0">
+          <CheckCircle className="w-4 h-4 text-[var(--success)]" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-primary">{title}</p>
+          <p className="text-sm font-semibold text-[var(--success-strong)]">{title}</p>
           {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
         </div>
       </div>
@@ -54,7 +58,7 @@ export const PageStatusRow: React.FC<{
     <div
       className={`p-4 rounded-xl flex items-center gap-2 border-2 ${
         isSuccess
-          ? 'bg-primary/5 border-primary/20 text-primary'
+          ? 'bg-[var(--success)]/5 border-[var(--success)]/20 text-[var(--success-strong)]'
           : 'bg-destructive/5 border-destructive/20 text-destructive'
       } ${className}`}
     >

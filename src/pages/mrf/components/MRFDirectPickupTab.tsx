@@ -136,19 +136,6 @@ export const MRFDirectPickupTab: React.FC<MRFDirectPickupTabProps> = ({
 
   return (
     <div className="animate-fade-in">
-      {/* Compact Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <span className="text-[10px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-            MRF Direct Entry
-          </span>
-          <h3 className="text-lg font-heading font-black text-[var(--text-strong)] mt-1">
-            Direct Campus Collection
-          </h3>
-          <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">Real-time MRF payload logging</p>
-        </div>
-      </div>
-
       {/* Unified60/40 Split Cockpit */}
       <form onSubmit={handleSubmit}>
         <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm overflow-hidden">

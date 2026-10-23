@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { authenticate, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
-import { generateCertificatePDF } from '../services/certificate-pdf.service.js';
+import { generateCertificatePDF, CertificatePdfBusyError } from '../services/certificate-pdf.service.js';
 import {
   claimMilestoneCertificate,
   getCertificateById,
@@ -12,7 +13,6 @@ import {
 } from '../services/certificate.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 function formatDate(value: Date | string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -188,6 +188,10 @@ router.get('/:id/download', authenticate, async (req: Request, res: Response): P
     res.setHeader('Content-Length', rendered.buffer.length.toString());
     return res.send(rendered.buffer);
   } catch (error) {
+    if (error instanceof CertificatePdfBusyError) {
+      res.setHeader('Retry-After', '5');
+      return res.status(429).json({ error: error.message, code: error.code });
+    }
     console.error('Download certificate error:', error);
     return res.status(500).json({ error: 'Failed to generate certificate PDF' });
   }

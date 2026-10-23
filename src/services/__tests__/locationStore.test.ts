@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CAMPUS_LOCATIONS,
   locationsToBins,
-  stripHazardousStreams,
+  stripUnknownStreams,
 } from '../locationStore';
 import type { BinLocationItem } from '../../types';
 
@@ -18,18 +18,18 @@ function location(streams: BinLocationItem['streams']): BinLocationItem {
   };
 }
 
-const hazardousStream = { type: 'HAZARDOUS', status: 'Available' } as unknown as BinLocationItem['streams'][number];
+const legacyStream = { type: 'ELECTRONIC', status: 'Available' } as unknown as BinLocationItem['streams'][number];
 
-describe('stripHazardousStreams', () => {
-  it('removes the phantom hazardous stream and keeps the three admin-managed streams', () => {
+describe('stripUnknownStreams', () => {
+  it('removes unknown legacy streams and keeps the three admin-managed streams', () => {
     const input = location([
       { type: 'BIODEGRADABLE', status: 'Available' },
       { type: 'NON_BIODEGRADABLE', status: 'No Bin' },
       { type: 'RECYCLABLE', status: 'Available' },
-      hazardousStream,
+      legacyStream,
     ]);
 
-    const [cleaned] = stripHazardousStreams([input]);
+    const [cleaned] = stripUnknownStreams([input]);
 
     expect(cleaned.streams.map((s) => s.type)).toEqual([
       'BIODEGRADABLE',
@@ -38,13 +38,13 @@ describe('stripHazardousStreams', () => {
     ]);
   });
 
-  it('recomputes the location status when hazardous was the last available stream', () => {
+  it('recomputes the location status when the legacy stream was the last available one', () => {
     const input = location([
       { type: 'RECYCLABLE', status: 'Unavailable' },
-      hazardousStream,
+      legacyStream,
     ]);
 
-    const [cleaned] = stripHazardousStreams([input]);
+    const [cleaned] = stripUnknownStreams([input]);
 
     expect(cleaned.streams).toHaveLength(1);
     expect(cleaned.status).toBe('Unavailable');
@@ -57,23 +57,23 @@ describe('stripHazardousStreams', () => {
     ]);
     const input = [clean];
 
-    expect(stripHazardousStreams(input)).toBe(input);
+    expect(stripUnknownStreams(input)).toBe(input);
   });
 });
 
 describe('locationsToBins', () => {
-  it('never derives a hazardous bin, even from a legacy payload', () => {
+  it('never derives a bin for an unknown legacy stream type', () => {
     const bins = locationsToBins([
       location([
         { type: 'BIODEGRADABLE', status: 'Available' },
         { type: 'NON_BIODEGRADABLE', status: 'Available' },
         { type: 'RECYCLABLE', status: 'Available' },
-        hazardousStream,
+        legacyStream,
       ]),
     ]);
 
     expect(bins).toHaveLength(3);
-    expect(bins.some((b) => (b.type as string) === 'HAZARDOUS')).toBe(false);
+    expect(bins.some((b) => (b.type as string) === 'ELECTRONIC')).toBe(false);
   });
 });
 

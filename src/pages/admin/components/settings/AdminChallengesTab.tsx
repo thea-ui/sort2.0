@@ -8,7 +8,6 @@ import { LoadingState } from '../../../../components/common/LoadingState';
 const CHALLENGE_TYPE_LABELS: Record<ChallengeType, string> = {
   REPORT_COUNT: 'Report Count',
   WEIGHT_COLLECTED: 'Weight Collected',
-  HAZARDOUS_REPORT: 'Hazardous Report',
 };
 
 const CODE_REGEX = /^[A-Z0-9_]+$/;
@@ -351,7 +350,6 @@ const ChallengeFormModal: React.FC<{
               className={`w-full mt-1 px-3.5 py-2.5 rounded-xl border border-[var(--primary)]/10 text-sm outline-none focus:border-[var(--accent)] ${hasProgress ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-[color-mix(in_srgb,var(--background)_60%,white)] text-[var(--text-strong)]'}`}>
               <option value="REPORT_COUNT">Report Count</option>
               <option value="WEIGHT_COLLECTED">Weight Collected</option>
-              <option value="HAZARDOUS_REPORT">Hazardous Report</option>
             </select>
           </div>
 

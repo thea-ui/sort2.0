@@ -1,11 +1,10 @@
 import crypto from 'crypto';
 import { PrismaClient, SyncStatus } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import {
   SyncCampusImageOptions,
   syncCampusImage,
 } from './atlas-map-image.service.js';
-
-const prisma = new PrismaClient();
 
 type FetchLike = typeof fetch;
 

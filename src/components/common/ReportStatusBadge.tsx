@@ -1,26 +1,33 @@
 import React from 'react';
 import type { ReportStatus } from '../../types';
 
+/**
+ * Single source of truth for report status pills (replaces 4 inline renderers).
+ *
+ * Statuses map to the universal semantic tokens (AGENTS.md §3) — success green,
+ * warning amber, failure red, info blue, neutral muted — so status meaning
+ * never depends on the tenant's brand colors.
+ */
 const STATUS_STYLES: Record<ReportStatus, { label: string; className: string }> = {
   PENDING: {
     label: 'Pending',
-    className: 'bg-amber-50 text-amber-700 border-amber-200',
+    className: 'bg-[var(--warning)]/10 text-[var(--warning-strong)] border-[var(--warning)]/25',
   },
   DISPATCHED: {
     label: 'Dispatched',
-    className: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25',
+    className: 'bg-[var(--info)]/10 text-[var(--info-strong)] border-[var(--info)]/25',
   },
   COLLECTED: {
     label: 'Collected',
-    className: 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/20',
+    className: 'bg-[var(--success)]/10 text-[var(--success-strong)] border-[var(--success)]/25',
   },
   RESOLVED: {
     label: 'Resolved',
-    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    className: 'bg-[var(--success)]/10 text-[var(--success-strong)] border-[var(--success)]/25',
   },
   DISMISSED: {
     label: 'Dismissed',
-    className: 'bg-rose-50 text-rose-700 border-rose-200',
+    className: 'bg-[var(--danger)]/10 text-[var(--danger-strong)] border-[var(--danger)]/25',
   },
   EXPIRED: {
     label: 'Expired',
@@ -33,7 +40,6 @@ interface ReportStatusBadgeProps {
   className?: string;
 }
 
-/** Single source of truth for report status pills (replaces 4 inline renderers). */
 export const ReportStatusBadge: React.FC<ReportStatusBadgeProps> = ({ status, className = '' }) => {
   const config = STATUS_STYLES[status];
   return (

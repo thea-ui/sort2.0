@@ -56,7 +56,9 @@ test('scattered debris modal renders the real campus map, not placeholder rooms'
   });
 
   await page.goto('/');
-  const reportsNav = page.getByRole('button', { name: 'Reports', exact: true }).first();
+  // The admin "Reports" nav is the folder/records hub; the verify queue (with
+  // the per-report inspect modal) lives under the "Verify Reports" nav.
+  const reportsNav = page.getByRole('button', { name: 'Verify Reports', exact: true }).first();
   await expect(reportsNav).toBeVisible({ timeout: 20_000 });
   await reportsNav.click();
 

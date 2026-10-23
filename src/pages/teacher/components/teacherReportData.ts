@@ -43,7 +43,7 @@ import {
   type SetupPresetGroup,
 } from './reportSetupMerge';
 // The campus operates the three admin-managed streams: biodegradable,
-// non-biodegradable and recyclable. Hazardous is intentionally not offered.
+// non-biodegradable and recyclable.
 export type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
 
 export type InfrastructurePillar =

@@ -1,9 +1,8 @@
+import { prisma } from '../lib/prisma.js';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
 
 dotenv.config();
 
-const prisma = new PrismaClient();
 const dryRun = process.argv.includes('--dry-run');
 
 /**

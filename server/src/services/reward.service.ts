@@ -1,6 +1,5 @@
-import { PrismaClient, Prisma, RewardClaimStatus, RewardType } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Prisma, RewardClaimStatus, RewardType } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 
 export class RewardError extends Error {
   status: number;

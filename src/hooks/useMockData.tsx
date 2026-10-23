@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User, Report, BinStatus, BinLocationItem, Challenge, PointHistory, Offense, SystemSettings, CalendarEvent, SyncLog, Role, ReportStatus, AppNotification } from '../types';
-import { apiService, storeRefreshToken, clearRefreshToken } from '../services/api';
+import { apiService, storeRefreshToken, clearRefreshToken, type LoginPortal } from '../services/api';
 import { getStoredLocations, saveLocations, saveLocationsLocal, locationsToBins } from '../services/locationStore';
 import { alignLocationsToAtlas } from '../services/atlasStationAlignment';
 import { useAuthState, LoginResult } from './useAuthState';
@@ -9,6 +9,7 @@ import { buildDispatchNotifications, buildVerifiedNotifications, NOTIFICATIONS_S
 import { clearAllDismissals } from '../utils/notificationDismissals';
 import { isTerminalReport, isDispatchableStreamMember } from '../utils/reportUtils';
 import { safeGetJSON, safeSetItem } from '../utils/safeStorage';
+import { createPollScheduler } from '../utils/pollScheduler';
 
 /**
  * Base64 photo evidence can be several MB per report, so the reports cache is
@@ -17,6 +18,16 @@ import { safeGetJSON, safeSetItem } from '../utils/safeStorage';
  * `MAX_CACHED_REPORTS` rows are kept (server returns newest-first).
  */
 const MAX_CACHED_REPORTS = 80;
+
+// Background sync cadence. The old 2s poll re-rendered the whole provider tree
+// (and rewrote localStorage) every tick; 20s keeps cross-device sync useful
+// without the churn, and hidden tabs back off to 60s.
+const BACKGROUND_POLL_INTERVAL_MS = 20_000;
+const BACKGROUND_POLL_HIDDEN_INTERVAL_MS = 60_000;
+
+/** Identity of a report stream: same location + category + reporter. */
+const streamKeyOf = (report: Report): string =>
+  `${report.locationName.trim().toLowerCase()}::${report.category}::${report.reporterId}`;
 
 const slimReportsCache = (reports: Report[]): Report[] => {
   const capped = reports.length > MAX_CACHED_REPORTS ? reports.slice(0, MAX_CACHED_REPORTS) : reports;
@@ -43,7 +54,7 @@ interface MockDataContextType {
   isAuthenticated: boolean;
   
   // Actions
-  login: (employeeId: string, email: string) => Promise<LoginResult>;
+  login: (employeeId: string, email: string, portal?: LoginPortal) => Promise<LoginResult>;
   logout: () => void;
   changeRole: (newRole: Role) => void;
   verifyReport: (reportId: string) => void;
@@ -168,6 +179,11 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const skipStorageKeysRef = useRef(new Set<string>());
   const locationsSyncedRef = useRef(false);
+  // Last raw server payloads: identical polls must not touch state (new array
+  // identities re-render the entire provider tree).
+  const lastServerChallengesRef = useRef<string>('');
+  const lastServerReportsRef = useRef<string>('');
+  const lastServerUsersRef = useRef<string>('');
 
   // Load database from localStorage or initialize with defaults
   useEffect(() => {
@@ -296,78 +312,97 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           // An empty array is authoritative (e.g. the term ended, wipe) and must
           // overwrite the stale cache, so only reject non-array responses.
           if (Array.isArray(serverChallenges)) {
-            setChallenges(serverChallenges);
-            safeSetItem('sort_challenges', serverChallenges);
+            // Change-gated: unchanged payloads must not create a new state
+            // identity (that alone re-rendered every consumer of this provider).
+            const serialized = JSON.stringify(serverChallenges);
+            if (serialized !== lastServerChallengesRef.current) {
+              lastServerChallengesRef.current = serialized;
+              setChallenges(serverChallenges);
+            }
           }
 
           if (serverReports && Array.isArray(serverReports)) {
-            // The server decides which reports still exist, so a wipe (tenant
-            // reset, purge, term rollover) must also clear the report alerts
-            // the bell still holds in this browser's localStorage.
-            setNotifications(prev =>
-              pruneStaleReportNotifications(
-                prev,
-                new Set(serverReports.map((report: Report) => report.id))
-              )
-            );
-            setReports(prev => {
-            // An empty server response is authoritative (purge, tenant reset,
-            // rollover): clear the cache instead of trusting stale rows.
-            // Optimistic `rep-` rows are retained below until the POST settles.
-            const result: Report[] = serverReports.length === 0 ? [] : [...serverReports];
+            // Change-gated: run the merge (and re-render the tree, and rewrite
+            // localStorage) only when the server payload actually changed.
+            const serialized = JSON.stringify(serverReports);
+            if (serialized !== lastServerReportsRef.current) {
+              lastServerReportsRef.current = serialized;
 
-            // Preserve local optimistic dispatches and verifications when the
-            // server state lags behind (avoids UI flicker when the verify or
-            // PATCH /reports/:id/status write has not been committed when the
-            // 2s poll's GET was served).
-            result.forEach((sr, idx) => {
-              const localMatch = prev.find(pr =>
-                pr.id === sr.id ||
-                (pr.locationName.toLowerCase() === sr.locationName.toLowerCase() &&
-                 pr.category === sr.category &&
-                 pr.reporterId === sr.reporterId)
+              // The server decides which reports still exist, so a wipe (tenant
+              // reset, purge, term rollover) must also clear the report alerts
+              // the bell still holds in this browser's localStorage.
+              setNotifications(prev =>
+                pruneStaleReportNotifications(
+                  prev,
+                  new Set(serverReports.map((report: Report) => report.id))
+                )
               );
-              if (!localMatch || isTerminalReport(sr)) return;
-              if (
-                localMatch.status === 'DISPATCHED' &&
-                sr.status !== 'DISPATCHED'
-              ) {
-                // Never resurrect a report the server has finished: terminal
-                // statuses are immutable and must win over a stale optimistic
-                // DISPATCHED left over from an older session.
-                result[idx] = {
-                  ...sr,
-                  status: 'DISPATCHED',
-                  isVerified: true,
-                  assignedMrfId: localMatch.assignedMrfId ?? sr.assignedMrfId,
-                  assignedMrfName: localMatch.assignedMrfName ?? sr.assignedMrfName,
-                };
-              } else if (localMatch.isVerified && !sr.isVerified) {
-                // Optimistic verify awaiting the server commit; a lagging poll
-                // must not flip the row back to unverified.
-                result[idx] = { ...sr, isVerified: true };
-              }
-            });
+              setReports(prev => {
+                // An empty server response is authoritative (purge, tenant reset,
+                // rollover): clear the cache instead of trusting stale rows.
+                const result: Report[] = serverReports.length === 0 ? [] : [...serverReports];
 
-// Retain any pending local optimistic reports not yet returned by backend
-            prev.forEach(pr => {
-              // Only locally-minted optimistic reports (id `rep-…`) are retained.
-              // A server-authored report (UUID) missing from the server response
-              // was deleted or scoped out and must not be resurrected from cache.
-              if (!pr.id.startsWith('rep-')) return;
-              const matchesServer = result.some(sr =>
-                sr.id === pr.id ||
-                (sr.locationName.toLowerCase() === pr.locationName.toLowerCase() &&
-                 sr.category === pr.category &&
-                 pr.reporterId === sr.reporterId)
-              );
-              if (!matchesServer) {
-                result.unshift(pr);
-              }
-            });
+                // Index the previous rows once (O(n)) instead of scanning `prev`
+                // per server row (the old O(n²) merge ran on every poll).
+                const prevById = new Map<string, Report>();
+                const prevByStream = new Map<string, Report>();
+                for (const pr of prev) {
+                  if (!prevById.has(pr.id)) prevById.set(pr.id, pr);
+                  const key = streamKeyOf(pr);
+                  if (!prevByStream.has(key)) prevByStream.set(key, pr);
+                }
 
-            return result;
-          });
+                let patched = false;
+
+                // Preserve local optimistic dispatches and verifications when the
+                // server state lags behind (avoids UI flicker when the verify or
+                // PATCH /reports/:id/status write has not been committed when the
+                // poll's GET was served).
+                result.forEach((sr, idx) => {
+                  const localMatch = prevById.get(sr.id) ?? prevByStream.get(streamKeyOf(sr));
+                  if (!localMatch || isTerminalReport(sr)) return;
+                  if (
+                    localMatch.status === 'DISPATCHED' &&
+                    sr.status !== 'DISPATCHED'
+                  ) {
+                    // Never resurrect a report the server has finished: terminal
+                    // statuses are immutable and must win over a stale optimistic
+                    // DISPATCHED left over from an older session.
+                    patched = true;
+                    result[idx] = {
+                      ...sr,
+                      status: 'DISPATCHED',
+                      isVerified: true,
+                      assignedMrfId: localMatch.assignedMrfId ?? sr.assignedMrfId,
+                      assignedMrfName: localMatch.assignedMrfName ?? sr.assignedMrfName,
+                    };
+                  } else if (localMatch.isVerified && !sr.isVerified) {
+                    // Optimistic verify awaiting the server commit; a lagging poll
+                    // must not flip the row back to unverified.
+                    patched = true;
+                    result[idx] = { ...sr, isVerified: true };
+                  }
+                });
+
+                // Retain any pending local optimistic reports not yet returned by
+                // the backend. Only locally-minted ids (`rep-…`) are retained: a
+                // server-authored report missing from the response was deleted or
+                // scoped out and must not be resurrected from cache.
+                const serverIds = new Set(serverReports.map(r => r.id));
+                const serverStreams = new Set(serverReports.map(streamKeyOf));
+                for (const pr of prev) {
+                  if (!pr.id.startsWith('rep-')) continue;
+                  if (!serverIds.has(pr.id) && !serverStreams.has(streamKeyOf(pr))) {
+                    result.unshift(pr);
+                    patched = true;
+                  }
+                }
+
+                // No local patches: keep the parsed server array as-is instead
+                // of allocating an identical copy.
+                return patched ? result : serverReports;
+              });
+            }
           }
         }
 
@@ -378,10 +413,11 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...u,
             certificatesEarned: u.certificatesEarned || u.certificates || [],
           }));
-          setUsers((prev) => reconcileUsers(prev, formattedUsers));
-          // Cache only the full projection (see mount effect above).
-          if (isFullUserProjection(formattedUsers)) {
-            safeSetItem('sort_users', formattedUsers);
+          // Change-gated; the [users] effect caches the full projection.
+          const serialized = JSON.stringify(formattedUsers);
+          if (serialized !== lastServerUsersRef.current) {
+            lastServerUsersRef.current = serialized;
+            setUsers((prev) => reconcileUsers(prev, formattedUsers));
           }
         }
       } catch {
@@ -389,9 +425,12 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     };
 
-    syncBackendData();
-    const pollInterval = setInterval(syncBackendData, 2000); // 2-second real-time sync
-    return () => clearInterval(pollInterval);
+    const poller = createPollScheduler(syncBackendData, {
+      intervalMs: BACKGROUND_POLL_INTERVAL_MS,
+      hiddenIntervalMs: BACKGROUND_POLL_HIDDEN_INTERVAL_MS,
+    });
+    poller.start();
+    return () => poller.stop();
   }, []);
 
   // Listen for storage changes across concurrent browser tabs
@@ -459,19 +498,25 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       safeSetItem('sort_reports', reports, { slim: slimReportsCache });
     }
 
-    // Synchronize location bin statuses with active (PENDING or DISPATCHED) reports
+    // Synchronize location bin statuses with active (PENDING or DISPATCHED)
+    // reports. Index active reports by stream once (O(n)) instead of filtering
+    // the whole list for every location × stream.
+    const activeByStream = new Map<string, Report[]>();
+    for (const report of reports) {
+      if (report.status !== 'PENDING' && report.status !== 'DISPATCHED') continue;
+      const key = `${report.locationName.trim().toLowerCase()}::${report.category}`;
+      const list = activeByStream.get(key);
+      if (list) list.push(report);
+      else activeByStream.set(key, [report]);
+    }
+
     const currentLocations = getStoredLocations();
     let hasChanges = false;
 
     const updatedLocations = currentLocations.map((loc) => {
       let locChanged = false;
       const updatedStreams = loc.streams.map((st) => {
-        const matchingReports = reports.filter(
-          (r) =>
-            r.locationName.trim().toLowerCase() === loc.name.trim().toLowerCase() &&
-            r.category === st.type &&
-            (r.status === 'PENDING' || r.status === 'DISPATCHED')
-        );
+        const matchingReports = activeByStream.get(`${loc.name.trim().toLowerCase()}::${st.type}`) ?? [];
 
         const unverifiedPending = matchingReports.filter(r => !r.isVerified && r.status === 'PENDING');
         const isVerifiedOrDispatched = matchingReports.some(r => r.isVerified || r.status === 'DISPATCHED');
@@ -566,8 +611,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   // Actions — delegate to extracted hooks, then sync local state
-  const login = async (password: string, identifier: string): Promise<LoginResult> => {
-    const result = await authLogin(password, identifier);
+  const login = async (password: string, identifier: string, portal?: LoginPortal): Promise<LoginResult> => {
+    const result = await authLogin(password, identifier, portal);
     if (result.ok) {
       // Upsert the signed-in user. Cached users may be the anonymous, minimised
       // projection (no `email`), so match on email OR id and never assume email.

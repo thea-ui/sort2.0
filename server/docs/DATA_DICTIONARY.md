@@ -60,7 +60,7 @@ Functions as the core incident registry for environmental waste issues and damag
 | `description` | `TEXT` | - | Detailed contextual notes describing the incident |
 | `status` | `ENUM` | `ReportStatus` | Workflow lifecycle state (`PENDING`, `DISPATCHED`, `COLLECTED`, `RESOLVED`, `DISMISSED`) |
 | `urgency` | `ENUM` | `Urgency` | Priority assessment (`LOW`, `MEDIUM`, `HIGH`) |
-| `category` | `ENUM` | `WasteCategory` | Waste classification (`RECYCLABLE`, `BIODEGRADABLE`, `NON_BIODEGRADABLE`, `HAZARDOUS`) |
+| `category` | `ENUM` | `WasteCategory` | Waste classification (`RECYCLABLE`, `BIODEGRADABLE`, `NON_BIODEGRADABLE`) |
 | `lat` | `DOUBLE PRECISION` | - | Geographic latitude coordinate of incident site |
 | `lng` | `DOUBLE PRECISION` | - | Geographic longitude coordinate of incident site |
 | `location_name` | `VARCHAR` | 255 | Human-readable campus site (e.g., "Science Building 2nd Floor") |
@@ -202,7 +202,7 @@ Stores environmental taxonomy for waste categorization, including color-coded si
 | :--- | :--- | :--- | :--- |
 | `id` | `VARCHAR` | 36 (UUID, PK) | Unique waste type identifier |
 | `name` | `VARCHAR` | 100 | Category label (e.g., "Recyclable Plastics", "Biodegradable") |
-| `code` | `VARCHAR` | 50 (Unique) | System key code (e.g., "RECYCLABLE", "HAZARDOUS") |
+| `code` | `VARCHAR` | 50 (Unique) | System key code (e.g., "RECYCLABLE", "BIODEGRADABLE") |
 | `description` | `TEXT` | - | Sorting guidance guidelines for students |
 | `hex_color` | `VARCHAR` | 20 | Official HEX color code used for UI tags and campus signage |
 | `enabled` | `BOOLEAN` | Default: true | Visibility flag in selection interfaces |
@@ -334,7 +334,7 @@ Manages gamified campus environmental challenges, cooperative recycling quests, 
 | `code` | `VARCHAR` | 50 (Unique) | Alphanumeric challenge reference code |
 | `title` | `VARCHAR` | 255 | Quest headline (e.g., "Plastic Vanguard Quest") |
 | `description` | `TEXT` | - | Instructions and rules to qualify for challenge reward |
-| `challenge_type` | `ENUM` | `ChallengeType` | Metric evaluated (`REPORT_COUNT`, `WEIGHT_COLLECTED`, `HAZARDOUS_REPORT`) |
+| `challenge_type` | `ENUM` | `ChallengeType` | Metric evaluated (`REPORT_COUNT`, `WEIGHT_COLLECTED`) |
 | `points_awarded`| `INTEGER` | - | Bonus points granted to users upon quest completion |
 | `target` | `INTEGER` | - | Numerical threshold required to fulfill the challenge |
 | `is_active` | `BOOLEAN` | Default: true | Quest activation status |

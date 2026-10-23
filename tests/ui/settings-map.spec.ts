@@ -41,10 +41,10 @@ test.describe('Settings → Locations (ATLAS base + sync)', () => {
     // Admin manual sync stays available in Settings after the Campus Map page removal.
     await expect(page.getByTestId('atlas-sync-button')).toBeVisible();
 
-    // Layout guard: the action row must not crush the header title or overflow
-    // the page (regression for the freshness-badge/button row).
-    const titleBox = await page.getByRole('heading', { name: /Campus Bin Map/ }).boundingBox();
-    expect(titleBox?.width ?? 0).toBeGreaterThan(180);
+    // Layout guard: the action row must not crush the topbar title or overflow
+    // the page (page titles moved from the content area to the shell topbar).
+    const titleBox = await page.getByRole('banner').getByText('Locations', { exact: true }).boundingBox();
+    expect(titleBox?.width ?? 0).toBeGreaterThan(60);
     const horizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth
     );

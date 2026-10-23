@@ -18,11 +18,12 @@ import atlasRoutes from './routes/atlas.routes.js';
 import walkInRoutes from './routes/walk-in.routes.js';
 import rewardRoutes from './routes/reward.routes.js';
 import dataSeedRoutes from './routes/data-seed.routes.js';
-import { rescheduleSync } from './services/sync-scheduler.service.js';
-import { rescheduleBinReset } from './services/bin-reset.service.js';
-import { rescheduleAtlasSync } from './services/atlas-sync-scheduler.service.js';
-import { startBrandingSyncScheduler } from './services/branding-sync-scheduler.service.js';
+import { rescheduleSync, stopScheduledSync } from './services/sync-scheduler.service.js';
+import { rescheduleBinReset, stopScheduledBinReset } from './services/bin-reset.service.js';
+import { rescheduleAtlasSync, stopScheduledAtlasSync } from './services/atlas-sync-scheduler.service.js';
+import { startBrandingSyncScheduler, stopBrandingSyncScheduler } from './services/branding-sync-scheduler.service.js';
 import { UPLOADS_DIR } from './services/enrollpro-branding.service.js';
+import { prisma } from './lib/prisma.js';
 import { mkdirSync } from 'node:fs';
 
 // Fail fast: never boot with a missing or insecure JWT secret.
@@ -42,12 +43,18 @@ app.set(
   trustProxy === 'true' ? true : /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy
 );
 
-// Prevent unhandled rejections from crashing the server
+// An uncaught exception leaves the process in an undefined state: log it and
+// exit so the supervisor restarts a clean process instead of a zombie that
+// keeps DB pools, cron timers and the event loop alive.
+process.on('uncaughtException', (err) => {
+  console.error('[Server] Uncaught Exception:', err.stack || err.message);
+  process.exit(1);
+});
+
+// Rejections are logged but do not kill the process; each background job
+// already converts its own failures into error results.
 process.on('unhandledRejection', (reason: any) => {
   console.error('[Server] Unhandled Rejection:', reason?.message || reason);
-});
-process.on('uncaughtException', (err) => {
-  console.error('[Server] Uncaught Exception:', err.message);
 });
 
 // Middleware
@@ -86,6 +93,49 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'SORTv2 PostgreSQL Backend', timestamp: new Date().toISOString() });
 });
 
+// Deep health: database round-trip, connection count and memory for deploy
+// probes. Cached for 2s so the public endpoint cannot hammer PostgreSQL.
+let deepHealthCache: { at: number; payload: Record<string, unknown> } | null = null;
+
+app.get('/health/deep', async (_req, res) => {
+  const now = Date.now();
+  if (deepHealthCache && now - deepHealthCache.at < 2000) {
+    return res.json(deepHealthCache.payload);
+  }
+
+  const startedAt = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    const latencyMs = Date.now() - startedAt;
+    const rows = await prisma.$queryRaw<{ connections: bigint }[]>`
+      SELECT count(*)::bigint AS connections
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+    `;
+    const memory = process.memoryUsage();
+    const payload = {
+      status: 'ok',
+      db: { ok: true, latencyMs, connections: Number(rows[0]?.connections ?? 0n) },
+      memory: {
+        rssMb: Math.round(memory.rss / (1024 * 1024)),
+        heapUsedMb: Math.round(memory.heapUsed / (1024 * 1024)),
+      },
+      uptimeSec: Math.round(process.uptime()),
+      timestamp: new Date().toISOString(),
+    };
+    deepHealthCache = { at: now, payload };
+    return res.json(payload);
+  } catch (error: any) {
+    return res.status(503).json({
+      status: 'degraded',
+      db: { ok: false, error: error?.message || 'Database unreachable' },
+      memory: { rssMb: Math.round(process.memoryUsage().rss / (1024 * 1024)) },
+      uptimeSec: Math.round(process.uptime()),
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -119,26 +169,78 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   return res.status(status).json({ error: err?.message || 'Bad request', errorId });
 });
 
-// ─── Settings-Driven Sync Scheduler ───────────────────────────────────
-// Default mode = MANUAL: no cron scheduled, no unconditional startup sync.
-// When mode = AUTOMATIC: schedule node-cron at the configured interval.
-rescheduleSync().catch(err => {
-  console.error('[Server] Failed to initialize sync scheduler:', err.message);
-});
+// ─── Schedulers ────────────────────────────────────────────────────────
+// Started only after a successful HTTP bind (see below), so a failed bind can
+// never leave a zombie process running cron timers and DB pools.
+function startSchedulers() {
+  // Settings-driven sync scheduler. Default mode = MANUAL: no cron scheduled,
+  // no unconditional startup sync. When mode = AUTOMATIC: cron at the interval.
+  rescheduleSync().catch(err => {
+    console.error('[Server] Failed to initialize sync scheduler:', err.message);
+  });
 
-// ─── Daily 6:00 PM Bin Reset Scheduler ─────────────────────────────────
-rescheduleBinReset().catch(err => {
-  console.error('[Server] Failed to initialize bin reset scheduler:', err.message);
-});
+  // Daily 6:00 PM bin reset scheduler.
+  rescheduleBinReset().catch(err => {
+    console.error('[Server] Failed to initialize bin reset scheduler:', err.message);
+  });
 
-// ─── ATLAS Campus Map Auto-Sync Scheduler (AUTO, default every 15 min) ──
-rescheduleAtlasSync().catch(err => {
-  console.error('[Server] Failed to initialize ATLAS sync scheduler:', err.message);
-});
+  // ATLAS campus map auto-sync scheduler (AUTO, default every 15 min).
+  rescheduleAtlasSync().catch(err => {
+    console.error('[Server] Failed to initialize ATLAS sync scheduler:', err.message);
+  });
 
-// ─── EnrollPro Branding Sync (boot + every 60 minutes) ─────────────────
-startBrandingSyncScheduler();
+  // EnrollPro branding sync (boot + every 60 minutes).
+  startBrandingSyncScheduler();
+}
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`SORTv2 PostgreSQL Express Server listening on http://localhost:${PORT}`);
+  // Production runs the API with RUN_SCHEDULERS=false and a dedicated worker
+  // process (dist/worker.js) owns every cron/interval, so API restarts and
+  // memory limits cannot duplicate or interrupt scheduled jobs.
+  if (process.env.RUN_SCHEDULERS === 'false') {
+    console.log('[Server] Schedulers disabled (RUN_SCHEDULERS=false) — run the worker process.');
+  } else {
+    startSchedulers();
+  }
 });
+
+server.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`[Server] Port ${PORT} is already in use — another instance is running. Exiting.`);
+  } else {
+    console.error('[Server] Failed to start HTTP server:', error.message);
+  }
+  process.exit(1);
+});
+
+// ─── Graceful shutdown ─────────────────────────────────────────────────
+// Stop timers, drain HTTP, release the Prisma pool. A hard timeout guarantees
+// exit even if a connection hangs.
+let shuttingDown = false;
+
+async function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[Server] ${signal} received — shutting down...`);
+
+  stopScheduledSync();
+  stopScheduledBinReset();
+  stopScheduledAtlasSync();
+  stopBrandingSyncScheduler();
+
+  const forceExit = setTimeout(() => {
+    console.error('[Server] Shutdown timed out — forcing exit.');
+    process.exit(1);
+  }, 10_000);
+  forceExit.unref();
+
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  await prisma.$disconnect().catch(() => undefined);
+
+  console.log('[Server] Shutdown complete.');
+  process.exit(0);
+}
+
+process.on('SIGINT', () => void shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM'));

@@ -1,7 +1,6 @@
-import { PrismaClient, type SystemSetting } from '@prisma/client';
+import { type SystemSetting } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import type { Response } from 'express';
-
-const prisma = new PrismaClient();
 
 // ─── Public branding contract ─────────────────────────────────────────
 // Mirrors the EnrollPro-compatible settings shape consumed by the client
@@ -214,6 +213,10 @@ export async function getPublicBranding(): Promise<PublicBranding> {
 
 const streamClients = new Set<Response>();
 
+// Admission cap: the public stream needs no auth, so an attacker could
+// otherwise open unlimited EventSource connections and pin socket buffers.
+export const MAX_BRANDING_STREAM_CLIENTS = 50;
+
 export function addBrandingStreamClient(res: Response): void {
   streamClients.add(res);
 }
@@ -230,7 +233,17 @@ export function broadcastBranding(branding: PublicBranding): void {
   const frame = `data: ${JSON.stringify(branding)}\n\n`;
   for (const client of streamClients) {
     try {
-      client.write(frame);
+      const writable = client.write(frame);
+      if (writable === false) {
+        // Slow consumer: its socket buffer is full. Drop the connection
+        // instead of letting frames queue in memory without bound.
+        streamClients.delete(client);
+        try {
+          client.end();
+        } catch {
+          /* already closed */
+        }
+      }
     } catch {
       streamClients.delete(client);
     }

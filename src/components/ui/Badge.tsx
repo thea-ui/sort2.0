@@ -38,13 +38,15 @@ export const Badge: React.FC<BadgeProps> = ({ className, variant = 'default', ..
 
 /**
  * Table status tone recipe (Part 2 §4) — `Badge variant="outline"` plus one of
- * these tinted tone classes. Only the tones listed in the handoff are allowed.
+ * these tinted tone classes. Tones wear the universal semantic tokens
+ * (AGENTS.md §3), not tenant brand colors: positive states are green, stale or
+ * attention states amber, inactive states neutral.
  */
 export const STATUS_TONE = {
-  active: 'bg-primary/10 text-primary border-primary/20',
+  active: 'bg-[var(--success)]/10 text-[var(--success-strong)] border-[var(--success)]/20',
   draft: 'bg-muted text-muted-foreground',
-  completed: 'bg-blue-50 text-blue-700 border-blue-200',
-  archived: 'bg-amber-50 text-amber-700 border-amber-200',
+  completed: 'bg-[var(--success)]/10 text-[var(--success-strong)] border-[var(--success)]/20',
+  archived: 'bg-[var(--warning)]/10 text-[var(--warning-strong)] border-[var(--warning)]/20',
 } as const;
 
 export const StatusBadge: React.FC<

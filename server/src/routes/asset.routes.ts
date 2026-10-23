@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const ALLOWED_ACTIONS = ['RECOVERED', 'REPAIRED', 'DISPOSED'];
 

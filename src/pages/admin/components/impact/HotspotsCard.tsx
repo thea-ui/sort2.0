@@ -25,7 +25,7 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
     <div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[color-mix(in_srgb,var(--action)_10%,white)] rounded-xl text-[var(--action)]">
+          <div className="p-2 bg-[var(--ramp-4)]/10 rounded-xl text-[var(--ramp-4)]">
             <MapPin size={18} />
           </div>
           <div>
@@ -49,8 +49,8 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
                 <div
                   className={`p-2 rounded-xl ${
                     zone.isOverdue
-                      ? 'bg-rose-50 text-rose-600'
-                      : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]'
+                      ? 'bg-[var(--danger)]/10 text-[var(--danger)]'
+                      : 'bg-[var(--ramp-4)]/10 text-[var(--ramp-4)]'
                   }`}
                 >
                   <MapPin size={16} />
@@ -64,11 +64,11 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
               </div>
               <div className="text-right">
                 {zone.isOverdue ? (
-                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                  <span className="text-[10px] font-bold text-[var(--danger-strong)] bg-[var(--danger)]/10 px-2 py-0.5 rounded-full border border-[var(--danger)]/25">
                     High Priority
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold text-[var(--text-strong)] bg-[color-mix(in_srgb,var(--primary)_10%,white)] px-2 py-0.5 rounded-full border border-[var(--primary)]/25">
+                  <span className="text-[10px] font-bold text-[var(--ramp-4-strong)] bg-[var(--ramp-4)]/10 px-2 py-0.5 rounded-full border border-[var(--ramp-4)]/25">
                     Normal
                   </span>
                 )}
@@ -89,7 +89,7 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
         {totalOpenReports} open report{totalOpenReports === 1 ? '' : 's'} across {hotspotZones.length}{' '}
         zone{hotspotZones.length === 1 ? '' : 's'}
         {totalHighPriority > 0 && (
-          <span className="text-rose-600 ml-1">• {totalHighPriority} high priority</span>
+          <span className="text-[var(--danger-strong)] ml-1">• {totalHighPriority} high priority</span>
         )}
       </span>
       <button

@@ -1,10 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { runEnrollProSync, syncTermCalendar } from './enrollpro-sync.service.js';
-
-const prisma = new PrismaClient();
 
 let scheduledTask: any = null;
 let isSyncRunning = false;
+let rescheduleInFlight: Promise<void> | null = null;
 
 export async function getSyncSettings(): Promise<{ syncMode: string; syncIntervalMinutes: number }> {
   try {
@@ -68,23 +67,34 @@ function buildCronExpression(intervalMinutes: number): string {
   return `0 */${Math.max(1, hours)} * * *`;
 }
 
-export async function rescheduleSync() {
-  stopScheduledSync();
+export function rescheduleSync(): Promise<void> {
+  // Serialize concurrent reschedules (boot + settings PATCHes). Without this,
+  // two callers both awaited the settings read and both assigned
+  // `scheduledTask`, orphaning the first cron task forever.
+  if (rescheduleInFlight) return rescheduleInFlight;
 
-  const { syncMode, syncIntervalMinutes } = await getSyncSettings();
+  rescheduleInFlight = (async () => {
+    stopScheduledSync();
 
-  if (syncMode === 'AUTO' && syncIntervalMinutes > 0) {
-    try {
-      const cron = await import('node-cron');
-      const cronExpression = buildCronExpression(syncIntervalMinutes);
-      scheduledTask = cron.default.schedule(cronExpression, executeSync);
-      console.log(`[Scheduler] Auto-sync scheduled every ${syncIntervalMinutes} minutes (cron: ${cronExpression})`);
-    } catch (err) {
-      console.error('[Scheduler] Failed to schedule cron:', err);
+    const { syncMode, syncIntervalMinutes } = await getSyncSettings();
+
+    if (syncMode === 'AUTO' && syncIntervalMinutes > 0) {
+      try {
+        const cron = await import('node-cron');
+        const cronExpression = buildCronExpression(syncIntervalMinutes);
+        scheduledTask = cron.default.schedule(cronExpression, executeSync);
+        console.log(`[Scheduler] Auto-sync scheduled every ${syncIntervalMinutes} minutes (cron: ${cronExpression})`);
+      } catch (err) {
+        console.error('[Scheduler] Failed to schedule cron:', err);
+      }
+    } else {
+      console.log('[Scheduler] Manual mode — no cron scheduled');
     }
-  } else {
-    console.log('[Scheduler] Manual mode — no cron scheduled');
-  }
+  })().finally(() => {
+    rescheduleInFlight = null;
+  });
+
+  return rescheduleInFlight;
 }
 
 export async function runManualSync() {

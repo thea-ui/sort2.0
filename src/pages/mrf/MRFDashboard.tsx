@@ -50,6 +50,7 @@ import { CollectedItemsInput } from './components/CollectedItemsInput';
 import { computeCollectionTotals } from '../../utils/collectionTotals';
 import { ModalPortal } from '../../components/common/ModalPortal';
 import { PhotoLightbox } from '../../components/common/PhotoLightbox';
+import { useReportPhoto } from '../../hooks/useReportPhoto';
 
 export interface ItemizedRecyclableCategory {
   id: 'pet_plastic' | 'aluminum_cans' | 'cardboard' | 'glass';
@@ -58,15 +59,20 @@ export interface ItemizedRecyclableCategory {
   thresholdLimitKg: number;
   marketPricePerKg: number;
   color: string;
+  barColor: string;
   bgLight: string;
   borderColor: string;
 }
 
+/**
+ * Material accents follow the admin content scheme: one accent-family shade
+ * per material, read top-to-bottom as a descending ramp (never rainbow).
+ */
 export const RECYCLABLE_CATEGORIES: ItemizedRecyclableCategory[] = [
-  { id: 'pet_plastic',   name: 'PET Plastic Bottles', shortName: 'PET Bottles', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-[var(--text-strong)]', bgLight: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]', borderColor: 'border-[var(--primary)]/25' },
-  { id: 'aluminum_cans', name: 'Aluminum & Metal Cans', shortName: 'Aluminum Cans', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-amber-600', bgLight: 'bg-amber-50', borderColor: 'border-amber-200' },
-  { id: 'cardboard',     name: 'Cardboard & Paper', shortName: 'Cardboard', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-emerald-600', bgLight: 'bg-emerald-50', borderColor: 'border-emerald-200' },
-  { id: 'glass',         name: 'Glass Bottles & Containers', shortName: 'Glass Bottles', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-[var(--gold)]', bgLight: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]', borderColor: 'border-[var(--gold)]/25' },
+  { id: 'pet_plastic',   name: 'PET Plastic Bottles', shortName: 'PET Bottles', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-[var(--accent-bright)]', barColor: 'bg-[var(--accent-bright)]', bgLight: 'bg-[var(--accent-bright)]/10', borderColor: 'border-[var(--accent-bright)]/25' },
+  { id: 'aluminum_cans', name: 'Aluminum & Metal Cans', shortName: 'Aluminum Cans', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-[var(--accent-light)]', barColor: 'bg-[var(--accent-light)]', bgLight: 'bg-[var(--accent-light)]/10', borderColor: 'border-[var(--accent-light)]/25' },
+  { id: 'cardboard',     name: 'Cardboard & Paper', shortName: 'Cardboard', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-[var(--accent)]', barColor: 'bg-[var(--accent)]', bgLight: 'bg-[var(--accent)]/10', borderColor: 'border-[var(--accent)]/25' },
+  { id: 'glass',         name: 'Glass Bottles & Containers', shortName: 'Glass Bottles', thresholdLimitKg: 0, marketPricePerKg: 0, color: 'text-[var(--accent-dark)]', barColor: 'bg-[var(--accent-dark)]', bgLight: 'bg-[var(--accent-dark)]/10', borderColor: 'border-[var(--accent-dark)]/25' },
 ];
 
 // DepEd/COA-aligned asset dispositions live in src/utils/assetDispositions.ts
@@ -104,6 +110,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
   const [completeModalReport, setCompleteModalReport] = useState<Report | null>(null);
   const [mrfDetailReport, setMrfDetailReport] = useState<Report | null>(null);
   const [mrfPhotoFull, setMrfPhotoFull] = useState(false);
+  const mrfDetailPhotoSrc = useReportPhoto(mrfDetailReport?.photoUrl, mrfDetailReport?.imageUrl);
   const [weightKg, setWeightKg] = useState<string>('');
   const [itemWeights, setItemWeights] = useState<Record<string, string>>({
     pet_plastic: '',
@@ -354,8 +361,8 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
       setAssetScrapKg('');
     } else {
-        // Non-recyclable collections (residual, biodegradable, hazardous) are
-        // weighed manually. Previously this passed `undefined`, so residual was
+        // Non-recyclable collections (residual, biodegradable) are weighed
+        // manually. Previously this passed `undefined`, so residual was
         // always recorded as 0 kg and could never be monitored by weight.
         updateReportStatus(completeModalReport.id, 'COLLECTED', parseFloat(weightKg) || 0, completionNotes);
       showToast(`Job finished! Cleanup verified and collection report sent to Admin.`);
@@ -375,34 +382,21 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       {/* ── 1. DASHBOARD OVERVIEW VIEW ── */}
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
-          
-          {/* Header Subtitle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                Control Hub Telemetry
-              </span>
-              <h3 className="text-xl font-heading font-black text-[var(--text-strong)] mt-1.5">
-                Facility Operational Overview
-              </h3>
-              <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">Live operational statistics, active dispatches status, and campus bin monitor.</p>
-            </div>
-          </div>
 
           {/* Quick Summary Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
-            {/* Card 1: MRF Needed (Action Required) */}
+            {/* Card 1: MRF Needed (Action Required) — ramp 1 (accent) */}
             <button
               type="button"
               onClick={() => setActiveTab?.('dispatches')}
-              className="bg-gradient-to-br from-[#FFF5F5] to-[#FFF0ED] border border-[#FF5722]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
+              className="bg-gradient-to-br from-[color-mix(in_srgb,var(--ramp-1)_5%,white)] to-[color-mix(in_srgb,var(--ramp-1)_10%,white)] border border-[var(--ramp-1)]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-[#FF5722] bg-[#FF5722]/15 border border-[#FF5722]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[10px] font-black text-[var(--ramp-1-strong)] bg-[color-mix(in_srgb,var(--ramp-1)_15%,white)] border border-[var(--ramp-1)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   MRF Needed
                 </span>
-                <div className="h-9 w-9 rounded-xl bg-[#FF5722] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
+                <div className="h-9 w-9 rounded-xl bg-[var(--ramp-1)] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                   <AlertCircle size={18} />
                 </div>
               </div>
@@ -410,24 +404,24 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 <p className="text-3xl font-heading font-black text-[var(--text-strong)]">
                   {mrfNeededCount}
                 </p>
-                <p className="text-xs font-extrabold text-[#FF5722] mt-1 group-hover:text-rose-700 transition-colors">Dispatches Needing Attention</p>
+                <p className="text-xs font-extrabold text-[var(--ramp-1-strong)] mt-1 group-hover:text-[color-mix(in_srgb,var(--ramp-1)_80%,black)] transition-colors">Dispatches Needing Attention</p>
                 <p className="text-[11px] text-[var(--text-strong)]/60 font-medium mt-0.5">
                   {reports.filter(r => r.status === 'DISPATCHED').length} active dispatches assigned by Admin
                 </p>
               </div>
             </button>
 
-            {/* Card 2: Waste & Bin Pickups */}
+            {/* Card 2: Waste & Bin Pickups — ramp 2 (terracotta) */}
             <button
               type="button"
               onClick={() => setActiveTab?.('dispatches')}
-                              className="bg-gradient-to-br from-[color-mix(in_srgb,var(--accent)_5%,white)] to-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
+                              className="bg-gradient-to-br from-[color-mix(in_srgb,var(--ramp-2)_5%,white)] to-[color-mix(in_srgb,var(--ramp-2)_10%,white)] border border-[var(--ramp-2)]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_15%,white)] border border-[var(--accent)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[10px] font-black text-[var(--ramp-2-strong)] bg-[color-mix(in_srgb,var(--ramp-2)_15%,white)] border border-[var(--ramp-2)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   Recyclables & Waste
                 </span>
-                <div className="h-9 w-9 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
+                <div className="h-9 w-9 rounded-xl bg-[var(--ramp-2)] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                   <Scale size={18} />
                 </div>
               </div>
@@ -435,22 +429,22 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 <p className="text-3xl font-heading font-black text-[var(--text-strong)]">
                   {wasteTaskCount}
                 </p>
-                  <p className="text-xs font-extrabold text-[var(--accent)] mt-1 group-hover:text-[var(--accent-dark)] transition-colors">Waste Collection Tasks</p>
+                  <p className="text-xs font-extrabold text-[var(--ramp-2-strong)] mt-1 group-hover:text-[color-mix(in_srgb,var(--ramp-2)_80%,black)] transition-colors">Waste Collection Tasks</p>
                 <p className="text-[11px] text-[var(--text-strong)]/60 font-medium mt-0.5">Bins requiring payload weigh-in</p>
               </div>
             </button>
 
-            {/* Card 3: Asset Repair & Transport */}
+            {/* Card 3: Asset Repair & Transport — ramp 4 (gold) */}
             <button
               type="button"
               onClick={() => setActiveTab?.('dispatches')}
-              className="bg-gradient-to-br from-[#FFFDF0] to-[#FFFBE6] border border-[var(--gold)]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
+              className="bg-gradient-to-br from-[color-mix(in_srgb,var(--ramp-4)_5%,white)] to-[color-mix(in_srgb,var(--ramp-4)_10%,white)] border border-[var(--ramp-4)]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_15%,white)] border border-[var(--gold)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[10px] font-black text-[var(--ramp-4-strong)] bg-[color-mix(in_srgb,var(--ramp-4)_15%,white)] border border-[var(--ramp-4)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   Asset Incidents
                 </span>
-                <div className="h-9 w-9 rounded-xl bg-[var(--gold)] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
+                <div className="h-9 w-9 rounded-xl bg-[var(--ramp-4)] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                   <Wrench size={18} />
                 </div>
               </div>
@@ -458,7 +452,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 <p className="text-3xl font-heading font-black text-[var(--text-strong)]">
                   {assetTaskCount}
                 </p>
-                <p className="text-xs font-extrabold text-[var(--gold)] mt-1 group-hover:text-amber-700 transition-colors">Asset Maintenance Tasks</p>
+                <p className="text-xs font-extrabold text-[var(--ramp-4-strong)] mt-1 group-hover:text-[color-mix(in_srgb,var(--ramp-4)_80%,black)] transition-colors">Asset Maintenance Tasks</p>
                 <p className="text-[11px] text-[var(--text-strong)]/60 font-medium mt-0.5">Classroom furniture & fixtures</p>
               </div>
             </button>
@@ -473,10 +467,10 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                   <div className="flex items-center gap-2">
-                    <Zap size={18} className="text-[#FF5722]" />
+                    <Zap size={18} className="text-[var(--ramp-1)]" />
                     <h4 className="text-sm font-heading font-bold text-[var(--text-strong)]">Dispatches Needing Attention</h4>
                   </div>
-                  <span className="text-[10px] font-extrabold text-[#FF5722] bg-[#FF5722]/10 border border-[#FF5722]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  <span className="text-[10px] font-extrabold text-[var(--ramp-1)] bg-[var(--ramp-1)]/10 border border-[var(--ramp-1)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
                     {activeDispatches.length} Active
                   </span>
                 </div>
@@ -485,7 +479,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                   {activeDispatches.slice(0, 3).map(rep => (
                     <div
                       key={rep.id}
-                      onClick={() => setMrfDetailReport(rep)}
+                      onClick={() => setActiveTab?.('dispatches')}
                       className="pt-3 first:pt-0 flex items-center justify-between text-xs hover:bg-gray-50 p-2 rounded-2xl transition-colors cursor-pointer group"
                     >
                       <div className="space-y-1 min-w-0 pr-2">
@@ -514,7 +508,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 <button
                   type="button"
                   onClick={() => setActiveTab?.('dispatches')}
-                  className="w-full py-2.5 px-4 rounded-2xl bg-[color-mix(in_srgb,var(--primary)_5%,white)] hover:bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-2xl bg-[color-mix(in_srgb,var(--ramp-1)_10%,white)] hover:bg-[color-mix(in_srgb,var(--ramp-1)_20%,white)] text-[var(--ramp-1)] text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   Manage Actions & Kilo Logs <ArrowRight size={14} />
                 </button>
@@ -526,10 +520,10 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                   <div className="flex items-center gap-2">
-                    <Coins size={18} className="text-[var(--gold)]" />
+                    <Coins size={18} className="text-[var(--accent)]" />
                     <h4 className="text-sm font-heading font-bold text-[var(--text-strong)]">Recyclables Market Batch Telemetry</h4>
                   </div>
-                  <span className="text-[10px] font-black text-[var(--accent)] bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  <span className="text-[10px] font-black text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/25 px-2.5 py-1 rounded-full uppercase tracking-wider">
                     ₱{totalVendorSales.toLocaleString()} Sales Revenue
                   </span>
                 </div>
@@ -551,7 +545,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                           </span>
                           <div className="flex items-center gap-2">
                             {isApproved ? (
-                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[var(--accent)] text-white">
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[var(--success)]/10 text-[var(--success-strong)] border border-[var(--success)]/25">
                                 Ready to Sell
                               </span>
                             ) : isThresholdReached ? (
@@ -565,7 +559,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                         <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
-                              isApproved ? 'bg-[var(--accent)]' : isThresholdReached ? 'bg-amber-400 animate-pulse' : 'bg-[var(--accent)]'
+                              isApproved ? cat.barColor : isThresholdReached ? 'bg-amber-400 animate-pulse' : cat.barColor
                             }`}
                             style={{ width: `${pct}%` }}
                           />
@@ -580,7 +574,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 <button
                   type="button"
                   onClick={() => setActiveTab?.('mrf-market')}
-                  className="w-full py-2.5 px-4 rounded-2xl bg-[color-mix(in_srgb,var(--gold)_10%,white)] hover:bg-[color-mix(in_srgb,var(--gold)_20%,white)] text-[var(--gold)] text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_10%,white)] hover:bg-[color-mix(in_srgb,var(--accent)_20%,white)] text-[var(--accent)] text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   Open Recycle Market & Vendor Sales Ledger <ArrowRight size={14} />
                 </button>
@@ -595,17 +589,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       {/* ── 2. ACTIVE DISPATCHES DEDICATED VIEW ── */}
       {activeTab === 'dispatches' && (
         <div className="space-y-4 animate-fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div>
-              <span className="text-[10px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] px-2.5 py-1 rounded-full uppercase tracking-wider">
-                {showOnlyMyAssigned ? 'My Assigned Tasks' : 'All Dispatches'}
-              </span>
-              <h3 className="text-xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-1.5 flex items-center gap-2">
-                <Truck size={20} className="text-[var(--accent)]" />
-                Assigned Dispatches & Pickups
-              </h3>
-              <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">Manage tasks assigned by Admin to your account, confirm ongoing dispatches, and complete with payload logs.</p>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 mb-4">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -645,7 +629,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 const CategoryIcon = isRecyclable ? Recycle : isAsset ? Armchair : Trash2;
                 const categoryLabel = isRecyclable ? 'Recyclables' : isAsset ? 'Asset Task' : 'General Waste';
                 const categoryStyle = isRecyclable
-                  ? 'bg-emerald-100 text-emerald-700'
+                  ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
                   : isAsset
                     ? 'bg-amber-100 text-amber-700'
                     : 'bg-zinc-100 text-zinc-600';
@@ -666,7 +650,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                           {categoryLabel}
                         </span>
                         {rep.urgency === 'HIGH' && (
-                          <span className="flex items-center gap-1 text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-rose-100 text-rose-600">
+                          <span className="flex items-center gap-1 text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-[var(--danger)]/10 text-[var(--danger-strong)]">
                             <AlertTriangle size={10} /> Urgent
                           </span>
                         )}
@@ -1105,13 +1089,13 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
               {/* Photo Evidence & Report Description Card */}
               <div className="space-y-2">
-                {mrfDetailReport.imageUrl && (
+                {mrfDetailPhotoSrc && (
                   <button
                     type="button"
                     onClick={() => setMrfPhotoFull(true)}
                     className="group relative block w-full rounded-2xl overflow-hidden border border-gray-200 h-44 sm:h-52 bg-gray-100 shadow-inner cursor-zoom-in"
                   >
-                    <img src={mrfDetailReport.imageUrl} alt="Waste report evidence" className="w-full h-full object-cover" />
+                    <img src={mrfDetailPhotoSrc} alt="Waste report evidence" className="w-full h-full object-cover" />
                     <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg font-mono flex items-center gap-1.5">
                       <Maximize2 size={11} /> Tap to view full screen
                     </span>
@@ -1161,7 +1145,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       })()}
 
       <PhotoLightbox
-        src={mrfPhotoFull ? mrfDetailReport?.imageUrl ?? null : null}
+        src={mrfPhotoFull ? mrfDetailPhotoSrc : null}
         alt="Waste report evidence full view"
         caption="Photo Evidence"
         onClose={() => setMrfPhotoFull(false)}

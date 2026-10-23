@@ -11,6 +11,7 @@ export interface WasteCompositionItem {
   bgColor: string;
   textColor: string;
   barColor: string;
+  valueColor: string;
 }
 
 interface WasteCompositionCardProps {
@@ -28,7 +29,7 @@ export const WasteCompositionCard: React.FC<WasteCompositionCardProps> = ({
     <div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[color-mix(in_srgb,var(--primary)_10%,white)] rounded-xl text-[var(--text-strong)]">
+          <div className="p-2 bg-[var(--ramp-2)]/10 rounded-xl text-[var(--ramp-2)]">
             <Layers size={18} />
           </div>
           <div>
@@ -46,7 +47,7 @@ export const WasteCompositionCard: React.FC<WasteCompositionCardProps> = ({
       <div className="mt-5 space-y-2">
         <div className="flex justify-between text-xs font-bold">
           <span>Material Distribution</span>
-          <span className="text-[var(--accent)]">{totalCollectedKg.toFixed(1)} kg Total</span>
+          <span className="text-[var(--ramp-2-strong)]">{totalCollectedKg.toFixed(1)} kg Total</span>
         </div>
         <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden flex gap-0.5 p-0.5">
           {wasteComposition.map((item) => (
@@ -83,7 +84,7 @@ export const WasteCompositionCard: React.FC<WasteCompositionCardProps> = ({
 
               <div className="text-right">
                 <p className="text-xs font-black text-[var(--text-strong)]">{item.pct}%</p>
-                <p className="text-[11px] font-bold text-[var(--accent)]">
+                <p className={`text-[11px] font-bold ${item.valueColor}`}>
                   ₱{item.estValuePhp.toLocaleString()}
                 </p>
               </div>

@@ -32,7 +32,6 @@ enum WasteCategory {
   RECYCLABLE
   BIODEGRADABLE
   NON_BIODEGRADABLE
-  HAZARDOUS
 }
 
 enum Urgency {
@@ -72,7 +71,6 @@ enum SyncStatus {
 enum ChallengeType {
   REPORT_COUNT
   WEIGHT_COLLECTED
-  HAZARDOUS_REPORT
 }
 
 enum CertificateType {
@@ -198,6 +196,9 @@ model Report {
   pointsAwarded   Int           @default(0) @map("points_awarded")
   pointsAwardedAt DateTime?     @map("points_awarded_at")
   imageUrl        String?       @db.Text @map("image_url")
+  // File-backed photo evidence (relative to server/uploads). New uploads are
+  // written to disk; legacy base64 rows keep image_url until the backfill runs.
+  photoPath       String?       @map("photo_path")
   weightCollected Float?        @map("weight_collected")
   isVerified      Boolean       @default(false) @map("is_verified")
   reportType      ReportType    @default(WASTE) @map("report_type")
@@ -220,6 +221,7 @@ model Report {
   @@index([status])
   @@index([category])
   @@index([schoolYearId])
+  @@index([schoolYearId, createdAt])
   @@index([locationKey, category, schoolYearId])
   @@index([assignedMrfId])
   @@map("reports")
@@ -346,6 +348,18 @@ model ChallengeContribution {
   @@index([challengeId])
   @@index([reportId])
   @@map("challenge_contributions")
+}
+
+// Shared express-rate-limit counters (login / ATLAS sync / walk-in). Using the
+// database instead of the default in-memory store keeps limits honest when the
+// API runs as more than one process.
+model RateLimitCounter {
+  key       String   @id
+  totalHits Int      @default(0) @map("total_hits")
+  resetAt   DateTime @map("reset_at")
+
+  @@index([resetAt])
+  @@map("rate_limit_counters")
 }
 
 model SystemSetting {
@@ -550,6 +564,7 @@ model RecycleMarketStock {
   accumulatedKg     Float     @default(0.0) @map("accumulated_kg")
   isApprovedForSale Boolean   @default(false) @map("is_approved_for_sale")
   approvedAt        DateTime? @map("approved_at")
+  approvalReference String?   @map("approval_reference")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 

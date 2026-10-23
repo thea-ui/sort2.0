@@ -1,6 +1,10 @@
 import React from 'react';
 
 interface PageHeaderProps {
+  /**
+   * Retained for callers: the page title now renders once, in the shell
+   * topbar's upper-left (EnrollPro-style).
+   */
   title: string;
   actions?: React.ReactNode;
   badge?: React.ReactNode;
@@ -8,34 +12,28 @@ interface PageHeaderProps {
 }
 
 /**
- * Canonical page title block (SMART master handoff Part 1 §3).
+ * Page toolbar: page-level badges and the actions cluster.
  *
- * Layout: an identity block (title + inline badge) on the left and the actions
- * cluster on the right. The actions are pushed to the right edge and wrap onto
- * their own line when the row runs out of width, so the title is never squeezed
- * into a narrow column — pages that put a full toolbar in `actions`
- * (e.g. School Years) simply get a second, still right-aligned, control row.
- *
- * - Actions keep 12px gaps (`gap-3`) and never shrink.
- * The `text-2xl` utility overrides the global h1 base size.
+ * Page titles no longer render here — they live in the shell topbar
+ * (`AppShell`) so every page shows its title once at the upper left.
+ * Layout: badges on the left, actions pushed to the right edge and wrapped
+ * onto their own line when the row runs out of width — pages that put a full
+ * toolbar in `actions` (e.g. School Years) simply get a second, still
+ * right-aligned, control row. Renders nothing when neither is provided.
  */
-export const PageHeader: React.FC<PageHeaderProps> = ({
-  title,
-  actions,
-  badge,
-  className = '',
-}) => (
-  <div className={`flex flex-wrap items-center gap-x-4 gap-y-3 ${className}`}>
-    <div className="flex flex-col gap-1.5 grow min-w-0 sm:shrink-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
-        {badge && <div className="shrink-0">{badge}</div>}
-      </div>
+export const PageHeader: React.FC<PageHeaderProps> = ({ actions, badge, className = '' }) => {
+  if (!badge && !actions) return null;
+
+  return (
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-3 ${className}`}>
+      {badge && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">{badge}</div>
+      )}
+      {actions && (
+        <div className="flex flex-wrap items-center justify-end gap-3 ml-auto min-w-0">
+          {actions}
+        </div>
+      )}
     </div>
-    {actions && (
-      <div className="flex flex-wrap items-center justify-end gap-3 ml-auto min-w-0">
-        {actions}
-      </div>
-    )}
-  </div>
-);
+  );
+};

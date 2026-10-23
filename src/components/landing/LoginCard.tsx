@@ -9,7 +9,7 @@ interface LoginCardProps {
 }
 
 export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
-  const { login } = useMockData();
+  const { login, logout } = useMockData();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -26,13 +26,16 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onAuthenticated }) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await login(password, identifier);
+      const result = await login(password, identifier, 'STAFF');
       setLoading(false);
       if (result.ok) {
         if (result.offlineAuth) {
           toast.info('EnrollPro is offline — you were signed in with your last verified password.');
         }
         if (result.user.role !== 'STUDENT' && result.user.role !== 'TEACHER') {
+          // Server enforces portal admission; this is a legacy-server fallback
+          // that must never leave a wrong-portal session alive.
+          logout();
           setError(ROLE_PORTAL_MESSAGE);
         } else {
           onAuthenticated();

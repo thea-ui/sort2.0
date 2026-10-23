@@ -136,7 +136,7 @@ export const DialogContent: React.FC<DialogContentProps> = ({
         aria-modal="true"
         data-slot="dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm animate-dialog-in print-hide',
+          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm animate-dialog-in print-hide',
           className,
         )}
         {...props}
@@ -148,7 +148,7 @@ export const DialogContent: React.FC<DialogContentProps> = ({
             onClick={() => onOpenChange(false)}
             aria-label="Close"
             data-slot="dialog-close"
-            className="absolute top-2 right-2 inline-flex size-7 items-center justify-center rounded-lg text-foreground/70 transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 cursor-pointer"
+            className="absolute top-2 right-2 inline-flex size-7 items-center justify-center rounded-md text-foreground/70 transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 cursor-pointer"
           >
             <X className="size-4" />
             <span className="sr-only">Close</span>

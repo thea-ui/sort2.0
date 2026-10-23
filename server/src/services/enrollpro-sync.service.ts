@@ -1,11 +1,19 @@
-import { PrismaClient, SyncStatus, SyncSource, Role } from '@prisma/client';
+import { SyncStatus, SyncSource, Role } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { ensureSchoolYear } from './rollover.service.js';
 import { ensureChallengesForSchoolYear } from './challenge-catalog.service.js';
 
-const prisma = new PrismaClient();
-
 const ENROLLPRO_BASE = process.env.ENROLLPRO_BASE_URL || 'https://dev-jegs.buru-degree.ts.net/api';
 const ENROLLPRO_SYNC_SECRET = process.env.ENROLLPRO_SYNC_SECRET || '';
+const ENROLLPRO_FETCH_TIMEOUT_MS = 30_000;
+
+/**
+ * Every EnrollPro call is bounded: a stalled connection used to hold the whole
+ * sync run (and its accumulated arrays) open indefinitely.
+ */
+function enrollProFetch(input: string | URL, init?: RequestInit): Promise<Response> {
+  return fetch(input, { ...init, signal: AbortSignal.timeout(ENROLLPRO_FETCH_TIMEOUT_MS) });
+}
 
 // Role overrides: "1234503=MRF,1234501=ADMIN"
 const ROLE_OVERRIDES: Record<string, Role> = {};
@@ -200,7 +208,7 @@ async function fetchAllPages<T>(endpoint: string, schoolYearId?: number): Promis
     url.searchParams.set('limit', String(limit));
     if (schoolYearId) url.searchParams.set('schoolYearId', String(schoolYearId));
 
-    const res = await fetch(url.toString(), { headers: baseHeaders });
+    const res = await enrollProFetch(url.toString(), { headers: baseHeaders });
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -282,7 +290,7 @@ function deriveRangeFromLabel(
 }
 
 async function fetchActiveEnrollProSchoolYear(): Promise<EnrollProSchoolYear | null> {
-  const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
+  const res = await enrollProFetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
   if (!res.ok) return null;
   const json = await res.json() as { data?: EnrollProSchoolYear };
   return json.data?.id ? json.data : null;
@@ -294,7 +302,7 @@ async function fetchActiveEnrollProSchoolYear(): Promise<EnrollProSchoolYear | n
  */
 async function fetchEnrollProActiveTerm(schoolYearId: number): Promise<EnrollProActiveTerm | null> {
   try {
-    const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/active-term?schoolYearId=${schoolYearId}`, {
+    const res = await enrollProFetch(`${ENROLLPRO_BASE}/integration/v1/active-term?schoolYearId=${schoolYearId}`, {
       headers: integrationHeaders(),
     });
     if (!res.ok) return null;
@@ -338,7 +346,7 @@ function buildEnrollProTerms(sy: EnrollProSchoolYear): { start: string; end: str
 async function resolveEnrollProSchoolYearById(id: number): Promise<EnrollProSchoolYear | null> {
   const headers = integrationHeaders();
 
-  const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year?schoolYearId=${id}`, { headers });
+  const res = await enrollProFetch(`${ENROLLPRO_BASE}/integration/v1/school-year?schoolYearId=${id}`, { headers });
   if (res.ok) {
     const json = await res.json() as { data?: EnrollProSchoolYear };
     if (json.data?.id && json.data?.yearLabel) return json.data;
@@ -347,7 +355,7 @@ async function resolveEnrollProSchoolYearById(id: number): Promise<EnrollProScho
 
   const labelFrom = async (path: string): Promise<string | null> => {
     try {
-      const r = await fetch(`${ENROLLPRO_BASE}${path}?schoolYearId=${id}&page=1&limit=1`, { headers });
+      const r = await enrollProFetch(`${ENROLLPRO_BASE}${path}?schoolYearId=${id}&page=1&limit=1`, { headers });
       if (!r.ok) return null;
       const j = await r.json() as { data?: Array<{ schoolYear?: { id: number; yearLabel: string } }> };
       return j.data?.[0]?.schoolYear?.yearLabel ?? null;
@@ -395,7 +403,7 @@ async function enumerateEnrollProSchoolYears(activeId: number): Promise<EnrollPr
  */
 export async function fetchEnrollProSchoolYears(): Promise<EnrollProSchoolYearCatalog> {
   // 1. Preferred list endpoint.
-  const listRes = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-years?page=1&limit=200`, { headers: integrationHeaders() });
+  const listRes = await enrollProFetch(`${ENROLLPRO_BASE}/integration/v1/school-years?page=1&limit=200`, { headers: integrationHeaders() });
   if (listRes.ok) {
     const json = await listRes.json() as { data?: EnrollProSchoolYear[] | { data?: EnrollProSchoolYear[] } };
     const payload = json.data as any;
@@ -531,7 +539,46 @@ interface SyncResult {
   error?: string;
 }
 
+let syncInProgress = false;
+
+export function isEnrollProSyncRunning(): boolean {
+  return syncInProgress;
+}
+
+function busySyncResult(): SyncResult {
+  const empty = (): CohortResult => ({ pulled: 0, created: 0, updated: 0, deleted: 0 });
+  return {
+    recordsPulled: 0,
+    recordsCreated: 0,
+    recordsUpdated: 0,
+    recordsDeleted: 0,
+    durationMs: 0,
+    status: SyncStatus.PARTIAL,
+    cohortResults: { learners: empty(), faculty: empty(), staff: empty() },
+    error: 'A sync is already in progress.',
+    message: 'SYNC_IN_PROGRESS',
+  };
+}
+
+/**
+ * Single-flight guard: manual routes, the scheduler and `/sync/all` all funnel
+ * here, so two concurrent runs can no longer double the roster memory and
+ * fight over the same user rows.
+ */
 export async function runEnrollProSync(): Promise<SyncResult> {
+  if (syncInProgress) {
+    console.warn('[Sync] Attempted concurrent sync — rejected');
+    return busySyncResult();
+  }
+  syncInProgress = true;
+  try {
+    return await runEnrollProSyncInternal();
+  } finally {
+    syncInProgress = false;
+  }
+}
+
+async function runEnrollProSyncInternal(): Promise<SyncResult> {
   const start = Date.now();
   const errors: string[] = [];
 
@@ -543,7 +590,7 @@ export async function runEnrollProSync(): Promise<SyncResult> {
 
   try {
     // 1. Get school year context
-    const schoolYearRes = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
+    const schoolYearRes = await enrollProFetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
     let schoolYearId: number | undefined;
     let schoolYearLabel: string | undefined;
     let activeSchoolYear: EnrollProSchoolYear | undefined;
@@ -705,13 +752,35 @@ export async function runEnrollProSync(): Promise<SyncResult> {
       }
     }
 
-    // 4. Batch upsert with per-cohort tracking
+    // 4. Batch upsert with per-cohort tracking.
+    // Preload the identity map once. The old code issued 1–4 SELECTs per user
+    // (findUnique by enrollproId, then by email, then by employeeId on
+    // conflict); the maps are updated as rows are written so later batches see
+    // earlier creates without re-querying.
     const syncedIdsByCohort = {
       learners: new Set<string>(),
       faculty: new Set<string>(),
       staff: new Set<string>(),
     };
     const BATCH_SIZE = 50;
+
+    const identityRows = await prisma.user.findMany({
+      select: { id: true, enrollproId: true, email: true, employeeId: true },
+    });
+    const byEnrollproId = new Map<string, string>();
+    const byEmail = new Map<string, string>();
+    const byEmployeeId = new Map<string, string>();
+    for (const row of identityRows) {
+      if (row.enrollproId) byEnrollproId.set(row.enrollproId, row.id);
+      if (row.email) byEmail.set(row.email.toLowerCase(), row.id);
+      if (row.employeeId) byEmployeeId.set(row.employeeId, row.id);
+    }
+
+    const rememberIdentity = (id: string, entry: SyncEntry) => {
+      byEnrollproId.set(entry.enrollproId, id);
+      byEmail.set(entry.email.toLowerCase(), id);
+      byEmployeeId.set(entry.employeeId, id);
+    };
 
     for (let i = 0; i < syncEntries.length; i += BATCH_SIZE) {
       const batch = syncEntries.slice(i, i + BATCH_SIZE);
@@ -720,104 +789,85 @@ export async function runEnrollProSync(): Promise<SyncResult> {
         for (const entry of batch) {
           syncedIdsByCohort[entry.cohort].add(entry.enrollproId);
 
-          const existing = await tx.user.findUnique({ where: { enrollproId: entry.enrollproId } });
+          const updateData = {
+            name: entry.name,
+            email: entry.email,
+            employeeId: entry.employeeId,
+            role: entry.role,
+            gradeLevel: entry.gradeLevel,
+            sectionName: entry.sectionName,
+            academicProgram: entry.academicProgram,
+            enrollproLrn: entry.enrollproLrn,
+            schoolYearId: entry.schoolYearId,
+            schoolYearLabel: entry.schoolYearLabel,
+            portalAccountActive: entry.portalAccountActive,
+            archivedAt: null,
+            ...(entry.cohort === 'learners' ? { enrollmentStatus: 'ENROLLED' } : {}),
+          };
 
-          if (existing) {
+          const existingId = byEnrollproId.get(entry.enrollproId);
+          if (existingId) {
+            await tx.user.update({ where: { id: existingId }, data: updateData });
+            rememberIdentity(existingId, entry);
+            cohortResults[entry.cohort].updated++;
+            continue;
+          }
+
+          const emailDupId = byEmail.get(entry.email.toLowerCase());
+          if (emailDupId) {
             await tx.user.update({
-              where: { id: existing.id },
+              where: { id: emailDupId },
+              data: { ...updateData, enrollproId: entry.enrollproId, syncSource: SyncSource.ENROLLPRO },
+            });
+            rememberIdentity(emailDupId, entry);
+            cohortResults[entry.cohort].updated++;
+            continue;
+          }
+
+          try {
+            const created = await tx.user.create({
               data: {
                 name: entry.name,
                 email: entry.email,
+                passwordHash: null,
                 employeeId: entry.employeeId,
                 role: entry.role,
+                syncSource: SyncSource.ENROLLPRO,
+                enrollproId: entry.enrollproId,
+                enrollproLrn: entry.enrollproLrn,
                 gradeLevel: entry.gradeLevel,
                 sectionName: entry.sectionName,
                 academicProgram: entry.academicProgram,
-                enrollproLrn: entry.enrollproLrn,
                 schoolYearId: entry.schoolYearId,
                 schoolYearLabel: entry.schoolYearLabel,
                 portalAccountActive: entry.portalAccountActive,
-                archivedAt: null,
-                ...(entry.cohort === 'learners' ? { enrollmentStatus: 'ENROLLED' } : {}),
+                enrollmentStatus: entry.cohort === 'learners' ? 'ENROLLED' : undefined,
               },
+              select: { id: true },
             });
-            cohortResults[entry.cohort].updated++;
-          } else {
-            const emailDup = await tx.user.findUnique({ where: { email: entry.email } });
-
-            if (emailDup) {
-              await tx.user.update({
-                where: { id: emailDup.id },
-                data: {
-                  enrollproId: entry.enrollproId,
-                  syncSource: SyncSource.ENROLLPRO,
-                  email: entry.email,
-                  employeeId: entry.employeeId,
-                  role: entry.role,
-                  gradeLevel: entry.gradeLevel,
-                  sectionName: entry.sectionName,
-                  academicProgram: entry.academicProgram,
-                  enrollproLrn: entry.enrollproLrn,
-                  schoolYearId: entry.schoolYearId,
-                  schoolYearLabel: entry.schoolYearLabel,
-                  portalAccountActive: entry.portalAccountActive,
-                  archivedAt: null,
-                  ...(entry.cohort === 'learners' ? { enrollmentStatus: 'ENROLLED' } : {}),
-                },
-              });
-              cohortResults[entry.cohort].updated++;
-            } else {
-              try {
-                await tx.user.create({
-                  data: {
-                    name: entry.name,
-                    email: entry.email,
-                    passwordHash: null,
-                    employeeId: entry.employeeId,
-                    role: entry.role,
-                    syncSource: SyncSource.ENROLLPRO,
-                    enrollproId: entry.enrollproId,
-                    enrollproLrn: entry.enrollproLrn,
-                    gradeLevel: entry.gradeLevel,
-                    sectionName: entry.sectionName,
-                    academicProgram: entry.academicProgram,
-                    schoolYearId: entry.schoolYearId,
-                    schoolYearLabel: entry.schoolYearLabel,
-                    portalAccountActive: entry.portalAccountActive,
-                    enrollmentStatus: entry.cohort === 'learners' ? 'ENROLLED' : undefined,
-                  },
+            rememberIdentity(created.id, entry);
+            cohortResults[entry.cohort].created++;
+          } catch (createErr: any) {
+            if (createErr?.code === 'P2002') {
+              // A concurrent writer created the identity after our preload.
+              const duplicate =
+                byEmployeeId.get(entry.employeeId) ??
+                (
+                  await tx.user.findFirst({
+                    where: { OR: [{ email: entry.email }, { employeeId: entry.employeeId }] },
+                    select: { id: true },
+                  })
+                )?.id;
+              if (duplicate) {
+                await tx.user.update({
+                  where: { id: duplicate },
+                  data: { ...updateData, enrollproId: entry.enrollproId, syncSource: SyncSource.ENROLLPRO },
                 });
-                cohortResults[entry.cohort].created++;
-              } catch (createErr: any) {
-                if (createErr?.code === 'P2002') {
-                  const empDup = await tx.user.findFirst({ where: { employeeId: entry.employeeId } });
-                  if (empDup) {
-                    await tx.user.update({
-                      where: { id: empDup.id },
-                      data: {
-                        enrollproId: entry.enrollproId,
-                        syncSource: SyncSource.ENROLLPRO,
-                        name: entry.name,
-                        email: entry.email,
-                        employeeId: entry.employeeId,
-                        role: entry.role,
-                        gradeLevel: entry.gradeLevel,
-                        sectionName: entry.sectionName,
-                        academicProgram: entry.academicProgram,
-                        enrollproLrn: entry.enrollproLrn,
-                        schoolYearId: entry.schoolYearId,
-                        schoolYearLabel: entry.schoolYearLabel,
-                        portalAccountActive: entry.portalAccountActive,
-                        archivedAt: null,
-                        ...(entry.cohort === 'learners' ? { enrollmentStatus: 'ENROLLED' } : {}),
-                      },
-                    });
-                    cohortResults[entry.cohort].updated++;
-                  }
-                } else {
-                  errors.push(`create ${entry.name}: ${createErr.message}`);
-                }
+                rememberIdentity(duplicate, entry);
+                cohortResults[entry.cohort].updated++;
               }
+            } else {
+              errors.push(`create ${entry.name}: ${createErr.message}`);
             }
           }
         }
@@ -827,11 +877,19 @@ export async function runEnrollProSync(): Promise<SyncResult> {
     // 5. Per-cohort reconciliation — archive identities no longer present in a
     //    successfully fetched roster. NEVER delete: accounts own reports,
     //    points, offenses, and snapshots that must survive for transparency.
+    //    Batched per cohort: the old loop issued a session delete + user update
+    //    per stale account.
     const learnerRosterEmpty = cohortResults.learners.pulled === 0 && !cohortResults.learners.error;
     const localSynced = await prisma.user.findMany({
       where: { syncSource: SyncSource.ENROLLPRO, archivedAt: null },
       select: { id: true, enrollproId: true },
     });
+
+    const staleIdsByCohort: Record<'learners' | 'faculty' | 'staff', string[]> = {
+      learners: [],
+      faculty: [],
+      staff: [],
+    };
 
     for (const u of localSynced) {
       if (!u.enrollproId) continue;
@@ -842,28 +900,33 @@ export async function runEnrollProSync(): Promise<SyncResult> {
         : null;
 
       if (!cohort) continue;
-
-      // Only reconcile if this cohort was successfully fetched (no error)
       if (!cohortResults[cohort].error && !syncedIdsByCohort[cohort].has(u.enrollproId)) {
-        await prisma.userSession.deleteMany({ where: { userId: u.id } }).catch(() => {});
-        // When EnrollPro has rolled over but nobody is enrolled yet, learners
-        // are archived as NOT_ENROLLED (awaiting enrollment) rather than ALUMNI.
-        const nextStatus = cohort === 'learners'
-          ? (learnerRosterEmpty ? 'NOT_ENROLLED' : 'ALUMNI')
-          : undefined;
-        try {
-          await prisma.user.update({
-            where: { id: u.id },
-            data: {
-              archivedAt: new Date(),
-              portalAccountActive: false,
-              ...(nextStatus ? { enrollmentStatus: nextStatus } : {}),
-            },
-          });
-          cohortResults[cohort].deleted++;
-        } catch (archErr: any) {
-          errors.push(`archive stale ${u.enrollproId}: ${archErr.message}`);
-        }
+        staleIdsByCohort[cohort].push(u.id);
+      }
+    }
+
+    for (const cohort of ['learners', 'faculty', 'staff'] as const) {
+      const staleIds = staleIdsByCohort[cohort];
+      if (staleIds.length === 0) continue;
+
+      await prisma.userSession.deleteMany({ where: { userId: { in: staleIds } } }).catch(() => {});
+      // When EnrollPro has rolled over but nobody is enrolled yet, learners
+      // are archived as NOT_ENROLLED (awaiting enrollment) rather than ALUMNI.
+      const nextStatus = cohort === 'learners'
+        ? (learnerRosterEmpty ? 'NOT_ENROLLED' : 'ALUMNI')
+        : undefined;
+      try {
+        const archived = await prisma.user.updateMany({
+          where: { id: { in: staleIds } },
+          data: {
+            archivedAt: new Date(),
+            portalAccountActive: false,
+            ...(nextStatus ? { enrollmentStatus: nextStatus } : {}),
+          },
+        });
+        cohortResults[cohort].deleted += archived.count;
+      } catch (archErr: any) {
+        errors.push(`archive stale ${cohort}: ${archErr.message}`);
       }
     }
 
@@ -970,7 +1033,7 @@ export async function runEnrollProSync(): Promise<SyncResult> {
 
 export async function syncTermCalendar(): Promise<{ synced: number; error?: string }> {
   try {
-    const res = await fetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
+    const res = await enrollProFetch(`${ENROLLPRO_BASE}/integration/v1/school-year`, { headers: integrationHeaders() });
     if (!res.ok) return { synced: 0, error: `Returned ${res.status}` };
 
     const json = await res.json() as { data?: EnrollProSchoolYear };

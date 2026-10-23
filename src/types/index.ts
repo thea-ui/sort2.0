@@ -5,8 +5,6 @@ export type ReportStatus = 'PENDING' | 'DISPATCHED' | 'COLLECTED' | 'RESOLVED' |
 // Canonical waste streams mirror the Prisma `WasteCategory` enum.
 // The campus operates exactly three admin-managed streams: BIODEGRADABLE,
 // NON_BIODEGRADABLE and RECYCLABLE.
-// `HAZARDOUS` is retained only so legacy reports stored before the three-bin
-// setup can still be displayed; it is not selectable anywhere.
 // `ORGANIC` and `GENERAL` are LEGACY aliases still present in older cached
 // records. The API normalises ORGANIC -> BIODEGRADABLE and GENERAL ->
 // NON_BIODEGRADABLE on write, so new records must never use them.
@@ -14,11 +12,10 @@ export type WasteCategory =
   | 'RECYCLABLE'
   | 'BIODEGRADABLE'
   | 'NON_BIODEGRADABLE'
-  | 'HAZARDOUS' // legacy display only — no bin stream exists
   | 'ORGANIC' // legacy alias -> BIODEGRADABLE
   | 'GENERAL'; // legacy alias -> NON_BIODEGRADABLE
 
-export type ChallengeType = 'REPORT_COUNT' | 'WEIGHT_COLLECTED' | 'HAZARDOUS_REPORT';
+export type ChallengeType = 'REPORT_COUNT' | 'WEIGHT_COLLECTED';
 
 export interface User {
   id: string;
@@ -55,9 +52,15 @@ export interface Report {
   reporterId: string;
   reporterName: string;
   reporterRole?: 'student' | 'teacher' | 'admin' | 'mrf';
+  /** EnrollPro-synced grade level of the reporter (students). */
+  reporterGradeLevel?: string | null;
+  reporterSection?: string | null;
   pointsAwarded: number;
   timestamp: string;
+  /** Local evidence source (data URL) — present on optimistic/local reports. */
   imageUrl?: string;
+  /** Server photo endpoint (GET /api/reports/:id/photo) — present on synced reports. */
+  photoUrl?: string | null;
   weightCollected?: number; // MRF logs kg weight upon collection
   isVerified?: boolean;
   assignedMrfId?: string;
@@ -69,6 +72,7 @@ export interface Report {
   collectedOutcome?: string;
   isScatteredDebris?: boolean;
   completedAt?: string;
+  schoolYearId?: string | null;
 }
 
 export type BinStreamState = 'Available' | 'Unavailable' | 'No Bin';
@@ -379,6 +383,27 @@ export interface VerifyAward {
   userId: string;
   amount: number;
   rank: number;
+}
+
+// ─── Reports hub PDF export payload (POST /reports/export-pdf) ────────
+
+export interface ReportPdfColumn {
+  header: string;
+  /** Relative width weight; the server normalises it to the page width. */
+  width: number;
+  align?: 'left' | 'center' | 'right';
+  /** Renders in a smaller font (report UUIDs). */
+  small?: boolean;
+}
+
+export interface ReportPdfPayload {
+  title: string;
+  metaLines: string[];
+  recordCount: number;
+  generatedLabel: string;
+  columns: ReportPdfColumn[];
+  rows: string[][];
+  totals?: string[];
 }
 
 export interface ChallengeCompletion {

@@ -81,7 +81,9 @@ test('optimistic VERIFIED badge survives stale polls during a slow verify-batch'
   });
 
   await page.goto('/');
-  const reportsNav = page.getByRole('button', { name: 'Reports', exact: true }).first();
+  // The optimistic-verify queue lives under the "Verify Reports" nav (the
+  // "Reports" nav is now the folder/records hub).
+  const reportsNav = page.getByRole('button', { name: 'Verify Reports', exact: true }).first();
   await expect(reportsNav).toBeVisible({ timeout: 20_000 });
   await reportsNav.click();
 

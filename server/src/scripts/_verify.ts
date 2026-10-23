@@ -1,7 +1,7 @@
+import { prisma } from '../lib/prisma.js';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+
 dotenv.config();
-const prisma = new PrismaClient();
 
 async function main() {
   const years = await prisma.schoolYear.findMany({ orderBy: { startDate: 'desc' } });

@@ -1,10 +1,9 @@
 import crypto from 'node:crypto';
 import { promises as fs, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { PrismaClient } from '@prisma/client';
-import { saveBranding, type BrandingPatch, type PublicBranding } from './branding.service.js';
 
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma.js';
+import { saveBranding, type BrandingPatch, type PublicBranding } from './branding.service.js';
 
 const DEFAULT_ENROLLPRO_BASE = 'https://dev-jegs.buru-degree.ts.net/api';
 const SETTINGS_TIMEOUT_MS = 20_000;
@@ -38,14 +37,12 @@ export interface EnrollProPublicSettings {
 }
 
 /**
- * Pick 3 brand colors from an EnrollPro palette (skip near-white and near-black).
+ * Vibrant palette entries only (skip near-white / near-black).
  * Cross-system contract: identical rule in SMART/ATLAS/AIMS so every companion
  * resolves the same tenant colors. Hex values only — never `selectedAccentHsl`.
  */
-export function pickColorsFromPalette(
-  palette: Array<{ hex: string }>
-): { primary: string; secondary: string; accent: string } {
-  const vibrant = palette
+function vibrantPaletteColors(palette: Array<{ hex: string }>): string[] {
+  return palette
     .filter((c) => {
       if (!c.hex || c.hex.length < 7) return false;
       const r = parseInt(c.hex.slice(1, 3), 16);
@@ -55,6 +52,17 @@ export function pickColorsFromPalette(
       return lum > 30 && lum < 210;
     })
     .map((c) => c.hex);
+}
+
+/**
+ * Pick 3 brand colors from an EnrollPro palette. The fallback triples only
+ * apply when a palette exists — callers that must not clobber existing
+ * branding should check `vibrantPaletteColors` first.
+ */
+export function pickColorsFromPalette(
+  palette: Array<{ hex: string }>
+): { primary: string; secondary: string; accent: string } {
+  const vibrant = vibrantPaletteColors(palette);
   return {
     primary: vibrant[0] ?? '#10b981',
     secondary: vibrant[1] ?? '#34d399',
@@ -190,14 +198,23 @@ export async function syncEnrollProBranding(): Promise<BrandingSyncResult> {
   try {
     const base = await resolveEnrollProBase();
     const remote = await fetchEnrollProPublicSettings();
-    const colors = pickColorsFromPalette(remote.colorScheme?.palette ?? []);
+    const palette = remote.colorScheme?.palette ?? [];
+    const vibrantColors = vibrantPaletteColors(palette);
+    const colors = pickColorsFromPalette(palette);
 
     const patch: BrandingPatch = {
-      primaryColor: colors.primary,
-      secondaryColor: colors.secondary,
-      accentColor: colors.accent,
       enrollproPublicUrl: enrollProOrigin(base),
     };
+    // Only adopt EnrollPro colors when it actually provides a palette. An
+    // empty/unconfigured palette must never clobber the school's own branding
+    // with the hardcoded fallback triples.
+    if (vibrantColors.length > 0) {
+      patch.primaryColor = colors.primary;
+      patch.secondaryColor = colors.secondary;
+      patch.accentColor = colors.accent;
+    } else {
+      console.log('[Branding] EnrollPro has no color palette — keeping SORT colors');
+    }
     if (remote.schoolName?.trim()) patch.schoolName = remote.schoolName.trim();
     if (remote.schoolHeadName?.trim()) patch.schoolHeadName = remote.schoolHeadName.trim();
     if (remote.depedSchoolId?.trim()) patch.schoolId = remote.depedSchoolId.trim();

@@ -50,25 +50,29 @@ export async function authenticateWithEnrollPro(
       signal: AbortSignal.timeout(10000),
     });
 
-    if (res.status === 401) {
+    // ONLY a true 401 means "wrong credentials". Validation (400) is treated
+    // the same; every other failure — proxy HTML, 404 routes, unknown statuses
+    // — means EnrollPro is not effectively serving auth, so it must surface as
+    // unreachable instead of a misleading "incorrect password".
+    if (res.status === 401 || res.status === 400) {
       return { success: false, error: 'Invalid credentials' };
-    }
-
-    if (res.status >= 500) {
-      const body = await res.text().catch(() => '');
-      return { success: false, unreachable: true, error: `EnrollPro returned ${res.status}: ${body || res.statusText}` };
     }
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      return { success: false, error: `EnrollPro returned ${res.status}: ${body || res.statusText}` };
+      return { success: false, unreachable: true, error: `EnrollPro returned ${res.status}: ${body || res.statusText}` };
     }
 
-    const data = await res.json() as {
+    let data: {
       token?: string;
       accessToken?: string;
       user?: { id: number; name: string; email: string; role: string };
     };
+    try {
+      data = (await res.json()) as typeof data;
+    } catch {
+      return { success: false, unreachable: true, error: 'EnrollPro returned a non-JSON login response' };
+    }
 
     const jwtToken = data.token || data.accessToken || '';
     const payload = decodeJwtPayload(jwtToken);
@@ -85,7 +89,13 @@ export async function authenticateWithEnrollPro(
       const causeCode = error.cause?.code || error.code;
       return { success: false, unreachable: true, error: `Authentication service unreachable: ${causeCode || error.message}` };
     }
-    return { success: false, error: error.message || 'Authentication failed' };
+    // Unknown client-side failures (e.g. malformed proxy responses) are
+    // service problems, not credential verdicts.
+    return {
+      success: false,
+      unreachable: true,
+      error: `Authentication service error: ${error.message || 'unknown'}`,
+    };
   }
 }
 
@@ -102,11 +112,16 @@ export async function authenticateLearnerWithEnrollPro(
     });
 
     if (res.status === 200) {
-      const body = await res.json() as {
+      let body: {
         token?: string;
         requiresPasswordReset?: boolean;
         learner?: { id: number; lrn: string; firstName: string; lastName: string; middleName?: string };
       };
+      try {
+        body = (await res.json()) as typeof body;
+      } catch {
+        return { success: false, unreachable: true, error: 'EnrollPro returned a non-JSON learner response' };
+      }
       return {
         success: true,
         mustChangePassword: body.requiresPasswordReset === true || undefined,
@@ -125,18 +140,19 @@ export async function authenticateLearnerWithEnrollPro(
       return { success: false, error: 'Validation failed' };
     }
 
-    if (res.status >= 500) {
-      const body = await res.text().catch(() => '');
-      return { success: false, unreachable: true, error: `EnrollPro returned ${res.status}: ${body || res.statusText}` };
-    }
-
+    // Any other status (proxy errors, missing routes, unexpected codes) means
+    // the auth service is not effectively reachable — never a credential call.
     const body = await res.text().catch(() => '');
-    return { success: false, error: `EnrollPro returned ${res.status}: ${body || res.statusText}` };
+    return { success: false, unreachable: true, error: `EnrollPro returned ${res.status}: ${body || res.statusText}` };
   } catch (error: any) {
     if (classifyNetworkError(error)) {
       const causeCode = error.cause?.code || error.code;
       return { success: false, unreachable: true, error: `Authentication service unreachable: ${causeCode || error.message}` };
     }
-    return { success: false, error: error.message || 'Authentication failed' };
+    return {
+      success: false,
+      unreachable: true,
+      error: `Authentication service error: ${error.message || 'unknown'}`,
+    };
   }
 }

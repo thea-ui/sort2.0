@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Scale,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Coins,
+  Package,
+  Scale,
 } from 'lucide-react';
 import { RECYCLABLE_CATEGORIES, ItemizedRecyclableCategory } from '../MRFDashboard';
 import { MarketStockItem, SaleTransaction } from '../../../hooks/useRecycleMarket';
+import { RECYCLABLE_CATEGORY_ICONS } from '../../../utils/materialMeta';
 
 interface MRFMarketTabProps {
   stocksRecord: Record<string, MarketStockItem>;
@@ -15,12 +18,29 @@ interface MRFMarketTabProps {
   handleSellBatch: (cat: ItemizedRecyclableCategory) => void;
 }
 
+/* Folder rows: collapsed shows the material name plus a state hint; an
+   admin-approved batch (this terminal's action) carries a success highlight.
+   Clicking opens the folder — details and "Complete Vendor Sale" live inside. */
+const ROW_SHELL = 'overflow-hidden rounded-2xl border bg-white transition-colors';
+const PANEL = 'border-t border-[var(--primary)]/5 px-4 pb-4 pt-4';
+const MICRO_LABEL =
+  'block text-[10px] font-semibold uppercase tracking-wider text-[var(--text-strong)]/40';
+const NUMBER = 'font-mono font-bold tabular-nums';
+const SUCCESS_CHIP =
+  'inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--success)]/25 bg-[var(--success)]/10 px-2.5 py-1 text-[10px] font-bold text-[var(--success-strong)]';
+const WARNING_CHIP =
+  'inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-2.5 py-1 text-[10px] font-bold text-[var(--warning-strong)]';
+const PRIMARY_BUTTON =
+  'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-[11px] font-bold text-white shadow-sm shadow-[var(--accent)]/25 transition-colors hover:bg-[var(--accent-dark)]';
+
 export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
   stocksRecord,
   salesHistory,
   totalVendorSales,
   handleSellBatch,
 }) => {
+  const [openKey, setOpenKey] = useState<string | null>(null);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Market Overview Header */}
@@ -33,8 +53,7 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
             <span className="text-[10px] font-black text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_15%,white)] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Market Inventory Ledger
             </span>
-            <h3 className="text-xl font-heading font-black text-[var(--text-strong)] mt-1">Itemized Recycling Market & Selling Tracker</h3>
-            <p className="text-xs text-[var(--text-strong)]/60">Track accumulated recyclable weights toward market selling limit thresholds.</p>
+            <p className="text-xs text-[var(--text-strong)]/60 mt-1">Track accumulated recyclable weights toward market selling limit thresholds.</p>
           </div>
         </div>
         <div className="bg-[var(--background)] p-3 rounded-2xl border border-[var(--primary)]/10 text-right shrink-0">
@@ -45,105 +64,145 @@ export const MRFMarketTab: React.FC<MRFMarketTabProps> = ({
         </div>
       </div>
 
-      {/* Grid of 4 Itemized Recyclable Categories */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {RECYCLABLE_CATEGORIES.map(cat => {
-          const stock = stocksRecord[cat.id];
-          const currentKg = stock ? stock.accumulatedKg : 0;
-          const thresholdKg = stock ? stock.thresholdLimitKg : cat.thresholdLimitKg;
-          const pricePerKg = stock ? stock.marketPricePerKg : cat.marketPricePerKg;
-          const isApproved = stock ? stock.isApprovedForSale === true : false;
-          const isThresholdReached = currentKg >= thresholdKg;
-          const pct = Math.min(100, Math.round((currentKg / thresholdKg) * 100));
+      {/* Itemized recyclable folders */}
+      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm space-y-4">
+        <h4 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
+          <Package size={16} className="text-[var(--accent)]" />
+          <span>Recyclable Market Batches</span>
+        </h4>
 
-          return (
-            <div
-              key={cat.id}
-              className={`bg-white/95 backdrop-blur-md border rounded-3xl p-5 shadow-sm space-y-3 transition-all relative overflow-hidden ${
-                isApproved
-                  ? 'border-emerald-500 ring-2 ring-emerald-400/50 shadow-lg bg-emerald-50'
-                  : isThresholdReached
-                  ? 'border-amber-300 ring-2 ring-amber-400/40 shadow-md bg-amber-50'
-                  : 'border-gray-200'
-              }`}
-            >
-              {isApproved ? (
-                <div className="bg-[var(--accent)] text-white font-black text-[9px] uppercase px-3 py-1 text-center font-mono tracking-wider -mx-5 -mt-5 mb-2 flex items-center justify-center gap-1.5 animate-pulse">
-                  <CheckCircle2 size={12} /> APPROVED BY ADMIN — READY TO COMPLETE VENDOR SALE!
-                </div>
-              ) : isThresholdReached ? (
-                <div className="bg-amber-400 text-amber-950 font-black text-[9px] uppercase px-3 py-1 text-center font-mono tracking-wider -mx-5 -mt-5 mb-2">
-                  ⚠️ SELLING THRESHOLD REACHED — AWAITING ADMIN SALE APPROVAL
-                </div>
-              ) : null}
+        <div className="space-y-3">
+          {RECYCLABLE_CATEGORIES.map((cat) => {
+            const CategoryIcon = RECYCLABLE_CATEGORY_ICONS[cat.id] ?? Package;
+            const stock = stocksRecord[cat.id];
+            const currentKg = stock ? stock.accumulatedKg : 0;
+            const thresholdKg = stock ? stock.thresholdLimitKg : cat.thresholdLimitKg;
+            const pricePerKg = stock ? stock.marketPricePerKg : cat.marketPricePerKg;
+            const isApproved = stock ? stock.isApprovedForSale === true : false;
+            const isThresholdReached = currentKg >= thresholdKg;
+            const awaitingApproval = isThresholdReached && !isApproved;
+            const pct = Math.min(100, Math.round((currentKg / thresholdKg) * 100));
+            const remainingKg = Math.max(0, thresholdKg - currentKg);
+            const isOpen = openKey === cat.id;
+            const panelId = `market-folder-${cat.id}`;
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-extrabold text-[var(--text-strong)]">{cat.name}</h4>
-                  <p className="text-[11px] text-gray-400 font-medium">Market rate: ₱{pricePerKg} / kg</p>
-                </div>
-                <span className={`text-xs font-black px-2.5 py-1 rounded-full ${
+            return (
+              <div
+                key={cat.id}
+                className={`${ROW_SHELL} ${
                   isApproved
-                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                    : isThresholdReached
-                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                    : 'bg-gray-100 text-gray-700'
-                }`}>
-                  {currentKg.toFixed(1)} / {thresholdKg} kg
-                </span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] font-bold">
-                  <span className="text-gray-400">Target Market Batch</span>
-                  <span className={isApproved ? 'text-[var(--accent)] font-black' : isThresholdReached ? 'text-amber-700 font-black' : 'text-[var(--accent)]'}>{pct}% Full</span>
-                </div>
-                <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      isApproved ? 'bg-[var(--accent)]' : isThresholdReached ? 'bg-amber-400' : 'bg-[var(--accent)]'
-                    }`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Action to Sell Batch */}
-              <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-[11px] text-gray-500 font-medium">
-                  Est. Batch Value: <strong className="text-[var(--text-strong)]">₱{Math.round(currentKg * pricePerKg).toLocaleString()}</strong>
-                </span>
-
-                {isApproved ? (
-                  <button
-                    type="button"
-                    onClick={() => handleSellBatch(cat)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 bg-[var(--gold)] hover:bg-[#b0881e] text-white shadow-md shadow-amber-500/20 animate-bounce"
+                    ? 'border-[var(--success)]/40'
+                    : 'border-[var(--primary)]/10 hover:border-[var(--primary)]/20'
+                }`}
+              >
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  onClick={() => setOpenKey(isOpen ? null : cat.id)}
+                  className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left"
+                >
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${cat.bgLight} ${cat.color}`}
                   >
-                    <Coins size={15} /> Complete Vendor Sale
-                  </button>
-                ) : isThresholdReached ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="px-3.5 py-2 rounded-xl text-[11px] font-extrabold bg-amber-100 border border-amber-300 text-amber-900 cursor-not-allowed flex items-center gap-1.5 opacity-90"
-                  >
-                    <Clock size={13} /> Awaiting Admin Approval
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="px-3.5 py-2 rounded-xl text-[11px] font-bold bg-gray-100 text-gray-400 cursor-not-allowed flex items-center gap-1.5"
-                  >
-                    <Coins size={13} /> Awaiting Threshold
-                  </button>
+                    <CategoryIcon size={17} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--text-strong)]">
+                    {cat.name}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2.5">
+                    {isApproved ? (
+                      <span className={SUCCESS_CHIP}>
+                        <CheckCircle2 size={11} /> Ready to sell
+                      </span>
+                    ) : awaitingApproval ? (
+                      <span className={WARNING_CHIP}>
+                        <Clock size={11} /> Awaiting admin approval
+                      </span>
+                    ) : (
+                      <span className="hidden sm:inline font-mono text-[11px] font-semibold tabular-nums text-[var(--text-strong)]/35">
+                        {remainingKg.toFixed(1)} kg to go
+                      </span>
+                    )}
+                    <ChevronDown
+                      size={16}
+                      className={`text-[var(--text-strong)]/35 transition-transform duration-200 ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </span>
+                </button>
+
+                {isOpen && (
+                  <div id={panelId} className={PANEL}>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div>
+                        <span className={MICRO_LABEL}>Batch stock</span>
+                        <p className="mt-1 text-sm">
+                          <span className={`${NUMBER} text-[var(--text-strong)]`}>
+                            {currentKg.toFixed(1)}
+                          </span>
+                          <span className="text-[var(--text-strong)]/35">
+                            {' '}
+                            / {thresholdKg} kg threshold
+                          </span>
+                        </p>
+                        <div className="mt-2 flex items-center gap-2.5">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,white)]">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                awaitingApproval ? 'bg-[var(--warning)]' : cat.barColor
+                              }`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className={`${NUMBER} text-[11px] text-[var(--text-strong)]/70`}>
+                            {pct}%
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className={MICRO_LABEL}>Market rate</span>
+                        <p className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
+                          <span className={NUMBER}>₱{pricePerKg}</span>
+                          <span className="font-medium text-[var(--text-strong)]/40"> / kg</span>
+                        </p>
+                      </div>
+                      <div>
+                        <span className={MICRO_LABEL}>Est. batch value</span>
+                        <p className={`mt-1 text-sm ${NUMBER} text-[var(--text-strong)]`}>
+                          ₱{Math.round(currentKg * pricePerKg).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-[var(--primary)]/5 pt-3">
+                      {isApproved ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSellBatch(cat)}
+                          className={PRIMARY_BUTTON}
+                        >
+                          <Coins size={13} /> Complete Vendor Sale
+                        </button>
+                      ) : awaitingApproval ? (
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-strong)]/45">
+                          <Clock size={12} /> Waiting for the admin&apos;s authorization reference —
+                          this batch can be sold once approved.
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-strong)]/45">
+                          <Clock size={12} /> {remainingKg.toFixed(1)} kg to go before this batch
+                          reaches the selling threshold.
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Sales Ledger History */}

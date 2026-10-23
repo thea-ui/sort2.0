@@ -1,7 +1,6 @@
 import { PrismaClient, Prisma, Role } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import crypto from 'crypto';
-
-const prisma = new PrismaClient();
 
 // ─── Errors ───────────────────────────────────────────────────────────
 
@@ -409,9 +408,10 @@ export async function recordWalkIn(input: RecordWalkInInput): Promise<RecordWalk
   }
 }
 
-export async function listWalkIns(opts: { date?: string; studentId?: string; limit?: number }) {
+export async function listWalkIns(opts: { date?: string; studentId?: string; schoolYearId?: string; from?: string; to?: string; limit?: number }) {
   const where: Prisma.WalkInTurnoverWhereInput = {};
   if (opts.studentId) where.studentId = opts.studentId;
+  if (opts.schoolYearId) where.schoolYearId = opts.schoolYearId;
 
   if (opts.date) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(opts.date);
@@ -420,12 +420,26 @@ export async function listWalkIns(opts: { date?: string; studentId?: string; lim
       const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
       where.createdAt = { gte: start, lt: end };
     }
+  } else if (opts.from || opts.to) {
+    const range: { gte?: Date; lt?: Date } = {};
+    const fromMatch = opts.from ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(opts.from) : null;
+    if (fromMatch) {
+      range.gte = new Date(Number(fromMatch[1]), Number(fromMatch[2]) - 1, Number(fromMatch[3]));
+    }
+    const toMatch = opts.to ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(opts.to) : null;
+    if (toMatch) {
+      const end = new Date(Number(toMatch[1]), Number(toMatch[2]) - 1, Number(toMatch[3]));
+      range.lt = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+    }
+    if (range.gte || range.lt) where.createdAt = range;
   }
 
   const rows = await prisma.walkInTurnover.findMany({
     where,
     orderBy: { createdAt: 'desc' },
-    take: Math.min(Math.max(opts.limit ?? 100, 1), 100),
+    // Default to 500 rows (was 100); hard cap stays 5,000. Each row also
+    // expands its items, so an unbounded request is a memory amplifier.
+    take: Math.min(Math.max(opts.limit ?? 500, 1), 5000),
     include: {
       items: true,
       student: { select: { id: true, name: true, gradeLevel: true, sectionName: true } },

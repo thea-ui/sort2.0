@@ -9,6 +9,7 @@ import { ScrapStockItem } from '../../../hooks/useAssetScrap';
 import { CollectionsKpiGrid } from './collections/CollectionsKpiGrid';
 import { RecyclablesSummaryGrid } from './collections/RecyclablesSummaryGrid';
 import { ScrapApprovalsGrid } from './collections/ScrapApprovalsGrid';
+import { MaterialLedgerDrawer, type MaterialLedgerTarget } from './collections/MaterialLedgerDrawer';
 import { ItemizedRecyclable, useCollectionsMetrics } from './collections/useCollectionsMetrics';
 
 export interface AdminCollectionsTabProps {
@@ -37,6 +38,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
     totalMRFRevenuePhp,
     grandTotalRevenuePhp,
     approveSaleBatch,
+    nextMarketApprovalReference,
     scrapMaterials,
     totalScrapSales,
     approveScrapSale,
@@ -47,16 +49,35 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
     rewardsReservePercent: settings?.rewardsReservePercent ?? 20,
   });
 
+  const [marketTarget, setMarketTarget] = useState<ItemizedRecyclable | null>(null);
+  const [marketApprovalRef, setMarketApprovalRef] = useState('');
+  const [approvingMarket, setApprovingMarket] = useState(false);
   const [scrapTarget, setScrapTarget] = useState<ScrapStockItem | null>(null);
   const [approvalRef, setApprovalRef] = useState('');
   const [approving, setApproving] = useState(false);
+  const [ledgerTarget, setLedgerTarget] = useState<MaterialLedgerTarget | null>(null);
 
-  const handleApproveSale = async (item: ItemizedRecyclable) => {
+  const handleApproveSale = (item: ItemizedRecyclable) => {
+    setMarketApprovalRef(nextMarketApprovalReference);
+    setMarketTarget(item);
+  };
+
+  const handleConfirmMarketApproval = async () => {
+    if (!marketTarget) return;
+    setApprovingMarket(true);
     try {
-      await approveSaleBatch(item.code, true);
-      toast.success(`Authorized sale of ${item.shortName} batch. Dispatched notification to MRF.`);
+      await approveSaleBatch(marketTarget.code, true, marketApprovalRef.trim() || undefined);
+      toast.success(
+        `Authorized sale of ${marketTarget.shortName} batch. Dispatched notification to MRF.`,
+      );
+      setMarketTarget(null);
+      setMarketApprovalRef('');
     } catch (err: any) {
-      toast.error(err?.message || `Failed to authorize the ${item.shortName} sale. Please try again.`);
+      toast.error(
+        err?.message || `Failed to authorize the ${marketTarget.shortName} sale. Please try again.`,
+      );
+    } finally {
+      setApprovingMarket(false);
     }
   };
 
@@ -94,13 +115,6 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
                 recyclables + scrap
               </span>
             </div>
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-emerald-50 border border-emerald-200/80">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="text-xs font-bold text-emerald-700">Auto-Sync Active</span>
-            </div>
           </div>
         }
       />
@@ -112,6 +126,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
         residual={residualWaste}
         totalRevenuePhp={totalMRFRevenuePhp}
         onApproveSale={handleApproveSale}
+        onOpenLedger={setLedgerTarget}
       />
 
       <ScrapApprovalsGrid
@@ -121,7 +136,52 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
           setApprovalRef(nextScrapApprovalReference);
           setScrapTarget(material);
         }}
+        onOpenLedger={setLedgerTarget}
       />
+
+      <MaterialLedgerDrawer target={ledgerTarget} onClose={() => setLedgerTarget(null)} />
+
+      <AppModal
+        open={marketTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMarketTarget(null);
+            setMarketApprovalRef('');
+          }
+        }}
+        icon={<Coins size={20} />}
+        title="Authorize Recyclable Batch Sale"
+        description="Record the approval reference before MRF can complete the vendor sale for this batch."
+        confirmLabel="Authorize Batch"
+        onConfirm={handleConfirmMarketApproval}
+        loading={approvingMarket}
+      >
+        <div className="space-y-2">
+          <label
+            htmlFor="market-approval-reference"
+            className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider"
+          >
+            Approval Reference
+          </label>
+          <Input
+            id="market-approval-reference"
+            value={marketApprovalRef}
+            onChange={(e) => setMarketApprovalRef(e.target.value)}
+            placeholder="e.g. WMR-2026-001"
+            className="h-10 rounded-xl"
+          />
+          {marketTarget && (
+            <p className="text-xs text-muted-foreground pt-1">
+              {marketTarget.category} ·{' '}
+              {(marketTarget.stock?.accumulatedKg ?? 0).toFixed(1)} kg batch · Est. value ₱
+              {Math.round(
+                (marketTarget.stock?.accumulatedKg ?? 0) *
+                  (marketTarget.stock?.marketPricePerKg ?? 0),
+              ).toLocaleString()}
+            </p>
+          )}
+        </div>
+      </AppModal>
 
       <AppModal
         open={scrapTarget !== null}

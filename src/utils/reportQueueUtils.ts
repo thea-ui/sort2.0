@@ -152,7 +152,6 @@ export function groupReportsByLocation(reports: Report[]): ReportLocationGroup[]
 export function getCategoryLabel(category?: string): string {
   if (category === 'RECYCLABLE') return 'Recyclable';
   if (category === 'BIODEGRADABLE') return 'Biodegradable';
-  if (category === 'HAZARDOUS') return 'Hazardous';
   return 'Non-Biodegradable';
 }
 
@@ -161,7 +160,6 @@ export function getCategoryStyle(category?: string): string {
     return 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25';
   }
   if (category === 'BIODEGRADABLE') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-  if (category === 'HAZARDOUS') return 'bg-rose-100 text-rose-700 border-rose-200';
   return 'bg-amber-100 text-amber-700 border-amber-200';
 }
 

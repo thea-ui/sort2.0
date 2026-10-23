@@ -6,7 +6,7 @@ export interface AssetDisposition {
   condition: string;
   /** Recovered items that are weighed & sold as recyclable scrap. */
   scrap?: boolean;
-  /** Hazardous e-waste requiring a DENR-accredited handler. */
+  /** E-waste requiring a DENR-accredited handler. */
   hazmat?: boolean;
   group: 'Reuse / Recovery' | 'Disposal';
   /** Human-readable explanation of what this outcome means. */
@@ -81,7 +81,7 @@ export const ASSET_DISPOSITIONS: AssetDisposition[] = [
     condition: 'DISPOSED',
     hazmat: true,
     group: 'Disposal',
-    description: 'Hazardous electronic waste routed to a DENR-accredited handler. It is never sold as ordinary scrap.',
+    description: 'Electronic waste routed to a DENR-accredited handler. It is never sold as ordinary scrap.',
   },
 ];
 

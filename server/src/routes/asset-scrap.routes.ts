@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
+import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Per-item scrap lifecycle. AWAITING_WEIGHT is the "unweighed" state.
 const OPEN_ITEM_STATUSES = ['AWAITING_WEIGHT', 'IN_STOCK'] as const;
@@ -229,7 +229,7 @@ router.post('/approve-sale', requireAdmin, async (req: Request, res: Response): 
     const stock = await prisma.assetScrapStock.findUnique({ where: { materialCode } });
     if (!stock) return res.status(404).json({ error: 'Scrap material not found' });
     if (stock.hazmat) {
-      return res.status(400).json({ error: 'Hazardous/e-waste cannot be sold as ordinary scrap. Use an accredited handler.', code: 'HAZMAT' });
+      return res.status(400).json({ error: 'E-waste cannot be sold as ordinary scrap. Use a DENR-accredited handler.', code: 'ACCREDITED_HANDLER_REQUIRED' });
     }
 
     const setApproval = typeof isApproved === 'boolean' ? isApproved : true;
@@ -258,7 +258,7 @@ router.post('/sell-batch', requireRole('MRF', 'ADMIN'), async (req: Request, res
     const stock = await prisma.assetScrapStock.findUnique({ where: { materialCode } });
     if (!stock) return res.status(404).json({ error: 'Scrap material not found' });
     if (stock.hazmat) {
-      return res.status(400).json({ error: 'Hazardous/e-waste cannot be sold as ordinary scrap.', code: 'HAZMAT' });
+      return res.status(400).json({ error: 'E-waste cannot be sold as ordinary scrap.', code: 'ACCREDITED_HANDLER_REQUIRED' });
     }
     if (stock.accumulatedKg <= 0) {
       return res.status(400).json({ error: 'No accumulated weight to sell' });
@@ -295,6 +295,7 @@ router.post('/sell-batch', requireRole('MRF', 'ADMIN'), async (req: Request, res
       const items = await tx.assetScrapItem.findMany({
         where: { materialCode, status: 'IN_STOCK' },
         orderBy: { createdAt: 'asc' },
+        take: 5000,
       });
       let remainingToConsume = weightSold;
       for (const item of items) {
@@ -343,7 +344,7 @@ router.post('/sell-batch', requireRole('MRF', 'ADMIN'), async (req: Request, res
       });
 
       return { transaction: txRecord, updatedStock: txStock };
-    });
+    }, { timeout: 15_000 }); // FIFO item consumption can exceed the 5s default on large stock lots
 
     res.status(201).json({ success: true, transaction, updatedStock });
   } catch (error: any) {
@@ -352,6 +353,7 @@ router.post('/sell-batch', requireRole('MRF', 'ADMIN'), async (req: Request, res
 });
 
 // GET /api/asset-scrap/sales — scrap sales ledger (by school year)
+// Bounded newest-first window: ?limit=1..5000 (default 1000), ?before=ISO date.
 router.get('/sales', authenticate, async (req: Request, res: Response): Promise<any> => {
   try {
     const { schoolYearId } = req.query;
@@ -363,9 +365,18 @@ router.get('/sales', authenticate, async (req: Request, res: Response): Promise<
       if (activeSyId) where.schoolYearId = activeSyId;
     }
 
+    const rawLimit = Number.parseInt(String(req.query.limit ?? ''), 10);
+    const take = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 5000) : 1000;
+
+    if (typeof req.query.before === 'string') {
+      const before = new Date(req.query.before);
+      if (!Number.isNaN(before.getTime())) where.soldAt = { lt: before };
+    }
+
     const sales = await prisma.assetScrapSaleTransaction.findMany({
       where,
       orderBy: { soldAt: 'desc' },
+      take,
     });
     res.json(sales);
   } catch (error: any) {

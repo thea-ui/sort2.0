@@ -20,9 +20,26 @@
   /* Runtime-overridable brand derivatives (ThemeProvider -> /api/settings/public).
      Static values mirror the default brand exactly so pre-JS paint is unchanged. */
   --primary-light: #003A2B;
+  --accent-bright: #00E0A6;
   --accent-light: #00C491;
   --accent-dark: #008F6A;
   --accent-darker: #007B5B;
+  /* Darker gold for readable recognition text on white/gold tints. Derives
+     from the tenant --gold so branded golds stay coherent. */
+  --gold-strong: color-mix(in srgb, var(--gold) 70%, black);
+
+  /* Content ramp (accent → gold): the accent warms through terracotta and
+     amber to the gold, middle steps lifted toward white. Use for multi-card
+     rows that bridge identity (accent) to recognition (gold). `-strong` is
+     the readable text shade over white or /10 tints. */
+  --ramp-1: var(--accent);
+  --ramp-2: color-mix(in oklab, color-mix(in oklab, var(--accent) 67%, var(--gold)) 78%, white);
+  --ramp-3: color-mix(in oklab, color-mix(in oklab, var(--accent) 33%, var(--gold)) 78%, white);
+  --ramp-4: var(--gold);
+  --ramp-1-strong: color-mix(in srgb, var(--ramp-1) 78%, black);
+  --ramp-2-strong: color-mix(in srgb, var(--ramp-2) 78%, black);
+  --ramp-3-strong: color-mix(in srgb, var(--ramp-3) 78%, black);
+  --ramp-4-strong: color-mix(in srgb, var(--ramp-4) 78%, black);
   --on-primary: #ffffff;
   --on-secondary: #ffffff;
   --on-accent: #ffffff;
@@ -30,8 +47,33 @@
   --secondary-rgb: 0, 167, 124;
   --accent-rgb: 0, 167, 124;
   --gold-rgb: 198, 155, 38;
-  /* Approved vibrant indicator hues (AGENTS.md) — tokenized so modules stop
-     hardcoding bracket hex. Use only for their designated modules. */
+  /* ── Universal semantic colors (AGENTS.md) ────────────────────────────────
+     These NEVER follow tenant branding: success is always green, warnings
+     amber, failures red, informational states blue. Status pills, banners,
+     toasts and state-based buttons must use these tokens — never --accent,
+     --primary or --gold. `*-strong` is the accessible text shade over the
+     matching /10 tint. */
+  --success: #00A77C;
+  --success-strong: #008B67;
+  --warning: #F59E0B;
+  --warning-strong: #B45309;
+  --danger: #DC2626;
+  --danger-strong: #B91C1C;
+  --info: #3B82F6;
+  --info-strong: #1D4ED8;
+  --success-rgb: 0, 167, 124;
+  --warning-rgb: 245, 158, 11;
+  --danger-rgb: 220, 38, 38;
+  --info-rgb: 59, 130, 246;
+
+  /* Eco accent (universal, never tenant-branded): reserved for recycling &
+     recovery meaning — recovered volume, recyclable value, waste collection. */
+  --eco: #4E7A61;
+  --eco-rgb: 78, 122, 97;
+
+  /* DEPRECATED content-indicator hues. Content accents must all derive from
+     the single tenant --accent family; state hues come from the universal
+     semantics above. Kept only until the remaining modules migrate. */
   --action: #FF5722;
   --impact: #10B981;
   --bin-map: #0091EA;
@@ -100,10 +142,21 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-ring: var(--ring);
+
+  /* Universal semantic state colors (never tenant-branded). */
+  --color-success: var(--success);
+  --color-success-strong: var(--success-strong);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-danger: var(--danger);
+  --color-danger-strong: var(--danger-strong);
+  --color-info: var(--info);
+  --color-info-strong: var(--info-strong);
   
   --font-sans: var(--font-body);
   --font-body: var(--font-body);
   --font-heading: var(--font-heading);
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --text-h1: 72px;
   --text-h2: 32px;
@@ -445,6 +498,11 @@
 @media print {
   .print-hide {
     display: none !important;
+  }
+
+  /* Sensible page margins for data printouts (reports, ledgers). */
+  @page {
+    margin: 10mm;
   }
 
   /* Official printouts stay at a fixed size — the on-screen text scale never

@@ -61,7 +61,6 @@ export function getStoredRoomLocations(): string[] {
 export function saveRoomLocations(rooms: string[]) {
   try {
     localStorage.setItem(STORAGE_KEY_ROOM_LOCATIONS, JSON.stringify(rooms));
-    window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('sort_rooms_updated', { detail: rooms }));
     if (typeof BroadcastChannel !== 'undefined') {
       try {
@@ -161,13 +160,15 @@ export const ATLAS_BUILDING_STATION_RENAMES: Record<string, { from: string; to: 
 
 /**
  * The campus only operates the three admin-managed streams. Early builds shipped
- * a fourth HAZARDOUS stream and admin-setup payloads can still carry it, so every
- * read/write path strips it to keep the phantom bin from resurfacing.
+ * a fourth phantom stream and old cached payloads can still carry it, so every
+ * read/write path keeps only the canonical streams.
  */
-export function stripHazardousStreams(locations: BinLocationItem[]): BinLocationItem[] {
+const CANONICAL_STREAM_TYPES = new Set(['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE']);
+
+export function stripUnknownStreams(locations: BinLocationItem[]): BinLocationItem[] {
   let changed = false;
   const next = locations.map((loc) => {
-    const streams = loc.streams.filter((st) => (st.type as string) !== 'HAZARDOUS');
+    const streams = loc.streams.filter((st) => CANONICAL_STREAM_TYPES.has(String(st.type)));
     if (streams.length === loc.streams.length) return loc;
     changed = true;
     const allUnavailable =
@@ -185,7 +186,7 @@ export function getStoredLocations(): BinLocationItem[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_CAMPUS_LOCATIONS;
 
-    const sanitized = stripHazardousStreams(parsed);
+    const sanitized = stripUnknownStreams(parsed);
     let dirty = sanitized !== parsed;
 
     const aligned = sanitized.map((loc: BinLocationItem) => {
@@ -215,9 +216,8 @@ import { apiService } from './api';
  */
 export function saveLocationsLocal(locations: BinLocationItem[]) {
   try {
-    const clean = stripHazardousStreams(locations);
+    const clean = stripUnknownStreams(locations);
     localStorage.setItem(STORAGE_KEY_LOCATIONS, JSON.stringify(clean));
-    window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('sort_locations_updated', { detail: clean }));
     if (typeof BroadcastChannel !== 'undefined') {
       try {
@@ -232,7 +232,7 @@ export function saveLocationsLocal(locations: BinLocationItem[]) {
 }
 
 export function saveLocations(locations: BinLocationItem[]) {
-  const clean = stripHazardousStreams(locations);
+  const clean = stripUnknownStreams(locations);
   saveLocationsLocal(clean);
   // The campus-locations endpoint is admin-only; other roles keep the local
   // copy only (a 403 here would otherwise surface as a console error on every
@@ -251,7 +251,7 @@ export function locationsToBins(locations: BinLocationItem[]): BinStatus[] {
     const calculatedLng = minLng + (loc.x / 100) * (maxLng - minLng);
 
     loc.streams.forEach((st) => {
-      if ((st.type as string) === 'HAZARDOUS') return;
+      if (!CANONICAL_STREAM_TYPES.has(String(st.type))) return;
       const fillLevel = st.status === 'Unavailable' ? 90 : 20;
 
       nextBins.push({
@@ -301,7 +301,6 @@ export function getBlueprintTransform(): BlueprintTransform {
 /** Notify every blueprint consumer (and other tabs) that the blueprint changed. */
 export function broadcastBlueprintUpdate() {
   try {
-    window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent(BLUEPRINT_UPDATED_EVENT));
   } catch {
     /* no-op */

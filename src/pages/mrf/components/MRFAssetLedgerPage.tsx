@@ -274,21 +274,8 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Header + Toolbar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <span className="text-[10px] font-bold text-[var(--text-strong)] bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/25 px-2.5 py-1 rounded-full uppercase tracking-wider">
-            MRF Asset Lifecycle
-          </span>
-          <h3 className="text-2xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-1.5 flex items-center gap-2">
-            <FileSpreadsheet size={24} className="text-[var(--accent)]" />
-            Asset Ledger
-          </h3>
-          <p className="text-xs text-[var(--text-strong)]/50 mt-0.5">
-            Compiled ledger of recovered, repaired, and disposed assets.
-          </p>
-        </div>
-
+      {/* Toolbar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-end gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <CalendarClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-strong)]/40" />
@@ -456,7 +443,7 @@ export const MRFAssetLedgerPage: React.FC<MRFAssetLedgerPageProps> = ({ showToas
                     )}
                     {disp?.hazmat && (
                       <p className="text-[10px] text-rose-600 font-semibold mt-2">
-                        Hazardous e-waste — must be handled by a DENR-accredited facility.
+                        E-waste — must be handled by a DENR-accredited facility.
                       </p>
                     )}
                   </div>

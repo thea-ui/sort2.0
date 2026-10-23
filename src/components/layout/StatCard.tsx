@@ -37,9 +37,13 @@ const TREND_STYLES: Record<StatTrend['direction'], string> = {
 /**
  * Stat tile (SMART master handoff Part 6 §4): borderless card with `shadow-lg`
  * in a muted tint, 16px padding, 12px muted label above a 24px bold value, an
- * optional 32px muted icon tile on the right, and an optional bottom-bordered
+ * optional 32px icon tile on the right, and an optional bottom-bordered
  * trend row. Numeric values count up over 800ms with cubic ease-out and skip
  * the animation under `prefers-reduced-motion`.
+ *
+ * The default icon tile wears the single tenant accent shade (content accent
+ * contract, AGENTS.md §3). Pass `iconClassName` only for universal semantic
+ * states (success/warning/danger).
  *
  * Passing `onClick` renders the tile as a `<button>` with the identical surface
  * plus hover lift, so navigable KPIs stay in the same visual language.
@@ -79,7 +83,12 @@ export const StatCard: React.FC<StatCardProps> = ({
             </span>
           )}
           {icon && (
-            <div className={cn('p-2 rounded-lg bg-muted [&>svg]:w-4 [&>svg]:h-4', iconClassName)}>
+            <div
+              className={cn(
+                'p-2 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] [&>svg]:w-4 [&>svg]:h-4',
+                iconClassName,
+              )}
+            >
               {icon}
             </div>
           )}
