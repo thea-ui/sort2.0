@@ -34,6 +34,7 @@ import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
 import { EvidenceThumbnail } from '../../../components/common/EvidenceImage';
 import { ReportLocationMiniMap } from '../../../components/map/ReportLocationMiniMap';
 import { useReportPhoto } from '../../../hooks/useReportPhoto';
+import { StudentPageHeader, studentPage } from './ui/StudentPrimitives';
 
 type DisplayStatus = 'Pending' | 'Verified' | 'Dispatched' | 'Resolved' | 'Dismissed' | 'Expired';
 type StatusFilter = 'All' | DisplayStatus;
@@ -47,6 +48,7 @@ interface ReportHistoryTabProps {
   setStatusFilter?: (s: StatusFilter) => void;
   categoryFilter?: string;
   setCategoryFilter?: (c: string) => void;
+  showPoints?: boolean;
 }
 
 const STATUS_FILTERS: StatusFilter[] = [
@@ -71,53 +73,47 @@ const getDisplayStatus = (status: string, title: string, isVerified?: boolean): 
 };
 
 const getDisplayCategory = (desc: string) => {
-  if (desc.includes('[PILLAR: FURNITURE]'))   return 'Furniture';
-  if (desc.includes('[PILLAR: ELECTRONICS]')) return 'Electronics';
-  if (desc.includes('[PILLAR: FIXTURES]'))    return 'Fixtures';
-  if (desc.includes('[PILLAR: EQUIPMENT]'))   return 'Equipment';
-  if (desc.includes('[PILLAR: OTHER]'))       return 'Other';
+  const d = desc.toUpperCase();
+  if (d.includes('[PILLAR: FURNITURE]'))   return 'Furniture';
+  if (d.includes('[PILLAR: ELECTRONICS]')) return 'Electronics';
+  if (d.includes('[PILLAR: FIXTURES]'))    return 'Fixtures';
+  if (d.includes('[PILLAR: EQUIPMENT]'))   return 'Equipment';
+  if (d.includes('[PILLAR: OTHER]'))       return 'Other';
   return 'Waste/Bin';
 };
 
 const STATUS_META: Record<DisplayStatus, {
   badge: string;
-  strip: string;
   text: string;
   Icon: LucideIcon;
 }> = {
   Pending: {
     badge: 'bg-amber-50 text-amber-800 border-amber-200',
-    strip: 'bg-amber-50/60 border-amber-100',
     text: 'text-amber-800',
     Icon: Clock,
   },
   Verified: {
     badge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    strip: 'bg-emerald-50/60 border-emerald-100',
     text: 'text-emerald-800',
     Icon: CheckCircle2,
   },
   Dispatched: {
     badge: 'bg-sky-50 text-sky-800 border-sky-200',
-    strip: 'bg-sky-50/60 border-sky-100',
     text: 'text-sky-800',
     Icon: Truck,
   },
   Resolved: {
     badge: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/20',
-    strip: 'bg-[var(--primary)]/[0.04] border-[var(--primary)]/10',
     text: 'text-[var(--text-strong)]',
     Icon: CheckCircle2,
   },
   Dismissed: {
     badge: 'bg-rose-50 text-rose-800 border-rose-200',
-    strip: 'bg-rose-50/60 border-rose-100',
     text: 'text-rose-800',
     Icon: XCircle,
   },
   Expired: {
     badge: 'bg-rose-50 text-rose-600 border-rose-200',
-    strip: 'bg-rose-50/60 border-rose-100',
     text: 'text-rose-700',
     Icon: AlertTriangle,
   },
@@ -136,10 +132,14 @@ const getStatusLabel = (ds: DisplayStatus, rep: Report): string => {
       return 'Verified — awaiting MRF collection';
     case 'Dispatched':
       return rep.assignedMrfName ? `MRF dispatched — ${rep.assignedMrfName}` : 'MRF collector dispatched';
-    case 'Resolved':
+    case 'Resolved': {
+      const isWaste = rep.reportType === 'WASTE'
+        || (rep.reportType !== 'ASSET' && getDisplayCategory(rep.description) === 'Waste/Bin');
+      if (!isWaste) return 'Resolved by MRF';
       return rep.weightCollected && rep.weightCollected > 0
         ? `Collected by MRF — ${rep.weightCollected} kg recovered`
         : 'Collected by MRF';
+    }
     case 'Dismissed':
       return 'Marked invalid by admin';
     case 'Expired':
@@ -179,27 +179,12 @@ const PointsChip: React.FC<{ report: Report; status: DisplayStatus }> = ({ repor
   return <span className="text-[10px] font-bold text-[var(--text-strong)]/35">Points pending</span>;
 };
 
-const MaterialChips: React.FC<{ materials: string[]; max?: number }> = ({ materials, max = 3 }) => (
-  <div className="flex flex-wrap items-center gap-1">
-    {materials.slice(0, max).map((m) => (
-      <span
-        key={m}
-        className="rounded-md border border-[var(--primary)]/10 bg-[var(--primary)]/[0.04] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-strong)]/70"
-      >
-        {m}
-      </span>
-    ))}
-    {materials.length > max && (
-      <span className="text-[9px] font-bold text-[var(--text-strong)]/40">+{materials.length - max}</span>
-    )}
-  </div>
-);
-
 export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
   personalReports,
   statusFilter,
   setStatusFilter,
   categoryFilter,
+  showPoints = true,
 }) => {
   const [localStatusFilter, setLocalStatusFilter] = useState<StatusFilter>('All');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -254,28 +239,18 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
   const hasAnyReports = personalReports.length > 0;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
+    <div className={studentPage}>
 
-      {/* Header */}
-      <div className="bg-gradient-to-br from-white/95 via-white/90 to-[var(--primary)]/5 border border-white/90 rounded-3xl p-5 sm:p-7 shadow-xl shadow-[var(--primary)]/5 backdrop-blur-md">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-3.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest text-[var(--accent)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
-          Ledger Log
-        </span>
-        <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-heading font-black tracking-tight text-[var(--text-strong)]">
-              Activity &amp; Incident History
-            </h2>
-            <p className="mt-1 text-xs font-medium text-[var(--text-strong)]/60">
-              Every report you&rsquo;ve filed. Tap a card to inspect the full record.
-            </p>
-          </div>
-          <p className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-strong)]/35">
+      <StudentPageHeader
+        eyebrow="Ledger log"
+        title="Activity & incident history"
+        description="Every report you've filed. Tap a row to inspect the full record."
+        meta={
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text-strong)]/35">
             {personalReports.length} {personalReports.length === 1 ? 'record' : 'records'}
           </p>
-        </div>
-      </div>
+        }
+      />
 
       {/* Status filter pills */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:px-0">
@@ -307,9 +282,9 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
 
       {/* List */}
       {filtered.length === 0 ? (
-        <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-white/80 p-10 sm:p-14 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)]">
-            <Inbox size={24} />
+        <div className="rounded-2xl border border-[var(--primary)]/10 bg-white px-5 py-12 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
+            <Inbox size={22} />
           </div>
           <h3 className="mt-4 text-sm font-extrabold text-[var(--text-strong)]">
             {hasAnyReports ? 'No reports match this filter' : 'No reports yet'}
@@ -330,7 +305,7 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-4">
           {filtered.map((rep) => {
             const ds = getDisplayStatus(rep.status, rep.title, rep.isVerified);
             const dc = getDisplayCategory(rep.description);
@@ -338,7 +313,6 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
             const StatusIcon = meta.Icon;
             const IconComp = CAT_ICON[dc] || FileText;
             const freeText = stripReportTags(rep.description);
-            const materials = getMaterials(rep.description);
             const timeMs = getReportTimeMs(rep);
             const title = cleanReportTitle(rep.title);
 
@@ -355,7 +329,7 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
                     setSelectedReport(rep);
                   }
                 }}
-                className="group cursor-pointer rounded-2xl border border-[var(--primary)]/10 bg-white/95 p-4 shadow-xs backdrop-blur-sm outline-none transition-all hover:-translate-y-0.5 hover:border-[var(--accent)]/30 hover:shadow-lg focus-visible:border-[var(--accent)] focus-visible:ring-3 focus-visible:ring-[var(--accent)]/25 sm:p-5"
+                className="group flex cursor-pointer flex-col rounded-2xl border border-[var(--primary)]/10 bg-white p-4 outline-none transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]/40 sm:p-5"
               >
                 <div className="flex items-start gap-3.5">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/5 text-[var(--accent)]">
@@ -394,16 +368,12 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
                       </p>
                     )}
 
-                    {materials.length > 0 && <MaterialChips materials={materials} />}
-
-                    <div
-                      className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-xl border px-3 py-2 ${meta.strip}`}
-                    >
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-[var(--primary)]/10 pt-2.5">
                       <span className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold ${meta.text}`}>
                         <StatusIcon size={12} />
                         {getStatusLabel(ds, rep)}
                       </span>
-                      <PointsChip report={rep} status={ds} />
+                      {showPoints && <PointsChip report={rep} status={ds} />}
                     </div>
                   </div>
 
@@ -437,149 +407,154 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
 
         return (
           <div
-            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-3 animate-fade-in sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-label="Report details"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedReport(null);
+            }}
           >
-            <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl space-y-4 relative my-auto max-h-[92dvh] overflow-y-auto">
+            <div className="relative flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white shadow-2xl">
 
-              <button
-                onClick={() => setSelectedReport(null)}
-                aria-label="Close report details"
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer z-20"
-              >
-                <X size={18} />
-              </button>
-
-              <div className="flex items-start gap-3 border-b border-gray-100 pb-3 pr-8">
-                <div className="h-11 w-11 rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center font-bold shrink-0">
-                  <Eye size={22} />
+              <div className="flex shrink-0 items-start gap-3 border-b border-[var(--primary)]/10 px-4 py-3.5 sm:px-6 sm:py-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/15 text-[var(--accent)] sm:h-11 sm:w-11">
+                  <Eye size={20} />
                 </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
                     <span
-                      className="max-w-[170px] truncate rounded-full bg-[var(--primary)] px-2 py-0.5 font-mono text-[9px] font-bold text-white"
+                      className="max-w-[45%] truncate rounded-full bg-[var(--primary)] px-2 py-0.5 font-mono text-[9px] font-bold text-white sm:max-w-[170px]"
                       title={selectedReport.id}
                     >
                       #{selectedReport.id.slice(0, 8)}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${meta.badge}`}>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase ${meta.badge}`}>
                       {ds}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase border border-[var(--primary)]/15 bg-[var(--primary)]/[0.04] text-[var(--text-strong)]/60">
+                    <span className="shrink-0 rounded-full border border-[var(--primary)]/15 bg-[var(--primary)]/[0.04] px-2 py-0.5 text-[9px] font-black uppercase text-[var(--text-strong)]/60">
                       {getDisplayCategory(selectedReport.description)}
                     </span>
                   </div>
-                  <h3 className="text-base font-heading font-black text-[var(--text-strong)] leading-snug">
+                  <h3 className="line-clamp-2 text-sm font-heading font-black leading-snug text-[var(--text-strong)] sm:text-base">
                     {cleanReportTitle(selectedReport.title)}
                   </h3>
                 </div>
-              </div>
-
-              {/* Location Banner */}
-              <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
-                <div>
-                  <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-wider block">Target Location</span>
-                  <h4 className="text-lg font-heading font-black text-[var(--text-strong)] leading-tight mt-0.5">{cleanLocationName(selectedReport.locationName)}</h4>
-                  {isScattered && (
-                    <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono font-bold text-gray-700 bg-white/90 border border-[var(--accent)]/30 px-2.5 py-0.5 rounded-md">
-                      <Navigation size={10} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
-                    </span>
-                  )}
-                </div>
-                <div className="h-10 w-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <MapPin size={22} />
-                </div>
-              </div>
-
-              {/* Mini-map if Scattered Debris */}
-              {isScattered && (
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-strong)]">
-                    <span className="flex items-center gap-1">
-                      <MapIcon size={14} className="text-[var(--accent)]" />
-                      <span>Pinned Location Map:</span>
-                    </span>
-                    <span className="text-[10px] font-mono text-gray-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md font-bold flex items-center gap-1">
-                      <Navigation size={11} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
-                    </span>
-                  </div>
-
-                  <ReportLocationMiniMap lat={lat} lng={lng} heightClassName="h-[200px]" />
-                </div>
-              )}
-
-              {/* Dismissed / Expired Notice */}
-              {(ds === 'Dismissed' || ds === 'Expired') && (
-                <div
-                  className={`p-4 rounded-2xl flex items-start gap-3 ${
-                    ds === 'Dismissed' ? 'bg-rose-50 border border-rose-200' : 'bg-amber-50 border border-amber-200'
-                  }`}
-                >
-                  {ds === 'Dismissed' ? (
-                    <AlertCircle size={18} className="text-rose-500 shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
-                  )}
-                  <div>
-                    <p className={`text-sm font-bold ${ds === 'Dismissed' ? 'text-rose-800' : 'text-amber-800'}`}>
-                      {ds === 'Dismissed' ? 'This report was marked as invalid' : 'This report expired before collection'}
-                    </p>
-                    <p className={`text-xs mt-0.5 ${ds === 'Dismissed' ? 'text-rose-600' : 'text-amber-700'}`}>
-                      {ds === 'Dismissed'
-                        ? 'Admin determined this report was false or improper. A warning has been logged to your account.'
-                        : 'No MRF collection happened within the reporting window. Submit a fresh report if the issue persists.'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Photo Evidence & Notes */}
-              <div className="space-y-2">
-                {selectedPhotoSrc && (
-                  <button
-                    type="button"
-                    onClick={() => setLightboxSrc(selectedPhotoSrc)}
-                    className="group relative block w-full rounded-2xl overflow-hidden border border-gray-200 h-44 sm:h-52 bg-gray-100 shadow-inner cursor-zoom-in"
-                  >
-                    <img src={selectedPhotoSrc} alt="Waste evidence" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-[10px] font-mono text-white backdrop-blur-xs">
-                      <Maximize2 size={11} /> Tap to view full screen
-                    </span>
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-black/60 p-2.5 text-white">
-                        <Maximize2 size={18} />
-                      </span>
-                    </span>
-                  </button>
-                )}
-
-                <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 space-y-1.5">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Report Notes</span>
-                  <p className="text-xs text-gray-700 font-medium leading-relaxed italic">
-                    {freeText ? `\u201C${freeText}\u201D` : 'No additional notes were provided.'}
-                  </p>
-                  {materials.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {materials.map((m) => (
-                        <span
-                          key={m}
-                          className="rounded-md border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]"
-                        >
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Close Button */}
-              <div className="pt-2">
                 <button
                   onClick={() => setSelectedReport(null)}
-                  className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-colors cursor-pointer"
+                  aria-label="Close report details"
+                  className="-mr-1 shrink-0 cursor-pointer rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+                {/* Location Banner */}
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-3.5 shadow-xs">
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-black uppercase tracking-wider text-[var(--accent)]">Target Location</span>
+                    <h4 className="mt-0.5 break-words text-base font-heading font-black leading-tight text-[var(--text-strong)] sm:text-lg">
+                      {cleanLocationName(selectedReport.locationName)}
+                    </h4>
+                    {isScattered && (
+                      <span className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-[var(--accent)]/30 bg-white/90 px-2.5 py-0.5 font-mono text-[11px] font-bold text-gray-700">
+                        <Navigation size={10} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-white shadow-xs">
+                    <MapPin size={22} />
+                  </div>
+                </div>
+
+                {/* Mini-map if Scattered Debris */}
+                {isScattered && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-[var(--text-strong)]">
+                      <span className="flex items-center gap-1">
+                        <MapIcon size={14} className="text-[var(--accent)]" />
+                        <span>Pinned Location Map:</span>
+                      </span>
+                      <span className="flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-mono text-[10px] font-bold text-gray-700">
+                        <Navigation size={11} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                      </span>
+                    </div>
+
+                    <ReportLocationMiniMap lat={lat} lng={lng} heightClassName="h-[200px]" />
+                  </div>
+                )}
+
+                {/* Dismissed / Expired Notice */}
+                {(ds === 'Dismissed' || ds === 'Expired') && (
+                  <div
+                    className={`flex items-start gap-3 rounded-2xl p-4 ${
+                      ds === 'Dismissed' ? 'border border-rose-200 bg-rose-50' : 'border border-amber-200 bg-amber-50'
+                    }`}
+                  >
+                    {ds === 'Dismissed' ? (
+                      <AlertCircle size={18} className="mt-0.5 shrink-0 text-rose-500" />
+                    ) : (
+                      <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-500" />
+                    )}
+                    <div>
+                      <p className={`text-sm font-bold ${ds === 'Dismissed' ? 'text-rose-800' : 'text-amber-800'}`}>
+                        {ds === 'Dismissed' ? 'This report was marked as invalid' : 'This report expired before collection'}
+                      </p>
+                      <p className={`mt-0.5 text-xs ${ds === 'Dismissed' ? 'text-rose-600' : 'text-amber-700'}`}>
+                        {ds === 'Dismissed'
+                          ? 'Admin determined this report was false or improper. A warning has been logged to your account.'
+                          : 'No MRF collection happened within the reporting window. Submit a fresh report if the issue persists.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Photo Evidence & Notes */}
+                <div className="space-y-2">
+                  {selectedPhotoSrc && (
+                    <button
+                      type="button"
+                      onClick={() => setLightboxSrc(selectedPhotoSrc)}
+                      className="group relative block h-40 w-full cursor-zoom-in overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 shadow-inner sm:h-52"
+                    >
+                      <img src={selectedPhotoSrc} alt="Waste evidence" className="h-full w-full object-cover" />
+                      <span className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 font-mono text-[10px] text-white backdrop-blur-xs">
+                        <Maximize2 size={11} /> Tap to view full screen
+                      </span>
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                        <span className="rounded-full bg-black/60 p-2.5 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                          <Maximize2 size={18} />
+                        </span>
+                      </span>
+                    </button>
+                  )}
+
+                  <div className="space-y-1.5 rounded-2xl border border-gray-200 bg-gray-50 p-3.5">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Report Notes</span>
+                    <p className="text-xs font-medium italic leading-relaxed text-gray-700">
+                      {freeText ? `\u201C${freeText}\u201D` : 'No additional notes were provided.'}
+                    </p>
+                    {materials.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {materials.map((m) => (
+                          <span
+                            key={m}
+                            className="rounded-md border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]"
+                          >
+                            {m}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-[var(--primary)]/10 bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-4">
+                <button
+                  onClick={() => setSelectedReport(null)}
+                  className="w-full cursor-pointer rounded-xl bg-gray-100 py-2.5 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-200"
                 >
                   Close Details
                 </button>

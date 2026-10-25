@@ -49,7 +49,7 @@ export const RewardLadderCard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm text-center">
+      <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-6 text-center">
         <Loader2 size={18} className="mx-auto text-[var(--gold)] animate-spin" />
       </div>
     );
@@ -61,7 +61,7 @@ export const RewardLadderCard: React.FC = () => {
   const overallPct = Math.min(100, Math.round((yearGrams / topTier) * 100));
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+    <div className="space-y-4 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-widest flex items-center gap-2">
           <Gift size={14} className="text-[var(--gold)]" />
@@ -75,7 +75,7 @@ export const RewardLadderCard: React.FC = () => {
       <div className="space-y-1">
         <div className="w-full bg-[var(--primary)]/10 h-2 rounded-full overflow-hidden">
           <div
-            className="bg-gradient-to-r from-[var(--gold)] to-[var(--gold)] h-full rounded-full transition-all duration-500"
+            className="h-full rounded-full bg-[var(--gold)] transition-all duration-500"
             style={{ width: `${overallPct}%` }}
           />
         </div>

@@ -1,8 +1,6 @@
 import React, { useMemo } from 'react';
 import {
   AlertTriangle,
-  ArrowUpRight,
-  Award,
   Coins,
   Cylinder,
   FileText,
@@ -28,10 +26,9 @@ export interface CollectionKpi {
   unit?: string;
   icon: React.ElementType;
   iconCls: string;
-  badge: string;
-  badgeCls: string;
-  badgeIcon?: React.ElementType;
-  footer: string;
+  footerLeft: string;
+  footerRight: string;
+  footerRightCls: string;
 }
 
 export interface ItemizedRecyclable {
@@ -204,11 +201,10 @@ export function useCollectionsMetrics({
       label: 'MRF Sales Reserved for Rank 1 Rewards',
       value: `₱${rewardsReservedPhp.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
       icon: Coins,
-      iconCls: 'bg-amber-50 text-[var(--gold)]',
-      badge: `${rewardsReservePercent}% Reserve`,
-      badgeCls: 'bg-amber-50 text-amber-700 border-amber-200',
-      badgeIcon: Award,
-      footer: `Quarter-end pool · from ₱${totalMRFRevenuePhp.toLocaleString()} total revenue`,
+      iconCls: 'bg-[var(--ramp-1)]/10 text-[var(--ramp-1-strong)]',
+      footerLeft: `From ₱${totalMRFRevenuePhp.toLocaleString()} revenue`,
+      footerRight: `${rewardsReservePercent}% reserve`,
+      footerRightCls: 'text-[var(--ramp-1-strong)]',
     },
     {
       key: 'total-collected',
@@ -216,13 +212,10 @@ export function useCollectionsMetrics({
       value: totalCollectedWeight.toFixed(1),
       unit: 'kg',
       icon: Scale,
-      iconCls: 'bg-[var(--primary)]/10 text-[var(--accent)]',
-      badge: `${completedDispatchesCount} Recorded`,
-      badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      badgeIcon: ArrowUpRight,
-      footer: `Across ${completedDispatchesCount} completed collection${
-        completedDispatchesCount === 1 ? '' : 's'
-      }`,
+      iconCls: 'bg-[var(--ramp-2)]/10 text-[var(--ramp-2-strong)]',
+      footerLeft: 'Completed collections',
+      footerRight: `${completedDispatchesCount} recorded`,
+      footerRightCls: 'text-[var(--ramp-2-strong)]',
     },
     {
       key: 'active-dispatches',
@@ -230,16 +223,16 @@ export function useCollectionsMetrics({
       value: String(activeDispatchesCount),
       unit: 'active',
       icon: Truck,
-      iconCls: 'bg-[var(--primary)]/10 text-[var(--text-strong)]',
-      badge: activeDispatchesCount > 0 ? `${activeDispatchesCount} Active` : 'Queue Clear',
-      badgeCls: 'bg-[var(--primary)]/10 text-[var(--text-strong)] border-[var(--primary)]/25',
-      footer:
+      iconCls: 'bg-[var(--ramp-3)]/10 text-[var(--ramp-3-strong)]',
+      footerLeft:
         activeDispatchesCount > 0
           ? users
               .filter((u) => u.role === 'MRF')
               .map((mrf) => `${mrf.name} (${mrfActiveCountByUser.get(mrf.id) ?? 0})`)
               .join(' • ') || `${activeDispatchesCount} active dispatches in queue`
           : `${completedDispatchesCount} collections resolved & logged`,
+      footerRight: activeDispatchesCount > 0 ? `${activeDispatchesCount} active` : 'Queue clear',
+      footerRightCls: 'text-[var(--ramp-3-strong)]',
     },
     {
       key: 'pending-queue',
@@ -247,16 +240,10 @@ export function useCollectionsMetrics({
       value: String(pendingCount),
       unit: 'reports',
       icon: AlertTriangle,
-      iconCls: 'bg-rose-50 text-[var(--action)]',
-      badge: pendingCount > 0 ? 'Requires Action' : 'All Verified',
-      badgeCls:
-        pendingCount > 0
-          ? 'bg-rose-50 text-rose-700 border-rose-200'
-          : 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      footer:
-        pendingCount > 0
-          ? 'Awaiting admin approval & MRF alert'
-          : 'Queue clear — no pending verification',
+      iconCls: 'bg-[var(--ramp-4)]/10 text-[var(--ramp-4-strong)]',
+      footerLeft: pendingCount > 0 ? 'Awaiting admin approval' : 'No pending verification',
+      footerRight: pendingCount > 0 ? 'Requires action' : 'All verified',
+      footerRightCls: 'text-[var(--ramp-4-strong)]',
     },
   ];
 

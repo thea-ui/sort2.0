@@ -25,7 +25,7 @@ export const StudentPhotoEvidence: React.FC<StudentPhotoEvidenceProps> = ({
   });
 
   return (
-    <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
+    <div className="space-y-3 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
           <Camera size={16} className="text-[var(--accent)]" />

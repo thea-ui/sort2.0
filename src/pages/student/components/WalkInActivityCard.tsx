@@ -28,7 +28,7 @@ export const WalkInActivityCard: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+    <div className="space-y-4 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-widest flex items-center gap-2">
           <Recycle size={14} className="text-[var(--accent)]" />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatCard } from '../../../../components/layout/StatCard';
+import { KpiCard } from '../../../../components/layout/KpiCard';
 import type { CollectionKpi } from './useCollectionsMetrics';
 
 interface CollectionsKpiGridProps {
@@ -7,34 +7,35 @@ interface CollectionsKpiGridProps {
 }
 
 export const CollectionsKpiGrid: React.FC<CollectionsKpiGridProps> = ({ kpis }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {kpis.map((kpi) => {
       const Icon = kpi.icon;
-      const BadgeIcon = kpi.badgeIcon;
       return (
-        <StatCard
+        <KpiCard
           key={kpi.key}
           label={kpi.label}
           value={
             <>
               {kpi.value}
               {kpi.unit && (
-                <span className="text-base font-bold text-[var(--text-strong)]/40 ml-1.5">
+                <span className="ml-1.5 text-sm font-medium text-[var(--text-strong)]/35">
                   {kpi.unit}
                 </span>
               )}
             </>
           }
-          icon={<Icon size={20} />}
+          icon={<Icon size={18} strokeWidth={2} />}
           iconClassName={kpi.iconCls}
-          badge={
+          footer={
             <>
-              {BadgeIcon && <BadgeIcon size={11} />}
-              {kpi.badge}
+              <span className="min-w-0 truncate" title={kpi.footerLeft}>
+                {kpi.footerLeft}
+              </span>
+              <span className={`shrink-0 font-semibold ${kpi.footerRightCls}`}>
+                {kpi.footerRight}
+              </span>
             </>
           }
-          badgeClassName={kpi.badgeCls}
-          footer={kpi.footer}
         />
       );
     })}

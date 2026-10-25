@@ -1,122 +1,129 @@
 import React from 'react';
-import { Gift, Coins, Package, CheckCircle2, XCircle, Clock, User } from 'lucide-react';
+import { ChevronRight, Coins, Gift, Package } from 'lucide-react';
 import { RewardClaim } from '../../../types';
+import { REWARD_CLAIM_STATUS_META } from './rewardClaimStyles';
 
 interface RewardClaimQueueProps {
   claims: RewardClaim[];
-  busyId: string | null;
-  onRelease: (claim: RewardClaim) => void;
-  onCancel: (claim: RewardClaim) => void;
+  onReview: (claim: RewardClaim) => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }
 
-const STATUS_STYLE: Record<string, string> = {
-  REQUESTED: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] border-[var(--gold)]/30',
-  UNLOCKED: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border-[var(--primary)]/25',
-  RELEASED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  CANCELLED: 'bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)]/40 border-[var(--primary)]/10',
-};
-
-export const RewardClaimQueue: React.FC<RewardClaimQueueProps> = ({ claims, busyId, onRelease, onCancel }) => {
+export const RewardClaimQueue: React.FC<RewardClaimQueueProps> = ({
+  claims,
+  onReview,
+  emptyTitle = 'No prize claims yet',
+  emptyDescription = "Claims appear here automatically when a student's bottle turn-ins cross a milestone.",
+}) => {
   if (claims.length === 0) {
     return (
-      <div className="bg-white/90 border border-white/80 rounded-3xl p-12 text-center space-y-2">
-        <div className="h-12 w-12 mx-auto rounded-2xl bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)] flex items-center justify-center">
+      <div className="space-y-2 px-6 py-12 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--gold)]/10 text-[var(--gold-strong)]">
           <Gift size={22} />
         </div>
-        <p className="text-sm font-bold text-[var(--text-strong)]">No prize claims yet</p>
-        <p className="text-xs text-[var(--text-strong)]/50">
-          Claims appear here automatically when a student's bottle turn-ins cross a milestone.
-        </p>
+        <p className="text-sm font-bold text-[var(--text-strong)]">{emptyTitle}</p>
+        <p className="text-xs text-[var(--text-strong)]/50">{emptyDescription}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2.5">
-      {claims.map((claim) => {
-        const isOpen = claim.status === 'UNLOCKED' || claim.status === 'REQUESTED';
-        const isPhysical = claim.reward?.rewardType === 'PHYSICAL';
-        const busy = busyId === claim.id;
-
-        return (
-          <div
-            key={claim.id}
-            className={`bg-white/95 border rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-              claim.status === 'REQUESTED' ? 'border-[var(--gold)]/40 ring-1 ring-[var(--gold)]/15' : 'border-white/80'
-            }`}
+    <table className="w-full table-fixed text-left">
+      <thead>
+        <tr className="border-b border-[var(--primary)]/10">
+          <th
+            scope="col"
+            className="px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-strong)]/35 sm:px-5"
           >
-            <div className="flex items-start gap-3 min-w-0">
-              <div
-                className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isPhysical ? 'bg-[color-mix(in_srgb,var(--gold)_10%,white)] text-[var(--gold)]' : 'bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)]'
-                }`}
-              >
-                {isPhysical ? <Package size={17} /> : <Coins size={17} />}
-              </div>
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-extrabold text-[var(--text-strong)]">{claim.reward?.title}</p>
-                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${STATUS_STYLE[claim.status]}`}>
-                    {claim.status}
-                  </span>
-                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500">
-                    {claim.reward?.requiredGrams ? `${(claim.reward.requiredGrams / 1000).toFixed(0)} kg tier` : 'Tier'}
-                  </span>
-                </div>
-                <p className="text-[11px] text-[var(--text-strong)]/60 font-semibold flex flex-wrap items-center gap-2">
-                  <span className="flex items-center gap-1">
-                    <User size={11} className="text-[var(--accent)]" />
-                    {claim.student?.name}
-                    {claim.student?.sectionName ? ` · ${claim.student.sectionName}` : ''}
-                  </span>
-                  <span className="flex items-center gap-1 text-[var(--text-strong)]/40">
-                    <Clock size={11} />
-                    Unlocked {new Date(claim.unlockedAt).toLocaleDateString()}
-                  </span>
-                </p>
-                {isPhysical && claim.reward?.stock !== null && claim.reward?.stock !== undefined && (
-                  <p className="text-[10px] font-bold text-[var(--text-strong)]/40">Stock left: {claim.reward.stock}</p>
-                )}
-                {claim.reward?.rewardType === 'POINTS' && (claim.reward?.pointsValue ?? 0) > 0 && (
-                  <p className="text-[10px] font-bold text-[var(--accent)]">Releases +{claim.reward?.pointsValue} pts</p>
-                )}
-              </div>
-            </div>
+            Prize &amp; student
+          </th>
+          <th
+            scope="col"
+            className="hidden w-32 px-4 py-2.5 text-center text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-strong)]/35 md:table-cell"
+          >
+            Claim code
+          </th>
+          <th
+            scope="col"
+            className="w-28 px-4 py-2.5 text-center text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-strong)]/35"
+          >
+            Status
+          </th>
+          <th scope="col" className="w-12 px-4 py-2.5 sm:px-5">
+            <span className="sr-only">Actions</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-[var(--primary)]/10">
+        {claims.map((claim) => {
+          const isPhysical = claim.reward?.rewardType === 'PHYSICAL';
+          const meta = REWARD_CLAIM_STATUS_META[claim.status];
+          const prizeTitle = claim.reward?.title || 'Prize';
+          const studentName = claim.student?.name || 'Unknown student';
 
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-              <span className="text-[11px] font-black font-mono text-[var(--text-strong)] bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-xl">
-                {claim.claimCode}
-              </span>
-              {isOpen && (
-                <>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => onRelease(claim)}
-                    className="px-4 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-[11px] font-extrabold shadow-sm shadow-[var(--accent)]/25 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+          return (
+            <tr
+              key={claim.id}
+              onClick={() => onReview(claim)}
+              className={`cursor-pointer transition-colors hover:bg-[var(--accent)]/[0.04] ${
+                claim.status === 'REQUESTED' ? 'bg-[var(--gold)]/[0.035]' : ''
+              }`}
+            >
+              <td className="px-4 py-3 sm:px-5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                      isPhysical
+                        ? 'bg-[var(--gold)]/10 text-[var(--gold-strong)]'
+                        : 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                    }`}
                   >
-                    <CheckCircle2 size={13} /> {busy ? 'Releasing…' : 'Claim / Release'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => onCancel(claim)}
-                    className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors disabled:opacity-50 cursor-pointer"
-                    aria-label="Cancel claim"
-                  >
-                    <XCircle size={15} />
-                  </button>
-                </>
-              )}
-              {claim.status === 'RELEASED' && claim.releasedAt && (
-                <span className="text-[10px] font-bold text-emerald-700">
-                  Released {new Date(claim.releasedAt).toLocaleDateString()}
+                    {isPhysical ? <Package size={17} /> : <Coins size={17} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-bold text-[var(--text-strong)]">
+                      {prizeTitle}
+                    </p>
+                    <p className="mt-0.5 truncate text-[11px] font-medium text-[var(--text-strong)]/50">
+                      {studentName}
+                      {claim.student?.sectionName ? ` · ${claim.student.sectionName}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </td>
+
+              <td className="hidden px-4 py-3 text-center md:table-cell">
+                <span className="inline-block max-w-full truncate rounded-lg border border-[var(--primary)]/10 bg-[var(--background)]/60 px-2 py-1 font-mono text-[10px] font-semibold text-[var(--text-strong)]/55">
+                  {claim.claimCode}
                 </span>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+              </td>
+
+              <td className="px-4 py-3 text-center">
+                <span
+                  className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${meta.className}`}
+                >
+                  {meta.label}
+                </span>
+              </td>
+
+              <td className="px-4 py-3 text-right sm:px-5">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onReview(claim);
+                  }}
+                  aria-label={`Review ${prizeTitle} for ${studentName}`}
+                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[var(--text-strong)]/35 transition-colors hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 };

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Gift, PackageCheck, Clock3, RefreshCw, Loader2 } from 'lucide-react';
+import { Gift, PackageCheck, Clock3, Loader2, RefreshCw, Search, X } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { Reward, RewardClaim } from '../../../types';
 import { RewardClaimQueue } from './RewardClaimQueue';
+import { RewardClaimReviewModal } from './RewardClaimReviewModal';
 import { RewardCatalogTable } from './RewardCatalogTable';
 import { RewardEditModal } from './RewardEditModal';
 import type { RewardPatch } from '../../../utils/rewardCatalog';
@@ -22,7 +23,8 @@ interface PendingConfirmation {
 }
 
 export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) => {
-  const [view, setView] = useState<'claims' | 'catalog'>('claims');
+  const [view, setView] = useState<'open' | 'history' | 'catalog'>('open');
+  const [search, setSearch] = useState('');
   const [claims, setClaims] = useState<RewardClaim[]>([]);
   const [catalog, setCatalog] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,7 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<PendingConfirmation | null>(null);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
+  const [reviewClaim, setReviewClaim] = useState<RewardClaim | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -61,6 +64,58 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
     return { awaiting, released, stockLeft };
   }, [claims, catalog]);
 
+  const openClaims = useMemo(
+    () => claims.filter((c) => c.status === 'UNLOCKED' || c.status === 'REQUESTED'),
+    [claims],
+  );
+  const historyClaims = useMemo(
+    () => claims.filter((c) => c.status === 'RELEASED' || c.status === 'CANCELLED'),
+    [claims],
+  );
+
+  const query = search.trim().toLowerCase();
+  const filteredOpenClaims = useMemo(
+    () =>
+      query
+        ? openClaims.filter((claim) =>
+            [
+              claim.claimCode,
+              claim.reward?.title,
+              claim.reward?.code,
+              claim.student?.name,
+              claim.student?.sectionName,
+            ].some((value) => value?.toLowerCase().includes(query)),
+          )
+        : openClaims,
+    [openClaims, query],
+  );
+  const filteredHistoryClaims = useMemo(
+    () =>
+      query
+        ? historyClaims.filter((claim) =>
+            [
+              claim.claimCode,
+              claim.reward?.title,
+              claim.reward?.code,
+              claim.student?.name,
+              claim.student?.sectionName,
+            ].some((value) => value?.toLowerCase().includes(query)),
+          )
+        : historyClaims,
+    [historyClaims, query],
+  );
+  const filteredCatalog = useMemo(
+    () =>
+      query
+        ? catalog.filter((reward) =>
+            [reward.title, reward.code, reward.description].some((value) =>
+              value?.toLowerCase().includes(query),
+            ),
+          )
+        : catalog,
+    [catalog, query],
+  );
+
   const releaseClaim = async (claim: RewardClaim, label: string) => {
     setBusyId(claim.id);
     try {
@@ -71,6 +126,7 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
           : `Released ${label} to ${result.claim.student?.name}.`,
       );
       await refresh();
+      setReviewClaim(null);
     } catch (err: any) {
       showToast(err?.message || 'Failed to release claim');
     } finally {
@@ -79,18 +135,7 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
   };
 
   const handleRelease = (claim: RewardClaim) => {
-    const label = claim.reward?.title || 'this prize';
-    setConfirmation({
-      title: 'Release prize?',
-      description: `Release "${label}" to ${
-        claim.student?.name || 'this student'
-      }? Claim code: ${claim.claimCode}. This cannot be undone.`,
-      confirmLabel: 'Release',
-      onConfirm: () => {
-        setConfirmation(null);
-        void releaseClaim(claim, label);
-      },
-    });
+    void releaseClaim(claim, claim.reward?.title || 'this prize');
   };
 
   const cancelClaim = async (claim: RewardClaim) => {
@@ -107,6 +152,7 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
   };
 
   const handleCancel = (claim: RewardClaim) => {
+    setReviewClaim(null);
     setConfirmation({
       title: 'Cancel claim?',
       description: `Cancel claim ${claim.claimCode} for ${
@@ -158,40 +204,38 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 divide-y divide-[var(--primary)]/10 overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         {[
           {
             label: 'Awaiting release',
             value: stats.awaiting,
             icon: Clock3,
-            color: 'text-[var(--gold)]',
-            bg: 'bg-[color-mix(in_srgb,var(--gold)_10%,white)]',
+            iconClassName: 'bg-[var(--ramp-4)]/10 text-[var(--ramp-4-strong)]',
           },
           {
             label: 'Released (loaded)',
             value: stats.released,
             icon: PackageCheck,
-            color: 'text-[var(--accent)]',
-            bg: 'bg-[color-mix(in_srgb,var(--accent)_10%,white)]',
+            iconClassName: 'bg-[var(--ramp-1)]/10 text-[var(--ramp-1-strong)]',
           },
           {
             label: 'Physical stock left',
             value: stats.stockLeft,
             icon: Gift,
-            color: 'text-[var(--text-strong)]',
-            bg: 'bg-[color-mix(in_srgb,var(--primary)_10%,white)]',
+            iconClassName: 'bg-[var(--ramp-2)]/10 text-[var(--ramp-2-strong)]',
           },
         ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-sm flex items-center gap-3"
-          >
-            <div className={`h-9 w-9 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
+          <div key={stat.label} className="flex items-center gap-3 p-4">
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${stat.iconClassName}`}
+            >
               <stat.icon size={16} />
             </div>
-            <div>
-              <p className="text-lg font-bold text-[var(--text-strong)] leading-none">{stat.value}</p>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/40 mt-1">
+            <div className="min-w-0">
+              <p className="text-xl font-semibold leading-none tracking-tight text-[var(--text-strong)] tabular-nums">
+                {stat.value}
+              </p>
+              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-strong)]/45">
                 {stat.label}
               </p>
             </div>
@@ -199,46 +243,13 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
         ))}
       </div>
 
-      {/* View toggle + refresh */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {(['claims', 'catalog'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setView(tab)}
-              className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                view === tab
-                  ? 'bg-[var(--primary)] text-white shadow-sm'
-                  : 'bg-white text-[var(--text-strong)]/60 border border-[var(--primary)]/10 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)]'
-              }`}
-            >
-              {tab === 'claims' ? `Claims Queue (${claims.length})` : `Prize Catalog (${catalog.length})`}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={loading}
-          className="px-3.5 py-2 rounded-xl bg-white border border-[var(--primary)]/10 hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] text-[var(--text-strong)] text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-        >
-          {loading ? (
-            <Loader2 size={13} className="animate-spin" />
-          ) : (
-            <RefreshCw size={13} className="text-[var(--accent)]" />
-          )}
-          Refresh
-        </button>
-      </div>
-
       {error && (
-        <div className="flex items-center justify-between gap-3 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3">
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-600">
           <span>{error}</span>
           <button
             type="button"
             onClick={refresh}
-            className="shrink-0 px-3 py-1.5 rounded-xl bg-white border border-rose-200 hover:bg-rose-100 cursor-pointer transition-colors"
+            className="shrink-0 cursor-pointer rounded-xl border border-rose-200 bg-white px-3 py-1.5 transition-colors hover:bg-rose-100"
           >
             Retry
           </button>
@@ -247,22 +258,151 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
 
       {loading && claims.length === 0 && catalog.length === 0 ? (
         <LoadingState label="Loading rewards…" />
-      ) : view === 'claims' ? (
-        <RewardClaimQueue
-          claims={claims}
-          busyId={busyId}
-          onRelease={handleRelease}
-          onCancel={handleCancel}
-        />
       ) : (
-        <RewardCatalogTable
-          rewards={catalog}
-          busyId={busyId}
-          onToggleActive={handleToggleActive}
-          onUpdateStock={handleUpdateStock}
-          onEdit={setEditingReward}
-        />
+        <div className="overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white">
+          <div className="flex flex-col gap-3 border-b border-[var(--primary)]/10 px-4 pt-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-0">
+            <div
+              className="flex min-w-0 flex-wrap items-center gap-x-5"
+              role="tablist"
+              aria-label="Rewards views"
+            >
+              {([
+                { id: 'open', label: 'Open claims', count: openClaims.length },
+                { id: 'history', label: 'Claim history', count: historyClaims.length },
+                { id: 'catalog', label: 'Prize configuration', count: catalog.length },
+              ] as const).map((tab) => {
+                const active = view === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => {
+                      setView(tab.id);
+                      setSearch('');
+                    }}
+                    className={`relative cursor-pointer whitespace-nowrap py-3.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]/40 ${
+                      active
+                        ? 'text-[var(--primary)]'
+                        : 'text-[var(--text-strong)]/45 hover:text-[var(--text-strong)]/70'
+                    }`}
+                  >
+                    {tab.label}
+                    <span
+                      className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold tabular-nums ${
+                        active
+                          ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                          : 'bg-[var(--primary)]/5 text-[var(--text-strong)]/35'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                    {active && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[var(--primary)]"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-2 pb-3 sm:pb-0">
+              <div className="relative w-full sm:w-72">
+                <Search
+                  size={14}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-strong)]/35"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={
+                    view === 'catalog'
+                      ? 'Search prizes…'
+                      : 'Search claims, students, or codes…'
+                  }
+                  aria-label={
+                    view === 'catalog'
+                      ? 'Search prizes'
+                      : 'Search claims, students, or codes'
+                  }
+                  className="h-9 w-full rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/50 pl-9 pr-8 text-xs font-medium text-[var(--text-strong)] outline-none transition-colors placeholder:text-[var(--text-strong)]/35 focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/15"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    aria-label="Clear search"
+                    className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-[var(--text-strong)]/40 transition-colors hover:bg-[var(--primary)]/5 hover:text-[var(--text-strong)]/70"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={loading}
+                aria-label="Refresh rewards"
+                title="Refresh"
+                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-[var(--primary)]/10 bg-white text-[var(--text-strong)]/60 transition-colors hover:bg-[var(--primary)]/5 hover:text-[var(--text-strong)] disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={14} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {view === 'catalog' ? (
+            <RewardCatalogTable
+              rewards={filteredCatalog}
+              busyId={busyId}
+              onToggleActive={handleToggleActive}
+              onUpdateStock={handleUpdateStock}
+              onEdit={setEditingReward}
+              emptyTitle={query ? 'No prizes match your search' : 'No rewards configured'}
+              emptyDescription={
+                query
+                  ? 'Try a different prize name or code.'
+                  : 'Run the reward seed to install placeholder tiers.'
+              }
+            />
+          ) : (
+            <RewardClaimQueue
+              claims={view === 'open' ? filteredOpenClaims : filteredHistoryClaims}
+              onReview={setReviewClaim}
+              emptyTitle={
+                query
+                  ? 'No claims match your search'
+                  : view === 'open'
+                    ? 'No open claims'
+                    : 'No claim history yet'
+              }
+              emptyDescription={
+                query
+                  ? 'Try a different student, prize, or claim code.'
+                  : view === 'open'
+                    ? 'New prize requests will appear here for release.'
+                    : 'Released and cancelled claims will appear here.'
+              }
+            />
+          )}
+        </div>
       )}
+
+      <RewardClaimReviewModal
+        claim={reviewClaim}
+        busy={busyId === reviewClaim?.id}
+        onClose={() => setReviewClaim(null)}
+        onRelease={handleRelease}
+        onCancel={handleCancel}
+      />
 
       <RewardEditModal
         reward={editingReward}
@@ -284,3 +424,4 @@ export const AdminRewardsTab: React.FC<AdminRewardsTabProps> = ({ showToast }) =
     </div>
   );
 };
+

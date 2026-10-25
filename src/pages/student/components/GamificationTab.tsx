@@ -11,6 +11,7 @@ import { User, Challenge, Report, SystemSettings } from '../../../types';
 import { CertificateVault } from './CertificateVault';
 import { WalkInActivityCard } from './WalkInActivityCard';
 import { RewardLadderCard } from './RewardLadderCard';
+import { StudentPageHeader, studentPage } from './ui/StudentPrimitives';
 
 interface GamificationTabProps {
   currentUser: User;
@@ -72,33 +73,30 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
   const top3Podium = [rank2, rank1, rank3].filter(Boolean) as typeof leaderboardEntries;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-10">
+    <div className={studentPage}>
 
-      {/* Header Section */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-heading font-extrabold tracking-tight text-[var(--text-strong)] flex items-center gap-2">
-            <Trophy className="text-[var(--gold)]" size={20} />
-            <span>Eco-Champions Leaderboard</span>
-          </h2>
-          <p className="text-xs text-gray-400 mt-0.5">Showing top reporters for this academic quarter</p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {}}
-          title="Refresh Leaderboard"
-          className="p-2 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-[var(--accent)] hover:border-[var(--accent)] shadow-sm transition-all cursor-pointer"
-        >
-          <RotateCcw size={14} />
-        </button>
-      </div>
+      <StudentPageHeader
+        icon={Trophy}
+        title="Eco-Champions Leaderboard"
+        description="Top reporters for this academic quarter"
+        actions={
+          <button
+            type="button"
+            onClick={() => {}}
+            aria-label="Refresh leaderboard"
+            title="Refresh Leaderboard"
+            className="cursor-pointer rounded-lg border border-[var(--primary)]/15 bg-white p-2 text-[var(--text-strong)]/40 transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            <RotateCcw size={14} />
+          </button>
+        }
+      />
 
       {/* Certificate Vault — milestone (instant) + ranked (term-end) */}
       <CertificateVault currentUser={currentUser} settings={settings} onClaimed={onCertificateChange} />
 
       {/* Banner: How Points Work */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-5 text-[var(--text-strong)] shadow-sm space-y-3">
+      <div className="space-y-3 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 text-[var(--text-strong)] sm:p-5">
         <div className="flex items-center gap-2 font-bold text-xs text-[var(--accent)]">
           <Lightbulb className="text-[var(--accent)] shrink-0" size={16} />
           <span>How Points Work</span>
@@ -121,21 +119,24 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
       </div>
 
       {/* Top 3 Winner Podium Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         {top3Podium.map((entry) => {
           const isUser = entry.isCurrentUser;
-          const badgeBg = entry.rank === 1 ? 'bg-[var(--gold)]/20 border-[var(--gold)] text-[var(--gold)]' :
+          const isChampion = entry.rank === 1;
+          const badgeBg = isChampion ? 'bg-[var(--gold)]/20 border-[var(--gold)] text-[var(--gold-strong)]' :
                           entry.rank === 2 ? 'bg-[var(--background)] border-[var(--primary)]/20 text-[var(--text-strong)]' :
                           'bg-[var(--background)] border-[var(--primary)]/15 text-[var(--text-strong)]/80';
+
+          const cardTone = isUser
+            ? 'border-[var(--accent)]/40 bg-[var(--accent)]/[0.04]'
+            : isChampion
+              ? 'border-[var(--gold)]/35 bg-white'
+              : 'border-[var(--primary)]/10 bg-white';
 
           return (
             <div
               key={entry.studentId}
-              className={`bg-white rounded-2xl p-6 border text-center flex flex-col items-center justify-center transition-all hover:shadow-md ${
-                isUser
-                  ? 'border-2 border-[var(--accent)] shadow-sm'
-                  : 'border-gray-200 shadow-sm'
-              }`}
+              className={`flex flex-col items-center justify-center rounded-2xl border p-5 text-center transition-colors ${cardTone}`}
             >
               <div className={`h-9 w-9 rounded-full border flex items-center justify-center text-sm mb-3 font-bold ${badgeBg}`}>
                 {entry.rank}
@@ -163,12 +164,12 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
           placeholder="Search by name or course..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-[var(--text-strong)] placeholder-gray-400 outline-none focus:border-[var(--accent)] transition-all shadow-sm font-medium"
+          className="w-full rounded-xl border border-[var(--primary)]/15 bg-white py-2.5 pl-11 pr-4 text-base font-medium text-[var(--text-strong)] outline-none transition-colors placeholder:text-[var(--text-strong)]/35 focus:border-[var(--accent)] sm:text-sm"
         />
       </div>
 
       {/* Full Leaderboard Directory List */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100 shadow-sm">
+      <div className="divide-y divide-[var(--primary)]/10 overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white">
         {filteredEntries.length === 0 ? (
           <div className="p-8 text-center text-[var(--text-strong)]/50 text-xs font-medium">
             No students found matching your search.
@@ -227,7 +228,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
       </div>
 
       {/* Active Challenges Section */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="space-y-4 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
         <h3 className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-widest flex items-center gap-2">
           <Trophy size={14} className="text-[var(--gold)]" />
           <span>Active Accumulation Challenges</span>

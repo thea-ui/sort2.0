@@ -7,16 +7,22 @@ import {
   Clock,
   Activity,
   Recycle,
-  Newspaper,
   Award,
   AlertTriangle,
   ArrowRight,
-  FileText
+  FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import { User, Report, Offense, SystemSettings } from '../../../types';
 import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 import { getInitials } from '../../../utils/userDisplay';
 import { apiService } from '../../../services/api';
+import { CampusNewsCard } from '../../../components/common/CampusNewsCard';
+import {
+  studentPanel,
+  studentPanelHeader,
+  studentSectionTitle,
+} from './ui/StudentPrimitives';
 
 interface OverviewTabProps {
   currentUser: User;
@@ -26,15 +32,48 @@ interface OverviewTabProps {
   setActiveTab?: (tab: string) => void;
 }
 
-export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, offenses = [], settings, setActiveTab }) => {
-  const [campusNews, setCampusNews] = useState<any[]>([]);
-  const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
+const QUICK_ACTIONS = [
+  {
+    label: 'Report Bin',
+    desc: 'Snap a full bin',
+    tab: 'submit-report',
+    icon: Camera,
+    iconClass: 'bg-[var(--ramp-1)]/10 text-[var(--ramp-1-strong)]',
+  },
+  {
+    label: 'Live Bin Map',
+    desc: 'Campus bin status',
+    tab: 'bin-map',
+    icon: MapPin,
+    iconClass: 'bg-[var(--ramp-2)]/10 text-[var(--ramp-2-strong)]',
+  },
+  {
+    label: 'My Activity',
+    desc: 'Track your reports',
+    tab: 'report-history',
+    icon: Clock,
+    iconClass: 'bg-[var(--ramp-3)]/10 text-[var(--ramp-3-strong)]',
+  },
+  {
+    label: 'Leaderboard',
+    desc: 'Top eco-champions',
+    tab: 'gamification',
+    icon: Trophy,
+    iconClass: 'bg-[var(--ramp-4)]/10 text-[var(--ramp-4-strong)]',
+  },
+];
 
-  useEffect(() => {
-    apiService.getCampusNews().then(data => {
-      if (Array.isArray(data)) setCampusNews(data.filter((n: any) => n.isPublished));
-    }).catch(() => {});
-  }, []);
+const STATUS_STYLES: Record<string, string> = {
+  RESOLVED: 'border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]',
+  PENDING: 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--warning-strong)]',
+  DISPATCHED: 'border-[var(--info)]/25 bg-[var(--info)]/10 text-[var(--info-strong)]',
+  COLLECTED: 'border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]',
+  DISMISSED: 'border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--danger-strong)]',
+  EXPIRED: 'border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--danger-strong)]',
+};
+
+export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, offenses = [], settings, setActiveTab }) => {
+  const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +98,6 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
     o => o.userId === currentUser.id || (currentUser.email && o.userId === currentUser.email)
   );
 
-  // Today's campus activity must be date-filtered, not "all reports ever".
   const todayKey = new Date().toDateString();
   const reportsToday = reports.filter(r => {
     if (!r.timestamp) return false;
@@ -67,7 +105,6 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
     return !Number.isNaN(d.getTime()) && d.toDateString() === todayKey;
   }).length;
 
-  // "Most reported material" is the modal category, not the newest report's.
   const categoryCounts = reports.reduce<Record<string, number>>((acc, r) => {
     const key = r.category || 'GENERAL';
     acc[key] = (acc[key] || 0) + 1;
@@ -75,116 +112,109 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
   }, {});
   const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-9 pb-12">
+  const gradeLabel = (currentUser as any).gradeLevel
+    ? `${(currentUser as any).gradeLevel} — ${(currentUser as any).sectionName}`
+    : currentUser.classroomSection || 'N/A';
 
-      {/* ── 2026 Hero Welcome Card ── */}
-      <div className="bg-gradient-to-br from-white/95 via-white/90 to-[var(--primary)]/5 border border-white/90 rounded-3xl p-7 md:p-8 shadow-xl shadow-[var(--primary)]/5 backdrop-blur-md relative overflow-hidden transition-all hover:shadow-2xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          
-          {/* User Profile Info */}
-          <div className="flex items-center gap-5">
-            <div className="h-16 w-16 rounded-2xl bg-[var(--accent)] text-white font-heading font-black text-2xl flex items-center justify-center shadow-lg shadow-[var(--accent)]/25 shrink-0">
+  return (
+    <div className="w-full space-y-4 pb-8 animate-fade-in sm:space-y-6">
+      {/* Hero */}
+      <section className="overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white">
+        <div className="grid gap-4 p-4 sm:gap-5 sm:p-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+          <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-base font-black text-white sm:h-14 sm:w-14 sm:text-lg">
               {getInitials(currentUser.name)}
             </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--text-strong)]/60">Welcome back,</p>
-              <h2 className="text-2xl sm:text-3xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-0.5">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold text-[var(--text-strong)]/55">Welcome back,</p>
+              <h2 className="line-clamp-2 text-lg font-heading font-black leading-tight tracking-tight text-[var(--text-strong)] sm:line-clamp-1 sm:text-2xl">
                 {currentUser.name}
               </h2>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse" />
-                <span className="text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/15 border border-[var(--accent)]/30 px-3 py-0.5 rounded-full">
-                  Active Eco-Reporter · Student
-                </span>
-              </div>
+              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[10px] font-extrabold text-[var(--accent)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                Student
+              </span>
             </div>
           </div>
 
-          {/* Stats Pod */}
-          <div className="flex items-center gap-6 border-t md:border-t-0 md:border-l border-[var(--primary)]/10 pt-4 md:pt-0 md:pl-8">
-            <div className="text-center min-w-[60px]">
-              <p className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider mb-0.5">Rank</p>
-              <p className="text-2xl font-heading font-black text-[var(--text-strong)]">
-                <span className="text-[var(--gold)] font-black mr-0.5">#</span>{currentUser.points === 0 ? '-' : (leaderboardRank ?? '-')}
+          <div className="grid grid-cols-3 divide-x divide-[var(--primary)]/10 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/50 py-2.5 sm:py-3 xl:min-w-[300px]">
+            <div className="px-2 text-center sm:px-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/45">Rank</p>
+              <p className="mt-0.5 text-lg font-heading font-black text-[var(--text-strong)] sm:text-xl">
+                <span className="mr-0.5 text-[var(--gold)]">#</span>
+                {currentUser.points === 0 ? '—' : (leaderboardRank ?? '—')}
               </p>
             </div>
-            <div className="text-center min-w-[80px]">
-              <p className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider mb-0.5">Eco-Points</p>
-              <p className="text-2xl font-heading font-black text-[var(--accent)] flex items-center justify-center">
-                <Flame size={18} className="text-[var(--accent)] mr-1 fill-[var(--accent)]" />
+            <div className="px-2 text-center sm:px-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/45">Eco-Points</p>
+              <p className="mt-0.5 flex items-center justify-center text-lg font-heading font-black text-[var(--accent)] sm:text-xl">
+                <Flame size={14} className="mr-1 fill-[var(--accent)] sm:size-[15px]" />
                 {currentUser.points}
               </p>
             </div>
-            <div className="text-center min-w-[60px]">
-              <p className="text-[10px] font-bold text-[var(--text-strong)]/50 uppercase tracking-wider mb-0.5">Reports</p>
-              <p className="text-2xl font-heading font-black text-[var(--text-strong)]">
-                {totalReports}
-              </p>
+            <div className="px-2 text-center sm:px-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/45">Reports</p>
+              <p className="mt-0.5 text-lg font-heading font-black text-[var(--text-strong)] sm:text-xl">{totalReports}</p>
             </div>
           </div>
-
         </div>
 
-        {/* Progress bar strip */}
-        <div className="mt-6 pt-5 border-t border-[var(--primary)]/10 space-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold gap-1">
-            <span className="text-[var(--text-strong)]/60 uppercase text-[10px] tracking-wider">Quarterly Certificate Progress</span>
-            <span className="text-[var(--gold)]">
-              {currentUser.points > 0 ? `Progress: ${progressPercent}%` : '0 Points — Submit reports to start earning points and certificates!'}
+        <div className="space-y-3 border-t border-[var(--primary)]/10 bg-[var(--background)]/35 px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[var(--text-strong)]/50">
+              Quarterly Certificate Progress
+            </span>
+            <span className="text-[11px] font-extrabold text-[var(--gold-strong)]">
+              {currentUser.points > 0 ? `${progressPercent}% complete` : 'Submit reports to start earning points'}
             </span>
           </div>
-          <div className="h-2.5 w-full bg-[var(--gold)]/15 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-[var(--gold)] to-amber-500 rounded-full transition-all duration-700" style={{ width: `${progressPercent}%` }} />
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--gold)]/15">
+            <div
+              className="h-full rounded-full bg-[var(--gold)] transition-[width] duration-700"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
-
-          {/* Certificate CTA */}
-          <div className="mt-4 pt-4 border-t border-[var(--gold)]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <p className="text-[11px] text-[var(--text-strong)]/60 font-semibold">
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[11px] font-semibold leading-relaxed text-[var(--text-strong)]/55">
               {currentUser.points >= certThreshold
-                ? 'You\u2019ve reached the certificate threshold \u2014 claim your Eco-Milestone award and check your ranked standing.'
+                ? 'You\u2019ve reached the certificate threshold \u2014 claim your Eco-Milestone award.'
                 : `Earn ${Math.max(0, certThreshold - currentUser.points)} more eco-points to unlock your Eco-Milestone certificate.`}
             </p>
             <button
               type="button"
               onClick={() => setActiveTab?.('gamification')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--gold)]/10 border border-[var(--gold)]/25 text-[var(--gold)] text-[11px] font-extrabold hover:bg-[var(--gold)]/20 transition-colors cursor-pointer shrink-0"
+              className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 self-start rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-3.5 text-[11px] font-extrabold text-[var(--gold-strong)] transition-colors hover:bg-[var(--gold)]/20 sm:self-auto"
             >
-              <Award size={12} />
+              <Award size={13} />
               Certificate Vault
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Warnings / Offenses */}
       {userOffenses.length > 0 && (
-        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle size={16} className="text-amber-500" />
-            <h3 className="text-sm font-bold text-amber-800">Offenses ({userOffenses.length})</h3>
+        <section className="rounded-2xl border border-[var(--warning)]/30 bg-[var(--warning)]/5 p-4 sm:p-5">
+          <div className="mb-2.5 flex items-center gap-2">
+            <AlertTriangle size={16} className="text-[var(--warning-strong)]" />
+            <h3 className="text-[13px] font-bold text-[var(--warning-strong)]">Offenses ({userOffenses.length})</h3>
           </div>
-          <div className="space-y-2">
+          <div className="divide-y divide-[var(--warning)]/15">
             {userOffenses.slice(0, 3).map((offense) => {
               const isExpiredSuspension = offense.severity === 'SUSPENSION' && offense.expiresAt && new Date(offense.expiresAt) <= new Date();
               return (
-                <div key={offense.id} className="flex items-start gap-3 p-3 bg-white rounded-xl border border-amber-100">
-                  <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${
-                    offense.severity === 'SUSPENSION' ? 'bg-red-100 text-red-600' :
-                    offense.severity === 'DEDUCT' ? 'bg-orange-100 text-orange-600' :
-                    'bg-amber-100 text-amber-600'
-                  }`}>
+                <div key={offense.id} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--warning)]/15 text-[var(--warning-strong)]">
                     <AlertTriangle size={13} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-800">{offense.description}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">
+                    <p className="text-xs font-bold text-[var(--text-strong)]">{offense.description}</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--text-strong)]/55">
                       {offense.severity === 'WARNING' ? 'Warning' : offense.severity === 'DEDUCT' ? 'Points Deducted' : 'Account Suspension'}
                       {offense.severity === 'SUSPENSION' && offense.expiresAt && !isExpiredSuspension && (
-                        <span className="text-red-500 font-bold"> · Until {new Date(offense.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="font-bold text-[var(--danger)]"> · Until {new Date(offense.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       )}
                       {offense.severity === 'SUSPENSION' && isExpiredSuspension && (
-                        <span className="text-gray-400 italic"> · Expired</span>
+                        <span className="italic text-[var(--text-strong)]/40"> · Expired</span>
                       )}
                       {' · '}{offense.timestamp}
                     </p>
@@ -192,249 +222,168 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
                 </div>
               );
             })}
-            {userOffenses.length > 3 && (
-              <p className="text-[10px] text-amber-600 font-bold text-center">+{userOffenses.length - 3} more offenses</p>
-            )}
           </div>
-        </div>
+          {userOffenses.length > 3 && (
+            <p className="mt-2 text-center text-[10px] font-bold text-[var(--warning-strong)]">
+              +{userOffenses.length - 3} more offenses
+            </p>
+          )}
+        </section>
       )}
 
-      {/* ── Campus Operational Overview ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Activity size={18} className="text-[var(--accent)]" />
-          <h3 className="text-base font-heading font-bold text-[var(--text-strong)]">Campus Operational Overview</h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div className="space-y-5 xl:space-y-6">
 
-          {/* 1. Grade Level Standing Card */}
-          <button
-            type="button"
-            onClick={() => setActiveTab?.('report-history')}
-            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-amber-300"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[var(--text-strong)]/60 group-hover:text-amber-700 transition-colors">My Grade Level Standing</p>
-              <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10 group-hover:scale-105 transition-transform">
-                <Award size={20} strokeWidth={2} />
-              </div>
+          {/* Operational overview */}
+          <div>
+            <div className="mb-2.5 flex items-center gap-2 px-1">
+              <Activity size={16} className="text-[var(--accent)]" />
+              <h3 className={studentSectionTitle}>Campus operational overview</h3>
             </div>
-            <div className="space-y-3 w-full">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100/80 text-amber-900 border border-amber-200 text-xs font-black">
-                Grade Level {(currentUser as any).gradeLevel ? `${(currentUser as any).gradeLevel} — ${(currentUser as any).sectionName}` : currentUser.classroomSection || 'N/A'}
-              </span>
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[11px] text-[var(--text-strong)]/60 font-semibold">
-                  <span>My Submissions</span>
-                  <span>{totalReports} {totalReports === 1 ? 'Report' : 'Reports'}</span>
-                </div>
-                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full" style={{ width: `${Math.min(100, totalReports * 10)}%` }} />
-                </div>
-              </div>
-            </div>
-          </button>
-
-          {/* 2. Today's Campus Activity Card */}
-          <button
-            type="button"
-            onClick={() => setActiveTab?.('bin-map')}
-            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-[var(--primary)]/25"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[var(--text-strong)]/60 group-hover:text-[var(--text-strong)] transition-colors">Today's Campus Reports</p>
-              <div className="h-10 w-10 rounded-xl bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/25 flex items-center justify-center shrink-0 shadow-sm shadow-[var(--primary)]/10 group-hover:scale-105 transition-transform">
-                <FileText size={20} strokeWidth={2} />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-baseline gap-2.5">
-                <p className="text-3xl sm:text-4xl font-heading font-black text-[var(--text-strong)]">{reportsToday}</p>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                  Live Volume
-                </span>
-              </div>
-              <p className="text-xs text-[var(--text-strong)]/60 mt-1.5 font-medium">Reports submitted across campus today</p>
-            </div>
-          </button>
-
-          {/* 3. Top Recyclable Material Card */}
-          <button
-            type="button"
-            onClick={() => setActiveTab?.('submit-report')}
-            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 cursor-pointer group hover:border-emerald-300"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[var(--text-strong)]/60 group-hover:text-emerald-700 transition-colors">Most Reported Material</p>
-              <div className="h-10 w-10 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10 group-hover:scale-105 transition-transform">
-                <Recycle size={20} strokeWidth={2} />
-              </div>
-            </div>
-            <div>
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-100/80 text-emerald-900 border border-emerald-200 text-xs font-black">
-                <Recycle size={13} className="text-emerald-700" /> {topCategory || 'None Logged Yet'}
-              </span>
-              <p className="text-xs text-[var(--text-strong)]/60 mt-2.5 font-medium leading-relaxed">
-                {reports.length > 0 ? 'Top material category from active campus reports.' : 'Submit new waste reports to track campus material trends.'}
-              </p>
-            </div>
-          </button>
-
-        </div>
-      </div>
-
-      {/* ── Quick Actions Grid (Spacious Vertical Layout) ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Activity size={18} className="text-[var(--accent)]" />
-          <h3 className="text-base font-heading font-bold text-[var(--text-strong)]">Quick Actions</h3>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
-          {[
-            { label: 'Report Bin', desc: 'Snap a full bin', tab: 'submit-report', gradient: 'from-orange-500 to-rose-500', shadow: 'shadow-orange-500/20', hover: 'hover:border-rose-300', icon: Camera },
-            { label: 'Live Bin Map', desc: 'Campus bins status', tab: 'bin-map', gradient: 'from-[var(--primary)] to-[var(--primary)]', shadow: 'shadow-[var(--primary)]/20', hover: 'hover:border-[var(--primary)]/25', icon: MapPin },
-            { label: 'My Activity', desc: 'Track your reports', tab: 'report-history', gradient: 'from-[var(--gold)] to-[var(--primary)]', shadow: 'shadow-[var(--gold)]/20', hover: 'hover:border-[var(--gold)]/25', icon: Clock },
-            { label: 'Leaderboard', desc: 'See top eco-champs', tab: 'gamification', gradient: 'from-amber-400 to-orange-500', shadow: 'shadow-amber-500/20', hover: 'hover:border-amber-300', icon: Trophy },
-          ].map(action => {
-            const Icon = action.icon;
-            return (
+            <div className="grid divide-y divide-[var(--primary)]/10 overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white md:grid-cols-3 md:divide-x md:divide-y-0">
               <button
-                key={action.tab}
-                onClick={() => setActiveTab?.(action.tab)}
-                className={`bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group ${action.hover}`}
-              >
-                <div className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${action.gradient} text-white flex items-center justify-center mb-3 shadow-md ${action.shadow} group-hover:scale-105 transition-transform`}>
-                  <Icon size={20} strokeWidth={2} />
-                </div>
-                <p className="text-xs font-bold text-[var(--text-strong)]">{action.label}</p>
-                <p className="text-[11px] text-[var(--text-strong)]/60 mt-0.5 font-medium">{action.desc}</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Two-column Split-View: Recent Submissions + Certificate Status ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-        {/* Expanded Recent Submissions (3 cols) */}
-        <div className="lg:col-span-3 bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between px-6 py-4.5 border-b border-[var(--primary)]/10">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
-                <FileText size={16} />
-              </div>
-              <h3 className="text-base font-heading font-bold text-[var(--text-strong)]">Recent Submissions</h3>
-            </div>
-            <button
-              onClick={() => setActiveTab?.('report-history')}
-              className="flex items-center gap-1 text-xs font-bold text-[var(--accent)] hover:text-[var(--accent-dark)] cursor-pointer"
-            >
-              View all <ArrowRight size={13} />
-            </button>
-          </div>
-          <div className="divide-y divide-[var(--primary)]/5 flex-1">
-            {personalReports.slice(0, 4).map(rep => (
-              <button
-                key={rep.id}
                 type="button"
                 onClick={() => setActiveTab?.('report-history')}
-                className="w-full text-left flex items-center gap-3.5 px-6 py-4 hover:bg-[var(--accent)]/5 transition-colors cursor-pointer group"
+                className="p-4 text-left transition-colors hover:bg-[var(--background)]/50 sm:p-5"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-white transition-colors">
-                  <FileText size={18} />
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold text-[var(--text-strong)]/55">My grade level</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--gold)]/10 text-[var(--gold-strong)]">
+                    <Award size={16} />
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-[var(--text-strong)] group-hover:text-[var(--accent)] transition-colors">{cleanReportTitle(rep.title)}</p>
-                  <p className="text-[11px] text-[var(--text-strong)]/50 font-medium mt-0.5">{cleanLocationName(rep.locationName)} · {rep.timestamp}</p>
+                <p className="mt-2 inline-flex rounded-full border border-[var(--gold)]/25 bg-[var(--gold)]/10 px-2.5 py-0.5 text-[11px] font-black text-[var(--gold-strong)]">
+                  {gradeLabel}
+                </p>
+                <div className="mt-2.5 flex items-center justify-between text-[10px] font-semibold text-[var(--text-strong)]/50">
+                  <span>My submissions</span>
+                  <span>{totalReports} {totalReports === 1 ? 'report' : 'reports'}</span>
                 </div>
-                <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border ${
-                  rep.status === 'RESOLVED' ? 'bg-[var(--accent)]/15 text-[var(--accent)] border-[var(--accent)]/30' :
-                  rep.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                  'bg-gray-100 text-gray-600 border-gray-200'
-                }`}>{rep.status}</span>
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-[var(--primary)]/10">
+                  <div className="h-full rounded-full bg-[var(--gold)]" style={{ width: `${Math.min(100, totalReports * 10)}%` }} />
+                </div>
               </button>
-            ))}
-            {personalReports.length === 0 && (
-              <div className="px-6 py-12 text-center">
-                <AlertTriangle className="mx-auto mb-2 text-gray-300" size={28} />
-                <p className="text-xs font-medium text-gray-400">No reports yet. Submit your first report!</p>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Compact Claim Certificate / Status Card (2 cols) */}
-        <button
-          type="button"
-          onClick={() => setActiveTab?.('gamification')}
-          className="lg:col-span-2 bg-gradient-to-br from-white/95 via-white/90 to-amber-50/50 border border-amber-200/80 rounded-3xl shadow-sm p-6 sm:p-7 flex flex-col justify-between space-y-5 text-left cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-3.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--gold)]/15 text-[var(--gold)] border border-[var(--gold)]/30 text-[10px] font-black uppercase tracking-wider">
-                <Trophy size={12} />
-                Quarterly Certificate Track
-              </span>
-              <Award size={22} className="text-[var(--gold)] group-hover:scale-110 transition-transform" />
-            </div>
-            <h4 className="text-lg font-heading font-black text-[var(--text-strong)] group-hover:text-amber-700 transition-colors">Top Eco-Champion Certificate</h4>
-            <p className="text-xs text-[var(--text-strong)]/60 mt-1.5 font-medium leading-relaxed">
-              Awarded to the #1 ranked student reporter each quarter. Keep logging active reports to claim your official school recognition!
-            </p>
-          </div>
-
-          <div className="space-y-3 pt-3 border-t border-amber-100 w-full">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-[var(--text-strong)]/70">Status</span>
-              <span className="text-emerald-800 bg-emerald-100/80 border border-emerald-200 px-3 py-0.5 rounded-full text-[10px] font-extrabold">
-                {currentUser.points === 0 ? 'Unranked' : (leaderboardRank ? `Rank #${leaderboardRank}` : 'Rank —')}
-              </span>
-            </div>
-            <div
-              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-500/20 group-hover:from-amber-500 group-hover:to-orange-600 transition-all flex items-center justify-center gap-2"
-            >
-              <span>View Leaderboard Standing</span>
-              <ArrowRight size={14} />
-            </div>
-          </div>
-        </button>
-
-      </div>
-
-      {/* ── Campus News Highlights ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Newspaper size={18} className="text-[var(--accent)]" />
-          <h3 className="text-base font-heading font-bold text-[var(--text-strong)]">Campus News & Updates</h3>
-        </div>
-        {campusNews.length === 0 ? (
-          <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-8 shadow-sm text-center">
-            <Newspaper size={28} className="text-[var(--text-strong)]/20 mx-auto mb-3" />
-            <p className="text-sm text-[var(--text-strong)]/40 font-medium">No campus news yet. Check back later!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {campusNews.map((item: any) => (
-              <div key={item.id} className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col justify-between space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className={`px-3 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${item.tagColor}`}>{item.tag}</span>
-                    <span className="text-[10px] text-[var(--text-strong)]/50 font-medium">{new Date(item.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <div className={`h-10 w-10 rounded-2xl ${item.iconColor} text-white flex items-center justify-center shadow-sm`}>
-                    <Newspaper size={18} strokeWidth={2} />
-                  </div>
-                  <h4 className="text-xs font-bold text-[var(--text-strong)] leading-snug">{item.title}</h4>
-                  <p className="text-[11px] text-[var(--text-strong)]/60 font-medium leading-relaxed">{item.body}</p>
+              <button
+                type="button"
+                onClick={() => setActiveTab?.('bin-map')}
+                className="p-4 text-left transition-colors hover:bg-[var(--background)]/50 sm:p-5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold text-[var(--text-strong)]/55">Today's campus reports</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]">
+                    <FileText size={16} />
+                  </span>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                <div className="mt-1.5 flex items-baseline gap-2">
+                  <p className="text-2xl font-heading font-black text-[var(--text-strong)]">{reportsToday}</p>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--success)]/25 bg-[var(--success)]/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[var(--success-strong)]">
+                    <span className="h-1 w-1 rounded-full bg-[var(--success)]" />
+                    Live
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] font-medium text-[var(--text-strong)]/50">Submitted across campus today</p>
+              </button>
 
+              <button
+                type="button"
+                onClick={() => setActiveTab?.('submit-report')}
+                className="p-4 text-left transition-colors hover:bg-[var(--background)]/50 sm:p-5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold text-[var(--text-strong)]/55">Most reported material</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]">
+                    <Recycle size={16} />
+                  </span>
+                </div>
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[11px] font-black text-[var(--accent-dark)]">
+                  <Recycle size={12} /> {topCategory || 'None logged yet'}
+                </p>
+                <p className="mt-2 text-[11px] font-medium leading-relaxed text-[var(--text-strong)]/50">
+                  {reports.length > 0 ? 'Top category from active campus reports.' : 'Submit a report to track campus trends.'}
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div>
+            <div className="mb-2.5 flex items-center gap-2 px-1">
+              <CheckCircle2 size={16} className="text-[var(--accent)]" />
+              <h3 className={studentSectionTitle}>Quick actions</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+              {QUICK_ACTIONS.map(action => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.tab}
+                    type="button"
+                    onClick={() => setActiveTab?.(action.tab)}
+                    className="group flex flex-col items-start gap-2.5 rounded-2xl border border-[var(--primary)]/10 bg-white p-3.5 text-left transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02] sm:flex-row sm:items-center sm:gap-3.5 sm:p-5"
+                  >
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11 ${action.iconClass} transition-transform duration-200 group-hover:scale-105`}>
+                      <Icon size={19} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold leading-tight text-[var(--text-strong)] sm:text-sm">{action.label}</span>
+                      <span className="mt-0.5 hidden text-[11px] font-medium leading-tight text-[var(--text-strong)]/50 sm:block">{action.desc}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-2 xl:gap-6">
+          {/* Recent submissions */}
+          <section className={studentPanel}>
+            <div className={studentPanelHeader}>
+              <div className="flex items-center gap-2">
+                <FileText size={15} className="text-[var(--accent)]" />
+                <h3 className={studentSectionTitle}>Recent submissions</h3>
+              </div>
+              <button
+                onClick={() => setActiveTab?.('report-history')}
+                className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent)] hover:text-[var(--accent-dark)]"
+              >
+                View all <ArrowRight size={13} />
+              </button>
+            </div>
+            <div className="divide-y divide-[var(--primary)]/10">
+              {personalReports.slice(0, 4).map(rep => (
+                <button
+                  key={rep.id}
+                  type="button"
+                  onClick={() => setActiveTab?.('report-history')}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[var(--accent)]/5 sm:px-5"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]">
+                    <FileText size={16} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-bold text-[var(--text-strong)]">{cleanReportTitle(rep.title)}</span>
+                    <span className="mt-0.5 block truncate text-[11px] font-medium text-[var(--text-strong)]/50">
+                      {cleanLocationName(rep.locationName)} · {rep.timestamp}
+                    </span>
+                  </span>
+                  <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${STATUS_STYLES[rep.status] || 'border-[var(--primary)]/15 bg-[var(--primary)]/[0.04] text-[var(--text-strong)]/60'}`}>
+                    {rep.status}
+                  </span>
+                </button>
+              ))}
+              {personalReports.length === 0 && (
+                <div className="px-5 py-10 text-center">
+                  <FileText className="mx-auto mb-2 text-[var(--text-strong)]/20" size={24} />
+                  <p className="text-xs font-medium text-[var(--text-strong)]/45">No reports yet. Submit your first report!</p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Campus news */}
+          <CampusNewsCard className="h-full" />
+          </div>
+      </div>
     </div>
   );
 };

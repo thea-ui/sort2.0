@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, LogOut, Menu } from 'lucide-react';
+import { ChevronDown, LogOut, PanelLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PixelGridBackground } from './PixelGridBackground';
 
@@ -494,11 +494,20 @@ export const AppShell: React.FC<AppShellProps> = ({
                 aria-label="Toggle sidebar"
                 title="Toggle sidebar"
               >
-                <Menu className="w-5 h-5" />
+                <PanelLeft className="w-5 h-5" />
               </button>
 
-              <div className="flex items-center min-w-0">
-                <span className="sr-only">{portalLabel}</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span
+                  className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-[0.08em] whitespace-nowrap"
+                  style={{
+                    color: 'var(--theme-primary)',
+                    backgroundColor: 'rgba(var(--theme-primary-rgb), 0.08)',
+                  }}
+                >
+                  {portalLabel}
+                </span>
+                <span className="h-4 w-px shrink-0 bg-slate-200" aria-hidden="true" />
                 <span className="text-[15px] font-extrabold text-slate-900 uppercase tracking-[0.08em] truncate">
                   {pageTitle}
                 </span>

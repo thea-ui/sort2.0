@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useMockData } from '../../hooks/useMockData';
-import { Report } from '../../types';
 import {
   buildPillarMeta,
   type InfrastructurePillar,
@@ -11,7 +10,7 @@ import { prettifyPillarTag } from './components/reportSetupMerge';
 import { TeacherOverviewTab } from './components/TeacherOverviewTab';
 import { TeacherSubmitReportTab } from './components/TeacherSubmitReportTab';
 import { TeacherBinMapTab } from './components/TeacherBinMapTab';
-import { TeacherReportHistoryTab } from './components/TeacherReportHistoryTab';
+import { ReportHistoryTab } from '../student/components/ReportHistoryTab';
 import { SubmittedReportDetails } from './components/TeacherSubmitSuccessView';
 
 import { useSystemPresets } from '../../hooks/useSystemPresets';
@@ -107,10 +106,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     setLastSubmittedReport(null);
   };
   const [urgency, setUrgency] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
-
-  // Activity ledger filter
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Verified' | 'Resolved' | 'Dismissed'>('All');
-  const [categoryFilter, setCategoryFilter] = useState<string>('All');
 
   // ── Derived counts ────────────────────────────────────────────────────
   const personalReports = reports.filter(r =>
@@ -279,15 +274,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     Dismissed: 'bg-rose-50 text-rose-700 border-rose-200',
   };
 
-  const STATUS_LEFT: Record<string, string> = {
-    Pending:   'border-l-amber-400',
-    Verified:  'border-l-indigo-400',
-    Resolved:  'border-l-emerald-400',
-    Dismissed: 'border-l-rose-400',
-  };
-
-  const timelineReports: Report[] = personalReports;
-
   const isWasteCategory = pillarCategory === 'waste';
 
   return (
@@ -365,17 +351,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
       )}
 
       {activeTab === 'report-history' && (
-        <TeacherReportHistoryTab
-          timelineReports={timelineReports}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
-          getDisplayStatus={getDisplayStatus}
-          getDisplayCategory={getDisplayCategory}
-          STATUS_BADGE={STATUS_BADGE}
-          STATUS_LEFT={STATUS_LEFT}
-        />
+        <ReportHistoryTab personalReports={personalReports} showPoints={false} />
       )}
     </div>
   );

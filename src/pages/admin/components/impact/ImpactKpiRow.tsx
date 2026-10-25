@@ -1,5 +1,6 @@
 import React from 'react';
 import { Coins, FileText, GraduationCap, Truck } from 'lucide-react';
+import { KpiCard } from '../../../../components/layout/KpiCard';
 
 interface ImpactKpiRowProps {
   totalReportsCount: number;
@@ -32,93 +33,67 @@ export const ImpactKpiRow: React.FC<ImpactKpiRowProps> = ({
   totalValuePhp,
   totalCollectedKg,
 }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    {/* Card 1: Total Campus Reports — ramp 1 (accent) */}
-    <div className="h-full flex flex-col p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-      <div className="flex flex-1 items-center justify-between gap-3 min-w-0">
-        <div className="min-w-0">
-          <p className="text-3xl font-extrabold tracking-tight text-[var(--text-strong)]">
-            {totalReportsCount}
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-strong)]/60 leading-tight">
-            Total Campus Reports
-          </p>
-        </div>
-        <div className="w-fit shrink-0 p-3 bg-[var(--ramp-1)]/10 rounded-xl text-[var(--ramp-1)] group-hover:scale-110 transition-transform">
-          <FileText size={22} />
-        </div>
-      </div>
-      <div className="mt-auto pt-4 border-t border-[var(--primary)]/5 flex items-center justify-between text-[11px] text-[var(--text-strong)]/60 font-medium">
-        <span>{studentReportsCount} Student</span>
-        <span>•</span>
-        <span>{teacherReportsCount} Teacher</span>
-      </div>
-    </div>
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <KpiCard
+      label="Total Campus Reports"
+      value={totalReportsCount}
+      icon={<FileText size={18} strokeWidth={2} />}
+      iconClassName="bg-[var(--ramp-1)]/10 text-[var(--ramp-1-strong)]"
+      footer={
+        <>
+          <span>{studentReportsCount} Student</span>
+          <span aria-hidden="true" className="text-[var(--text-strong)]/25">•</span>
+          <span>{teacherReportsCount} Teacher</span>
+        </>
+      }
+    />
 
-    {/* Card 2: Dispatched & Collected Tasks — ramp 2 (terracotta) */}
-    <div className="h-full flex flex-col p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-      <div className="flex flex-1 items-center justify-between gap-3 min-w-0">
-        <div className="min-w-0">
-          <p className="text-3xl font-extrabold tracking-tight text-[var(--text-strong)]">
-            {collectedCount}{' '}
-            <span className="text-sm font-bold text-[var(--text-strong)]/40">/ {totalReportsCount}</span>
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-strong)]/60 leading-tight">
-            Dispatched &amp; Collected
-          </p>
-        </div>
-        <div className="w-fit shrink-0 p-3 bg-[var(--ramp-2)]/10 rounded-xl text-[var(--ramp-2)] group-hover:scale-110 transition-transform">
-          <Truck size={22} />
-        </div>
-      </div>
-      <div className="mt-auto pt-4 border-t border-[var(--primary)]/5 flex items-center justify-between text-[11px] text-[var(--text-strong)]/60 font-medium">
-        <span>MRF Tasks Resolved</span>
-        <span className="font-bold text-[var(--text-strong)]">{pendingCount} pending</span>
-      </div>
-    </div>
+    <KpiCard
+      label="Dispatched & Collected"
+      value={
+        <>
+          {collectedCount}
+          <span className="ml-1.5 text-sm font-medium text-[var(--text-strong)]/35">/ {totalReportsCount}</span>
+        </>
+      }
+      icon={<Truck size={18} strokeWidth={2} />}
+      iconClassName="bg-[var(--ramp-2)]/10 text-[var(--ramp-2-strong)]"
+      footer={
+        <>
+          <span>MRF Tasks Resolved</span>
+          <span className="shrink-0 font-semibold text-[var(--text-strong)]/70">{pendingCount} pending</span>
+        </>
+      }
+    />
 
-    {/* Card 3: Most Active Grade Level — ramp 3 (amber) */}
-    <div className="h-full flex flex-col p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-      <div className="flex flex-1 items-center justify-between gap-3 min-w-0">
-        <div className="min-w-0">
-          <p className="text-3xl font-extrabold tracking-tight text-[var(--text-strong)]">
-            {topGradeKey}
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-strong)]/60 leading-tight">
-            Most Active Grade Level
-          </p>
-        </div>
-        <div className="w-fit shrink-0 p-3 bg-[var(--ramp-3)]/10 rounded-xl text-[var(--ramp-3)] group-hover:scale-110 transition-transform">
-          <GraduationCap size={22} />
-        </div>
-      </div>
-      <div className="mt-auto pt-4 border-t border-[var(--primary)]/5 flex items-center justify-between text-[11px] text-[var(--text-strong)]/60 font-medium">
-        <span>
-          {topGradeSubmissions} Submission{topGradeSubmissions === 1 ? '' : 's'}
-        </span>
-        <span className="font-bold text-[var(--ramp-3-strong)]">{topGradeShare}% Share</span>
-      </div>
-    </div>
+    <KpiCard
+      label="Most Active Grade Level"
+      value={topGradeKey}
+      icon={<GraduationCap size={18} strokeWidth={2} />}
+      iconClassName="bg-[var(--ramp-3)]/10 text-[var(--ramp-3-strong)]"
+      footer={
+        <>
+          <span>
+            {topGradeSubmissions} Submission{topGradeSubmissions === 1 ? '' : 's'}
+          </span>
+          <span className="shrink-0 font-semibold text-[var(--ramp-3-strong)]">{topGradeShare}% Share</span>
+        </>
+      }
+    />
 
-    {/* Card 4: Total Recyclable Value (PHP) — ramp 4 (gold) */}
-    <div className="h-full flex flex-col p-5 bg-white/90 rounded-2xl border border-white/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-      <div className="flex flex-1 items-center justify-between gap-3 min-w-0">
-        <div className="min-w-0">
-          <p className="text-3xl font-extrabold tracking-tight text-[var(--text-strong)]">
-            ₱{totalValuePhp.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-strong)]/60 leading-tight">
-            Total Recyclable Value
-          </p>
-        </div>
-        <div className="w-fit shrink-0 p-3 bg-[var(--ramp-4)]/10 rounded-xl text-[var(--ramp-4)] group-hover:scale-110 transition-transform">
-          <Coins size={22} />
-        </div>
-      </div>
-      <div className="mt-auto pt-4 border-t border-[var(--primary)]/5 flex items-center justify-between text-[11px] text-[var(--text-strong)]/60 font-medium">
-        <span>Est. Revenue</span>
-        <span className="font-bold text-[var(--ramp-4-strong)]">{totalCollectedKg.toFixed(1)} kg processed</span>
-      </div>
-    </div>
+    <KpiCard
+      label="Total Recyclable Value"
+      value={<>₱{totalValuePhp.toLocaleString('en-US', { maximumFractionDigits: 0 })}</>}
+      icon={<Coins size={18} strokeWidth={2} />}
+      iconClassName="bg-[var(--ramp-4)]/10 text-[var(--ramp-4-strong)]"
+      footer={
+        <>
+          <span>Est. Revenue</span>
+          <span className="shrink-0 font-semibold text-[var(--ramp-4-strong)]">
+            {totalCollectedKg.toFixed(1)} kg processed
+          </span>
+        </>
+      }
+    />
   </div>
 );

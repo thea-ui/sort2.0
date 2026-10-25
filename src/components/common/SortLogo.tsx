@@ -38,7 +38,7 @@ export const SortLogo: React.FC<SortLogoProps> = ({
     displayName.length > 20 ? 'text-sm' : displayName.length > 12 ? 'text-base' : 'text-xl';
 
   return (
-    <div className={`inline-flex items-center gap-3 ${className}`}>
+    <div className={`inline-flex items-center gap-2 sm:gap-3 ${className}`}>
       {/* Visual Logo Image - Large & Pleasing */}
       <div
         className="relative shrink-0 flex items-center justify-center transition-transform duration-200 hover:scale-105"
@@ -55,7 +55,7 @@ export const SortLogo: React.FC<SortLogoProps> = ({
       {/* Brand Title & Subtitle */}
       {showText && (
         <div className="flex flex-col justify-center min-w-0">
-          <span className={`${textClassName} ${nameSizeClass} leading-tight line-clamp-2 max-w-[190px]`}>
+          <span className={`${textClassName} ${nameSizeClass} leading-tight line-clamp-2 max-w-[150px] sm:max-w-[190px]`}>
             {displayName}
           </span>
           {subtitle && (

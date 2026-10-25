@@ -7,7 +7,7 @@ interface StudentUrgencySelectorProps {
 }
 
 export const StudentUrgencySelector: React.FC<StudentUrgencySelectorProps> = ({ urgency, setUrgency }) => (
-  <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-2.5">
+  <div className="space-y-2.5 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
     <div className="flex items-center justify-between">
       <h3 className="text-sm font-heading font-bold text-[var(--text-strong)] flex items-center gap-2">
         <AlertTriangle size={16} className="text-[var(--accent)]" />
@@ -16,7 +16,7 @@ export const StudentUrgencySelector: React.FC<StudentUrgencySelectorProps> = ({ 
       <span className="text-[10px] font-medium text-gray-400">Defaults to Normal</span>
     </div>
 
-    <div className="grid grid-cols-3 gap-2 p-1 bg-gray-100/80 rounded-2xl">
+    <div className="grid grid-cols-3 gap-1 rounded-xl bg-[var(--background)] p-1">
       {[
         { level: 'LOW', label: 'Low', desc: 'Not full yet' },
         { level: 'MEDIUM', label: 'Normal', desc: 'Needs pick up' },
@@ -28,7 +28,7 @@ export const StudentUrgencySelector: React.FC<StudentUrgencySelectorProps> = ({ 
             key={item.level}
             type="button"
             onClick={() => setUrgency(item.level as any)}
-            className={`py-2 px-2.5 rounded-xl text-center transition-all cursor-pointer select-none ${
+            className={`min-h-[44px] rounded-lg px-2 py-2 text-center transition-colors cursor-pointer select-none ${
               isSelected
                 ? item.level === 'HIGH'
                   ? 'bg-rose-500 text-white font-bold shadow-xs'

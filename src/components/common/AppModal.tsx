@@ -58,13 +58,13 @@ export const AppModal: React.FC<AppModalProps> = ({
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent
       overlayClassName="bg-black/40"
-      className={`${SIZE_CLASSES[size]} max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-5 md:p-6 border-0 ring-0 shadow-2xl bg-card rounded-md sm:rounded-lg gap-0!`}
+      className={`${SIZE_CLASSES[size]} max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-5 md:p-6 border-0 ring-0 shadow-2xl bg-card rounded-3xl gap-0!`}
     >
       <div className="pb-4">
         <div className="flex items-center gap-3">
           {icon && (
             <div
-              className="p-2.5 rounded-md shrink-0 flex items-center justify-center leading-none [&>svg]:w-5 [&>svg]:h-5"
+              className="p-2.5 rounded-xl shrink-0 flex items-center justify-center leading-none [&>svg]:w-5 [&>svg]:h-5"
               style={{
                 backgroundColor: destructive ? 'var(--danger)' : 'var(--success)',
                 color: '#ffffff',
@@ -94,7 +94,7 @@ export const AppModal: React.FC<AppModalProps> = ({
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 mt-3 border-t border-border">
           <Button
             variant="outline"
-            className="rounded-md px-4 h-9"
+            className="rounded-xl px-4 h-9"
             onClick={() => onOpenChange(false)}
             disabled={loading}
           >
@@ -102,7 +102,7 @@ export const AppModal: React.FC<AppModalProps> = ({
           </Button>
           {onConfirm && (
             <Button
-              className="rounded-md px-4 h-9"
+              className="rounded-xl px-4 h-9"
               style={
                 destructive
                   ? { backgroundColor: 'var(--danger)', color: '#ffffff' }

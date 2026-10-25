@@ -65,8 +65,8 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
     'Recyclable';
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-12 pt-4">
-      <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-8 shadow-xl text-center space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-5 animate-fade-in pb-8 pt-2">
+      <div className="space-y-6 rounded-2xl border border-[var(--primary)]/10 bg-white p-5 text-center sm:p-8">
         
         {/* Static Success Icon & Status Pill */}
         <div className="flex flex-col items-center gap-3">
@@ -86,7 +86,7 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
         </div>
 
         {/* Submitted Summary Details Card (Matches Screenshot Exactly) */}
-        <div className="p-6 bg-[var(--background)]/80 border border-[var(--primary)]/10 rounded-2xl text-left space-y-4 shadow-xs">
+        <div className="space-y-4 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/50 p-4 text-left sm:p-5">
           <div className="flex items-center justify-between border-b border-[var(--primary)]/10 pb-3">
             <p className="text-[10px] font-extrabold text-[var(--text-strong)]/50 uppercase tracking-wider">Ticket Summary</p>
             <span className="text-xs font-black text-[var(--accent)] bg-white px-2.5 py-0.5 rounded-md border border-[var(--accent)]/20 shadow-2xs">
@@ -165,7 +165,7 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
           <button
             type="button"
             onClick={onReset}
-            className="flex-1 py-3.5 px-5 rounded-2xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="flex-1 py-3.5 px-5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <Send size={15} />
             <span>Submit Another Report</span>
@@ -175,7 +175,7 @@ export const StudentSubmitSuccessView: React.FC<StudentSubmitSuccessViewProps> =
             <button
               type="button"
               onClick={onViewHistory}
-              className="flex-1 py-3.5 px-5 rounded-2xl border border-[var(--primary)]/20 bg-white text-[var(--text-strong)] font-bold text-xs hover:bg-gray-50 transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="flex-1 py-3.5 px-5 rounded-xl border border-[var(--primary)]/20 bg-white text-[var(--text-strong)] font-bold text-xs hover:bg-gray-50 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <FileText size={15} />
               <span>View Report History</span>

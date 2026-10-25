@@ -297,16 +297,16 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12">
+    <div className="w-full space-y-4 animate-fade-in pb-8 sm:space-y-5">
       {!selectedCategory ? (
         <TeacherCategorySelector pillarMeta={PILLAR_META} onSelect={handleSelectCategory} />
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[var(--primary)] via-[var(--primary)] to-[var(--primary)] p-6 text-white shadow-lg shadow-[var(--primary)]/15 flex items-center gap-4">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-12 xl:items-start">
+          <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5 xl:col-span-12">
             <button
               type="button"
               onClick={() => setSelectedCategoryState(null)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition-all hover:bg-white/30 cursor-pointer"
+              className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[var(--accent)]/10 text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/20"
               title="Back to category selection"
             >
               <ChevronLeft size={20} />
@@ -314,17 +314,18 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
 
             {activeMeta && (
               <div className="flex items-center gap-3.5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-inner">
-                  {React.createElement(activeMeta.icon, { size: 24 })}
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
+                  {React.createElement(activeMeta.icon, { size: 22 })}
                 </div>
                 <div>
-                  <h2 className="text-xl font-heading font-black text-white tracking-tight">{activeMeta.title}</h2>
-                  <p className="text-xs text-white/80 font-medium">{activeMeta.subtitle}</p>
+                  <h2 className="text-base font-heading font-black tracking-tight text-[var(--text-strong)] sm:text-lg">{activeMeta.title}</h2>
+                  <p className="text-[11px] font-medium text-[var(--text-strong)]/55">{activeMeta.subtitle}</p>
                 </div>
               </div>
             )}
           </div>
 
+          <div className="space-y-4 sm:space-y-5 xl:col-span-8">
           <TeacherPhotoEvidence
             capturedImage={capturedImage}
             setCapturedImage={setCapturedImage}
@@ -370,7 +371,9 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
               handleItemSelect={handleItemSelect}
             />
           )}
+          </div>
 
+          <div className="space-y-4 sm:space-y-5 xl:col-span-4">
           <TeacherConditionUrgency
             isWasteCategory={isWasteCategory}
             selectedCondition={selectedCondition}
@@ -383,11 +386,11 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
 
           <TeacherNotesSection notes={notes} setNotes={setNotes} />
 
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2 rounded-2xl border border-[var(--primary)]/10 bg-white p-4">
             <button
               type="submit"
               disabled={isSubmitting || !selectedItem || !selectedLocation || !capturedImage}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[var(--primary)] via-[var(--primary)] to-[var(--primary)] text-white font-bold text-sm shadow-lg shadow-[var(--primary)]/25 hover:from-[var(--primary)] hover:to-[var(--primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-[var(--accent-dark)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -411,6 +414,7 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
                 Reports are reviewed by the appropriate department within 24 hours.
               </p>
             )}
+          </div>
           </div>
         </form>
       )}

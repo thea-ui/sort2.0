@@ -7,22 +7,22 @@ interface TeacherCategorySelectorProps {
 }
 
 export const TeacherCategorySelector: React.FC<TeacherCategorySelectorProps> = ({ pillarMeta, onSelect }) => (
-  <div className="space-y-6">
-    <div className="bg-gradient-to-br from-white/95 via-white/90 to-[var(--primary)]/5 border border-white/90 rounded-3xl p-7 shadow-xl shadow-[var(--primary)]/5 backdrop-blur-md">
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-3.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest text-[var(--accent)]">
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+  <div className="w-full space-y-4 sm:space-y-5">
+    <div className="rounded-2xl border border-[var(--primary)]/10 bg-white px-4 py-4 sm:px-6 sm:py-5">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--accent)]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
         Faculty Service Portal
       </span>
-      <h2 className="mt-2 text-2xl font-heading font-black tracking-tight text-[var(--text-strong)]">
-        Multi-Category Asset & Waste Report
+      <h2 className="mt-2 text-lg font-heading font-black tracking-tight text-[var(--text-strong)] sm:text-xl">
+        Multi-Category Asset &amp; Waste Report
       </h2>
-      <p className="mt-1 text-xs text-[var(--text-strong)]/60 font-medium">
+      <p className="mt-1 max-w-3xl text-[11px] font-medium leading-relaxed text-[var(--text-strong)]/55 sm:text-xs">
         File structural maintenance tickets, broken classroom items, or bin overflow reports directly to MRF staff.
       </p>
     </div>
 
-    <div className="rounded-3xl border border-white/80 bg-white/90 backdrop-blur-md p-7 shadow-sm space-y-4">
-      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-strong)]/60">
+    <div className="space-y-4 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
+      <label className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--text-strong)]/50">
         1. Select Recovery Category
       </label>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -33,11 +33,13 @@ export const TeacherCategorySelector: React.FC<TeacherCategorySelectorProps> = (
               key={id}
               type="button"
               onClick={() => onSelect(id)}
-              className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200/80 bg-white p-5 text-center transition-all hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 hover:shadow-md cursor-pointer select-none"
+              className="group flex min-h-[104px] flex-col items-center justify-center gap-2 rounded-xl border border-[var(--primary)]/10 bg-white p-4 text-center transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/5 cursor-pointer select-none"
             >
-              <Icon size={22} className="text-[var(--accent)]" />
-              <span className="text-sm font-bold text-[var(--text-strong)]">{meta.label}</span>
-              <span className="text-[10px] text-[var(--text-strong)]/50 font-medium">{meta.desc}</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]">
+                <Icon size={18} />
+              </span>
+              <span className="text-xs font-bold text-[var(--text-strong)] sm:text-sm">{meta.label}</span>
+              <span className="text-[10px] font-medium leading-snug text-[var(--text-strong)]/50">{meta.desc}</span>
             </button>
           );
         })}

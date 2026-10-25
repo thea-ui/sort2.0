@@ -1,5 +1,5 @@
 import React from 'react';
-import { CampusNewsWidget } from '../../../components/common/CampusNewsWidget';
+import { CampusNewsCard } from '../../../components/common/CampusNewsCard';
 import {
   Trash2,
   Layers,
@@ -7,15 +7,14 @@ import {
   Send,
   MapPin,
   Clock,
-  ChevronRight,
   FileText,
   ArrowRight,
-  GraduationCap,
   Recycle,
   Armchair,
   Monitor,
   Zap,
   Wrench,
+  CheckCircle2,
 } from 'lucide-react';
 import { User, Report } from '../../../types';
 import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
@@ -54,59 +53,56 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
   CAT_EMOJI
 }) => {
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-10">
+    <div className="w-full space-y-4 pb-8 sm:space-y-6">
 
       {/* ── 2026 Faculty Hero Card ── */}
-      <div className="bg-gradient-to-br from-white/95 via-white/90 to-[var(--primary)]/5 border border-white/90 rounded-3xl p-7 md:p-8 shadow-xl shadow-[var(--primary)]/5 backdrop-blur-md relative overflow-hidden transition-all hover:shadow-2xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          
-          <div className="flex items-center gap-5">
-            <div className="h-16 w-16 rounded-2xl bg-[var(--accent)] text-white font-heading font-black text-2xl flex items-center justify-center shadow-lg shadow-[var(--accent)]/25 shrink-0">
-              {getInitials(currentUser.name)}
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--text-strong)]/60">Welcome back,</p>
-              <h2 className="text-2xl sm:text-3xl font-heading font-black text-[var(--text-strong)] tracking-tight mt-0.5">
-                {currentUser.name}
-              </h2>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse" />
-                <span className="text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/15 border border-[var(--accent)]/30 px-3 py-0.5 rounded-full flex items-center gap-1.5">
-                  <GraduationCap size={14} />
-                  Faculty Staff · Infrastructure Lead
-                </span>
-              </div>
-            </div>
+      <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-6">
+        <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-base font-black text-white sm:h-14 sm:w-14 sm:text-lg">
+            {getInitials(currentUser.name)}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-[var(--text-strong)]/55">Welcome back,</p>
+            <h2 className="line-clamp-2 text-lg font-heading font-black leading-tight tracking-tight text-[var(--text-strong)] sm:line-clamp-1 sm:text-2xl">
+              {currentUser.name}
+            </h2>
+            <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[10px] font-extrabold text-[var(--accent)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+              Faculty Staff
+            </span>
           </div>
         </div>
       </div>
 
-      {/* ── Reporting Summary — Color-coded Indicator Grid ── */}
+      {/* ── Reporting Summary ── */}
       <div>
-        <h3 className="text-sm font-heading font-bold text-[var(--text-strong)] mb-3">My Reporting Summary</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="mb-2.5 flex items-center gap-2 px-1">
+          <Activity size={16} className="text-[var(--accent)]" />
+          <h3 className="text-[13px] font-heading font-extrabold tracking-tight text-[var(--text-strong)]">My reporting summary</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
 
           {/* Waste Reports */}
           <button
             type="button"
             onClick={() => setActiveTab('report-history')}
-            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3 cursor-pointer group hover:border-emerald-300"
+            className="rounded-2xl border border-[var(--primary)]/10 bg-white p-3.5 text-left transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02] space-y-3 cursor-pointer sm:p-5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 shadow-xs group-hover:scale-105 transition-transform">
-                <Trash2 size={20} strokeWidth={2} />
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ramp-1)]/10 text-[var(--ramp-1-strong)] sm:h-10 sm:w-10">
+                <Trash2 size={18} strokeWidth={2} />
               </div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--primary)] bg-[var(--primary)]/10 px-3 py-0.5 rounded-full border border-[var(--primary)]/20">
+              <span className="text-[9px] font-extrabold uppercase tracking-wider text-[var(--ramp-1-strong)] bg-[var(--ramp-1)]/10 px-2 py-0.5 rounded-full border border-[var(--ramp-1)]/25 sm:px-3 sm:text-[10px]">
                 Waste Category
               </span>
             </div>
             <div>
-              <p className="text-3xl font-heading font-extrabold text-[var(--text-strong)]">{myWasteReportsCount}</p>
-              <p className="text-xs font-bold text-[var(--text-strong)] mt-0.5 group-hover:text-emerald-700 transition-colors">Waste & Litter Logs</p>
-              <p className="text-[11px] text-[var(--text-strong)]/50 font-medium">{myWasteResolved} resolved by MRF</p>
+              <p className="text-2xl font-heading font-extrabold text-[var(--text-strong)] sm:text-3xl">{myWasteReportsCount}</p>
+              <p className="text-xs font-bold text-[var(--text-strong)] mt-0.5">Waste &amp; Litter Logs</p>
+              <p className="text-[10px] text-[var(--text-strong)]/50 font-medium sm:text-[11px]">{myWasteResolved} resolved by MRF</p>
             </div>
-            <div className="h-2 w-full bg-[var(--primary)]/15 rounded-full overflow-hidden">
-              <div className="h-full bg-[var(--primary)] rounded-full transition-all duration-700" style={{ width: `${myWasteReportsCount > 0 ? (myWasteResolved / myWasteReportsCount) * 100 : 0}%` }} />
+            <div className="h-1.5 w-full bg-[var(--ramp-1)]/10 rounded-full overflow-hidden sm:h-2">
+              <div className="h-full bg-[var(--ramp-1)] rounded-full transition-all duration-700" style={{ width: `${myWasteReportsCount > 0 ? (myWasteResolved / myWasteReportsCount) * 100 : 0}%` }} />
             </div>
           </button>
 
@@ -114,23 +110,23 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('report-history')}
-            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3 cursor-pointer group hover:border-amber-300"
+            className="rounded-2xl border border-[var(--primary)]/10 bg-white p-3.5 text-left transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02] space-y-3 cursor-pointer sm:p-5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 shadow-xs group-hover:scale-105 transition-transform">
-                <Layers size={20} strokeWidth={2} />
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ramp-2)]/10 text-[var(--ramp-2-strong)] sm:h-10 sm:w-10">
+                <Layers size={18} strokeWidth={2} />
               </div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 bg-amber-50 px-3 py-0.5 rounded-full border border-amber-200">
+              <span className="text-[9px] font-extrabold uppercase tracking-wider text-[var(--ramp-2-strong)] bg-[var(--ramp-2)]/10 px-2 py-0.5 rounded-full border border-[var(--ramp-2)]/25 sm:px-3 sm:text-[10px]">
                 Asset Category
               </span>
             </div>
             <div>
-              <p className="text-3xl font-heading font-extrabold text-[var(--text-strong)]">{myAssetReportsCount}</p>
-              <p className="text-xs font-bold text-[var(--text-strong)] mt-0.5 group-hover:text-amber-700 transition-colors">Asset & Facility Logs</p>
-              <p className="text-[11px] text-[var(--text-strong)]/50 font-medium">{myAssetResolved} resolved by MRF</p>
+              <p className="text-2xl font-heading font-extrabold text-[var(--text-strong)] sm:text-3xl">{myAssetReportsCount}</p>
+              <p className="text-xs font-bold text-[var(--text-strong)] mt-0.5">Asset &amp; Facility Logs</p>
+              <p className="text-[10px] text-[var(--text-strong)]/50 font-medium sm:text-[11px]">{myAssetResolved} resolved by MRF</p>
             </div>
-            <div className="h-2 w-full bg-amber-100 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full transition-all duration-700" style={{ width: `${myAssetReportsCount > 0 ? (myAssetResolved / myAssetReportsCount) * 100 : 0}%` }} />
+            <div className="h-1.5 w-full bg-[var(--ramp-2)]/10 rounded-full overflow-hidden sm:h-2">
+              <div className="h-full bg-[var(--ramp-2)] rounded-full transition-all duration-700" style={{ width: `${myAssetReportsCount > 0 ? (myAssetResolved / myAssetReportsCount) * 100 : 0}%` }} />
             </div>
           </button>
 
@@ -138,26 +134,26 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('bin-map')}
-            className="bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-6 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-3 cursor-pointer group hover:border-[var(--primary)]/25"
+            className="col-span-2 rounded-2xl border border-[var(--primary)]/10 bg-white p-3.5 text-left transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02] space-y-3 cursor-pointer sm:col-span-1 sm:p-5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/25 shadow-xs group-hover:scale-105 transition-transform">
-                <Activity size={20} strokeWidth={2} />
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ramp-3)]/10 text-[var(--ramp-3-strong)] sm:h-10 sm:w-10">
+                <Activity size={18} strokeWidth={2} />
               </div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-strong)] bg-[var(--primary)]/10 px-3 py-0.5 rounded-full border border-[var(--primary)]/25">
+              <span className="text-[9px] font-extrabold uppercase tracking-wider text-[var(--ramp-3-strong)] bg-[var(--ramp-3)]/10 px-2 py-0.5 rounded-full border border-[var(--ramp-3)]/25 sm:px-3 sm:text-[10px]">
                 Response Time
               </span>
             </div>
             <div>
-              <p className="text-3xl font-heading font-extrabold text-[var(--text-strong)]">18m</p>
-              <p className="text-xs font-bold text-[var(--text-strong)] mt-0.5 group-hover:text-[var(--text-strong)] transition-colors">Average Response Time</p>
-              <p className="text-[11px] text-[var(--text-strong)]/50 font-medium flex items-center gap-1">
+              <p className="text-2xl font-heading font-extrabold text-[var(--text-strong)] sm:text-3xl">18m</p>
+              <p className="text-xs font-bold text-[var(--text-strong)] mt-0.5">Average Response Time</p>
+              <p className="text-[10px] text-[var(--text-strong)]/50 font-medium flex items-center gap-1 sm:text-[11px]">
                 <Zap size={11} className="text-[var(--accent)]" />
                 <span>Typical time to resolve a report</span>
               </p>
             </div>
-            <div className="h-2 w-full bg-[var(--primary)]/10 rounded-full overflow-hidden">
-              <div className="h-full bg-[var(--primary)] rounded-full" style={{ width: '92%' }} />
+            <div className="h-1.5 w-full bg-[var(--ramp-3)]/10 rounded-full overflow-hidden sm:h-2">
+              <div className="h-full bg-[var(--ramp-3)] rounded-full" style={{ width: '92%' }} />
             </div>
           </button>
 
@@ -168,27 +164,31 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
 
       {/* ── Quick Actions Grid ── */}
       <div>
-        <h3 className="text-sm font-heading font-bold text-[var(--text-strong)] mb-3">Quick Actions</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="mb-2.5 flex items-center gap-2 px-1">
+          <CheckCircle2 size={16} className="text-[var(--accent)]" />
+          <h3 className="text-[13px] font-heading font-extrabold tracking-tight text-[var(--text-strong)]">Quick actions</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           {[
-            { label: 'File a Report', desc: 'Submit structural or waste logs', tab: 'submit-report', iconBg: 'bg-gradient-to-br from-orange-500 to-rose-500', shadow: 'shadow-orange-500/20', hover: 'hover:border-rose-300', icon: Send },
-            { label: 'View Live Map', desc: 'Monitor node status & capacity', tab: 'bin-map', iconBg: 'bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]', shadow: 'shadow-[var(--primary)]/20', hover: 'hover:border-[var(--primary)]/25', icon: MapPin },
-            { label: 'Track My Activity', desc: 'Inspect personal reporting ledger', tab: 'report-history', iconBg: 'bg-gradient-to-br from-[var(--gold)] to-[var(--primary)]', shadow: 'shadow-[var(--gold)]/20', hover: 'hover:border-[var(--gold)]/25', icon: Clock },
-          ].map(action => {
+            { label: 'File a Report', desc: 'Submit structural or waste logs', tab: 'submit-report', iconClass: 'bg-[var(--ramp-1)]/10 text-[var(--ramp-1-strong)]', icon: Send },
+            { label: 'View Live Map', desc: 'Monitor node status & capacity', tab: 'bin-map', iconClass: 'bg-[var(--ramp-2)]/10 text-[var(--ramp-2-strong)]', icon: MapPin },
+            { label: 'Track My Activity', desc: 'Inspect personal reporting ledger', tab: 'report-history', iconClass: 'bg-[var(--ramp-3)]/10 text-[var(--ramp-3-strong)]', icon: Clock },
+          ].map((action, index) => {
             const Icon = action.icon;
             return (
               <button
                 key={action.tab}
                 type="button"
                 onClick={() => setActiveTab(action.tab)}
-                className={`bg-white/90 backdrop-blur-md border border-white/80 rounded-2xl p-5 text-left shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group ${action.hover}`}
+                className={`group flex flex-col items-start gap-2.5 rounded-2xl border border-[var(--primary)]/10 bg-white p-3.5 text-left transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02] cursor-pointer sm:flex-row sm:items-center sm:gap-3.5 sm:p-5 ${index === 2 ? 'col-span-2 sm:col-span-1' : ''}`}
               >
-                <div className={`h-11 w-11 rounded-2xl ${action.iconBg} text-white flex items-center justify-center mb-3 shadow-md ${action.shadow} group-hover:scale-105 transition-transform`}>
-                  <Icon size={20} strokeWidth={2} />
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11 ${action.iconClass} transition-transform duration-200 group-hover:scale-105`}>
+                  <Icon size={19} strokeWidth={2} />
                 </div>
-                <p className="text-sm font-bold text-[var(--text-strong)]">{action.label}</p>
-                <p className="text-[11px] text-[var(--text-strong)]/60 mt-0.5 font-medium">{action.desc}</p>
-                <ChevronRight size={14} className="mt-2 text-gray-400 group-hover:text-[var(--accent)] transition-colors" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[var(--text-strong)] sm:text-sm">{action.label}</p>
+                  <p className="mt-0.5 hidden text-[11px] font-medium text-[var(--text-strong)]/60 sm:block">{action.desc}</p>
+                </div>
               </button>
             );
           })}
@@ -196,23 +196,21 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
       </div>
 
       {/* ── Recent Submissions Feed ── */}
-      <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--primary)]/10">
+      <div className="rounded-2xl border border-[var(--primary)]/10 bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--primary)]/10 sm:px-5">
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 flex items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
-              <FileText size={14} />
-            </div>
-            <h3 className="text-sm font-heading font-bold text-[var(--text-strong)]">Recent Faculty Submissions</h3>
+            <FileText size={15} className="text-[var(--accent)]" />
+            <h3 className="text-[13px] font-heading font-extrabold tracking-tight text-[var(--text-strong)]">Recent faculty submissions</h3>
           </div>
           <button
             type="button"
             onClick={() => setActiveTab('report-history')}
             className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent)] hover:text-[var(--accent-dark)] cursor-pointer"
           >
-            View All <ArrowRight size={12} />
+            View all <ArrowRight size={12} />
           </button>
         </div>
-        <div className="divide-y divide-[var(--primary)]/5">
+        <div className="divide-y divide-[var(--primary)]/10">
           {personalReports.slice(0, 4).map(rep => {
             const ds = getDisplayStatus(rep.status, rep.title);
             const dc = getDisplayCategory(rep.description);
@@ -250,7 +248,7 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
       </div>
 
       {/* Campus News */}
-      <CampusNewsWidget />
+      <CampusNewsCard />
 
     </div>
   );

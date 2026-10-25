@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   AlertTriangle,
   Send,
-  Sparkles,
   Info,
   Compass,
   MapPin,
@@ -14,20 +13,22 @@ import {
   Check,
   XCircle,
   Clock,
-  CheckCircle,
-  Droplets,
-  Recycle,
-  PackageX,
   Map as MapIcon,
 } from 'lucide-react';
 import { User, Bin, SystemSettings, WasteCategory, Report } from '../../../types';
 import { CampusMapFrame } from '../../../components/map/CampusMapFrame';
 import { StudentSubmitSuccessView } from './StudentSubmitSuccessView';
 import { StudentSubmittedReportDetails } from '../StudentDashboard';
-import { useSystemPresets } from '../../../hooks/useSystemPresets';
 import { StudentPhotoEvidence } from './StudentPhotoEvidence';
 import { StudentUrgencySelector } from './StudentUrgencySelector';
 import { StudentNotesSection } from './StudentNotesSection';
+import {
+  BinCategory,
+  CAT_META,
+  StationCluster,
+  groupStations,
+} from './submit/binReportUtils';
+import { StudentPageHeader, studentPage } from './ui/StudentPrimitives';
 
 interface SubmitReportTabProps {
   currentUser: User;
@@ -71,122 +72,10 @@ interface SubmitReportTabProps {
   handleSubmit: (e: React.FormEvent) => void;
 }
 
-// The campus operates the three admin-managed streams: biodegradable,
-// non-biodegradable and recyclable.
-type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
-export type BinReportStatusState = 'AVAILABLE' | 'REPORTED_FULL' | 'DISPATCHED' | 'LIMIT_REACHED' | 'NO_BIN' | 'UNAVAILABLE';
-
-interface BinSlot {
-  bin: Bin | null;
-  type: BinCategory;
-  statusState: BinReportStatusState;
-  isAvailable: boolean;
-  reason: string;
-  unverifiedCount: number;
-  activeReport?: Report;
-}
-
-interface StationCluster {
-  locationName: string;
-  coordinates: { lat: number; lng: number };
-  x?: number;
-  y?: number;
-  slots: BinSlot[];
-}
-
-const CATEGORY_ORDER: BinCategory[] = ['BIODEGRADABLE', 'NON_BIODEGRADABLE', 'RECYCLABLE'];
-
-const CAT_META: Record<BinCategory, { label: string; short: string; bg: string; border: string; text: string; Icon: React.FC<{ size?: number; className?: string }>; desc: string }> = {
-  BIODEGRADABLE:     { label: 'Biodegradable',     short: 'Bio', bg: 'bg-emerald-500', border: 'border-emerald-400', text: 'text-emerald-600', Icon: Droplets,     desc: 'Food scraps, organic waste & plant leaves' },
-  NON_BIODEGRADABLE: { label: 'Non-Biodegradable', short: 'Non', bg: 'bg-slate-800',   border: 'border-slate-600',   text: 'text-slate-700',   Icon: PackageX,     desc: 'Wrappers, plastic films & residual waste (black/blue bin)' },
-  RECYCLABLE:        { label: 'Recyclable',         short: 'Rec', bg: 'bg-sky-500',     border: 'border-sky-400',     text: 'text-sky-600',     Icon: Recycle,      desc: 'PET bottles, aluminum cans, glass & cardboard' },
-};
-
-function getBinSlotDetails(bin: Bin | null, reports: Report[] = []): {
-  statusState: BinReportStatusState;
-  isAvailable: boolean;
-  reason: string;
-  unverifiedCount: number;
-  activeReport?: Report;
-} {
-  if (!bin || bin.streamStatus === 'No Bin') {
-    return { statusState: 'NO_BIN', isAvailable: false, reason: 'No Bin at Location', unverifiedCount: 0 };
-  }
-
-  if (bin.streamStatus === 'Unavailable') {
-    return { statusState: 'LIMIT_REACHED', isAvailable: false, reason: 'Unavailable (3/3 Waiting Verification)', unverifiedCount: 0 };
-  }
-
-  const binLoc = bin.locationName.toLowerCase().trim();
-  const activeReports = reports.filter(r => {
-    const repLoc = (r.locationName || '').toLowerCase().trim();
-    const repBaseLoc = repLoc.split(' - ')[0].split(' – ')[0].trim();
-    const matchesLoc = repLoc.includes(binLoc) || binLoc.includes(repBaseLoc) || repLoc === binLoc;
-    return matchesLoc && r.category === bin.type && (r.status === 'PENDING' || r.status === 'DISPATCHED');
-  });
-
-  const unverifiedPending = activeReports.filter(r => !r.isVerified && r.status === 'PENDING');
-  const isVerifiedOrDispatched = activeReports.some(r => r.isVerified || r.status === 'DISPATCHED');
-
-  if (isVerifiedOrDispatched || unverifiedPending.length >= 3) {
-    return {
-      statusState: 'DISPATCHED',
-      isAvailable: false,
-      reason: 'Pending Pick Up',
-      unverifiedCount: unverifiedPending.length,
-      activeReport: activeReports[0]
-    };
-  }
-
-  if (bin.fillLevel >= 90) {
-    return { statusState: 'REPORTED_FULL', isAvailable: false, reason: 'Reported Full', unverifiedCount: 0 };
-  }
-
-  return {
-    statusState: 'AVAILABLE',
-    isAvailable: true,
-    reason: 'Available',
-    unverifiedCount: unverifiedPending.length,
-    activeReport: activeReports[0]
-  };
-}
-
-function groupStations(bins: Bin[], reports: Report[] = []): StationCluster[] {
-  const map = new Map<string, { coords: { lat: number; lng: number }; x?: number; y?: number; byType: Map<BinCategory, Bin> }>();
-  for (const bin of bins) {
-    if (!map.has(bin.locationName)) {
-      map.set(bin.locationName, { coords: bin.coordinates, x: bin.x, y: bin.y, byType: new Map() });
-    }
-    const t = bin.type as BinCategory;
-    if (CATEGORY_ORDER.includes(t)) map.get(bin.locationName)!.byType.set(t, bin);
-  }
-
-  return Array.from(map.entries()).map(([locationName, data]) => ({
-    locationName,
-    coordinates: data.coords,
-    x: data.x,
-    y: data.y,
-    slots: CATEGORY_ORDER.map(type => {
-      const bin = data.byType.get(type) ?? null;
-      const details = getBinSlotDetails(bin, reports);
-      return {
-        type,
-        bin,
-        statusState: details.statusState,
-        isAvailable: details.isAvailable,
-        reason: details.reason,
-        unverifiedCount: details.unverifiedCount,
-        activeReport: details.activeReport,
-      };
-    }),
-  }));
-}
-
 export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
   currentUser,
   bins,
   reports = [],
-  settings,
   setActiveTab,
   reportTitle,
   setReportTitle,
@@ -209,20 +98,16 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
   submitSuccess,
   setSubmitSuccess,
   lastSubmittedReport,
-  binId,
   setBinId,
   isScatteredDebris,
   setIsScatteredDebris,
   isPinningMode,
   setIsPinningMode,
-  selectedMaterials,
   setSelectedMaterials,
   handleSubmit
 }) => {
   const [searchLocation, setSearchLocation] = useState('');
   const [activePopoverStation, setActivePopoverStation] = useState<string | null>(null);
-
-  const { presetGroups, categories, wasteTypes, urgencyLevels } = useSystemPresets();
 
   const [blueprintUrl, setBlueprintUrl] = useState<string | null>(() => localStorage.getItem('sort_blueprint_url'));
 
@@ -327,37 +212,32 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5 animate-fade-in pb-12">
-      <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0">
-            <Sparkles size={20} />
-          </div>
-          <div>
-            <h2 className="font-heading font-bold text-sm text-[var(--text-strong)]">Report Campus Waste</h2>
-            <p className="text-xs text-[var(--text-strong)]/70 font-medium">
-              Snap photo → Tap map pin → Submit. Points awarded upon MRF resolution!
-            </p>
-          </div>
-        </div>
-        <div className="hidden sm:flex items-center gap-1 bg-[var(--gold)]/10 border border-[var(--gold)]/30 text-[var(--gold)] px-3 py-1.5 rounded-full text-xs font-bold shrink-0">
-          <span>1st: 15pts · 2nd: 10pts · 3rd: 5pts</span>
-        </div>
-      </div>
+    <div className={studentPage}>
+      <StudentPageHeader
+        icon={Trash2}
+        title="Report campus waste"
+        description="Snap photo → tap the map pin → submit. Points are awarded after MRF cleanup."
+        meta={
+          <span className="hidden shrink-0 items-center gap-1 rounded-full border border-[var(--gold)]/25 bg-[var(--gold)]/10 px-3 py-1 text-[10px] font-bold text-[var(--gold-strong)] sm:inline-flex">
+            1st 15 pts · 2nd 10 pts · 3rd 5 pts
+          </span>
+        }
+      />
 
       {isDuplicateActiveReport && (
-        <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl flex items-start gap-3 text-xs shadow-sm animate-fade-in">
-          <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/5 p-4 text-xs animate-fade-in">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[var(--warning-strong)]" />
           <div>
-            <p className="font-bold text-amber-950">You Have Already Reported This Trash Bin</p>
-            <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-              Per user policy, you can only submit <strong>1 report per specific trash bin</strong> until MRF staff complete the cleanup. Your existing report is registered and pending MRF action.
+            <p className="font-bold text-[var(--warning-strong)]">You already reported this trash bin</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-strong)]/60">
+              Only <strong>1 report per specific trash bin</strong> is allowed until MRF staff complete the cleanup. Your existing report is pending MRF action.
             </p>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-12 xl:items-start">
+        <div className="space-y-4 sm:space-y-5 xl:col-span-8">
         <StudentPhotoEvidence
           capturedImage={capturedImage}
           setCapturedImage={setCapturedImage || (() => {})}
@@ -366,7 +246,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
           handleFileChange={handleFileChange}
         />
 
-        <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-4">
+        <div className="space-y-4 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center">
@@ -399,7 +279,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
               placeholder="Search campus location or building..."
               value={searchLocation}
               onChange={(e) => setSearchLocation(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[var(--text-strong)] font-medium outline-none focus:border-[var(--accent)] focus:bg-white transition-all shadow-xs"
+              className="w-full rounded-xl border border-[var(--primary)]/15 bg-[var(--background)]/60 py-2.5 pl-9 pr-4 text-base font-medium text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--accent)] focus:bg-white sm:text-sm"
             />
           </div>
 
@@ -414,7 +294,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             </div>
 
             <div
-              className={`relative w-full h-[360px] sm:h-[420px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center transition-all ${
+              className={`relative flex h-[clamp(280px,42svh,460px)] w-full items-center justify-center rounded-xl border border-[var(--primary)]/15 bg-[var(--background)]/50 transition-all ${
                 isPinningMode ? 'ring-2 ring-[var(--accent)]' : ''
               }`}
             >
@@ -669,12 +549,12 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                       type="button"
                       disabled={!slot.isAvailable}
                       onClick={() => slot.isAvailable && handleSelectCategoryAndBin(slot.type, slot.bin?.id)}
-                      className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between select-none relative overflow-hidden ${
+                      className={`relative flex select-none flex-col justify-between overflow-hidden rounded-xl border p-3 text-left transition-colors ${
                         isSelectedCategory && slot.isAvailable
-                          ? 'bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--text-strong)] font-bold ring-2 ring-[var(--accent)]/40 shadow-xs cursor-pointer'
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 font-bold text-[var(--text-strong)] ring-1 ring-[var(--accent)]/40 cursor-pointer'
                           : slot.isAvailable
-                          ? 'bg-white border-gray-200 text-[var(--text-strong)]/70 hover:bg-gray-50 hover:border-[var(--accent)]/40 cursor-pointer'
-                          : 'bg-gray-100/90 border-gray-200 text-gray-400 opacity-60 cursor-not-allowed'
+                          ? 'border-[var(--primary)]/15 bg-white text-[var(--text-strong)]/70 hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/5 cursor-pointer'
+                          : 'border-[var(--primary)]/10 bg-[var(--primary)]/[0.03] text-[var(--text-strong)]/40 opacity-70 cursor-not-allowed'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -763,12 +643,14 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             );
           })()}
         </div>
+        </div>
 
+        <div className="space-y-4 sm:space-y-5 xl:col-span-4 xl:sticky xl:top-28">
         <StudentUrgencySelector urgency={urgency} setUrgency={setUrgency} />
 
         <StudentNotesSection reportDesc={reportDesc} setReportDesc={setReportDesc} />
 
-        <div className="space-y-2 pt-2">
+        <div className="space-y-2 rounded-2xl border border-[var(--primary)]/10 bg-white p-4">
           <button
             type="submit"
             disabled={isSubmitting || !capturedImage || !locationName || isDuplicateActiveReport}
@@ -799,9 +681,33 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
             </p>
           ) : null}
 
-          <p className="text-center text-[11px] text-gray-500 font-medium">
+          <p className="text-center text-[11px] font-medium leading-relaxed text-[var(--text-strong)]/45">
             Points are awarded upon MRF final cleanup (1st reporter = 15 pts, 2nd = 10 pts, 3rd = 5 pts).
           </p>
+        </div>
+
+        <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-4">
+          <h3 className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[var(--text-strong)]/50">
+            What happens next
+          </h3>
+          <ol className="mt-3 space-y-3">
+            {[
+              { title: 'Admin verification', desc: 'Campus staff review your photo and location pin.' },
+              { title: 'MRF dispatch', desc: 'A collector is assigned to clear the reported bin.' },
+              { title: 'Points awarded', desc: 'Eco-points land after the cleanup is completed.' },
+            ].map((step, index) => (
+              <li key={step.title} className="flex gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/10 text-[10px] font-black text-[var(--accent)]">
+                  {index + 1}
+                </span>
+                <span>
+                  <span className="block text-[11px] font-bold text-[var(--text-strong)]">{step.title}</span>
+                  <span className="mt-0.5 block text-[10px] font-medium leading-relaxed text-[var(--text-strong)]/50">{step.desc}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
         </div>
       </form>
     </div>

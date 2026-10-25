@@ -7,16 +7,11 @@ import {
   PackageX,
   Recycle,
   X,
-  AlertTriangle,
   Map as MapIcon,
-  Check,
-  Clock,
-  Send,
-  XCircle,
-  Info,
 } from 'lucide-react';
-import { Bin, Report, WasteCategory } from '../../../types';
+import { Bin, Report } from '../../../types';
 import { CampusMapFrame } from '../../../components/map/CampusMapFrame';
+import { StudentPageHeader, studentPage } from './ui/StudentPrimitives';
 
 interface BinMapTabProps {
   bins: Bin[];
@@ -200,29 +195,24 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 animate-fade-in pb-12">
-      {/* Header Banner */}
-      <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-5 shadow-xs flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0">
-            <MapPin size={20} />
-          </div>
-          <div>
-            <h2 className="font-heading font-bold text-sm text-[var(--text-strong)]">Campus Live Bin Map</h2>
-            <p className="text-xs text-[var(--text-strong)]/70 font-medium">
-              View real-time station statuses across campus buildings.
-            </p>
-          </div>
-        </div>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shrink-0">
-          <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
-          Live Status
-        </span>
-      </div>
+    <div className={studentPage}>
+      <StudentPageHeader
+        icon={MapPin}
+        title="Campus live bin map"
+        description="Real-time station statuses across campus buildings."
+        meta={
+          <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-[var(--success)]/25 bg-[var(--success)]/10 px-3 py-1 text-[10px] font-bold text-[var(--success-strong)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
+            Live status
+          </span>
+        }
+      />
 
-      {/* Main Map Card */}
-      <div className="bg-white/95 backdrop-blur-sm border border-white/80 rounded-3xl p-5 shadow-sm space-y-4">
-        
+      {/* Main Map Area */}
+      <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-5">
+        <div className="min-w-0 space-y-3 xl:col-span-8">
+
         {/* Search Bar */}
         <div className="relative">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -231,17 +221,17 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
             placeholder="Search campus station location..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-[var(--text-strong)] font-medium outline-none focus:border-[var(--accent)] focus:bg-white transition-all shadow-xs"
+            className="w-full rounded-xl border border-[var(--primary)]/15 bg-[var(--background)]/60 py-2.5 pl-9 pr-4 text-base font-medium text-[var(--text-strong)] outline-none transition-colors focus:border-[var(--accent)] focus:bg-white sm:text-sm"
           />
         </div>
 
         {/* Generous & Responsive Campus Map Container */}
         <div className="space-y-2">
-          <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-            <span>Campus Map Grid (Tap Pin for Status Details)</span>
+          <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/40">
+            <span>Tap a pin for status details</span>
             {activeStation && (
-              <span className="text-[var(--accent)] normal-case font-bold truncate max-w-[240px]">
-                Selected: {activeStation.locationName}
+              <span className="max-w-[240px] truncate font-bold normal-case text-[var(--accent)]">
+                {activeStation.locationName}
               </span>
             )}
           </div>
@@ -250,7 +240,7 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
               corners, while station popovers must be able to escape the box. */}
           <div
             data-testid="bin-map-container"
-            className="relative w-full h-[360px] sm:h-[420px] rounded-2xl border border-gray-200 bg-[#f8fafc] shadow-inner flex items-center justify-center"
+            className="relative flex h-[clamp(300px,52svh,560px)] w-full items-center justify-center rounded-xl border border-[var(--primary)]/15 bg-[var(--background)]/50"
           >
             {/* ATLAS base map (falls back to the uploaded blueprint, then vector grid) */}
             <CampusMapFrame
@@ -396,10 +386,12 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
             </CampusMapFrame>
           </div>
         </div>
+        </div>
 
+        <aside className="space-y-4 xl:col-span-4">
         {/* Location Pills */}
-        <div className="space-y-1.5 pt-1">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Campus Locations</span>
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/40">Campus stations</span>
           <div className="flex flex-wrap gap-1.5">
             {filteredStations.map((station) => {
               const isSel = activeStation?.locationName === station.locationName;
@@ -434,27 +426,41 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
         {activeStation && (() => {
           const visibleSlots = activeStation.slots.filter(s => s.statusState !== 'NO_BIN');
           return (
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-[var(--text-strong)] flex items-center gap-1.5">
-                  <MapPin size={14} className="text-[var(--accent)]" />
-                  <span>Select Waste Category at {activeStation.locationName}:</span>
+            <div className="overflow-hidden rounded-xl border border-[var(--primary)]/10 bg-white">
+              <div className="flex items-start justify-between gap-2 border-b border-[var(--primary)]/10 px-3.5 py-3">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-strong)]">
+                  <MapPin size={14} className="shrink-0 text-[var(--accent)]" />
+                  <span>Streams at {activeStation.locationName}</span>
                 </p>
-                <span className="text-[10px] font-extrabold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  {visibleSlots.length} Stream{visibleSlots.length !== 1 ? 's' : ''} Installed
+                <span className="shrink-0 rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/5 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-[var(--accent)]">
+                  {visibleSlots.length} installed
                 </span>
               </div>
 
               {visibleSlots.length === 0 ? (
-                <div className="p-4 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-center text-xs font-semibold">
-                  No active waste stream bins installed at this location.
-                </div>
+                <p className="px-3.5 py-4 text-center text-xs font-semibold text-[var(--text-strong)]/50">
+                  No active waste stream bins installed here.
+                </p>
               ) : (
-                <div className={`grid grid-cols-1 ${visibleSlots.length === 1 ? 'sm:grid-cols-1 max-w-sm' : visibleSlots.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-3`}>
+                <div className="divide-y divide-[var(--primary)]/10">
                   {visibleSlots.map(slot => {
                 const meta = CAT_META[slot.type];
                 const Icon = meta.Icon;
                 const isAvailable = slot.isAvailable;
+                const statusLabel =
+                  slot.statusState === 'UNAVAILABLE' || slot.statusState === 'LIMIT_REACHED'
+                    ? 'Unavailable'
+                    : slot.statusState === 'DISPATCHED'
+                    ? 'Pick up pending'
+                    : slot.statusState === 'REPORTED_FULL'
+                    ? 'Reported full'
+                    : 'Available';
+                const statusClass =
+                  slot.statusState === 'UNAVAILABLE' || slot.statusState === 'LIMIT_REACHED'
+                    ? 'border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--danger-strong)]'
+                    : slot.statusState === 'DISPATCHED' || slot.statusState === 'REPORTED_FULL'
+                    ? 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--warning-strong)]'
+                    : 'border-[var(--success)]/25 bg-[var(--success)]/10 text-[var(--success-strong)]';
 
                 return (
                   <button
@@ -462,68 +468,22 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
                     type="button"
                     disabled={!isAvailable}
                     onClick={() => handleGoToReport(activeStation.locationName, slot.type)}
-                    className={`p-4 rounded-3xl border text-left flex flex-col justify-between transition-all cursor-pointer shadow-xs ${
-                      !isAvailable
-                        ? 'bg-[#fff8f6] border-orange-200 text-gray-700 opacity-85 cursor-not-allowed'
-                        : 'bg-white border-gray-200 text-[var(--text-strong)] hover:border-[var(--accent)] hover:shadow-md'
+                    className={`flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors ${
+                      isAvailable ? 'cursor-pointer hover:bg-[var(--accent)]/5' : 'cursor-not-allowed opacity-60'
                     }`}
                   >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className={`p-2.5 rounded-2xl text-white shadow-xs ${!isAvailable ? 'bg-orange-500' : meta.bg}`}>
-                          <Icon size={18} />
-                        </div>
-                        <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                          slot.statusState === 'UNAVAILABLE' || slot.statusState === 'LIMIT_REACHED'
-                            ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                            : slot.statusState === 'NO_BIN'
-                            ? 'bg-gray-200 text-gray-700 border border-gray-300'
-                            : slot.statusState === 'DISPATCHED'
-                            ? 'bg-orange-100 text-orange-800 border border-orange-200'
-                            : slot.statusState === 'REPORTED_FULL'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        }`}>
-                          {slot.statusState === 'UNAVAILABLE' || slot.statusState === 'LIMIT_REACHED'
-                            ? 'Unavailable Bin'
-                            : slot.statusState === 'NO_BIN'
-                            ? 'No Bin'
-                            : slot.statusState === 'DISPATCHED'
-                            ? 'Pending Pick Up'
-                            : slot.statusState === 'REPORTED_FULL'
-                            ? 'Reported Full'
-                            : 'Available'}
-                        </span>
-                      </div>
-
-                      <p className="text-sm font-bold text-[var(--text-strong)]">{meta.label}</p>
-                      <p className="text-[11px] text-[var(--text-strong)]/60 font-medium mt-0.5 leading-snug">{meta.desc}</p>
-                    </div>
-
-                    <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-gray-400">Status:</span>
-                      {slot.statusState === 'UNAVAILABLE' || slot.statusState === 'LIMIT_REACHED' ? (
-                        <span className="font-extrabold text-rose-600 flex items-center gap-1">
-                          <XCircle size={11} /> Unavailable Bin
-                        </span>
-                      ) : slot.statusState === 'NO_BIN' ? (
-                        <span className="font-extrabold text-gray-500 flex items-center gap-1">
-                          <Info size={11} /> No Bin at Location
-                        </span>
-                      ) : slot.statusState === 'DISPATCHED' ? (
-                        <span className="font-extrabold text-orange-600 flex items-center gap-1">
-                          <Clock size={11} /> Pending Pick Up
-                        </span>
-                      ) : slot.statusState === 'REPORTED_FULL' ? (
-                        <span className="font-extrabold text-amber-600 flex items-center gap-1">
-                          <AlertTriangle size={11} /> Reported Full
-                        </span>
-                      ) : (
-                        <span className="font-bold text-[var(--accent)] flex items-center gap-1">
-                          <Check size={11} /> Available
-                        </span>
-                      )}
-                    </div>
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      isAvailable ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'bg-[var(--warning)]/15 text-[var(--warning-strong)]'
+                    }`}>
+                      <Icon size={16} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-bold text-[var(--text-strong)]">{meta.label}</span>
+                      <span className="mt-0.5 block truncate text-[10px] font-medium text-[var(--text-strong)]/50">{meta.desc}</span>
+                    </span>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${statusClass}`}>
+                      {statusLabel}
+                    </span>
                   </button>
                 );
               })}
@@ -532,7 +492,8 @@ export const BinMapTab: React.FC<BinMapTabProps> = ({
         </div>
       );
     })()}
-
+        </aside>
+        </div>
       </div>
     </div>
   );
