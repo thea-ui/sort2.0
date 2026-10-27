@@ -16,6 +16,7 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
     {
       key: 'name',
       header: 'User Name',
+      className: 'w-[22%]',
       value: (u) => u.name,
       skeleton: 'avatar',
       cell: (u) => {
@@ -27,7 +28,9 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
             >
               {u.name.charAt(0)}
             </div>
-            <p className="font-bold text-[var(--text-strong)] leading-tight">{u.name}</p>
+            <p className="max-w-[260px] truncate font-bold leading-tight text-[var(--text-strong)]">
+              {u.name}
+            </p>
           </div>
         );
       },
@@ -35,6 +38,7 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
     {
       key: 'role',
       header: 'Role & Type',
+      className: 'w-[12%]',
       value: (u) => ROLE_ORDER[u.role],
       skeleton: 'pill',
       cell: (u) => {
@@ -61,27 +65,33 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
     {
       key: 'contact',
       header: 'Contact & Employee ID',
+      className: 'w-[26%]',
       value: (u) => u.email,
       skeleton: 'text',
       cell: (u) => (
         <>
-          <div className="font-mono text-[11px] text-[var(--text-strong)]/70">{u.email}</div>
-          <div className="font-mono text-[10px] text-[var(--text-strong)]/40 mt-0.5">{u.employeeId}</div>
+          <div className="max-w-[260px] truncate font-mono text-[11px] text-[var(--text-strong)]/70">
+            {u.email}
+          </div>
+          <div className="mt-0.5 font-mono text-[10px] text-[var(--text-strong)]/40">
+            {u.employeeId}
+          </div>
         </>
       ),
     },
     {
       key: 'section',
       header: 'Section / Dept',
+      className: 'w-[18%]',
       value: (u) => getUserSectionLabel(u) || '',
       skeleton: 'text',
       cell: (u) => {
         const section = getUserSectionLabel(u);
         if (!section) {
-          return <span className="text-[var(--text-strong)]/30 italic text-[11px]">—</span>;
+          return <span className="text-[11px] font-medium text-[var(--text-strong)]/30">—</span>;
         }
         return (
-          <span className="px-2 py-0.5 bg-[color-mix(in_srgb,var(--primary)_5%,white)] border border-[var(--primary)]/10 rounded-md text-[10px] font-bold text-[var(--text-strong)]/70">
+          <span className="rounded-md border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--primary)_5%,white)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-strong)]/70">
             {section}
           </span>
         );
@@ -90,35 +100,40 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
     {
       key: 'warnings',
       header: 'Warnings',
+      className: 'w-[8%]',
       align: 'center',
       value: (u) => u.warningsCount,
       skeleton: 'number',
       cell: (u) =>
         u.warningsCount > 0 ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-50 text-rose-600 border border-rose-200">
+          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-2 py-0.5 text-[11px] font-extrabold text-[var(--warning-strong)]">
             <BadgeAlert size={12} />
             {u.warningsCount}
           </span>
         ) : (
-          <span className="text-[var(--text-strong)]/30 font-medium text-[11px]">0</span>
+          <span className="text-[11px] font-medium text-[var(--text-strong)]/30">0</span>
         ),
     },
     {
       key: 'points',
       header: 'Points',
+      className: 'w-[8%]',
       align: 'right',
       value: (u) => u.points,
       skeleton: 'number',
       cell: (u) =>
         u.role === 'STUDENT' ? (
-          <span className="text-[var(--accent)] font-black">{u.points.toLocaleString()} pts</span>
+          <span className="font-semibold text-[var(--accent)]">
+            {u.points.toLocaleString()} pts
+          </span>
         ) : (
-          <span className="text-[var(--text-strong)]/30 italic font-medium">—</span>
+          <span className="font-medium text-[var(--text-strong)]/30">—</span>
         ),
     },
     {
       key: 'action',
       header: 'Action',
+      className: 'w-[6%]',
       align: 'center',
       skeleton: 'pill',
       cell: (u) => (
@@ -128,10 +143,11 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
             e.stopPropagation();
             onInspect(u);
           }}
-          className="p-1.5 text-[var(--text-strong)]/60 hover:text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,white)] rounded-xl transition-all cursor-pointer"
-          title="Inspect User Profile"
+          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--primary)]/10 bg-white text-[var(--text-strong)]/50 transition-colors hover:border-[var(--accent)]/25 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+          title="Inspect user profile"
+          aria-label={`Inspect ${u.name}`}
         >
-          <Eye size={16} />
+          <Eye size={15} />
         </button>
       ),
     },

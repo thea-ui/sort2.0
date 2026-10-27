@@ -10,9 +10,9 @@ import { seedSession } from './helpers/session';
 async function openCatalog(page: import('@playwright/test').Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Rewards' }).first().click();
-  // The card title varies; the catalog tab button is the stable anchor.
-  await expect(page.getByRole('button', { name: /^Prize Catalog/ })).toBeVisible();
-  await page.getByRole('button', { name: /^Prize Catalog/ }).click();
+  // The card title varies; the prize-configuration tab is the stable anchor.
+  await expect(page.getByRole('tab', { name: /^Prize configuration/ })).toBeVisible();
+  await page.getByRole('tab', { name: /^Prize configuration/ }).click();
 }
 
 test('prize edit modal opens prefilled, validates, and closes on Escape', async ({ page }) => {

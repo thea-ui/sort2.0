@@ -58,8 +58,6 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({ users }) => {
         statusFilter={directory.statusFilter}
         onStatusChange={directory.setStatusFilter}
         isLoading={directory.isLoadingUsers}
-        shownCount={directory.processedUsers.length}
-        totalCount={directory.enrollProUsers.length}
       />
 
       {viewMode === 'table' ? (

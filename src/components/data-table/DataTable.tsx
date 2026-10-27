@@ -129,7 +129,7 @@ export function DataTable<T>({
   const colSpan = Math.max(columns.length, 1);
 
   return (
-    <Card className={cn('border border-border shadow-sm bg-card rounded-xl p-0 overflow-hidden', className)}>
+    <Card className={cn('border border-[var(--primary)]/10 shadow-sm bg-card rounded-2xl p-0 overflow-hidden', className)}>
       {showHeader && (
         <div className="px-6 py-4 border-b border-border flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           {(title || description) && (
@@ -155,7 +155,7 @@ export function DataTable<T>({
       <div className="overflow-x-auto">
         <Table style={minWidth ? { minWidth } : undefined}>
           <TableHeader>
-            <TableRow className="bg-muted/50 border-b border-border">
+            <TableRow className="border-b border-[var(--primary)]/10 bg-[var(--background)]/60">
               {columns.map((column) => {
                 const isSorted = sort?.key === column.key;
                 return (

@@ -159,6 +159,13 @@ model User {
   // Offline login cache: bcrypt hash of the last password EnrollPro verified,
   // accepted ONLY while EnrollPro is unreachable. Null means no offline login.
   passwordCachedAt DateTime? @map("password_cached_at")
+  // Local-first login: the last time EnrollPro itself confirmed the password.
+  // A cached hash without this timestamp must never take the local fast path.
+  passwordVerifiedAt DateTime? @map("password_verified_at")
+  // EnrollPro default-password flags. They disable the local-first fast path
+  // so the next login is checked with EnrollPro again.
+  passwordChangeRequired Boolean @default(false) @map("password_change_required")
+  passwordResetRequired  Boolean @default(false) @map("password_reset_required")
 
   reports         Report[]       @relation("ReportedBy")
   assignedReports Report[]       @relation("AssignedToMRF")

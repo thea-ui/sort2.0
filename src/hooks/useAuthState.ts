@@ -50,6 +50,10 @@ export function useAuthState() {
   }, [isAuthenticated]);
 
   const login = async (password: string, identifier: string, portal?: LoginPortal): Promise<LoginResult> => {
+    // Never let a stale token survive a failed login attempt.
+    sessionStorage.removeItem('sortv2_token');
+    sessionStorage.removeItem('sortv2_user_id');
+    sessionStorage.removeItem('sort_auth');
     try {
       const res = await apiService.login(identifier, password, portal);
       if (res && res.token && res.user) {

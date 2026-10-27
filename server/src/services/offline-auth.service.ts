@@ -2,12 +2,13 @@ import { prisma } from '../lib/prisma.js';
 /**
  * Offline password-cache authentication.
  *
- * Online logins are still delegated to EnrollPro. After EnrollPro verifies a
- * password, SORT stores a bcrypt hash of it (never plaintext) plus the time it
- * was verified. When EnrollPro is unreachable, that hash is the only accepted
- * credential — bounded by a freshness window and an admin kill-switch. An
- * online EnrollPro response (including 401) never falls back to the cache, so
- * a password change on EnrollPro always wins while it is reachable.
+ * EnrollPro remains the password authority. After EnrollPro verifies a
+ * password, SORT stores a bcrypt hash of it (never plaintext) plus timestamps
+ * for when it was cached and when EnrollPro last verified it. The hash may be
+ * used by the optional local-first fast path, and as the outage fallback —
+ * bounded by a freshness window and an admin kill-switch. An online EnrollPro
+ * response (including 401) never falls back to the cache, so a password change
+ * on EnrollPro always wins while it is reachable.
  */
 import bcrypt from 'bcryptjs';
 
@@ -24,6 +25,21 @@ export interface OfflineAuthPolicy {
 export interface OfflineVerifyResult {
   ok: boolean;
   reason?: 'DISABLED' | 'NO_CACHE' | 'STALE' | 'BAD_PASSWORD';
+}
+
+export interface LocalPasswordCheck {
+  hasHash: boolean;
+  matches: boolean;
+}
+
+export interface LocalFastPathInput {
+  enabled: boolean;
+  hasLocalHash: boolean;
+  localMatches: boolean;
+  verifiedAt: Date | null;
+  passwordChangeRequired: boolean;
+  passwordResetRequired: boolean;
+  revalidationDue: boolean;
 }
 
 export function clampMaxCacheDays(value: unknown): number {
@@ -51,6 +67,52 @@ export async function verifyPasswordHash(password: string, hash: string): Promis
   return bcrypt.compare(password, hash);
 }
 
+/**
+ * Compare a password against the locally cached hash. This proves only that the
+ * password matches the hash; callers must still require passwordVerifiedAt
+ * before using it as a local-first login.
+ */
+export async function verifyLocalPassword(
+  user: { passwordHash: string | null },
+  password: string
+): Promise<LocalPasswordCheck> {
+  if (!user.passwordHash) return { hasHash: false, matches: false };
+  return {
+    hasHash: true,
+    matches: await verifyPasswordHash(password, user.passwordHash),
+  };
+}
+
+/**
+ * A cached hash is eligible for the no-network fast path only when EnrollPro
+ * has verified it, no password-change flag is set, and the optional
+ * revalidation window has not elapsed.
+ */
+export function canUseLocalFastPath(input: LocalFastPathInput): boolean {
+  return (
+    input.enabled &&
+    input.hasLocalHash &&
+    input.localMatches &&
+    input.verifiedAt !== null &&
+    !input.passwordChangeRequired &&
+    !input.passwordResetRequired &&
+    !input.revalidationDue
+  );
+}
+
+/**
+ * `0` days means never revalidate while the hash still matches. A positive
+ * value forces one EnrollPro check per user per window.
+ */
+export function isRevalidationDue(
+  verifiedAt: Date | null | undefined,
+  maxAgeDays: number,
+  now: Date = new Date()
+): boolean {
+  if (!verifiedAt || !Number.isFinite(maxAgeDays) || maxAgeDays <= 0) return false;
+  return now.getTime() - verifiedAt.getTime() > maxAgeDays * DAY_MS;
+}
+
 export async function getOfflineAuthPolicy(): Promise<OfflineAuthPolicy> {
   const row = await prisma.systemSetting.findUnique({
     where: { id: 'default_setting' },
@@ -71,9 +133,16 @@ export async function getOfflineAuthPolicy(): Promise<OfflineAuthPolicy> {
 export async function cacheVerifiedPassword(userId: string, password: string): Promise<void> {
   try {
     const hash = await hashPassword(password);
+    const now = new Date();
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: hash, passwordCachedAt: new Date() },
+      data: {
+        passwordHash: hash,
+        passwordCachedAt: now,
+        passwordVerifiedAt: now,
+        passwordChangeRequired: false,
+        passwordResetRequired: false,
+      },
     });
   } catch (error: any) {
     console.error('[OfflineAuth] Failed to cache password hash:', error?.message || error);
@@ -84,7 +153,7 @@ export async function clearCachedPassword(userId: string): Promise<void> {
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: null, passwordCachedAt: null },
+      data: { passwordHash: null, passwordCachedAt: null, passwordVerifiedAt: null },
     });
   } catch (error: any) {
     console.error('[OfflineAuth] Failed to clear cached password hash:', error?.message || error);

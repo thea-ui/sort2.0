@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
+import { useTheme } from '../../hooks/useTheme';
+import { resolveBrandIdentity } from '../../utils/brandIdentity';
 import {
   Zap,
   Camera,
@@ -51,6 +53,8 @@ const NAV_GROUPS = [
 
 export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTab, setActiveTab }) => {
   const { currentUser, logout, notifications, dismissNotification } = useMockData();
+  const { schoolName, schoolAcronym, logoUrl, brandingSource } = useTheme();
+  const brand = resolveBrandIdentity({ schoolName, schoolAcronym, logoUrl, brandingSource });
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
@@ -110,12 +114,25 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
       {/* Desktop Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-slate-200 bg-[#fafafa] shadow-sm transition-[width] duration-200 lg:flex ${sidebarCollapsed ? 'w-[70px]' : 'w-[280px]'}`}>
         <div className={`flex h-24 shrink-0 items-center overflow-hidden ${sidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
-          <SortLogo
-            size={sidebarCollapsed ? 40 : 48}
-            showText={!sidebarCollapsed}
-            subtitle={isTeacher ? 'Faculty Portal' : 'Student Portal'}
-            textClassName="font-bold uppercase tracking-tight text-[var(--theme-primary)]"
-          />
+          {sidebarCollapsed ? (
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-100 bg-white p-1 shadow-sm">
+              <SortLogo size={40} showText={false} />
+            </div>
+          ) : (
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-100 bg-white p-1 shadow-sm">
+                <SortLogo size={40} showText={false} />
+              </div>
+              <div className="min-w-0">
+                <span className="block max-w-[172px] text-sm font-bold uppercase leading-tight tracking-tight text-[var(--theme-primary)]">
+                  {brand.displayName}
+                </span>
+                <span className="mt-0.5 block text-[10px] font-semibold uppercase leading-none tracking-wider text-gray-400">
+                  {isTeacher ? 'Faculty Portal' : 'Student Portal'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <nav className="custom-scrollbar flex-1 overflow-x-hidden overflow-y-auto px-3 py-2" aria-label={isTeacher ? 'Faculty portal' : 'Student portal'}>

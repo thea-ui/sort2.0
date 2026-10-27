@@ -2,10 +2,10 @@ import { test, expect } from '@playwright/test';
 import { seedSession } from './helpers/session';
 import {
   EMPTY_MAP_FIXTURE,
+  FULL_MAP_FIXTURE,
   ROTATED_MAP_FIXTURE,
   mockAtlasImage,
   mockAtlasMap,
-  mockAtlasMapDelayed,
 } from './helpers/atlasRoutes';
 
 const ONE_PX_PNG =
@@ -123,7 +123,21 @@ test.describe('Bin Map base layer — ATLAS first', () => {
       localStorage.setItem('sort_blueprint_url', png);
     }, ONE_PX_PNG);
 
-    await mockAtlasMapDelayed(page, 1200);
+    // Hold the ATLAS response open until the pending state has been asserted.
+    // A fixed delay makes this test race the app's sign-in prefetch on slower
+    // machines; a gate makes the loading window deterministic.
+    let releaseMap!: () => void;
+    const mapGate = new Promise<void>((resolve) => {
+      releaseMap = resolve;
+    });
+    await page.route('**/api/atlas/map', async (route) => {
+      await mapGate;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(FULL_MAP_FIXTURE),
+      });
+    });
     await mockAtlasImage(page, false);
     await page.goto('/');
     await page.getByRole('button', { name: 'Bin Map' }).first().click();
@@ -133,6 +147,7 @@ test.describe('Bin Map base layer — ATLAS first', () => {
     await expect(page.getByTestId('campus-map-fallback')).toHaveCount(0);
     await expect(page.getByTestId('atlas-base-map')).toHaveCount(0);
 
+    releaseMap();
     await expect(page.getByTestId('atlas-base-map')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('campus-map-fallback')).toHaveCount(0);
     await expect(page.getByTestId('campus-map-pending')).toHaveCount(0);

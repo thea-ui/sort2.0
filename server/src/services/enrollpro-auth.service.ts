@@ -3,6 +3,7 @@ const ENROLLPRO_BASE = process.env.ENROLLPRO_BASE_URL || 'https://dev-jegs.buru-
 export interface EnrollProAuthResult {
   success: boolean;
   mustChangePassword?: boolean;
+  requiresPasswordReset?: boolean;
   accountInactive?: boolean;
   token?: string;
   user?: { id: number; name: string; email: string; role: string };
@@ -124,7 +125,7 @@ export async function authenticateLearnerWithEnrollPro(
       }
       return {
         success: true,
-        mustChangePassword: body.requiresPasswordReset === true || undefined,
+        requiresPasswordReset: body.requiresPasswordReset === true || undefined,
       };
     }
 

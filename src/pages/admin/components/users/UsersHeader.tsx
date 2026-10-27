@@ -1,5 +1,5 @@
 import React from 'react';
-import { Grid, List } from 'lucide-react';
+import { Grid, List, Users } from 'lucide-react';
 import { PageHeader } from '../../../../components/layout/PageHeader';
 
 interface UsersHeaderProps {
@@ -18,12 +18,13 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
   <PageHeader
     title="User & Role Management"
     badge={
-      <span className="text-[10px] font-bold text-[var(--gold)] bg-[color-mix(in_srgb,var(--gold)_10%,white)] border border-[var(--gold)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--primary)]/10 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/55">
+        <Users size={12} className="text-[var(--accent)]" />
         {isLoading ? 'Loading accounts…' : `${accountCount} Registered Accounts`}
       </span>
     }
     actions={
-      <div className="flex items-center gap-1 bg-white border border-white/80 p-1 rounded-full shadow-sm">
+      <div className="flex items-center gap-1 rounded-full border border-[var(--primary)]/10 bg-white p-1 shadow-sm">
         {(
           [
             { mode: 'table' as const, label: 'Table View', icon: List },

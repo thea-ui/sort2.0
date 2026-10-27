@@ -4,7 +4,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   AUTH_SERVICE_UNREACHABLE: 'EnrollPro is unreachable and no offline sign-in is available for this account yet. Sign in once while EnrollPro is online to enable it.',
   SERVER_UNREACHABLE: 'Cannot reach the SORT server. Please try again later.',
   ACCOUNT_SUSPENDED: 'Account is suspended. Please try again later.',
-  PASSWORD_CHANGE_REQUIRED: 'Please change your password in EnrollPro first, then sign in.',
   NO_ENROLLPRO_ACCOUNT: 'Your EnrollPro portal account is not yet activated. Contact the registrar.',
   RATE_LIMITED: 'Too many login attempts. Please try again in 15 minutes.',
   WRONG_PORTAL: 'This account does not have access to this portal.',
