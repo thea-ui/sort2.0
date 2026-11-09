@@ -4,6 +4,7 @@ import { rescheduleSync, stopScheduledSync } from './services/sync-scheduler.ser
 import { rescheduleBinReset, stopScheduledBinReset } from './services/bin-reset.service.js';
 import { rescheduleAtlasSync, stopScheduledAtlasSync } from './services/atlas-sync-scheduler.service.js';
 import { startBrandingSyncScheduler, stopBrandingSyncScheduler } from './services/branding-sync-scheduler.service.js';
+import { applyBrandingPresetIfConfigured } from './services/branding-preset.service.js';
 
 /**
  * Dedicated scheduler process (Phase 6).
@@ -26,6 +27,10 @@ process.on('unhandledRejection', (reason: any) => {
 
 async function start(): Promise<void> {
   await prisma.$connect();
+
+  await applyBrandingPresetIfConfigured().catch((error: any) => {
+    console.error('[Worker] Failed to apply branding preset:', error?.message || error);
+  });
 
   rescheduleSync().catch((err) => {
     console.error('[Worker] Sync scheduler failed to start:', err.message);

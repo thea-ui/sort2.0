@@ -438,10 +438,10 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   return (
     <div className="h-screen max-h-screen text-[var(--text-strong)] flex overflow-hidden font-sans">
-      <PixelGridBackground />
+      <PixelGridBackground variant="pixel" tone="neutral" />
       <aside
         className={cx(
-          'hidden lg:flex flex-col shrink-0 bg-[#fafafa] border-r border-slate-200 shadow-sm transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[width] overflow-hidden',
+          'hidden lg:flex flex-col shrink-0 bg-[var(--sidebar-bg)] border-r border-[var(--shell-border)] shadow-sm transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[width] overflow-hidden',
           collapsed ? 'w-[70px]' : 'w-[280px]',
         )}
         style={{ fontFamily: "'DM Sans', 'Poppins', sans-serif" }}
@@ -463,7 +463,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 <BrandTile brand={brand} className="w-12 h-12" />
               </div>
               <div className="ml-3 transition-all duration-200 origin-left flex-shrink-0">
-                <span className="font-bold text-sm leading-tight tracking-tight uppercase block max-w-[160px] text-[var(--theme-primary)] line-clamp-2">
+                <span className="font-bold text-sm leading-tight tracking-tight uppercase block max-w-[160px] break-words text-[var(--theme-primary)]">
                   {brand.name}
                 </span>
               </div>
@@ -484,7 +484,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 shrink-0 z-30 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 lg:px-6">
+        <header className="sticky top-0 shrink-0 z-30 h-16 bg-white/85 backdrop-blur-md border-b border-[var(--shell-border)] px-4 lg:px-6">
           <div className="h-full flex items-center justify-between">
             <div className="flex items-center gap-4 min-w-0">
               <button

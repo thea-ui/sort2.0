@@ -59,14 +59,14 @@ export const TeacherConditionUrgency: React.FC<TeacherConditionUrgencyProps> = (
         </div>
       </div>
     ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
-          <div className="flex items-center gap-2">
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-1">
+        <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-5 shadow-xs sm:p-6">
+          <div className="mb-3 flex items-center gap-2">
             <ShieldAlert size={16} className="text-[var(--text-strong)]/60" />
             <h3 className="text-xs font-bold text-[var(--text-strong)]">Condition</h3>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid gap-2">
             {dynamicConditions.map(cond => {
               const isSelected = selectedCondition === cond.id;
               return (
@@ -74,32 +74,33 @@ export const TeacherConditionUrgency: React.FC<TeacherConditionUrgencyProps> = (
                   key={cond.id}
                   type="button"
                   onClick={() => setSelectedCondition(cond.id)}
-                  className={`w-full text-left p-3 rounded-2xl border text-xs transition-all cursor-pointer flex items-start gap-3 ${
+                  aria-pressed={isSelected}
+                  className={`flex min-h-[56px] w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left text-xs transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-[var(--primary)]/10 border-[var(--primary)]/25 text-[var(--text-strong)] shadow-2xs font-bold'
                       : 'bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <span className={`mt-0.5 h-3.5 w-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${isSelected ? 'border-[var(--primary)] bg-[var(--primary)]' : 'border-gray-300'}`}>
+                  <span className={`h-3.5 w-3.5 shrink-0 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-[var(--primary)] bg-[var(--primary)]' : 'border-gray-300'}`}>
                     {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                   </span>
-                  <div>
-                    <p className="font-bold text-xs">{cond.label}</p>
-                    <p className="text-[10px] text-gray-400 font-normal mt-0.5">{cond.desc}</p>
-                  </div>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-bold leading-tight">{cond.label}</span>
+                    <span className="mt-0.5 block text-[11px] font-normal leading-snug text-gray-400">{cond.desc}</span>
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-6 shadow-xs space-y-3">
-          <div className="flex items-center gap-2">
+        <div className="rounded-3xl border border-white/80 bg-white/95 backdrop-blur-md p-5 shadow-xs sm:p-6">
+          <div className="mb-3 flex items-center gap-2">
             <AlertTriangle size={16} className="text-[var(--text-strong)]/60" />
             <h3 className="text-xs font-bold text-[var(--text-strong)]">Urgency Level</h3>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid gap-2">
             {dynamicUrgencies.map(urg => {
               const isSelected = selectedUrgency === urg.value;
               return (
@@ -107,19 +108,20 @@ export const TeacherConditionUrgency: React.FC<TeacherConditionUrgencyProps> = (
                   key={urg.id}
                   type="button"
                   onClick={() => setSelectedUrgency(urg.value)}
-                  className={`w-full text-left p-3 rounded-2xl border text-xs transition-all cursor-pointer flex items-start gap-3 ${
+                  aria-pressed={isSelected}
+                  className={`flex min-h-[56px] w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left text-xs transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-amber-50/80 border-amber-400 text-amber-900 shadow-2xs font-bold'
                       : 'bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <span className={`mt-0.5 h-3.5 w-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${isSelected ? 'border-amber-500 bg-amber-500' : 'border-gray-300'}`}>
+                  <span className={`h-3.5 w-3.5 shrink-0 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-amber-500 bg-amber-500' : 'border-gray-300'}`}>
                     {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                   </span>
-                  <div>
-                    <p className="font-bold text-xs">{urg.label}</p>
-                    <p className="text-[10px] text-gray-400 font-normal mt-0.5">{urg.desc}</p>
-                  </div>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-bold leading-tight">{urg.label}</span>
+                    <span className="mt-0.5 block text-[11px] font-normal leading-snug text-gray-400">{urg.desc}</span>
+                  </span>
                 </button>
               );
             })}

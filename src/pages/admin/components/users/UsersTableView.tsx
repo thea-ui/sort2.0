@@ -24,11 +24,11 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
         return (
           <div className="flex items-center gap-3">
             <div
-              className={`w-8 h-8 rounded-full ${roleCfg.bg} ${roleCfg.text} font-black flex items-center justify-center text-xs shrink-0 border ${roleCfg.border}`}
+              className={`h-9 w-9 rounded-full ${roleCfg.bg} ${roleCfg.text} font-black flex items-center justify-center text-[11px] shrink-0 border ${roleCfg.border}`}
             >
               {u.name.charAt(0)}
             </div>
-            <p className="max-w-[260px] truncate font-bold leading-tight text-[var(--text-strong)]">
+            <p className="max-w-[260px] truncate font-semibold leading-tight text-[var(--text-strong)]">
               {u.name}
             </p>
           </div>
@@ -70,10 +70,10 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
       skeleton: 'text',
       cell: (u) => (
         <>
-          <div className="max-w-[260px] truncate font-mono text-[11px] text-[var(--text-strong)]/70">
+          <div className="max-w-[260px] truncate font-mono text-[11.5px] text-[var(--text-strong)]/70">
             {u.email}
           </div>
-          <div className="mt-0.5 font-mono text-[10px] text-[var(--text-strong)]/40">
+          <div className="mt-0.5 font-mono text-[10.5px] text-[var(--text-strong)]/40">
             {u.employeeId}
           </div>
         </>

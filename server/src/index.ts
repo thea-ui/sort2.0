@@ -22,12 +22,17 @@ import { rescheduleSync, stopScheduledSync } from './services/sync-scheduler.ser
 import { rescheduleBinReset, stopScheduledBinReset } from './services/bin-reset.service.js';
 import { rescheduleAtlasSync, stopScheduledAtlasSync } from './services/atlas-sync-scheduler.service.js';
 import { startBrandingSyncScheduler, stopBrandingSyncScheduler } from './services/branding-sync-scheduler.service.js';
+import { applyBrandingPresetIfConfigured } from './services/branding-preset.service.js';
 import { UPLOADS_DIR } from './services/enrollpro-branding.service.js';
 import { prisma } from './lib/prisma.js';
 import { mkdirSync } from 'node:fs';
 
 // Fail fast: never boot with a missing or insecure JWT secret.
 validateEnv();
+
+await applyBrandingPresetIfConfigured().catch((error: any) => {
+  console.error('[Branding] Failed to apply presentation preset:', error?.message || error);
+});
 
 const app = express();
 const PORT = process.env.PORT || 5000;

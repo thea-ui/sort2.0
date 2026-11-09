@@ -129,13 +129,13 @@ export function DataTable<T>({
   const colSpan = Math.max(columns.length, 1);
 
   return (
-    <Card className={cn('border border-[var(--primary)]/10 shadow-sm bg-card rounded-2xl p-0 overflow-hidden', className)}>
+    <Card className={cn('border border-[var(--table-border)] shadow-sm bg-[var(--table-card)] rounded-2xl p-0 overflow-hidden', className)}>
       {showHeader && (
-        <div className="px-6 py-4 border-b border-border flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="px-5 py-4 border-b border-[var(--table-border)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           {(title || description) && (
             <div>
-              {title && <h3 className="text-base font-semibold text-foreground">{title}</h3>}
-              {description && <p className="text-sm text-muted-foreground">{description}</p>}
+              {title && <h3 className="text-[15px] font-semibold text-[var(--table-text)]">{title}</h3>}
+              {description && <p className="text-[12.5px] text-[var(--table-muted)]">{description}</p>}
             </div>
           )}
           {showToolbar && (
@@ -155,7 +155,7 @@ export function DataTable<T>({
       <div className="overflow-x-auto">
         <Table style={minWidth ? { minWidth } : undefined}>
           <TableHeader>
-            <TableRow className="border-b border-[var(--primary)]/10 bg-[var(--background)]/60">
+            <TableRow className="border-b border-[var(--table-border)] bg-[var(--table-header-bg)] hover:bg-[var(--table-header-bg)]">
               {columns.map((column) => {
                 const isSorted = sort?.key === column.key;
                 return (

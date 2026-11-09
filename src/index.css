@@ -109,6 +109,23 @@
      UI_POLISH_PLAN.md §2.4. */
   --text-strong: #111827;
 
+  /* ── EnrollPro-aligned shell/table surfaces ───────────────────────────────
+     Warm paper backdrop for authenticated screens plus one shared table
+     surface system. Tenant branding still drives nav/buttons/badges; these
+     tokens are neutral chrome only. */
+  --shell-bg: #F9F3F0;
+  --sidebar-bg: #FAFAFA;
+  --shell-border: #E6E6E2;
+  --grid-line: rgba(30, 30, 28, 0.045);
+  --grid-size: 24px;
+  --table-card: #FFFFFF;
+  --table-header-bg: #FAFAF8;
+  --table-border: #ECECE8;
+  --table-row-hover: #FAFAF8;
+  --table-text: #22221F;
+  --table-muted: #7B7B75;
+  --table-row-height: 64px;
+
   /* Accessibility text scale (1 = 100%) — driven by TextScaleProvider /
      AccessibilityMenu. Only rem-based text scales; px-fixed text is untouched,
      and @media print pins the scale at 1 so printouts never change size. */

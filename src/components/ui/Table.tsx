@@ -10,7 +10,7 @@ import { cn } from '../../utils/cn';
 export const Table: React.FC<React.ComponentProps<'table'>> = ({ className, ...props }) => (
   <table
     data-slot="table"
-    className={cn('w-full caption-bottom text-sm border-collapse', className)}
+    className={cn('w-full caption-bottom text-[13px] border-collapse', className)}
     {...props}
   />
 );
@@ -26,7 +26,7 @@ export const TableBody: React.FC<React.ComponentProps<'tbody'>> = ({ className, 
 export const TableFooter: React.FC<React.ComponentProps<'tfoot'>> = ({ className, ...props }) => (
   <tfoot
     data-slot="table-footer"
-    className={cn('border-t border-border bg-muted/50 font-medium', className)}
+    className={cn('border-t border-[var(--table-border)] bg-[var(--table-header-bg)] font-medium', className)}
     {...props}
   />
 );
@@ -35,7 +35,7 @@ export const TableRow: React.FC<React.ComponentProps<'tr'>> = ({ className, ...p
   <tr
     data-slot="table-row"
     className={cn(
-      'border-b border-border/20 transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
+      'border-b border-[var(--table-border)] transition-colors hover:bg-[var(--table-row-hover)] data-[state=selected]:bg-[var(--table-header-bg)]',
       className,
     )}
     {...props}
@@ -46,7 +46,7 @@ export const TableHead: React.FC<React.ComponentProps<'th'>> = ({ className, ...
   <th
     data-slot="table-head"
     className={cn(
-      'py-3.5 px-4 text-left align-middle text-[11px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap',
+      'h-11 px-5 py-3 text-left align-middle text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--table-muted)] whitespace-nowrap',
       className,
     )}
     {...props}
@@ -56,7 +56,7 @@ export const TableHead: React.FC<React.ComponentProps<'th'>> = ({ className, ...
 export const TableCell: React.FC<React.ComponentProps<'td'>> = ({ className, ...props }) => (
   <td
     data-slot="table-cell"
-    className={cn('py-3.5 px-4 align-middle text-sm text-foreground whitespace-nowrap', className)}
+    className={cn('px-5 py-4 align-middle text-[13px] leading-relaxed text-[var(--table-text)] whitespace-nowrap', className)}
     {...props}
   />
 );

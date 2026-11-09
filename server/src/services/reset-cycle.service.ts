@@ -56,6 +56,16 @@ function timeZoneOffsetMs(date: Date, timeZone: string): number {
  * start is 2026-09-28 18:00 local; at 16:00 local it is the previous day's
  * 18:00. Unknown/invalid reset times fall back to 18:00.
  */
+export function isResetDue(
+  lastResetAt: Date | null | undefined,
+  now: Date = new Date(),
+  resetTime: string = DEFAULT_RESET_TIME,
+  timeZone: string = BIN_RESET_TZ
+): boolean {
+  if (!lastResetAt) return true;
+  return lastResetAt.getTime() < computeResetCycleStart(now, resetTime, timeZone).getTime();
+}
+
 export function computeResetCycleStart(
   now: Date,
   resetTime: string = DEFAULT_RESET_TIME,

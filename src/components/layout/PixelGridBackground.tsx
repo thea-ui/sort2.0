@@ -8,6 +8,13 @@ interface PixelGridBackgroundProps {
   position?: 'fixed' | 'absolute';
   /** Slate→primary wash behind the grid. Off renders the grid alone. */
   wash?: boolean;
+  /**
+   * `pixel` keeps the original SMART rounded-square tile (login screens).
+   * `paper` renders EnrollPro's fine graph-paper grid.
+   */
+  variant?: 'pixel' | 'paper';
+  /** `brand` uses the tenant primary; `neutral` uses the EnrollPro shell tone. */
+  tone?: 'brand' | 'neutral';
   className?: string;
 }
 
@@ -28,24 +35,46 @@ export const PIXEL_GRID_WASH =
 export const PixelGridBackground: React.FC<PixelGridBackgroundProps> = ({
   position = 'fixed',
   wash = true,
+  variant = 'pixel',
+  tone = 'brand',
   className = '',
 }) => {
   const rawId = useId();
   const patternId = `app-pixel-grid-${rawId.replace(/:/g, '')}`;
+  const neutral = tone === 'neutral';
+  const gridStroke = neutral ? 'var(--grid-line)' : 'var(--theme-primary)';
+
+  if (variant === 'paper') {
+    return (
+      <div
+        className={`pointer-events-none ${position === 'fixed' ? 'fixed inset-0 -z-10' : 'absolute inset-0'} ${className}`}
+        style={{
+          backgroundColor: 'var(--shell-bg)',
+          backgroundImage:
+            'linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)',
+          backgroundSize: 'var(--grid-size) var(--grid-size)',
+        }}
+        aria-hidden="true"
+      />
+    );
+  }
 
   return (
     <div
       className={`pointer-events-none ${position === 'fixed' ? 'fixed inset-0 -z-10' : 'absolute inset-0'} ${className}`}
-      style={wash ? { backgroundImage: PIXEL_GRID_WASH } : undefined}
+      style={neutral ? { backgroundColor: 'var(--shell-bg)' } : wash ? { backgroundImage: PIXEL_GRID_WASH } : undefined}
       aria-hidden="true"
     >
-      <svg className="absolute inset-0 h-full w-full opacity-[0.08]" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        className={`absolute inset-0 h-full w-full ${neutral ? '' : 'opacity-[0.08]'}`}
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <defs>
           <pattern id={patternId} x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
-            <rect x="2" y="2" width="36" height="36" rx="2" fill="none" stroke="var(--theme-primary)" strokeWidth="1.5" />
-            <rect x="42" y="2" width="36" height="36" rx="2" fill="none" stroke="var(--theme-primary)" strokeWidth="1.5" />
-            <rect x="2" y="42" width="36" height="36" rx="2" fill="none" stroke="var(--theme-primary)" strokeWidth="1.5" />
-            <rect x="42" y="42" width="36" height="36" rx="2" fill="none" stroke="var(--theme-primary)" strokeWidth="1.5" />
+            <rect x="2" y="2" width="36" height="36" rx="2" fill="none" stroke={gridStroke} strokeWidth="1.5" />
+            <rect x="42" y="2" width="36" height="36" rx="2" fill="none" stroke={gridStroke} strokeWidth="1.5" />
+            <rect x="2" y="42" width="36" height="36" rx="2" fill="none" stroke={gridStroke} strokeWidth="1.5" />
+            <rect x="42" y="42" width="36" height="36" rx="2" fill="none" stroke={gridStroke} strokeWidth="1.5" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill={`url(#${patternId})`} />

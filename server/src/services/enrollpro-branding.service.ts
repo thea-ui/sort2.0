@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { prisma } from '../lib/prisma.js';
 import { saveBranding, type BrandingPatch, type PublicBranding } from './branding.service.js';
+import { isBrandingSyncDisabled } from './branding-preset.service.js';
 
 const DEFAULT_ENROLLPRO_BASE = 'https://dev-jegs.buru-degree.ts.net/api';
 const SETTINGS_TIMEOUT_MS = 20_000;
@@ -184,6 +185,16 @@ let isSyncing = false;
  * any failure the previous values stay and the error is reported to the caller.
  */
 export async function syncEnrollProBranding(): Promise<BrandingSyncResult> {
+  if (isBrandingSyncDisabled()) {
+    return {
+      status: 'failed',
+      colors: pickColorsFromPalette([]),
+      logoUpdated: false,
+      branding: null,
+      error: 'EnrollPro branding sync is disabled for the current presentation preset',
+    };
+  }
+
   if (isSyncing) {
     return {
       status: 'failed',

@@ -18,6 +18,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { SortLogo } from '../common/SortLogo';
+import { PixelGridBackground } from './PixelGridBackground';
 import { ProfileMenu } from '../common/ProfileMenu';
 import { AccessibilityMenu } from '../common/AccessibilityMenu';
 import { LogoutConfirmDialog } from '../common/LogoutConfirmDialog';
@@ -109,10 +110,11 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
   };
 
   return (
-    <div className="min-h-dvh bg-[var(--background)] text-[var(--text-strong)] font-sans">
+    <div className="min-h-dvh bg-[var(--shell-bg)] text-[var(--text-strong)] font-sans">
+      <PixelGridBackground variant="pixel" tone="neutral" />
 
       {/* Desktop Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-slate-200 bg-[#fafafa] shadow-sm transition-[width] duration-200 lg:flex ${sidebarCollapsed ? 'w-[70px]' : 'w-[280px]'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[var(--shell-border)] bg-[var(--sidebar-bg)] shadow-sm transition-[width] duration-200 lg:flex ${sidebarCollapsed ? 'w-[70px]' : 'w-[280px]'}`}>
         <div className={`flex h-24 shrink-0 items-center overflow-hidden ${sidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
           {sidebarCollapsed ? (
             <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-100 bg-white p-1 shadow-sm">
@@ -212,7 +214,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
       <div className={`flex min-h-dvh flex-col transition-[padding] duration-200 ${sidebarCollapsed ? 'lg:pl-[70px]' : 'lg:pl-[280px]'}`}>
 
       {/* Global Header */}
-      <header className="sticky top-0 z-50 h-14 border-b border-[var(--primary)]/10 bg-white/95 backdrop-blur-md sm:h-16">
+      <header className="sticky top-0 z-50 h-14 border-b border-[var(--shell-border)] bg-white/90 backdrop-blur-md sm:h-16">
         <div className="mx-auto flex h-full w-full max-w-[1760px] items-center justify-between gap-2 px-3 sm:px-6 lg:px-8 2xl:px-10">
 
           <div className="flex min-w-0 items-center gap-2">
@@ -368,8 +370,8 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
         {children}
       </main>
 
-      {/* Footer — matches LandingFooter */}
-      <footer className="hidden w-full border-t border-[var(--primary)]/10 bg-white/70 py-4 lg:block">
+      {/* Footer â€” matches LandingFooter */}
+      <footer className="hidden w-full border-t border-[var(--shell-border)] bg-white/70 py-4 lg:block">
         <div className="mx-auto flex w-full max-w-[1760px] items-center justify-between px-6 lg:px-8 2xl:px-10">
           <SortLogo size={24} showText={true} />
           <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
@@ -394,7 +396,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
       )}
 
       {/* Mobile Bottom Navigation */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--primary)]/10 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--shell-border)] bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
         <nav className="flex items-stretch justify-around px-1.5 py-1">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;

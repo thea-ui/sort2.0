@@ -15,6 +15,7 @@ import {
   MAX_BRANDING_STREAM_CLIENTS,
 } from '../services/branding.service.js';
 import { syncEnrollProBranding } from '../services/enrollpro-branding.service.js';
+import { isBrandingSyncDisabled } from '../services/branding-preset.service.js';
 import { clampMaxCacheDays } from '../services/offline-auth.service.js';
 
 const router = Router();
@@ -72,6 +73,12 @@ router.get('/public/stream', (req: Request, res: Response) => {
 // hourly; failures keep the last-known branding and are reported as 502.
 router.post('/branding/pull', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
+    if (isBrandingSyncDisabled()) {
+      return res.status(409).json({
+        error: 'EnrollPro branding sync is disabled for the current presentation preset.',
+        code: 'BRANDING_SYNC_DISABLED',
+      });
+    }
     const result = await syncEnrollProBranding();
     const actor = req as AuthenticatedRequest;
 

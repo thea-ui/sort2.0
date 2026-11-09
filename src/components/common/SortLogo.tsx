@@ -33,12 +33,13 @@ export const SortLogo: React.FC<SortLogoProps> = ({
     setLogoFailed(false);
   }, [identity.logoSrc]);
 
-  // Long school names wrap to two lines at a smaller size instead of truncating.
+  // Long school names step down in size and wrap over as many lines as needed
+  // so the full name is always visible instead of being clipped.
   const nameSizeClass =
     displayName.length > 20 ? 'text-sm' : displayName.length > 12 ? 'text-base' : 'text-xl';
 
   return (
-    <div className={`inline-flex items-center gap-2 sm:gap-3 ${className}`}>
+    <div className={`inline-flex min-w-0 max-w-full items-center gap-2 sm:gap-3 ${className}`}>
       {/* Visual Logo Image - Large & Pleasing */}
       <div
         className="relative shrink-0 flex items-center justify-center transition-transform duration-200 hover:scale-105"
@@ -54,8 +55,8 @@ export const SortLogo: React.FC<SortLogoProps> = ({
 
       {/* Brand Title & Subtitle */}
       {showText && (
-        <div className="flex flex-col justify-center min-w-0">
-          <span className={`${textClassName} ${nameSizeClass} leading-tight line-clamp-2 max-w-[150px] sm:max-w-[190px]`}>
+        <div className="flex min-w-0 max-w-full flex-col justify-center">
+          <span className={`${textClassName} ${nameSizeClass} leading-tight break-words`}>
             {displayName}
           </span>
           {subtitle && (

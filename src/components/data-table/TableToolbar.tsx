@@ -34,12 +34,12 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
       <div className="flex flex-wrap items-center gap-3">
         {hasSearch && (
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--table-muted)] pointer-events-none" />
             <Input
               placeholder={searchPlaceholder}
               value={searchValue}
               onChange={(event) => onSearchChange(event.target.value)}
-              className="pl-9 w-full sm:w-64"
+              className="h-10 w-full rounded-xl pl-10 text-[13px] sm:w-80"
             />
           </div>
         )}

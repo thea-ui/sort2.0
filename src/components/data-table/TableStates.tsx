@@ -32,7 +32,7 @@ export function LoadingSkeleton<T>({
       {Array.from({ length: rowCount }).map((_, rowIndex) => (
         <tr key={rowIndex} className="border-0 hover:bg-transparent">
           {columns.map((column) => (
-            <td key={column.key} className="border-0 py-3.5 px-4">
+            <td key={column.key} className="border-0 px-5 py-4">
               <SkeletonCell hint={column.skeleton} />
             </td>
           ))}

@@ -4,6 +4,34 @@ import { apiService } from '../../../../services/api';
 import { useToast } from '../../../../hooks/useToast';
 import { LoadingState } from '../../../../components/common/LoadingState';
 
+/**
+ * Sync failures are stored as raw upstream bodies. Translate the two common
+ * causes into an actionable sentence while keeping the raw text available for
+ * support/debugging.
+ */
+function describeSyncError(raw: string): { summary: string; details: string | null } {
+  const text = (raw || '').trim();
+  if (!text) return { summary: 'The last sync failed.', details: null };
+
+  if (/INVALID_INTEGRATION_KEY/i.test(text)) {
+    return {
+      summary:
+        'EnrollPro rejected SORT’s integration key. Update ENROLLPRO_SYNC_SECRET in server/.env with the current key, restart the server, then retry the sync.',
+      details: text,
+    };
+  }
+
+  if (/fetch failed|timed out|timeout|ECONNREFUSED|ENOTFOUND|network|aborted|socket hang up/i.test(text)) {
+    return {
+      summary:
+        'EnrollPro could not be reached. Check that the EnrollPro server and the Tailscale connection are online, then retry the sync.',
+      details: text,
+    };
+  }
+
+  return { summary: text, details: null };
+}
+
 interface SyncStatus {
   lastSync: {
     id: string;
@@ -157,6 +185,10 @@ export const AdminSyncSettingsTab: React.FC = () => {
       default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
+
+  const lastSyncError = syncStatus?.lastSync?.error
+    ? describeSyncError(syncStatus.lastSync.error)
+    : null;
 
   if (loading) {
     return <LoadingState label="Loading sync settings…" />;
@@ -395,9 +427,22 @@ export const AdminSyncSettingsTab: React.FC = () => {
             </div>
           )}
 
-          {syncStatus.lastSync.error && (
-            <div className="mt-2 p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-700">
-              {syncStatus.lastSync.error}
+          {lastSyncError && (
+            <div className="mt-2 rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs text-rose-700">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                <p className="font-semibold leading-relaxed">{lastSyncError.summary}</p>
+              </div>
+              {lastSyncError.details && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-[11px] font-bold text-rose-700/70">
+                    Technical details
+                  </summary>
+                  <pre className="mt-1.5 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-rose-700/80">
+                    {lastSyncError.details}
+                  </pre>
+                </details>
+              )}
             </div>
           )}
         </div>

@@ -40,16 +40,16 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   const pages = getPageWindow(page, totalPages);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-4 border-t border-border">
-      <p className="text-sm text-muted-foreground">
-        Showing <span className="font-medium text-foreground">{rangeStart}</span> to{' '}
-        <span className="font-medium text-foreground">{rangeEnd}</span> of{' '}
-        <span className="font-medium text-foreground">{totalRows}</span> results
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-[var(--table-border)]">
+      <p className="text-[12.5px] text-[var(--table-muted)]">
+        Showing <span className="font-medium text-[var(--table-text)]">{rangeStart}</span> to{' '}
+        <span className="font-medium text-[var(--table-text)]">{rangeEnd}</span> of{' '}
+        <span className="font-medium text-[var(--table-text)]">{totalRows}</span> results
       </p>
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rows per page:</span>
+          <span className="text-[12.5px] text-[var(--table-muted)]">Rows per page:</span>
           <Select
             aria-label="Rows per page"
             size="sm"

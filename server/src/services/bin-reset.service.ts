@@ -1,6 +1,6 @@
 import { ReportStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { BIN_RESET_TZ, RESET_TIME_REGEX } from './reset-cycle.service.js';
+import { BIN_RESET_TZ, DEFAULT_RESET_TIME, RESET_TIME_REGEX, isResetDue } from './reset-cycle.service.js';
 import { buildExpirableWasteWhere } from './report-expiry.js';
 
 // ── Concurrency Guard ──────────────────────────────────────────────────────
@@ -8,6 +8,8 @@ let binResetInProgress = false;
 
 let scheduledTask: any = null;
 let rescheduleInFlight: Promise<void> | null = null;
+let catchUpTimer: NodeJS.Timeout | null = null;
+const CATCH_UP_INTERVAL_MS = 10 * 60 * 1000;
 
 export interface BinResetResult {
   binsReset: number;
@@ -100,11 +102,53 @@ async function runConfiguredReset() {
   }
 }
 
+/**
+ * Catch a reset that was missed while the process was asleep or offline.
+ * Cron only fires if the process is alive at the exact boundary; this checks
+ * the last DAILY_BIN_RESET audit against the current cycle and runs once when
+ * the boundary has been crossed.
+ */
+export async function ensureDailyResetCurrent(now: Date = new Date()): Promise<void> {
+  try {
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 'default_setting' } });
+    if (settings && settings.binResetEnabled === false) return;
+
+    const lastReset = await prisma.auditLog.findFirst({
+      where: { actionType: 'DAILY_BIN_RESET' },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+
+    const resetTime = settings?.binResetTime || DEFAULT_RESET_TIME;
+    if (!isResetDue(lastReset?.createdAt, now, resetTime, BIN_RESET_TZ)) return;
+
+    console.warn(
+      `[BinReset] Catch-up: last reset was ${lastReset?.createdAt?.toISOString() || 'never'}; running the current cycle reset`
+    );
+    await executeDailyBinReset();
+  } catch (error: any) {
+    console.error('[BinReset] Catch-up check failed:', error.message);
+  }
+}
+
+function startCatchUpCheck() {
+  if (catchUpTimer) return;
+  void ensureDailyResetCurrent();
+  catchUpTimer = setInterval(() => {
+    void ensureDailyResetCurrent();
+  }, CATCH_UP_INTERVAL_MS);
+  catchUpTimer.unref?.();
+}
+
 export function stopScheduledBinReset() {
   if (scheduledTask) {
     scheduledTask.stop();
     scheduledTask = null;
     console.log('[BinReset] Scheduled daily reset stopped');
+  }
+  if (catchUpTimer) {
+    clearInterval(catchUpTimer);
+    catchUpTimer = null;
   }
 }
 
@@ -140,6 +184,7 @@ export function rescheduleBinReset(): Promise<void> {
       const cron = await import('node-cron');
       scheduledTask = cron.default.schedule(cronExpression, runConfiguredReset, { timezone: BIN_RESET_TZ });
       console.log(`[BinReset] Scheduled daily reset at ${time.trim()} (${BIN_RESET_TZ})`);
+      startCatchUpCheck();
     } catch (error: any) {
       console.error('[BinReset] Failed to schedule:', error.message);
     }

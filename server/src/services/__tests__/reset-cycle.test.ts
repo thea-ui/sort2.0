@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeResetCycleStart } from '../reset-cycle.service.js';
+import { computeResetCycleStart, isResetDue } from '../reset-cycle.service.js';
 
 const MANILA = 'Asia/Manila'; // UTC+8, no DST
 
@@ -36,6 +36,17 @@ test('R4 cycle: honors a custom reset time', () => {
 test('R5 cycle: invalid reset time falls back to 18:00', () => {
   const start = computeResetCycleStart(new Date('2026-09-28T11:00:00.000Z'), '25:99', MANILA);
   assert.equal(start.toISOString(), '2026-09-28T10:00:00.000Z');
+});
+
+test('R7 catch-up: a missed reset boundary is due exactly once', () => {
+  const now = new Date('2026-10-27T13:00:00.000Z'); // 21:00 Manila
+  const currentCycleStart = new Date('2026-10-27T10:00:00.000Z');
+
+  assert.equal(isResetDue(null, now, '18:00', MANILA), true);
+  assert.equal(isResetDue(new Date('2026-10-13T10:00:00.000Z'), now, '18:00', MANILA), true);
+  assert.equal(isResetDue(new Date(currentCycleStart.getTime() - 1), now, '18:00', MANILA), true);
+  assert.equal(isResetDue(currentCycleStart, now, '18:00', MANILA), false);
+  assert.equal(isResetDue(new Date('2026-10-28T00:00:00.000Z'), now, '18:00', MANILA), false);
 });
 
 test('R6 cycle: uses the requested timezone, including DST offsets', () => {
