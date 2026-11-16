@@ -1,25 +1,34 @@
 import React, { useState } from 'react';
 import { Minus, Plus, Recycle, PlusCircle } from 'lucide-react';
-import { BOTTLE_PRESETS_ML, formatBottleLabel, gramsForBottle } from '../../../hooks/useWalkInTurnover';
+import {
+  BOTTLE_PRESETS_ML,
+  formatBottleLabel,
+  gramsForWalkInItem,
+  type WalkInMaterial,
+} from '../../../hooks/useWalkInTurnover';
 
 interface BottleSizeStepperProps {
   lines: Record<number, number>;
   onChange: (bottleMl: number, quantity: number) => void;
   disabled?: boolean;
+  material: WalkInMaterial;
 }
 
-export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onChange, disabled }) => {
+export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onChange, disabled, material }) => {
   const [otherMl, setOtherMl] = useState('');
   const [otherError, setOtherError] = useState<string | null>(null);
 
+  const presets = material === 'aluminum_cans' ? [250, 330, 355, 500] : BOTTLE_PRESETS_ML;
+  const unitLabel = material === 'aluminum_cans' ? 'can' : 'bottle';
+
   const otherLines = Object.keys(lines)
     .map(Number)
-    .filter((ml) => !BOTTLE_PRESETS_ML.includes(ml));
+    .filter((ml) => !presets.includes(ml));
 
   const handleAddOther = () => {
     const ml = Math.round(Number(otherMl));
     if (!Number.isInteger(ml) || ml < 100 || ml > 20000) {
-      setOtherError('Enter 100–20,000 ml');
+      setOtherError('Enter 100-20,000 ml');
       return;
     }
     setOtherError(null);
@@ -30,7 +39,7 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {BOTTLE_PRESETS_ML.map((ml) => {
+        {presets.map((ml) => {
           const qty = lines[ml] || 0;
           const active = qty > 0;
           return (
@@ -48,14 +57,14 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
                 </span>
                 <Recycle size={12} className={active ? 'text-[var(--accent)]' : 'text-gray-300'} />
               </div>
-              <p className="text-[9px] text-gray-400 font-bold mb-2">~{gramsForBottle(ml)} g each</p>
+              <p className="text-[9px] text-gray-400 font-bold mb-2">~{gramsForWalkInItem(material, ml)} g each</p>
               <div className="flex items-center justify-between gap-1">
                 <button
                   type="button"
                   disabled={disabled || qty === 0}
                   onClick={() => onChange(ml, qty - 1)}
                   className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-[var(--text-strong)] hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  aria-label={`Remove one ${formatBottleLabel(ml)} bottle`}
+                  aria-label={`Remove one ${formatBottleLabel(ml)} ${unitLabel}`}
                 >
                   <Minus size={12} />
                 </button>
@@ -74,7 +83,7 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
                   disabled={disabled || qty >= 200}
                   onClick={() => onChange(ml, qty + 1)}
                   className="h-7 w-7 rounded-lg bg-[var(--accent)] flex items-center justify-center text-white hover:bg-[var(--accent-dark)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  aria-label={`Add one ${formatBottleLabel(ml)} bottle`}
+                  aria-label={`Add one ${formatBottleLabel(ml)} ${unitLabel}`}
                 >
                   <Plus size={12} />
                 </button>
@@ -95,8 +104,8 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
             value={otherMl}
             disabled={disabled}
             onChange={(e) => setOtherMl(e.target.value)}
-            placeholder="ml (100–20,000)"
-            className="w-36 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-bold text-[var(--text-strong)] outline-none focus:border-[var(--accent)]"
+            placeholder="ml (100-20,000)"
+            className="w-44 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-bold text-[var(--text-strong)] outline-none focus:border-[var(--accent)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <button
             type="button"
@@ -119,7 +128,7 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
                     type="button"
                     onClick={() => onChange(ml, (lines[ml] || 0) - 1)}
                     className="h-5 w-5 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 cursor-pointer"
-                    aria-label={`Remove one ${formatBottleLabel(ml)} bottle`}
+                    aria-label={`Remove one ${formatBottleLabel(ml)} ${unitLabel}`}
                   >
                     <Minus size={10} />
                   </button>
@@ -128,7 +137,7 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
                     type="button"
                     onClick={() => onChange(ml, (lines[ml] || 0) + 1)}
                     className="h-5 w-5 rounded-md bg-[var(--accent)] text-white flex items-center justify-center hover:bg-[var(--accent-dark)] cursor-pointer"
-                    aria-label={`Add one ${formatBottleLabel(ml)} bottle`}
+                    aria-label={`Add one ${formatBottleLabel(ml)} ${unitLabel}`}
                   >
                     <Plus size={10} />
                   </button>
@@ -141,3 +150,4 @@ export const BottleSizeStepper: React.FC<BottleSizeStepperProps> = ({ lines, onC
     </div>
   );
 };
+

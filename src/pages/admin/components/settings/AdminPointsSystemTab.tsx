@@ -18,9 +18,18 @@ const DEFAULT_POINT_RULES: PointRuleItem[] = [
   { id: 'p-4', rank: 4, title: '4th+ Reporter', pointsAwarded: 0, description: 'No points awarded' },
 ];
 
+interface MaterialRuleItem {
+  code: string;
+  label: string;
+  points: number;
+}
+
 export const AdminPointsSystemTab: React.FC = () => {
   const [pointRules, setPointRules] = useState<PointRuleItem[]>(DEFAULT_POINT_RULES);
   const [editingRule, setEditingRule] = useState<PointRuleItem | null>(null);
+  const [materialRules, setMaterialRules] = useState<MaterialRuleItem[]>([]);
+  const [savingMaterials, setSavingMaterials] = useState(false);
+  const [materialNotice, setMaterialNotice] = useState<string | null>(null);
 
   useEffect(() => {
     apiService.getPointRules().then((data) => {
@@ -28,6 +37,10 @@ export const AdminPointsSystemTab: React.FC = () => {
         setPointRules(data);
       }
     }).catch(err => console.warn('Failed to fetch point rules:', err));
+
+    apiService.getMaterialPointRules().then((data) => {
+      if (Array.isArray(data)) setMaterialRules(data);
+    }).catch(err => console.warn('Failed to fetch material point rules:', err));
   }, []);
 
   const handleSavePoints = async (e: React.FormEvent) => {
@@ -47,6 +60,23 @@ export const AdminPointsSystemTab: React.FC = () => {
       console.error('Failed to update point rule:', err);
     } finally {
       broadcastPresetChange();
+    }
+  };
+
+  const handleSaveMaterialPoints = async () => {
+    setSavingMaterials(true);
+    setMaterialNotice(null);
+    try {
+      const updated = await apiService.updateMaterialPointRules(
+        materialRules.map(({ code, points }) => ({ code, points })),
+      );
+      if (Array.isArray(updated)) setMaterialRules(updated);
+      setMaterialNotice('Material points saved.');
+    } catch (err) {
+      console.error('Failed to save material points:', err);
+      setMaterialNotice('Failed to save material points.');
+    } finally {
+      setSavingMaterials(false);
     }
   };
 
@@ -142,6 +172,70 @@ export const AdminPointsSystemTab: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
+
+      <div className="space-y-4 rounded-3xl border border-[var(--primary)]/10 bg-white p-6 shadow-sm sm:p-8">
+        <div>
+          <h3 className="text-lg font-bold text-[var(--text-strong)]">Material Bonus Points</h3>
+          <p className="mt-1 text-sm text-[var(--text-strong)]/50">
+            Students tick the recyclable materials inside the bin. Each selected material earns its own
+            points below; Mixed / Others is always 1 point. These are added on top of the rank points.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {materialRules.map((rule) => {
+            const isMixedOthers = rule.code === 'others';
+            return (
+              <div
+                key={rule.code}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--primary)]/10 bg-[var(--background)]/50 px-4 py-3"
+              >
+                <span className="text-sm font-bold text-[var(--text-strong)]">{rule.label}</span>
+                <div className="flex items-center gap-2">
+                  {isMixedOthers ? (
+                    <span className="w-20 rounded-xl bg-white px-3 py-2 text-center text-sm font-black text-[var(--text-strong)]/55">
+                      1
+                    </span>
+                  ) : (
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={rule.points}
+                      onChange={(e) =>
+                        setMaterialRules((prev) =>
+                          prev.map((item) =>
+                            item.code === rule.code ? { ...item, points: Number(e.target.value) } : item,
+                          ),
+                        )
+                      }
+                      className="w-20 rounded-xl border border-[var(--primary)]/15 bg-white px-3 py-2 text-sm font-bold text-[var(--text-strong)] outline-none focus:border-[var(--accent)]"
+                    />
+                  )}
+                  <span className="text-xs font-semibold text-[var(--text-strong)]/45">pts</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[11px] font-medium text-[var(--text-strong)]/45">
+            Mixed / Others is always 1 point.
+          </p>
+          <button
+            type="button"
+            onClick={handleSaveMaterialPoints}
+            disabled={savingMaterials}
+            className="cursor-pointer rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-extrabold text-white shadow-md transition-colors hover:bg-[var(--accent-dark)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {savingMaterials ? 'Saving…' : 'Save material points'}
+          </button>
+        </div>
+        {materialNotice && (
+          <p className="text-xs font-semibold text-[var(--text-strong)]/60">{materialNotice}</p>
+        )}
       </div>
     </div>
   );

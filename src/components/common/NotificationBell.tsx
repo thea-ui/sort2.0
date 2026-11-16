@@ -39,6 +39,12 @@ const SEVERITY_COLOR: Record<NotificationSeverity, string> = {
   info: 'text-muted-foreground',
 };
 
+const SEVERITY_TONE: Record<NotificationSeverity, string> = {
+  critical: 'bg-destructive/10',
+  warning: 'bg-amber-500/10',
+  info: 'bg-muted',
+};
+
 interface NotificationBellProps {
   notifications: BellNotification[];
   onDismiss: (id: string) => void;
@@ -71,53 +77,65 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-80 p-0">
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <DropdownMenuContent
+        align="end"
+        className="w-[calc(100vw-2rem)] overflow-hidden !rounded-2xl !p-0 sm:w-80"
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
             Notifications
           </span>
           {count > 0 && (
             <button
               type="button"
               onClick={onDismissAll}
-              className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+              className="cursor-pointer text-[11px] font-bold text-primary hover:underline"
             >
-              Dismiss all
+              Clear all
             </button>
           )}
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto py-1">
-          {count === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-              <CheckCircle2 className="w-6 h-6 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">You&apos;re all caught up</p>
-            </div>
-          ) : (
-            notifications.map((notification) => {
+        {count === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2.5 px-6 py-10 text-center">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground">
+              <CheckCircle2 size={19} />
+            </span>
+            <p className="text-[12.5px] font-medium text-muted-foreground">You&apos;re all caught up</p>
+          </div>
+        ) : (
+          <div className="max-h-[min(60svh,24rem)] divide-y divide-border overflow-y-auto">
+            {notifications.map((notification) => {
               const Icon = SEVERITY_ICON[notification.severity];
               return (
                 <DropdownMenuItem
                   key={notification.id}
-                  className="items-start gap-2.5 px-3 py-2.5"
+                  className="items-start gap-3 !px-4 !py-3"
                   onClick={() => onSelect(notification.id)}
                 >
-                  <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', SEVERITY_COLOR[notification.severity])} />
-                  <span className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm font-medium text-foreground leading-snug">
+                  <span
+                    className={cn(
+                      'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                      SEVERITY_TONE[notification.severity],
+                    )}
+                  >
+                    <Icon className={cn('h-4 w-4', SEVERITY_COLOR[notification.severity])} />
+                  </span>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="line-clamp-2 text-[11.5px] font-semibold leading-snug text-foreground">
                       {notification.title}
                     </span>
                     {notification.description && (
-                      <span className="text-xs text-muted-foreground leading-snug">
+                      <span className="line-clamp-2 text-[10.5px] leading-relaxed text-muted-foreground">
                         {notification.description}
                       </span>
                     )}
                   </span>
                 </DropdownMenuItem>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

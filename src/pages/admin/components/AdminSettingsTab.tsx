@@ -4,7 +4,6 @@ import { CampusBlueprintEditor } from './map/CampusBlueprintEditor';
 import { SchoolSettingsPage } from './settings/SchoolSettingsPage';
 import { ReportSetupPage } from './settings/ReportSetupPage';
 import { PointsRewardsPage } from './settings/PointsRewardsPage';
-import { MarketRatesPage } from './settings/MarketRatesPage';
 import { AdminDangerZoneTab } from './settings/AdminDangerZoneTab';
 
 type MergedPageId = 'school-sync' | 'report-setup' | 'points-rewards';
@@ -63,7 +62,6 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
       {page === 'locations' && <CampusBlueprintEditor />}
       {page === 'school-sync' && <SchoolSettingsPage initialSection={section} />}
       {page === 'report-setup' && <ReportSetupPage initialSection={section} />}
-      {page === 'market-rates' && <MarketRatesPage />}
       {page === 'points-rewards' && (
         <PointsRewardsPage
           settings={settings}

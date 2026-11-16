@@ -17,6 +17,7 @@ import {
   Wrench,
   AlertCircle,
   ArrowRight,
+  ArrowLeft,
   Activity,
   LayoutDashboard,
   Zap,
@@ -36,12 +37,15 @@ import {
   Sparkles,
   Filter,
   Check,
+  ChevronRight,
+  FolderTree,
   ShoppingBag,
   Navigation,
   Maximize2,
 } from 'lucide-react';
 import { MRFDirectPickupTab } from './components/MRFDirectPickupTab';
 import { MRFWalkInTab } from './components/MRFWalkInTab';
+import { MRFBinMapTab } from './components/MRFBinMapTab';
 import { MRFMarketTab } from './components/MRFMarketTab';
 import { MRFAssetLedgerPage } from './components/MRFAssetLedgerPage';
 import { AssetScrapStockTab } from './components/AssetScrapStockTab';
@@ -93,6 +97,24 @@ export function deriveAssetCategory(description?: string): string {
   return 'Other';
 }
 
+type DispatchFolderKey = 'RECYCLABLE' | 'ASSET' | 'GENERAL';
+
+/** Folder bucket for an active dispatch: recyclables first, then assets, else general waste. */
+function getDispatchKind(rep: Report): DispatchFolderKey {
+  const d = rep.description.toUpperCase();
+  if (rep.category === 'RECYCLABLE' || d.includes('WASTE')) return 'RECYCLABLE';
+  if (
+    rep.reportType === 'ASSET' ||
+    d.includes('FURNITURE') ||
+    d.includes('ELECTRONICS') ||
+    d.includes('FIXTURES') ||
+    d.includes('EQUIPMENT')
+  ) {
+    return 'ASSET';
+  }
+  return 'GENERAL';
+}
+
 interface MRFDashboardProps {
   activeTab: string;
   setActiveTab?: (tab: string) => void;
@@ -127,6 +149,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
   // Dispatch Assignment Filter
   const [showOnlyMyAssigned, setShowOnlyMyAssigned] = useState<boolean>(true);
+  const [dispatchFolder, setDispatchFolder] = useState<DispatchFolderKey | null>(null);
 
   const {
     stocksRecord,
@@ -205,27 +228,89 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     return activeDispatchGroups.map(g => g.firstReport);
   }, [activeDispatchGroups]);
 
-  const handleSellBatch = async (cat: ItemizedRecyclableCategory) => {
+  const dispatchFolders = React.useMemo(
+    () => {
+      const buckets: Record<DispatchFolderKey, DispatchGroup[]> = {
+        RECYCLABLE: [],
+        ASSET: [],
+        GENERAL: [],
+      };
+      activeDispatchGroups.forEach((group) => {
+        buckets[getDispatchKind(group.firstReport)].push(group);
+      });
+      return [
+        {
+          key: 'RECYCLABLE' as const,
+          label: 'Recyclable Waste',
+          description: 'Recyclables waiting for recovery pickup',
+          icon: Recycle,
+          groups: buckets.RECYCLABLE,
+        },
+        {
+          key: 'ASSET' as const,
+          label: 'Asset Reports',
+          description: 'Furniture, electronics, fixtures & equipment',
+          icon: Armchair,
+          groups: buckets.ASSET,
+        },
+        {
+          key: 'GENERAL' as const,
+          label: 'General Waste',
+          description: 'Non-recyclable waste dispatches',
+          icon: Trash2,
+          groups: buckets.GENERAL,
+        },
+      ];
+    },
+    [activeDispatchGroups]
+  );
+
+  const visibleDispatchGroups = React.useMemo(
+    () =>
+      dispatchFolder
+        ? activeDispatchGroups.filter((group) => getDispatchKind(group.firstReport) === dispatchFolder)
+        : activeDispatchGroups,
+    [activeDispatchGroups, dispatchFolder]
+  );
+
+  const activeDispatchFolder = dispatchFolders.find((folder) => folder.key === dispatchFolder) ?? null;
+
+  const handleSellBatch = async (
+    cat: ItemizedRecyclableCategory,
+    buyerName?: string,
+    pricePerKg?: number,
+  ): Promise<boolean> => {
     const stockItem = stocksRecord[cat.id];
     const currentKg = stockItem ? stockItem.accumulatedKg : 0;
     if (currentKg <= 0) {
       showToast(`No accumulated weight to sell for ${cat.shortName}.`, 'error');
-      return;
+      return false;
     }
 
     try {
-      const tx = await sellBatch(cat.id, 'GreenCycle Recycling Vendor');
+      const tx = await sellBatch(cat.id, buyerName, pricePerKg);
       const soldKg = tx ? tx.weightKg : 0;
       const revenue = tx ? tx.totalRevenue : 0;
       const remainingKg = Math.max(0, currentKg - soldKg);
+      const shop = tx?.buyerName ? ` to ${tx.buyerName}` : '';
+      const rate = tx?.marketPriceKg ? ` at ₱${tx.marketPriceKg}/kg` : '';
 
-      showToast(`🎉 Sold ${soldKg.toFixed(1)} kg batch of ${cat.shortName} for ₱${revenue.toLocaleString()}! (${remainingKg.toFixed(1)} kg remaining in stock)`);
+      showToast(`🎉 Sold ${soldKg.toFixed(1)} kg batch of ${cat.shortName}${shop}${rate} for ₱${revenue.toLocaleString()}! (${remainingKg.toFixed(1)} kg remaining in stock)`);
+      return true;
     } catch (err: any) {
       showToast(err?.message || `Vendor sale for ${cat.shortName} could not be completed.`, 'error');
+      return false;
     }
   };
 
   const mrfNeededCount = activeDispatches.length;
+  const mrfFirstName = (() => {
+    const raw = currentUser?.name?.trim() ?? '';
+    if (!raw) return 'MRF';
+    const [before, after] = raw.split(',');
+    const source = (after?.trim() || before).trim();
+    return source.split(/\s+/)[0] || 'MRF';
+  })();
   const wasteTaskCount = activeDispatches.filter(r =>
     r.reportType === 'WASTE' || r.category === 'RECYCLABLE' || r.description.toUpperCase().includes('WASTE')
   ).length;
@@ -241,6 +326,15 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
   const handleConfirmDispatch = (report: Report) => {
     updateReportStatus(report.id, 'DISPATCHED');
     showToast(`Dispatch confirmed! Admin status updated to "Ongoing / Doing it now".`);
+  };
+
+  const openCompleteModal = (report: Report) => {
+    setItemWeights({ pet_plastic: '', aluminum_cans: '', cardboard: '', glass: '' });
+    setOtherMaterialKg('');
+    setOtherMaterialName(report.otherMaterialLabel || '');
+    setWeightKg('');
+    setCompletionNotes('');
+    setCompleteModalReport(report);
   };
 
   const handleCompleteSubmit = async (e: React.FormEvent) => {
@@ -383,207 +477,220 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
 
-          {/* Quick Summary Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            
-            {/* Card 1: MRF Needed (Action Required) — ramp 1 (accent) */}
-            <button
-              type="button"
-              onClick={() => setActiveTab?.('dispatches')}
-              className="bg-gradient-to-br from-[color-mix(in_srgb,var(--ramp-1)_5%,white)] to-[color-mix(in_srgb,var(--ramp-1)_10%,white)] border border-[var(--ramp-1)]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-[var(--ramp-1-strong)] bg-[color-mix(in_srgb,var(--ramp-1)_15%,white)] border border-[var(--ramp-1)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  MRF Needed
-                </span>
-                <div className="h-9 w-9 rounded-xl bg-[var(--ramp-1)] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
-                  <AlertCircle size={18} />
-                </div>
+          {/* Hero */}
+          <section className="relative overflow-hidden rounded-3xl bg-[var(--primary)] p-5 text-[var(--on-primary)] shadow-lg sm:p-6">
+            <div className="pointer-events-none absolute -right-12 -top-14 h-44 w-44 rounded-full border border-white/10" />
+            <div className="pointer-events-none absolute -right-4 -top-6 h-24 w-24 rounded-full bg-white/5" />
+
+            <div className="relative flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[var(--on-primary)]/55">MRF Terminal</p>
+                <h2 className="mt-1 truncate text-xl font-heading font-black tracking-tight text-[var(--on-primary)]">
+                  Welcome, {mrfFirstName}
+                </h2>
+                <p className="mt-0.5 text-[11px] font-medium text-[var(--on-primary)]/60">
+                  {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+                </p>
               </div>
-              <div>
-                <p className="text-3xl font-heading font-black text-[var(--text-strong)]">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10">
+                <Recycle size={18} />
+              </span>
+            </div>
+
+            <div className="relative mt-5 grid grid-cols-3 divide-x divide-white/10 overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10">
+              <button
+                type="button"
+                onClick={() => setActiveTab?.('dispatches')}
+                className="cursor-pointer px-3.5 py-3 text-left transition-colors hover:bg-white/5 sm:px-4"
+              >
+                <span className="block text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--on-primary)]/50">Active</span>
+                <span className="mt-0.5 flex items-center gap-1.5 text-xl font-heading font-black">
                   {mrfNeededCount}
-                </p>
-                <p className="text-xs font-extrabold text-[var(--ramp-1-strong)] mt-1 group-hover:text-[color-mix(in_srgb,var(--ramp-1)_80%,black)] transition-colors">Dispatches Needing Attention</p>
-                <p className="text-[11px] text-[var(--text-strong)]/60 font-medium mt-0.5">
-                  {reports.filter(r => r.status === 'DISPATCHED').length} active dispatches assigned by Admin
-                </p>
-              </div>
-            </button>
-
-            {/* Card 2: Waste & Bin Pickups — ramp 2 (terracotta) */}
-            <button
-              type="button"
-              onClick={() => setActiveTab?.('dispatches')}
-                              className="bg-gradient-to-br from-[color-mix(in_srgb,var(--ramp-2)_5%,white)] to-[color-mix(in_srgb,var(--ramp-2)_10%,white)] border border-[var(--ramp-2)]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-[var(--ramp-2-strong)] bg-[color-mix(in_srgb,var(--ramp-2)_15%,white)] border border-[var(--ramp-2)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Recyclables & Waste
+                  {mrfNeededCount > 0 && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-300" aria-hidden="true" />}
                 </span>
-                <div className="h-9 w-9 rounded-xl bg-[var(--ramp-2)] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
-                  <Scale size={18} />
-                </div>
-              </div>
-              <div>
-                <p className="text-3xl font-heading font-black text-[var(--text-strong)]">
-                  {wasteTaskCount}
-                </p>
-                  <p className="text-xs font-extrabold text-[var(--ramp-2-strong)] mt-1 group-hover:text-[color-mix(in_srgb,var(--ramp-2)_80%,black)] transition-colors">Waste Collection Tasks</p>
-                <p className="text-[11px] text-[var(--text-strong)]/60 font-medium mt-0.5">Bins requiring payload weigh-in</p>
-              </div>
-            </button>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab?.('dispatches')}
+                className="cursor-pointer px-3.5 py-3 text-left transition-colors hover:bg-white/5 sm:px-4"
+              >
+                <span className="block text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--on-primary)]/50">Waste</span>
+                <span className="mt-0.5 block text-xl font-heading font-black">{wasteTaskCount}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab?.('dispatches')}
+                className="cursor-pointer px-3.5 py-3 text-left transition-colors hover:bg-white/5 sm:px-4"
+              >
+                <span className="block text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--on-primary)]/50">Assets</span>
+                <span className="mt-0.5 block text-xl font-heading font-black">{assetTaskCount}</span>
+              </button>
+            </div>
+          </section>
 
-            {/* Card 3: Asset Repair & Transport — ramp 4 (gold) */}
-            <button
-              type="button"
-              onClick={() => setActiveTab?.('dispatches')}
-              className="bg-gradient-to-br from-[color-mix(in_srgb,var(--ramp-4)_5%,white)] to-[color-mix(in_srgb,var(--ramp-4)_10%,white)] border border-[var(--ramp-4)]/30 rounded-3xl p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-[var(--ramp-4-strong)] bg-[color-mix(in_srgb,var(--ramp-4)_15%,white)] border border-[var(--ramp-4)]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Asset Incidents
-                </span>
-                <div className="h-9 w-9 rounded-xl bg-[var(--ramp-4)] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
-                  <Wrench size={18} />
-                </div>
-              </div>
-              <div>
-                <p className="text-3xl font-heading font-black text-[var(--text-strong)]">
-                  {assetTaskCount}
-                </p>
-                <p className="text-xs font-extrabold text-[var(--ramp-4-strong)] mt-1 group-hover:text-[color-mix(in_srgb,var(--ramp-4)_80%,black)] transition-colors">Asset Maintenance Tasks</p>
-                <p className="text-[11px] text-[var(--text-strong)]/60 font-medium mt-0.5">Classroom furniture & fixtures</p>
-              </div>
-            </button>
-
-          </div>
-
-          {/* 2-Column Split View: Recent Dispatches Preview + Campus Bin Monitor Summary */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-
-            {/* Active Dispatches Stream Preview */}
-            <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm flex flex-col justify-between h-full space-y-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Zap size={18} className="text-[var(--ramp-1)]" />
-                    <h4 className="text-sm font-heading font-bold text-[var(--text-strong)]">Dispatches Needing Attention</h4>
-                  </div>
-                  <span className="text-[10px] font-extrabold text-[var(--ramp-1)] bg-[var(--ramp-1)]/10 border border-[var(--ramp-1)]/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                    {activeDispatches.length} Active
+          {/* Dispatch queue + market */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
+            <section className="rounded-3xl border border-white/80 bg-white/95 p-4 shadow-sm backdrop-blur-md sm:p-5 lg:col-span-7">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--danger)]/10 text-[var(--danger-strong)]">
+                    <Zap size={15} />
                   </span>
+                  <div>
+                    <h3 className="text-sm font-heading font-bold text-[var(--text-strong)]">Dispatch queue</h3>
+                    <p className="text-[10px] font-medium text-[var(--text-strong)]/45">{activeDispatches.length} active</p>
+                  </div>
                 </div>
-
-                <div className="space-y-3 divide-y divide-gray-100">
-                  {activeDispatches.slice(0, 3).map(rep => (
-                    <div
-                      key={rep.id}
-                      onClick={() => setActiveTab?.('dispatches')}
-                      className="pt-3 first:pt-0 flex items-center justify-between text-xs hover:bg-gray-50 p-2 rounded-2xl transition-colors cursor-pointer group"
-                    >
-                      <div className="space-y-1 min-w-0 pr-2">
-                        <p className="font-bold text-[var(--text-strong)] group-hover:text-[var(--accent)] transition-colors truncate">{cleanReportTitle(rep.title)}</p>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-500 font-semibold">
-                          <span className="flex items-center gap-1 text-[var(--accent)] font-bold">
-                            <MapPin size={11} /> {cleanLocationName(rep.locationName)}
-                          </span>
-                          <span>• Reporter: {rep.reporterName}</span>
-                        </div>
-                      </div>
-                      <span className={`shrink-0 text-[9px] font-black px-2.5 py-1 rounded-full uppercase ${
-                        rep.status === 'PENDING' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border border-[var(--primary)]/25'
-                      }`}>
-                        {rep.status === 'PENDING' ? 'Unconfirmed' : 'Ongoing'}
-                      </span>
-                    </div>
-                  ))}
-                  {activeDispatches.length === 0 && (
-                    <p className="text-xs text-gray-400 py-6 text-center font-medium">No pending dispatches requiring attention.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-gray-100 mt-auto">
                 <button
                   type="button"
                   onClick={() => setActiveTab?.('dispatches')}
-                  className="w-full py-2.5 px-4 rounded-2xl bg-[color-mix(in_srgb,var(--ramp-1)_10%,white)] hover:bg-[color-mix(in_srgb,var(--ramp-1)_20%,white)] text-[var(--ramp-1)] text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="flex cursor-pointer items-center gap-1 text-[11px] font-bold text-[var(--accent)] hover:underline"
                 >
-                  Manage Actions & Kilo Logs <ArrowRight size={14} />
+                  View all <ArrowRight size={12} />
                 </button>
               </div>
-            </div>
 
-            {/* MRF Recyclables Market Batch Telemetry */}
-            <div className="bg-white/95 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm flex flex-col justify-between h-full space-y-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Coins size={18} className="text-[var(--accent)]" />
-                    <h4 className="text-sm font-heading font-bold text-[var(--text-strong)]">Recyclables Market Batch Telemetry</h4>
-                  </div>
-                  <span className="text-[10px] font-black text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/25 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                    ₱{totalVendorSales.toLocaleString()} Sales Revenue
+              {activeDispatches.length === 0 ? (
+                <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--primary)]/15 bg-[var(--background)]/40 px-4 py-8 text-center">
+                  <CheckCircle2 size={20} className="text-[var(--accent)]" />
+                  <p className="text-xs font-semibold text-[var(--text-strong)]/55">All caught up — no active dispatches.</p>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {activeDispatches.slice(0, 3).map((rep, index) => (
+                    <button
+                      key={rep.id}
+                      type="button"
+                      onClick={() => setActiveTab?.('dispatches')}
+                      className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors ${
+                        index === 0
+                          ? 'border-[var(--danger)]/20 bg-[var(--danger)]/[0.04]'
+                          : 'border-[var(--primary)]/10 bg-white hover:bg-[var(--background)]/60'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                          index === 0
+                            ? 'bg-[var(--danger)]/10 text-[var(--danger-strong)]'
+                            : 'bg-[var(--primary)]/[0.06] text-[var(--text-strong)]/55'
+                        }`}
+                      >
+                        {index === 0 ? <AlertCircle size={16} /> : <span className="text-[11px] font-black">#{index + 1}</span>}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold text-[var(--text-strong)]">{cleanReportTitle(rep.title)}</span>
+                        <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-medium text-[var(--text-strong)]/50">
+                          <MapPin size={10} className="shrink-0 text-[var(--accent)]" /> {cleanLocationName(rep.locationName)}
+                        </span>
+                      </span>
+                      <span
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${
+                          rep.status === 'PENDING'
+                            ? 'border-amber-200 bg-amber-50 text-amber-800'
+                            : 'border-[var(--primary)]/15 bg-[var(--background)] text-[var(--text-strong)]/60'
+                        }`}
+                      >
+                        {rep.status === 'PENDING' ? 'Unconfirmed' : 'Ongoing'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Recyclables market */}
+            <section className="flex flex-col rounded-3xl border border-white/80 bg-white/95 p-4 shadow-sm backdrop-blur-md sm:p-5 lg:col-span-5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
+                    <Coins size={15} />
                   </span>
+                  <div>
+                    <h3 className="text-sm font-heading font-bold text-[var(--text-strong)]">Recyclables market</h3>
+                    <p className="text-[10px] font-medium text-[var(--text-strong)]/45">Stock & sales</p>
+                  </div>
                 </div>
+                <span className="shrink-0 rounded-full bg-[var(--accent)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--accent)]">
+                  ₱{totalVendorSales.toLocaleString()}
+                </span>
+              </div>
 
-                <div className="space-y-3">
-                  {RECYCLABLE_CATEGORIES.map(cat => {
-                    const stockItem = stocksRecord[cat.id];
-                    const currentKg = stockItem ? stockItem.accumulatedKg : 0;
-                    const thresholdKg = stockItem ? stockItem.thresholdLimitKg : cat.thresholdLimitKg;
-                    const isApproved = stockItem ? stockItem.isApprovedForSale === true : false;
-                    const pct = Math.min(100, Math.round((currentKg / thresholdKg) * 100));
-                    const isThresholdReached = currentKg >= thresholdKg;
+              <div className="mt-4 flex-1 space-y-2.5">
+                {RECYCLABLE_CATEGORIES.map(cat => {
+                  const stockItem = stocksRecord[cat.id];
+                  const currentKg = stockItem ? stockItem.accumulatedKg : 0;
+                  const thresholdKg = stockItem ? stockItem.thresholdLimitKg : cat.thresholdLimitKg;
+                  const isApproved = stockItem ? stockItem.isApprovedForSale === true : false;
+                  const pct = Math.min(100, Math.round((currentKg / thresholdKg) * 100));
+                  const isThresholdReached = currentKg >= thresholdKg;
 
-                    return (
-                      <div key={cat.id} className="space-y-1.5 p-2 rounded-2xl bg-gray-50 border border-gray-100">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-[var(--text-strong)] flex items-center gap-1.5">
-                            <span className={`text-[10px] font-extrabold ${cat.color}`}>{cat.shortName}</span>
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {isApproved ? (
-                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[var(--success)]/10 text-[var(--success-strong)] border border-[var(--success)]/25">
-                                Ready to Sell
-                              </span>
-                            ) : isThresholdReached ? (
-                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                                Awaiting Admin
-                              </span>
-                            ) : null}
-                            <span className="text-[11px] font-bold text-gray-700">{currentKg.toFixed(1)} / {thresholdKg} kg</span>
-                          </div>
-                        </div>
-                        <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              isApproved ? cat.barColor : isThresholdReached ? 'bg-amber-400 animate-pulse' : cat.barColor
-                            }`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
+                  return (
+                    <div key={cat.id} className="space-y-1">
+                      <div className="flex items-center justify-between gap-2 text-[10px]">
+                        <span className="truncate font-bold text-[var(--text-strong)]">{cat.shortName}</span>
+                        <span className="flex shrink-0 items-center gap-1.5 font-semibold text-[var(--text-strong)]/50">
+                          {isApproved && <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" title="Ready to sell" />}
+                          {!isApproved && isThresholdReached && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" title="Awaiting admin approval" />}
+                          {currentKg.toFixed(1)} / {thresholdKg} kg
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--primary)]/[0.07]">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            isApproved ? cat.barColor : isThresholdReached ? 'bg-amber-400 animate-pulse' : cat.barColor
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="pt-3 border-t border-gray-100 mt-auto">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab?.('mrf-market')}
-                  className="w-full py-2.5 px-4 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_10%,white)] hover:bg-[color-mix(in_srgb,var(--accent)_20%,white)] text-[var(--accent)] text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  Open Recycle Market & Vendor Sales Ledger <ArrowRight size={14} />
-                </button>
-              </div>
-            </div>
-
+              <button
+                type="button"
+                onClick={() => setActiveTab?.('mrf-market')}
+                className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[var(--accent)]/10 px-4 py-2.5 text-xs font-extrabold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/20"
+              >
+                Open market <ArrowRight size={13} />
+              </button>
+            </section>
           </div>
 
+          {/* Quick actions (desktop) */}
+          <section className="hidden lg:block">
+            <h3 className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[var(--text-strong)]/45">Quick actions</h3>
+            <div className="mt-3 grid grid-cols-4 gap-3">
+              {[
+                { id: 'mrf-walkin', label: 'Walk-in station', icon: Recycle },
+                { id: 'mrf-direct', label: 'Direct pickup', icon: Truck },
+                { id: 'mrf-scrap', label: 'Scrap stock', icon: Trash2 },
+                { id: 'mrf-market', label: 'Recycle market', icon: Coins },
+              ].map((action) => {
+                const ActionIcon = action.icon;
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    onClick={() => setActiveTab?.(action.id)}
+                    className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/80 bg-white/95 p-4 text-left shadow-sm backdrop-blur-md transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02]"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
+                      <ActionIcon size={16} />
+                    </span>
+                    <span className="min-w-0 text-xs font-bold text-[var(--text-strong)]">{action.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
         </div>
+      )}
+
+      {/* ── LIVE BIN MAP (admin edits it in Settings → Locations) ── */}
+      {activeTab === 'mrf-bin-map' && (
+        <MRFBinMapTab bins={bins} reports={reports} />
       )}
 
       {/* ── 2. ACTIVE DISPATCHES DEDICATED VIEW ── */}
@@ -614,9 +721,94 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               <p className="text-base font-bold text-[var(--text-strong)]">All clear! No active dispatches assigned.</p>
               <p className="text-xs text-[var(--text-strong)]/50">When the Admin dispatches a pickup task, it will pop up right here.</p>
             </div>
+          ) : dispatchFolder === null ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {dispatchFolders.filter((folder) => folder.groups.length > 0).map((folder, index) => {
+                const FolderIcon = folder.icon;
+                const rampNumber = Math.min(index + 1, 4);
+                const latestMs = folder.groups.reduce(
+                  (max, group) => Math.max(max, getTimeMs(group.firstReport)),
+                  0,
+                );
+                return (
+                  <button
+                    key={folder.key}
+                    type="button"
+                    onClick={() => setDispatchFolder(folder.key)}
+                    style={
+                      {
+                        '--ramp': `var(--ramp-${rampNumber})`,
+                        '--ramp-strong': `var(--ramp-${rampNumber}-strong)`,
+                      } as React.CSSProperties
+                    }
+                    className="flex h-full w-full cursor-pointer flex-col rounded-3xl border border-[var(--ramp)]/35 bg-white/95 p-5 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-[var(--ramp)]/60 hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-base font-bold leading-tight text-[var(--text-strong)]">
+                          {folder.label}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--text-strong)]/50">{folder.description}</p>
+                      </div>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ramp)] text-white shadow-xs">
+                        <FolderIcon size={17} />
+                      </span>
+                    </div>
+                    <div className="mt-auto flex items-center gap-2 pt-4">
+                      <span className="shrink-0 rounded-full border border-[var(--ramp)]/30 bg-[color-mix(in_srgb,var(--ramp)_15%,white)] px-3 py-1 text-[11px] font-bold text-[var(--ramp-strong)]">
+                        {folder.groups.length} {folder.groups.length === 1 ? 'task' : 'tasks'}
+                      </span>
+                      <span className="truncate text-[11px] text-[var(--text-strong)]/45">
+                        {latestMs
+                          ? `Latest: ${new Date(latestMs).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}`
+                          : 'No activity yet'}
+                      </span>
+                      <ChevronRight
+                        size={16}
+                        className="ml-auto shrink-0 text-[var(--ramp-strong)]/70"
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {activeDispatchGroups.map(group => {
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDispatchFolder(null)}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-[var(--text-strong)]/70 transition hover:bg-[color-mix(in_srgb,var(--primary)_6%,white)]"
+                >
+                  <ArrowLeft size={13} /> Back
+                </button>
+                <span className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-[var(--text-strong)]/60">
+                  <FolderTree size={14} className="text-[var(--accent)]" />
+                  <button
+                    type="button"
+                    onClick={() => setDispatchFolder(null)}
+                    className="cursor-pointer transition hover:text-[var(--text-strong)]"
+                  >
+                    Dispatches
+                  </button>
+                  <ChevronRight size={13} className="text-[var(--text-strong)]/30" />
+                  <span className="font-bold text-[var(--text-strong)]">
+                    {activeDispatchFolder?.label ?? 'Tasks'}
+                  </span>
+                </span>
+              </div>
+
+              {visibleDispatchGroups.length === 0 ? (
+                <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-8 text-center text-xs text-[var(--text-strong)]/50">
+                  No active tasks in this folder right now.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {visibleDispatchGroups.map(group => {
                 const rep = group.firstReport;
                 const mergedCount = group.allReports.length;
                 const isRecyclable = rep.category === 'RECYCLABLE' || rep.description.toUpperCase().includes('WASTE');
@@ -706,7 +898,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                         </button>
                       ) : (
                         <button
-                          onClick={() => setCompleteModalReport(rep)}
+                          onClick={() => openCompleteModal(rep)}
                           className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary)] text-white text-xs font-bold shadow-md shadow-[var(--primary)]/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                         >
                           <CheckCircle2 size={13} /> Complete & Finish
@@ -715,7 +907,9 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                     </div>
                   </div>
                 );
-              })}
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -750,7 +944,6 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
         <MRFMarketTab
           stocksRecord={stocksRecord}
           salesHistory={salesHistory}
-          totalVendorSales={totalVendorSales}
           handleSellBatch={handleSellBatch}
         />
       )}
@@ -834,18 +1027,49 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               {/* ── Body ── */}
               <form onSubmit={handleCompleteSubmit} className="p-6 space-y-4">
 
-                {/* RECYCLABLE: Itemized Weight Inputs */}
-                {isRecyclable && (
-                  <CollectedItemsInput
-                    categories={RECYCLABLE_CATEGORIES}
-                    itemWeights={itemWeights}
-                    onWeightChange={(catId, value) => setItemWeights(prev => ({ ...prev, [catId]: value }))}
-                    otherName={otherMaterialName}
-                    onOtherNameChange={setOtherMaterialName}
-                    otherKg={otherMaterialKg}
-                    onOtherKgChange={setOtherMaterialKg}
-                  />
-                )}
+                {/* RECYCLABLE: Itemized Weight Inputs — only the materials the
+                    student identified are shown, so MRF just weighs and confirms. */}
+                {isRecyclable && completeModalReport && (() => {
+                  const reportedCodes = completeModalReport.materials ?? [];
+                  const hasReportedMaterials = reportedCodes.length > 0;
+                  const reportedCategories = hasReportedMaterials
+                    ? RECYCLABLE_CATEGORIES.filter(cat => reportedCodes.includes(cat.id))
+                    : RECYCLABLE_CATEGORIES;
+
+                  return (
+                    <div className="space-y-3">
+                      {hasReportedMaterials && (
+                        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/50 px-3 py-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/40">
+                            Student identified
+                          </span>
+                          {reportedCategories.map(cat => (
+                            <span
+                              key={cat.id}
+                              className="rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]"
+                            >
+                              {cat.shortName}
+                            </span>
+                          ))}
+                          {reportedCodes.includes('others') && (
+                            <span className="rounded-full border border-[var(--primary)]/15 bg-white px-2 py-0.5 text-[10px] font-bold text-[var(--text-strong)]/70">
+                              Mixed / Others{completeModalReport.otherMaterialLabel ? `: ${completeModalReport.otherMaterialLabel}` : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <CollectedItemsInput
+                        categories={reportedCategories}
+                        itemWeights={itemWeights}
+                        onWeightChange={(catId, value) => setItemWeights(prev => ({ ...prev, [catId]: value }))}
+                        otherName={otherMaterialName}
+                        onOtherNameChange={setOtherMaterialName}
+                        otherKg={otherMaterialKg}
+                        onOtherKgChange={setOtherMaterialKg}
+                      />
+                    </div>
+                  );
+                })()}
 
                 {/* ASSET: Outcome Dropdown */}
                 {isAsset && (() => {
@@ -958,19 +1182,19 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Collected Weight (kg)
+                        Collected Weight (kg) — optional
                       </label>
                       <input
                         type="number"
                         min="0"
                         step="0.1"
-                        placeholder="e.g. 4.5"
+                        placeholder="Leave blank if not weighed"
                         value={weightKg}
                         onChange={e => setWeightKg(e.target.value)}
                         className="w-full rounded-xl border-2 border-gray-100 bg-white px-3.5 py-2.5 text-xs text-gray-900 outline-none placeholder:text-gray-300 focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20 transition-all"
                       />
                       <p className="text-[10px] text-gray-400">
-                        Used for residual waste monitoring. Leave blank if it could not be weighed — the batch will be flagged as unweighed.
+                        Only recyclables are weighed. Residual and biodegradable batches are monitored by report and pickup counts, so you can leave this blank.
                       </p>
                     </div>
                   </div>
@@ -1130,7 +1354,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                     onClick={() => {
                       const rep = mrfDetailReport;
                       setMrfDetailReport(null);
-                      setCompleteModalReport(rep);
+                      if (rep) openCompleteModal(rep);
                     }}
                     className="flex-1 py-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary)] text-white text-xs font-bold shadow-md shadow-[var(--primary)]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >

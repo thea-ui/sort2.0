@@ -304,7 +304,7 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
 
             <div className="space-y-1.5 pt-1">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Campus Locations</span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 {filteredStations.map((station) => {
                   const isSel = selectedLocation === station.locationName;
                   const hasReported = station.slots.some((s: any) => !s.isAvailable);
@@ -312,19 +312,23 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                     <button
                       key={station.locationName}
                       type="button"
+                      aria-pressed={isSel}
+                      aria-label={`${station.locationName}, ${hasReported ? 'bin pending pick up' : 'all bins available'}`}
                       onClick={() => {
                         handleSelectStation(station);
                         setActivePopoverStation(station.locationName);
                       }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`flex min-h-[44px] cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-[11.5px] font-bold leading-snug transition-colors ${
                         isSel
-                          ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-xs'
-                          : 'bg-gray-50 border-gray-200 text-[var(--text-strong)]/80 hover:bg-emerald-50 hover:border-emerald-200'
+                          ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-xs'
+                          : 'border-gray-200 bg-gray-50 text-[var(--text-strong)]/80 hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/5'
                       }`}
                     >
-                      <span>{station.locationName}</span>
-                      {hasReported && (
-                        <span className={`h-2 w-2 rounded-full ${isSel ? 'bg-white' : 'bg-rose-500 animate-ping'}`} title="Has unavailable bins pending pickup" />
+                      <span className="line-clamp-2 min-w-0 flex-1">{station.locationName}</span>
+                      {hasReported ? (
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${isSel ? 'bg-amber-200 animate-pulse' : 'bg-[#FF5722] animate-pulse'}`} aria-hidden="true" />
+                      ) : (
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${isSel ? 'bg-emerald-200' : 'bg-[#10B981]'}`} aria-hidden="true" />
                       )}
                     </button>
                   );

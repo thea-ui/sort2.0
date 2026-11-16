@@ -103,12 +103,19 @@ router.post('/approve-sale', requireAdmin, async (req: Request, res: Response) =
 });
 
 // POST /api/market/sell-batch - Execute batch sale for category (admin-approved only)
+// The ₱/kg price is entered by MRF at the moment of the sale (junk-shop prices
+// vary per buyer and per transaction), so no fixed market rate is stored.
 router.post('/sell-batch', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response) => {
   try {
-    const { categoryCode, buyerName } = req.body;
+    const { categoryCode, buyerName, pricePerKg } = req.body;
 
     if (!categoryCode) {
       return res.status(400).json({ error: 'categoryCode is required' });
+    }
+
+    const price = Number(pricePerKg);
+    if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({ error: 'A valid price per kg is required to complete the sale' });
     }
 
     const outcome = await prisma.$transaction(async (tx) => {
@@ -142,8 +149,7 @@ router.post('/sell-batch', requireRole('ADMIN', 'MRF'), async (req: Request, res
         ? stock.thresholdLimitKg
         : stock.accumulatedKg;
       const remainingKg = Math.max(0, stock.accumulatedKg - weightSold);
-      const pricePerKg = stock.marketPricePerKg;
-      const totalRevenue = Math.round(weightSold * pricePerKg);
+      const totalRevenue = Math.round(weightSold * price);
 
       // Read default vendor name from system settings
       const settings = await tx.systemSetting.findUnique({ where: { id: 'default_setting' } });
@@ -155,7 +161,7 @@ router.post('/sell-batch', requireRole('ADMIN', 'MRF'), async (req: Request, res
           categoryCode: stock.categoryCode,
           categoryName: stock.categoryName,
           weightKg: parseFloat(weightSold.toFixed(1)),
-          marketPriceKg: pricePerKg,
+          marketPriceKg: price,
           totalRevenue,
           buyerName: buyer,
           schoolYearId: await getActiveSchoolYearId(),

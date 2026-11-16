@@ -82,7 +82,6 @@ export const RecyclablesSummaryGrid: React.FC<RecyclablesSummaryGridProps> = ({
           const stock = item.stock;
           const accumulatedKg = stock ? stock.accumulatedKg : 0;
           const thresholdKg = stock ? stock.thresholdLimitKg : 50;
-          const pricePerKg = stock ? stock.marketPricePerKg : 15;
           const isApproved = stock ? stock.isApprovedForSale === true : false;
           const pct = Math.min(100, Math.round((accumulatedKg / thresholdKg) * 100));
           const isThresholdReached = accumulatedKg >= thresholdKg;
@@ -99,7 +98,6 @@ export const RecyclablesSummaryGrid: React.FC<RecyclablesSummaryGridProps> = ({
             color: item.color,
             strongColor: item.strongColor,
             currentKg: accumulatedKg,
-            pricePerKg,
             status: isApproved
               ? 'Authorized for sale'
               : needsAuthorization
@@ -157,7 +155,7 @@ export const RecyclablesSummaryGrid: React.FC<RecyclablesSummaryGridProps> = ({
 
               {isOpen && (
                 <div id={panelId} className={PANEL}>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <span className={MICRO_LABEL}>Batch stock</span>
                       <p className="mt-1 text-sm">
@@ -182,13 +180,6 @@ export const RecyclablesSummaryGrid: React.FC<RecyclablesSummaryGridProps> = ({
                           {pct}%
                         </span>
                       </div>
-                    </div>
-                    <div>
-                      <span className={MICRO_LABEL}>Market rate</span>
-                      <p className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
-                        <span className={NUMBER}>₱{pricePerKg}</span>
-                        <span className="font-medium text-[var(--text-strong)]/40"> / kg</span>
-                      </p>
                     </div>
                     <div>
                       <span className={MICRO_LABEL}>Sold revenue</span>

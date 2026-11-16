@@ -6,6 +6,7 @@ import {
   Flame,
   Lightbulb,
   Medal,
+  ChevronDown,
 } from 'lucide-react';
 import { User, Challenge, Report, SystemSettings } from '../../../types';
 import { CertificateVault } from './CertificateVault';
@@ -92,37 +93,12 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         }
       />
 
-      {/* Certificate Vault — milestone (instant) + ranked (term-end) */}
-      <CertificateVault currentUser={currentUser} settings={settings} onClaimed={onCertificateChange} />
-
-      {/* Banner: How Points Work */}
-      <div className="space-y-3 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 text-[var(--text-strong)] sm:p-5">
-        <div className="flex items-center gap-2 font-bold text-xs text-[var(--accent)]">
-          <Lightbulb className="text-[var(--accent)] shrink-0" size={16} />
-          <span>How Points Work</span>
-        </div>
-        <p className="text-xs text-[var(--text-strong)]/80 leading-relaxed font-medium">
-          When the same bin is reported by multiple students, only the first 3 get points after the MRF collects the reported waste. Ranks restart at each daily reset (default 6:00 PM) — every day has a fresh 1st, 2nd, and 3rd reporter:
-        </p>
-
-        <div className="flex flex-wrap gap-2 pt-0.5">
-          <span className="px-3 py-1 bg-[var(--gold)]/20 border border-[var(--gold)]/40 text-[var(--gold)] rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-            <Medal size={12} className="text-[var(--gold)]" /> <span>15 pts — 1st reporter</span>
-          </span>
-          <span className="px-3 py-1 bg-[var(--background)] border border-[var(--primary)]/15 text-[var(--text-strong)] rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-            <Medal size={12} className="text-slate-400" /> <span>10 pts — 2nd reporter</span>
-          </span>
-          <span className="px-3 py-1 bg-[var(--background)] border border-[var(--primary)]/15 text-[var(--text-strong)]/80 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-            <Medal size={12} className="text-amber-700" /> <span>5 pts — 3rd reporter</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Top 3 Winner Podium Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+      {/* Top 3: compact ranked rows on phones, podium on wider screens */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
         {top3Podium.map((entry) => {
           const isUser = entry.isCurrentUser;
           const isChampion = entry.rank === 1;
+          const orderClass = isChampion ? 'order-first sm:order-none' : '';
           const badgeBg = isChampion ? 'bg-[var(--gold)]/20 border-[var(--gold)] text-[var(--gold-strong)]' :
                           entry.rank === 2 ? 'bg-[var(--background)] border-[var(--primary)]/20 text-[var(--text-strong)]' :
                           'bg-[var(--background)] border-[var(--primary)]/15 text-[var(--text-strong)]/80';
@@ -136,19 +112,19 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
           return (
             <div
               key={entry.studentId}
-              className={`flex flex-col items-center justify-center rounded-2xl border p-5 text-center transition-colors ${cardTone}`}
+              className={`flex h-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors sm:flex-col sm:justify-center sm:p-5 sm:text-center ${orderClass} ${cardTone}`}
             >
-              <div className={`h-9 w-9 rounded-full border flex items-center justify-center text-sm mb-3 font-bold ${badgeBg}`}>
+              <div className={`mb-0 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold sm:mb-3 sm:h-9 sm:w-9 sm:text-sm ${badgeBg}`}>
                 {entry.rank}
               </div>
 
-              <h3 className={`text-xs font-bold ${isUser ? 'text-[var(--accent)] font-extrabold' : 'text-[var(--text-strong)]'}`}>
+              <h3 className={`min-w-0 flex-1 break-words text-xs font-bold leading-snug tracking-wide sm:w-full sm:flex-none sm:px-0.5 sm:leading-normal ${isUser ? 'text-[var(--accent)] font-extrabold' : 'text-[var(--text-strong)]'}`}>
                 {entry.studentName} {isUser && '(You)'}
               </h3>
-              <p className="text-[11px] text-[var(--text-strong)]/50 font-medium mt-0.5">Student</p>
+              <p className="mt-1 hidden text-[11px] font-medium text-[var(--text-strong)]/50 sm:block">Student</p>
 
-              <div className="flex items-center gap-1 mt-2.5 font-black text-xs text-[var(--accent)]">
-                <Flame size={14} className="text-[var(--accent)] fill-[var(--accent)]" />
+              <div className="mt-0 inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--accent)]/10 px-2.5 py-0.5 text-[11px] font-black text-[var(--accent)] sm:mt-3 sm:text-xs">
+                <Flame size={13} className="text-[var(--accent)] fill-[var(--accent)]" />
                 <span>{entry.pointsBalance}</span>
               </div>
             </div>
@@ -161,7 +137,7 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-strong)]/40 pointer-events-none" />
         <input
           type="text"
-          placeholder="Search by name or course..."
+          placeholder="Search students..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full rounded-xl border border-[var(--primary)]/15 bg-white py-2.5 pl-11 pr-4 text-base font-medium text-[var(--text-strong)] outline-none transition-colors placeholder:text-[var(--text-strong)]/35 focus:border-[var(--accent)] sm:text-sm"
@@ -188,8 +164,8 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
                     : 'hover:bg-[var(--background)]'
                 }`}
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-6 text-center text-sm font-bold">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="w-6 shrink-0 text-center text-sm font-bold">
                     {user.rank === 1 ? (
                       <span className="h-6 w-6 rounded-full bg-[var(--gold)]/20 border border-[var(--gold)] text-[var(--gold)] text-[11px] font-extrabold inline-flex items-center justify-center">1</span>
                     ) : user.rank === 2 ? (
@@ -207,17 +183,20 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
                     {initial}
                   </div>
 
-                  <div>
-                    <h4 className={`text-xs font-bold ${isUser ? 'text-[var(--accent)] font-extrabold' : 'text-[var(--text-strong)]'}`}>
+                  <div className="min-w-0">
+                    <h4 className={`line-clamp-2 text-[12.5px] font-bold leading-snug tracking-wide ${isUser ? 'text-[var(--accent)] font-extrabold' : 'text-[var(--text-strong)]'}`}>
                       {user.studentName} {isUser && '(You)'}
                     </h4>
-                    <p className="text-[11px] text-[var(--text-strong)]/50 font-medium mt-0.5">
-                      Student · {user.reportsCount} {user.reportsCount === 1 ? 'report' : 'reports'}
+                    <p className="mt-1 truncate text-[11px] font-medium text-[var(--text-strong)]/50">
+                      {user.gradeSection}
+                      <span className="hidden min-[480px]:inline">
+                        {' '}· {user.reportsCount} {user.reportsCount === 1 ? 'report' : 'reports'}
+                      </span>
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 font-black text-xs text-[var(--text-strong)]">
+                <div className="flex shrink-0 items-center gap-1 text-xs font-black text-[var(--text-strong)]">
                   <Flame size={14} className="text-[var(--accent)] fill-[var(--accent)]" />
                   <span>{user.pointsBalance}</span>
                 </div>
@@ -227,11 +206,38 @@ export const GamificationTab: React.FC<GamificationTabProps> = ({
         )}
       </div>
 
+      {/* Bonus points + ranked awards */}
+      <details className="group rounded-2xl border border-[var(--primary)]/10 bg-white px-4 py-3 sm:px-5">
+        <summary className="flex cursor-pointer list-none select-none items-center gap-2 text-xs font-bold text-[var(--accent)] [&::-webkit-details-marker]:hidden">
+          <Lightbulb className="shrink-0 text-[var(--accent)]" size={16} />
+          <span>How points work</span>
+          <ChevronDown size={15} className="ml-auto shrink-0 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs font-medium leading-relaxed text-[var(--text-strong)]/80">
+            Only the first 3 reporters of a bin earn points once MRF collects it. Rankings reset at every daily bin reset (default 6:00 PM).
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <span className="flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/20 px-3 py-1 text-[11px] font-bold text-[var(--gold)] shadow-2xs">
+              <Medal size={12} className="text-[var(--gold)]" /> <span>15 pts — 1st reporter</span>
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full border border-[var(--primary)]/15 bg-[var(--background)] px-3 py-1 text-[11px] font-bold text-[var(--text-strong)] shadow-2xs">
+              <Medal size={12} className="text-slate-400" /> <span>10 pts — 2nd reporter</span>
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full border border-[var(--primary)]/15 bg-[var(--background)] px-3 py-1 text-[11px] font-bold text-[var(--text-strong)]/80 shadow-2xs">
+              <Medal size={12} className="text-amber-700" /> <span>5 pts — 3rd reporter</span>
+            </span>
+          </div>
+        </div>
+      </details>
+
+      <CertificateVault currentUser={currentUser} settings={settings} onClaimed={onCertificateChange} />
+
       {/* Active Challenges Section */}
       <div className="space-y-4 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-5">
         <h3 className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-widest flex items-center gap-2">
           <Trophy size={14} className="text-[var(--gold)]" />
-          <span>Active Accumulation Challenges</span>
+          <span>Active Challenges</span>
         </h3>
 
         {challenges.length === 0 ? (

@@ -23,6 +23,37 @@ export const WALK_IN_LIMITS = {
   maxLines: 6,
 } as const;
 
+/** Materials the walk-in station accepts (the recyclables students commonly bring). */
+export const WALK_IN_MATERIALS = ['pet_plastic', 'aluminum_cans', 'cardboard'] as const;
+export type WalkInMaterial = (typeof WALK_IN_MATERIALS)[number];
+
+export const WALK_IN_MATERIAL_LABELS: Record<WalkInMaterial, string> = {
+  pet_plastic: 'Plastic Bottles',
+  aluminum_cans: 'Aluminum Cans',
+  cardboard: 'Paper & Cardboard',
+};
+
+const ALUMINUM_GRAM_PRESETS: { ml: number; grams: number }[] = [
+  { ml: 250, grams: 11 },
+  { ml: 330, grams: 13 },
+  { ml: 355, grams: 14 },
+  { ml: 500, grams: 16 },
+];
+
+/** Estimated grams for one walk-in item, by material. */
+export function gramsForWalkInItem(material: WalkInMaterial, bottleMl: number): number {
+  if (!Number.isFinite(bottleMl) || bottleMl <= 0) return 0;
+  if (material === 'aluminum_cans') {
+    if (bottleMl > 500) return Math.round(bottleMl * 0.032);
+    let best = ALUMINUM_GRAM_PRESETS[0];
+    for (const preset of ALUMINUM_GRAM_PRESETS) {
+      if (Math.abs(preset.ml - bottleMl) < Math.abs(best.ml - bottleMl)) best = preset;
+    }
+    return best.grams;
+  }
+  return gramsForBottle(bottleMl);
+}
+
 /**
  * Estimated bottle weight in grams (bottle + cap + label) for common PH PET
  * sizes. Sources: NEA (Singapore) packaging benchmarks for PET water bottles
@@ -63,6 +94,13 @@ export function computeWalkInPoints(totalMl: number, ratePer500ml: number): numb
   return Math.max(1, Math.floor((totalMl / 500) * rate));
 }
 
+/** Weighted categories (paper & cardboard) earn the same rate per 500 g. */
+export function computeWalkInWeightPoints(totalGrams: number, ratePer500: number): number {
+  if (!Number.isFinite(totalGrams) || totalGrams <= 0) return 0;
+  const rate = Number.isFinite(ratePer500) && ratePer500 > 0 ? Math.floor(ratePer500) : 1;
+  return Math.max(1, Math.floor((totalGrams / 500) * rate));
+}
+
 export function formatLitres(totalMl: number): string {
   const litres = totalMl / 1000;
   return litres.toFixed(2).replace(/\.?0+$/, '');
@@ -78,6 +116,10 @@ export interface WalkInItemInput {
 export interface RecordWalkInInput {
   studentId: string;
   items: WalkInItemInput[];
+  /** pet_plastic | aluminum_cans | cardboard (defaults to pet_plastic). */
+  material?: string;
+  /** Weighed kilogrammes, required for paper & cardboard. */
+  weightKg?: number;
   notes?: string;
   idempotencyKey: string;
   recordedById?: string | null;
@@ -124,7 +166,17 @@ type DbClient = Prisma.TransactionClient | PrismaClient;
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
-function normalizeItems(items: unknown): { bottleMl: number; quantity: number; grams: number }[] {
+function normalizeMaterial(value: unknown): WalkInMaterial {
+  const material = String(value ?? 'pet_plastic');
+  return (WALK_IN_MATERIALS as readonly string[]).includes(material)
+    ? (material as WalkInMaterial)
+    : 'pet_plastic';
+}
+
+function normalizeItems(
+  items: unknown,
+  material: WalkInMaterial,
+): { bottleMl: number; quantity: number; grams: number }[] {
   if (!Array.isArray(items) || items.length === 0) {
     throw new WalkInError(400, 'VALIDATION_ERROR', 'At least one bottle line is required');
   }
@@ -140,7 +192,7 @@ function normalizeItems(items: unknown): { bottleMl: number; quantity: number; g
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > WALK_IN_LIMITS.maxQuantity) {
       throw new WalkInError(400, 'VALIDATION_ERROR', `quantity must be an integer between 1 and ${WALK_IN_LIMITS.maxQuantity}`);
     }
-    return { bottleMl, quantity, grams: gramsForBottle(bottleMl) };
+    return { bottleMl, quantity, grams: gramsForWalkInItem(material, bottleMl) };
   });
 }
 
@@ -153,6 +205,7 @@ function serializeTurnover(turnover: any) {
     id: turnover.id,
     studentId: turnover.studentId,
     recordedByName: turnover.recordedByName,
+    material: turnover.material ?? 'pet_plastic',
     totalMl: turnover.totalMl,
     totalBottles: turnover.totalBottles,
     totalGrams: turnover.totalGrams,
@@ -301,10 +354,26 @@ export async function recordWalkIn(input: RecordWalkInInput): Promise<RecordWalk
   const studentId = String(input.studentId || '').trim();
   if (!studentId) throw new WalkInError(400, 'VALIDATION_ERROR', 'studentId is required');
 
-  const items = normalizeItems(input.items);
-  const totalMl = items.reduce((sum, item) => sum + item.bottleMl * item.quantity, 0);
-  const totalBottles = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalGrams = items.reduce((sum, item) => sum + item.grams * item.quantity, 0);
+  const material = normalizeMaterial(input.material);
+  let items: { bottleMl: number; quantity: number; grams: number }[];
+  let totalMl = 0;
+  let totalBottles = 0;
+  let totalGrams = 0;
+
+  if (material === 'cardboard') {
+    const weightKg = Number(input.weightKg);
+    if (!Number.isFinite(weightKg) || weightKg <= 0 || weightKg > 500) {
+      throw new WalkInError(400, 'VALIDATION_ERROR', 'weightKg must be between 0.1 and 500 kg');
+    }
+    totalGrams = Math.round(weightKg * 1000);
+    // One synthetic line keeps the item ledger uniform for weighed categories.
+    items = [{ bottleMl: 0, quantity: 1, grams: totalGrams }];
+  } else {
+    items = normalizeItems(input.items, material);
+    totalMl = items.reduce((sum, item) => sum + item.bottleMl * item.quantity, 0);
+    totalBottles = items.reduce((sum, item) => sum + item.quantity, 0);
+    totalGrams = items.reduce((sum, item) => sum + item.grams * item.quantity, 0);
+  }
 
   const [student, settings, activeSy] = await Promise.all([
     prisma.user.findUnique({
@@ -334,7 +403,15 @@ export async function recordWalkIn(input: RecordWalkInInput): Promise<RecordWalk
   }
 
   const ratePer500ml = Math.max(1, settings?.walkInPointsPer500ml ?? 1);
-  const points = computeWalkInPoints(totalMl, ratePer500ml);
+  const points =
+    material === 'cardboard'
+      ? computeWalkInWeightPoints(totalGrams, ratePer500ml)
+      : computeWalkInPoints(totalMl, ratePer500ml);
+  const materialLabel = WALK_IN_MATERIAL_LABELS[material];
+  const quantityText =
+    material === 'cardboard'
+      ? `${(totalGrams / 1000).toFixed(2)} kg`
+      : `${totalBottles} bottle(s), ${formatLitres(totalMl)}L`;
   const recordedByName = (input.recordedByName || 'MRF').slice(0, 120);
   const schoolYearId = activeSy.id;
 
@@ -345,6 +422,7 @@ export async function recordWalkIn(input: RecordWalkInInput): Promise<RecordWalk
           studentId,
           recordedById: input.recordedById ?? null,
           recordedByName,
+          material,
           totalMl,
           totalBottles,
           totalGrams,
@@ -368,7 +446,7 @@ export async function recordWalkIn(input: RecordWalkInInput): Promise<RecordWalk
         data: {
           userId: studentId,
           amount: points,
-          reason: `Walk-in Bottle Turnover: ${totalBottles} bottle(s), ${formatLitres(totalMl)}L (+${points} pts) at MRF`,
+          reason: `Walk-in ${materialLabel} Turnover: ${quantityText} (+${points} pts) at MRF`,
           walkInTurnoverId: turnover.id,
           schoolYearId,
         },
@@ -379,7 +457,7 @@ export async function recordWalkIn(input: RecordWalkInInput): Promise<RecordWalk
           actorName: recordedByName,
           actorRole: 'MRF',
           actionType: 'WALK_IN_TURNOVER',
-          details: `${updatedStudent.name} · ${totalBottles} bottle(s) · ${formatLitres(totalMl)}L · ${totalGrams} g · +${points} pts`,
+          details: `${updatedStudent.name} · ${materialLabel} · ${quantityText} · ${totalGrams} g · +${points} pts`,
           schoolYearId,
         },
       });

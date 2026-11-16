@@ -1,5 +1,4 @@
 import { syncEnrollProBranding } from './enrollpro-branding.service.js';
-import { isBrandingSyncDisabled } from './branding-preset.service.js';
 import { isRolloverInProgress } from './rollover.service.js';
 
 /**
@@ -28,10 +27,6 @@ async function runBrandingSync(trigger: 'boot' | 'interval'): Promise<void> {
 
 export function startBrandingSyncScheduler(): void {
   if (intervalTimer) return;
-  if (isBrandingSyncDisabled()) {
-    console.log('[Branding] EnrollPro branding sync disabled by presentation preset');
-    return;
-  }
   bootTimer = setTimeout(() => {
     void runBrandingSync('boot');
   }, BOOT_DELAY_MS);

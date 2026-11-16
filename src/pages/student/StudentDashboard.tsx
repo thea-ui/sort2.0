@@ -3,6 +3,7 @@ import { useMockData } from '../../hooks/useMockData';
 import { WasteCategory } from '../../types';
 import { Scale, Sparkles, Trash2 } from 'lucide-react';
 import { downscaleImageFile } from '../../utils/imageDownscale';
+import { materialLabel } from '../../utils/materials';
 import { toast } from '../../hooks/useToast';
 
 // Sub-components
@@ -71,6 +72,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
   const [isScatteredDebris, setIsScatteredDebris] = useState(false);
   const [isPinningMode, setIsPinningMode] = useState(false);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [otherMaterialLabel, setOtherMaterialLabel] = useState('');
   const [sliderValue, setSliderValue] = useState(2);
 
   // Filter personal reports
@@ -140,11 +142,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
       toast.error('Attach photo evidence before submitting.');
       return;
     }
+    if (category === 'RECYCLABLE' && selectedMaterials.length === 0) {
+      toast.error('Select at least one material inside the recyclable bin.');
+      return;
+    }
+
 
     setIsSubmitting(true);
     submitTimerRef.current = window.setTimeout(() => {
-      const subcategoriesText = selectedMaterials.length > 0 
-        ? `[Materials: ${selectedMaterials.map(m => m.charAt(0).toUpperCase() + m.slice(1)).join(', ')}]` 
+      const materialNames = selectedMaterials.map(m => materialLabel(m));
+      const subcategoriesText = materialNames.length > 0
+        ? `[Materials: ${materialNames.join(', ')}]`
         : '';
       const associatedBinText = binId ? `[Associated Bin ID: ${binId}]` : isScatteredDebris ? '[Scattered Debris Pin]' : `[Location: ${locationName}]`;
       const formattedDesc = `${associatedBinText} ${subcategoriesText} ${reportDesc}`.trim();
@@ -162,6 +170,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
           imageUrl: capturedImage || undefined,
           isScatteredDebris: isScatteredDebris,
           reportType: 'WASTE',
+          materials: category === 'RECYCLABLE' ? selectedMaterials : [],
+          otherMaterialLabel:
+            category === 'RECYCLABLE' && selectedMaterials.includes('others')
+              ? otherMaterialLabel.trim() || null
+              : null,
         });
       } catch (err: any) {
         // The duplicate / 3-unverified / dispatched-bin guards throw: surface
@@ -196,6 +209,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
       setBinId(null);
       setIsScatteredDebris(false);
       setSelectedMaterials([]);
+      setOtherMaterialLabel('');
       setSliderValue(2);
       setUrgency('MEDIUM');
       setCategory('RECYCLABLE');
@@ -255,6 +269,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, s
           setIsPinningMode={setIsPinningMode}
           selectedMaterials={selectedMaterials}
           setSelectedMaterials={setSelectedMaterials}
+          otherMaterialLabel={otherMaterialLabel}
+          setOtherMaterialLabel={setOtherMaterialLabel}
           sliderValue={sliderValue}
           setSliderValue={setSliderValue}
           handleSubmit={handleSubmit}

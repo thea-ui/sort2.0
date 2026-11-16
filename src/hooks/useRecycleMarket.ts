@@ -247,13 +247,18 @@ export function useRecycleMarket() {
     broadcastChange();
   };
 
-  const sellBatch = async (categoryCode: string, buyerName?: string) => {
+  const sellBatch = async (categoryCode: string, buyerName?: string, pricePerKg?: number) => {
     const currentItem = state.stocksRecord[categoryCode];
     if (!currentItem || currentItem.accumulatedKg <= 0) return null;
 
+    const price = Number(pricePerKg);
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new Error('Enter the agreed price per kg before completing the sale.');
+    }
+
     // No fabricated local transaction: the callers display the returned sale as
     // revenue, so a failed API call must reject instead of inventing one.
-    const res = await apiService.sellMarketBatch({ categoryCode, buyerName });
+    const res = await apiService.sellMarketBatch({ categoryCode, buyerName, pricePerKg: price });
     if (!res || !res.transaction) {
       throw new Error('The vendor sale was not recorded by the server.');
     }

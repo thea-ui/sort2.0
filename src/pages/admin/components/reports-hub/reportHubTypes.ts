@@ -66,13 +66,25 @@ export interface LedgerRow {
   buyerName: string;
 }
 
-/** A walk-in bottle turnover flattened for display. */
+export const WALK_IN_MATERIAL_LABELS: Record<string, string> = {
+  pet_plastic: 'Plastic Bottles',
+  aluminum_cans: 'Aluminum Cans',
+  cardboard: 'Paper & Cardboard',
+};
+
+export function walkInMaterialLabel(material?: string): string {
+  return WALK_IN_MATERIAL_LABELS[material ?? 'pet_plastic'] ?? 'Plastic Bottles';
+}
+
+/** A walk-in turnover flattened for display. */
 export interface WalkInRow {
   id: string;
   date: string;
   studentName: string;
   gradeLevel?: string;
   sectionName?: string;
+  /** pet_plastic | aluminum_cans | cardboard */
+  material?: string;
   bottles: number;
   ml: number;
   grams: number;

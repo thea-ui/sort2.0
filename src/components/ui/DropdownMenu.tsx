@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -99,6 +100,21 @@ export const DropdownMenuContent: React.FC<DropdownMenuContentProps> = ({
     });
   }, [align, sideOffset, triggerRef]);
 
+  // Keep the panel on-screen: at large accessibility text scales the rem-based
+  // width can exceed the right-anchored space and push the menu off the edge.
+  useLayoutEffect(() => {
+    if (!open || !position) return;
+    const el = contentRef.current;
+    if (!el) return;
+    const margin = 8;
+    const rect = el.getBoundingClientRect();
+    if (rect.left < margin) {
+      setPosition((prev) => (prev ? { ...prev, left: margin, right: undefined } : prev));
+    } else if (rect.right > window.innerWidth - margin) {
+      setPosition((prev) => (prev ? { ...prev, right: margin, left: undefined } : prev));
+    }
+  }, [open, position]);
+
   useEffect(() => {
     if (!open) {
       setPosition(null);
@@ -134,7 +150,7 @@ export const DropdownMenuContent: React.FC<DropdownMenuContentProps> = ({
       role="menu"
       style={{ top: position.top, left: position.left, right: position.right }}
       className={cn(
-        'fixed z-50 min-w-32 rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none animate-menu-in',
+        'fixed z-50 min-w-32 max-w-[calc(100vw-16px)] rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none animate-menu-in',
         className,
       )}
       {...props}

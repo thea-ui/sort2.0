@@ -79,6 +79,8 @@ router.post('/', requireRole('ADMIN', 'MRF'), walkInLimiter, async (req: Request
     const result = await recordWalkIn({
       studentId: req.body?.studentId,
       items: req.body?.items,
+      material: req.body?.material,
+      weightKg: req.body?.weightKg,
       notes: req.body?.notes,
       idempotencyKey: req.body?.idempotencyKey,
       recordedById: actor.userId,

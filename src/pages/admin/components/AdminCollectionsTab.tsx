@@ -172,12 +172,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
           />
           {marketTarget && (
             <p className="text-xs text-muted-foreground pt-1">
-              {marketTarget.category} ·{' '}
-              {(marketTarget.stock?.accumulatedKg ?? 0).toFixed(1)} kg batch · Est. value ₱
-              {Math.round(
-                (marketTarget.stock?.accumulatedKg ?? 0) *
-                  (marketTarget.stock?.marketPricePerKg ?? 0),
-              ).toLocaleString()}
+              {marketTarget.category} · {(marketTarget.stock?.accumulatedKg ?? 0).toFixed(1)} kg batch
             </p>
           )}
         </div>
@@ -214,8 +209,7 @@ export const AdminCollectionsTab: React.FC<AdminCollectionsTabProps> = ({
           />
           {scrapTarget && (
             <p className="text-xs text-muted-foreground pt-1">
-              {scrapTarget.materialName} · {scrapTarget.accumulatedKg.toFixed(1)} kg batch · Est. value ₱
-              {Math.round(scrapTarget.accumulatedKg * scrapTarget.marketPricePerKg).toLocaleString()}
+              {scrapTarget.materialName} · {scrapTarget.accumulatedKg.toFixed(1)} kg batch
             </p>
           )}
         </div>

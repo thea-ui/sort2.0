@@ -254,8 +254,8 @@ export function buildLedgerFolder(ledgerRows: LedgerRow[], walkInRows: WalkInRow
   };
 
   const walkIn: HubFolderNode = {
-    id: 'ledger:walkin',
-    name: 'Walk-in Bottles',
+      id: 'ledger:walkin',
+      name: 'Walk-in Turn-ins',
     subtitle: 'Bottle turnovers recorded at the MRF station',
     count: walkInRows.length,
     latestAt: latestOf(walkInRows),

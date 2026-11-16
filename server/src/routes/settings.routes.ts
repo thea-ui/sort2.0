@@ -15,8 +15,8 @@ import {
   MAX_BRANDING_STREAM_CLIENTS,
 } from '../services/branding.service.js';
 import { syncEnrollProBranding } from '../services/enrollpro-branding.service.js';
-import { isBrandingSyncDisabled } from '../services/branding-preset.service.js';
 import { clampMaxCacheDays } from '../services/offline-auth.service.js';
+import { MATERIAL_CODES, MATERIAL_LABELS } from '../services/material-point-rules.js';
 
 const router = Router();
 
@@ -73,12 +73,6 @@ router.get('/public/stream', (req: Request, res: Response) => {
 // hourly; failures keep the last-known branding and are reported as 502.
 router.post('/branding/pull', requireAdmin, async (req: Request, res: Response): Promise<any> => {
   try {
-    if (isBrandingSyncDisabled()) {
-      return res.status(409).json({
-        error: 'EnrollPro branding sync is disabled for the current presentation preset.',
-        code: 'BRANDING_SYNC_DISABLED',
-      });
-    }
     const result = await syncEnrollProBranding();
     const actor = req as AuthenticatedRequest;
 
@@ -726,6 +720,60 @@ router.patch('/point-rules/:id', requireAdmin, async (req: Request, res: Respons
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to update point rule' });
+  }
+});
+
+// 13b. Material bonus rules — per-material points for recyclable reports.
+router.get('/material-points', authenticate, async (_req, res) => {
+  try {
+    const rules = await prisma.materialPointRule.findMany({ orderBy: { code: 'asc' } });
+    res.json(rules);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch material point rules' });
+  }
+});
+
+router.put('/material-points', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const input = Array.isArray(req.body?.rules) ? req.body.rules : null;
+    if (!input) {
+      return res.status(400).json({ error: 'rules must be an array of { code, points }' });
+    }
+
+    const allowed = new Set<string>(MATERIAL_CODES);
+    const updates = new Map<string, number>();
+    for (const rule of input) {
+      const code = typeof rule?.code === 'string' ? rule.code : '';
+      if (!allowed.has(code)) continue;
+      const points = Number(rule?.points);
+      if (!Number.isInteger(points) || points < 0 || points > 100) {
+        return res.status(400).json({ error: `Invalid points for "${code}" (0–100)` });
+      }
+      updates.set(code, points);
+    }
+
+    if (updates.size === 0) {
+      return res.status(400).json({ error: 'No valid material rules supplied' });
+    }
+
+    await prisma.$transaction(
+      [...updates.entries()].map(([code, points]) =>
+        prisma.materialPointRule.upsert({
+          where: { code },
+          update: { points },
+          create: {
+            code,
+            label: MATERIAL_LABELS[code as keyof typeof MATERIAL_LABELS] ?? code,
+            points,
+          },
+        }),
+      ),
+    );
+
+    const rules = await prisma.materialPointRule.findMany({ orderBy: { code: 'asc' } });
+    res.json(rules);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to update material point rules' });
   }
 });
 

@@ -16,6 +16,7 @@ import {
   Map as MapIcon,
 } from 'lucide-react';
 import { User, Bin, SystemSettings, WasteCategory, Report } from '../../../types';
+import { REPORT_MATERIALS } from '../../../utils/materials';
 import { CampusMapFrame } from '../../../components/map/CampusMapFrame';
 import { StudentSubmitSuccessView } from './StudentSubmitSuccessView';
 import { StudentSubmittedReportDetails } from '../StudentDashboard';
@@ -66,7 +67,9 @@ interface SubmitReportTabProps {
   isPinningMode: boolean;
   setIsPinningMode: (v: boolean) => void;
   selectedMaterials: string[];
-  setSelectedMaterials: (v: any) => void;
+  setSelectedMaterials: (v: string[]) => void;
+  otherMaterialLabel: string;
+  setOtherMaterialLabel: (v: string) => void;
   sliderValue: number;
   setSliderValue: (v: number) => void;
   handleSubmit: (e: React.FormEvent) => void;
@@ -103,7 +106,10 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
   setIsScatteredDebris,
   isPinningMode,
   setIsPinningMode,
+  selectedMaterials,
   setSelectedMaterials,
+  otherMaterialLabel,
+  setOtherMaterialLabel,
   handleSubmit
 }) => {
   const [searchLocation, setSearchLocation] = useState('');
@@ -144,7 +150,9 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
       : (selectedCat as BinCategory);
     const catLabel = CAT_META[canonical]?.label ?? 'Waste Report';
     setReportTitle?.(catLabel);
-    setSelectedMaterials([catLabel]);
+    // Materials are re-picked per recyclable bin; other streams never carry them.
+    setSelectedMaterials([]);
+    setOtherMaterialLabel('');
 
     if (targetBinId) {
       setBinId(targetBinId);
@@ -490,7 +498,7 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
 
           <div className="space-y-1.5 pt-1">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Campus Locations</span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="grid grid-cols-2 gap-2">
               {filteredStations.map((station) => {
                 const isSel = locationName === station.locationName;
                 const hasReported = station.slots.some(s => !s.isAvailable);
@@ -498,19 +506,23 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                   <button
                     key={station.locationName}
                     type="button"
+                    aria-pressed={isSel}
+                    aria-label={`${station.locationName}, ${hasReported ? 'bin pending pick up' : 'all bins available'}`}
                     onClick={() => {
                       handleSelectStation(station);
                       setActivePopoverStation(station.locationName);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    className={`flex min-h-[44px] cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-[11.5px] font-bold leading-snug transition-colors ${
                       isSel
-                        ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-xs'
-                        : 'bg-gray-50 border-gray-200 text-[var(--text-strong)]/80 hover:bg-emerald-50 hover:border-emerald-200'
+                        ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-xs'
+                        : 'border-gray-200 bg-gray-50 text-[var(--text-strong)]/80 hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/5'
                     }`}
                   >
-                    <span>{station.locationName}</span>
-                    {hasReported && (
-                      <span className={`h-2 w-2 rounded-full ${isSel ? 'bg-white' : 'bg-rose-500 animate-ping'}`} title="Has unavailable bins pending pickup" />
+                    <span className="line-clamp-2 min-w-0 flex-1">{station.locationName}</span>
+                    {hasReported ? (
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${isSel ? 'bg-amber-200 animate-pulse' : 'bg-[#FF5722] animate-pulse'}`} aria-hidden="true" />
+                    ) : (
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${isSel ? 'bg-emerald-200' : 'bg-[#10B981]'}`} aria-hidden="true" />
                     )}
                   </button>
                 );
@@ -637,6 +649,67 @@ export const SubmitReportTab: React.FC<SubmitReportTabProps> = ({
                       The <span className="font-bold">{category}</span> bin at <span className="font-bold">{locationName}</span> has already been reported full by a campus user. MRF staff have been dispatched for collection.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {category === 'RECYCLABLE' && (
+                <div className="rounded-2xl border border-[var(--primary)]/10 bg-[var(--background)]/50 p-3.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-bold text-[var(--text-strong)]">What materials are inside this bin?</p>
+                      <p className="mt-0.5 text-[10px] font-medium text-[var(--text-strong)]/50">
+                        Each material earns its own points; Mixed / Others is 1 point.
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[var(--accent)]">
+                      {selectedMaterials.length > 0 ? `${selectedMaterials.length} selected` : 'Required'}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {REPORT_MATERIALS.map(material => {
+                      const checked = selectedMaterials.includes(material.code);
+                      return (
+                        <button
+                          key={material.code}
+                          type="button"
+                          aria-pressed={checked}
+                          onClick={() =>
+                            setSelectedMaterials(
+                              checked
+                                ? selectedMaterials.filter(code => code !== material.code)
+                                : material.code === 'others'
+                                  ? ['others']
+                                  : [...selectedMaterials.filter(code => code !== 'others'), material.code],
+                            )
+                          }
+                          className={`flex min-h-[44px] items-center gap-2.5 rounded-xl border px-3 py-2 text-left text-[11.5px] font-bold transition-colors ${
+                            checked
+                              ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-strong)]'
+                              : 'border-gray-200 bg-white text-[var(--text-strong)]/70 hover:border-[var(--accent)]/30'
+                          }`}
+                        >
+                          <span
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                              checked ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-gray-300 bg-white'
+                            }`}
+                          >
+                            {checked && <Check size={10} />}
+                          </span>
+                          <span className="min-w-0 flex-1">{material.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedMaterials.includes('others') && (
+                    <input
+                      type="text"
+                      maxLength={60}
+                      value={otherMaterialLabel}
+                      onChange={e => setOtherMaterialLabel(e.target.value)}
+                      placeholder="Describe the mixed/unlisted material (optional)"
+                      className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-[var(--text-strong)] outline-none placeholder:text-gray-300 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+                    />
+                  )}
                 </div>
               )}
               </div>

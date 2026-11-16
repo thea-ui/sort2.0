@@ -30,6 +30,7 @@ import {
   stripReportTags,
 } from '../../../utils/reportUtils';
 import { formatDateTime } from '../../../utils/dateFormat';
+import { materialLabel } from '../../../utils/materials';
 import { PhotoLightbox } from '../../../components/common/PhotoLightbox';
 import { EvidenceThumbnail } from '../../../components/common/EvidenceImage';
 import { ReportLocationMiniMap } from '../../../components/map/ReportLocationMiniMap';
@@ -399,6 +400,46 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
         const meta = STATUS_META[ds];
         const freeText = stripReportTags(selectedReport.description);
         const materials = getMaterials(selectedReport.description);
+        const totalPoints = selectedReport.pointsAwarded ?? 0;
+        const hasPointBreakdown = Boolean(selectedReport.pointsAwardedAt) && totalPoints > 0;
+        const structuredMaterials = selectedReport.materials ?? [];
+        const storedBreakdown = selectedReport.materialPointsBreakdown ?? null;
+        const materialRows = storedBreakdown
+          ? Object.entries(storedBreakdown).map(([code, points]) => ({
+              label: code === 'others' ? 'Mixed / Others' : materialLabel(code),
+              points,
+            }))
+          : [];
+        const structuredNames = structuredMaterials.map((code) =>
+          code === 'others' ? 'Mixed / Others' : materialLabel(code),
+        );
+        const materialSummary =
+          structuredMaterials.length > 1
+            ? `Materials (${structuredNames.join(', ')})`
+            : structuredMaterials.length === 1
+              ? structuredNames[0]
+              : materials.length > 1
+                ? `Materials (${materials.join(', ')})`
+                : materials[0] ?? 'Material';
+
+        // Reports credited before the breakdown columns existed only have the
+        // total. Derive rank + material portions from the stored rank so old
+        // activity entries still explain their points.
+        let rankPoints = selectedReport.rankPointsAwarded ?? 0;
+        let materialPoints = selectedReport.materialPointsAwarded ?? 0;
+        if (hasPointBreakdown && rankPoints === 0 && materialPoints === 0) {
+          const rank = selectedReport.reporterRank ?? 0;
+          const defaultRankPoints = rank === 1 ? 15 : rank === 2 ? 10 : rank === 3 ? 5 : 0;
+          rankPoints = Math.min(totalPoints, defaultRankPoints);
+          materialPoints = Math.max(0, totalPoints - rankPoints);
+        }
+        const rankOrdinal = selectedReport.reporterRank === 1
+          ? '1st'
+          : selectedReport.reporterRank === 2
+            ? '2nd'
+            : selectedReport.reporterRank === 3
+              ? '3rd'
+              : `${selectedReport.reporterRank ?? 0}th`;
 
         const isScattered = selectedReport.isScatteredDebris === true ||
           selectedReport.title.toLowerCase().includes('scattered debris') ||
@@ -549,6 +590,49 @@ export const ReportHistoryTab: React.FC<ReportHistoryTabProps> = ({
                     )}
                   </div>
                 </div>
+
+                {/* Points breakdown — rank bonus + material bonus */}
+                {hasPointBreakdown && (
+                  <div className="space-y-2 rounded-2xl border border-[var(--gold)]/25 bg-[var(--gold)]/5 p-3.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[var(--gold-strong)]">
+                        Points Earned
+                      </span>
+                      <span className="font-heading text-lg font-black text-[var(--text-strong)]">
+                        +{totalPoints} pts
+                      </span>
+                    </div>
+                    {(rankPoints > 0 || materialPoints > 0) && (
+                      <div className="space-y-1 border-t border-[var(--gold)]/20 pt-2">
+                        {rankPoints > 0 && (
+                          <div className="flex items-center justify-between gap-3 text-[11px]">
+                            <span className="font-semibold text-[var(--text-strong)]/60">
+                              {selectedReport.reporterRank ? `${rankOrdinal} reporter bonus` : 'Reporter bonus'}
+                            </span>
+                            <span className="font-bold text-[var(--text-strong)]">+{rankPoints} pts</span>
+                          </div>
+                        )}
+                        {materialRows.length > 0
+                          ? materialRows.map((row) => (
+                              <div key={row.label} className="flex items-center justify-between gap-3 text-[11px]">
+                                <span className="min-w-0 truncate font-semibold text-[var(--text-strong)]/60">
+                                  {row.label} bonus
+                                </span>
+                                <span className="shrink-0 font-bold text-[var(--text-strong)]">+{row.points} pts</span>
+                              </div>
+                            ))
+                          : materialPoints > 0 && (
+                              <div className="flex items-center justify-between gap-3 text-[11px]">
+                                <span className="min-w-0 truncate font-semibold text-[var(--text-strong)]/60">
+                                  {materialSummary} bonus
+                                </span>
+                                <span className="shrink-0 font-bold text-[var(--text-strong)]">+{materialPoints} pts</span>
+                              </div>
+                            )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="shrink-0 border-t border-[var(--primary)]/10 bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-4">

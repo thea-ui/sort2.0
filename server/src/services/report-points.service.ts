@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { recordReportContribution } from './challenge-progress.service.js';
 import { BIN_RESET_TZ, computeResetCycleStart, DEFAULT_RESET_TIME } from './reset-cycle.service.js';
 import { buildStreamAwardPlan } from './report-award-plan.js';
+import { computeMaterialPointsBreakdown, DEFAULT_MATERIAL_POINTS } from './material-point-rules.js';
 
 function streamLockKey(locationKey: string, category: string, schoolYearId: string): number {
   const raw = `${locationKey}::${category}::${schoolYearId}`;
@@ -134,6 +135,14 @@ export async function awardCollectedReportsWithinTransaction(
   }
   const rankPointsMap = pointRules.map((r) => r.pointsAwarded);
 
+  // Material bonus rules are configurable; fall back to the documented
+  // defaults if the table has not been seeded yet.
+  const materialRules = await tx.materialPointRule.findMany();
+  const materialPointsMap = new Map<string, number>(
+    Object.entries(DEFAULT_MATERIAL_POINTS),
+  );
+  for (const rule of materialRules) materialPointsMap.set(rule.code, rule.points);
+
   // Ranks restart at each daily reset boundary: only credits from the current
   // cycle continue the rank sequence (see reset-cycle.service.ts).
   const settings = await tx.systemSetting.findUnique({ where: { id: 'default_setting' } });
@@ -169,6 +178,7 @@ export async function awardCollectedReportsWithinTransaction(
       locationKey: true,
       locationName: true,
       schoolYearId: true,
+      materials: true,
     },
   });
 
@@ -214,31 +224,47 @@ export async function awardCollectedReportsWithinTransaction(
   const pointsByUser = new Map<string, number>();
 
   for (const { report, rank, points } of streamUpdates) {
+    // Rank points only apply to the top 3; every student still earns their
+    // per-material bonuses (each selected material carries its own points).
+    const materialBreakdown =
+      rank === null ? {} : computeMaterialPointsBreakdown(report.materials, materialPointsMap);
+    const materialPoints = Object.values(materialBreakdown)
+      .reduce((sum, value) => sum + value, 0);
+    const totalPoints = points + materialPoints;
+
     const updateResult = await tx.report.updateMany({
       where: { id: report.id, pointsAwardedAt: null },
       data: {
         isVerified: true,
         reporterRank: rank,
-        pointsAwarded: points,
+        pointsAwarded: totalPoints,
+        rankPointsAwarded: points,
+        materialPointsAwarded: materialPoints,
+        ...(Object.keys(materialBreakdown).length > 0 && {
+          materialPointsBreakdown: materialBreakdown,
+        }),
         pointsAwardedAt: new Date(),
       },
     });
 
     if (updateResult.count === 0) continue;
 
-    if (points > 0 && rank !== null) {
-      pointsByUser.set(report.reporterId, (pointsByUser.get(report.reporterId) ?? 0) + points);
+    if (totalPoints > 0 && rank !== null) {
+      pointsByUser.set(report.reporterId, (pointsByUser.get(report.reporterId) ?? 0) + totalPoints);
 
       const ordinal = rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : `${rank}th`;
+      const reasons: string[] = [];
+      if (points > 0) reasons.push(`${ordinal} Reporter Bonus (+${points} pts)`);
+      if (materialPoints > 0) reasons.push(`Material Bonus (+${materialPoints} pts)`);
       pendingPointHistory.push({
         userId: report.reporterId,
-        amount: points,
-        reason: `Collected Report: ${ordinal} Reporter Bonus (+${points} pts) for ${report.locationName}`,
+        amount: totalPoints,
+        reason: `Collected Report: ${reasons.join(' + ')} for ${report.locationName}`,
         reportId: report.id,
         schoolYearId: report.schoolYearId,
       });
 
-      awards.push({ reportId: report.id, userId: report.reporterId, amount: points, rank });
+      awards.push({ reportId: report.id, userId: report.reporterId, amount: totalPoints, rank });
     }
 
     const { completions } = await recordReportContribution(tx, {
@@ -275,6 +301,8 @@ export function formatReportResponse(report: any) {
     status: report.status,
     urgency: report.urgency,
     category: report.category,
+    materials: report.materials ?? [],
+    otherMaterialLabel: report.otherMaterialLabel ?? null,
     coordinates: { lat: report.lat, lng: report.lng },
     locationName: report.locationName,
     reporterId: report.reporterId,
@@ -283,6 +311,9 @@ export function formatReportResponse(report: any) {
     reporterGradeLevel: report.reporter?.gradeLevel ?? null,
     reporterSection: report.reporter?.sectionName ?? null,
     pointsAwarded: report.pointsAwarded,
+    rankPointsAwarded: report.rankPointsAwarded ?? 0,
+    materialPointsAwarded: report.materialPointsAwarded ?? 0,
+    materialPointsBreakdown: report.materialPointsBreakdown ?? null,
     reporterRank: report.reporterRank,
     pointsAwardedAt: report.pointsAwardedAt?.toISOString() || null,
     timestamp: report.createdAt?.toISOString() || report.timestamp,

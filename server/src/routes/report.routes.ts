@@ -15,6 +15,7 @@ import { approveReports, awardCollectedReportsWithinTransaction, formatReportRes
 import { countUnverifiedActiveStreamReports, dispatchStreamWithinTransaction } from '../services/report-dispatch.service.js';
 import { recordWeightContribution } from '../services/challenge-progress.service.js';
 import { ASSET_DESCRIPTION_MARKERS } from '../services/report-expiry.js';
+import { sanitizeMaterials, sanitizeOtherMaterialLabel } from '../services/material-point-rules.js';
 import { authenticate, requireAdmin, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
 import {
   createReportPdfTempPath,
@@ -140,6 +141,8 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
       locationName,
       imageUrl,
       reportType,
+      materials,
+      otherMaterialLabel,
     } = req.body;
 
     if (!title || !coordinates) {
@@ -164,6 +167,12 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
     const locName = locationName || 'Campus Location';
     const cat = mapWasteCategory(category);
     const locKey = normalizeLocation(locName);
+
+    // Materials only apply to the recyclable stream; the student picks them so
+    // the MRF no longer has to re-identify what is inside the bin.
+    const materialCodes = cat === WasteCategory.RECYCLABLE ? sanitizeMaterials(materials) : [];
+    const otherMaterial =
+      materialCodes.includes('others') ? sanitizeOtherMaterialLabel(otherMaterialLabel) : null;
 
     const existingActive = await prisma.report.findFirst({
       where: {
@@ -228,6 +237,8 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<any>
           imageUrl: externalImageUrl,
           reportType: derivedType,
           pointsAwarded: 0,
+          materials: materialCodes,
+          otherMaterialLabel: otherMaterial,
           schoolYearId: await getActiveSchoolYearId(),
         },
         include: {

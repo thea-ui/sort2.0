@@ -78,7 +78,6 @@ export const ScrapApprovalsGrid: React.FC<ScrapApprovalsGridProps> = ({
           const MaterialIcon = meta.icon;
           const currentKg = material.accumulatedKg || 0;
           const thresholdKg = material.thresholdLimitKg || 1;
-          const pricePerKg = material.marketPricePerKg || 0;
           const isApproved = material.isApprovedForSale === true;
           const isThresholdReached = currentKg >= thresholdKg;
           const isHazmat = material.hazmat === true;
@@ -96,7 +95,6 @@ export const ScrapApprovalsGrid: React.FC<ScrapApprovalsGridProps> = ({
             color: meta.color,
             strongColor: meta.strongColor,
             currentKg,
-            pricePerKg,
             status: isHazmat
               ? 'Handler disposal only'
               : isApproved
@@ -162,7 +160,7 @@ export const ScrapApprovalsGrid: React.FC<ScrapApprovalsGridProps> = ({
 
               {isOpen && (
                 <div id={panelId} className={PANEL}>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <span className={MICRO_LABEL}>Batch stock</span>
                       <p className="mt-1 text-sm">
@@ -189,16 +187,9 @@ export const ScrapApprovalsGrid: React.FC<ScrapApprovalsGridProps> = ({
                       </div>
                     </div>
                     <div>
-                      <span className={MICRO_LABEL}>Market rate</span>
-                      <p className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
-                        <span className={NUMBER}>₱{pricePerKg}</span>
-                        <span className="font-medium text-[var(--text-strong)]/40"> / kg</span>
-                      </p>
-                    </div>
-                    <div>
-                      <span className={MICRO_LABEL}>Est. value</span>
+                      <span className={MICRO_LABEL}>To threshold</span>
                       <p className={`mt-1 text-sm ${NUMBER} ${meta.strongColor}`}>
-                        ₱{Math.round(currentKg * pricePerKg).toLocaleString()}
+                        {remainingKg.toFixed(1)} kg
                       </p>
                       {isApproved && material.approvalReference && (
                         <span className="mt-1 block truncate font-mono text-[10px] font-medium text-[var(--text-strong)]/40">

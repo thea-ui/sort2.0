@@ -334,7 +334,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
             </div>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-2 xl:gap-6">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 xl:gap-6">
           {/* Recent submissions */}
           <section className={studentPanel}>
             <div className={studentPanelHeader}>

@@ -18,6 +18,8 @@ interface CollectedItemsInputProps {
   onOtherNameChange: (value: string) => void;
   otherKg: string;
   onOtherKgChange: (value: string) => void;
+  /** Hide the free-text "Other Material" tile when the student didn't pick it. */
+  showOther?: boolean;
 }
 
 export const CollectedItemsInput: React.FC<CollectedItemsInputProps> = ({
@@ -28,11 +30,12 @@ export const CollectedItemsInput: React.FC<CollectedItemsInputProps> = ({
   onOtherNameChange,
   otherKg,
   onOtherKgChange,
+  showOther = true,
 }) => {
   const { totalWeight, filledCount } = computeCollectionTotals(itemWeights, otherKg);
   const otherValue = parseFloat(otherKg) || 0;
   const isOtherFilled = otherValue > 0;
-  const totalTiles = categories.length + 1;
+  const totalTiles = categories.length + (showOther ? 1 : 0);
 
   return (
     <div className="space-y-3">
@@ -106,6 +109,7 @@ export const CollectedItemsInput: React.FC<CollectedItemsInputProps> = ({
           );
         })}
 
+        {showOther && (
         <div
           className={`col-span-2 rounded-xl border-2 p-3 transition-all duration-200 ${
             isOtherFilled
@@ -151,6 +155,7 @@ export const CollectedItemsInput: React.FC<CollectedItemsInputProps> = ({
             Not on the list? Log it here — Admin sees it in the completion notes; it is not added to market stock.
           </p>
         </div>
+        )}
       </div>
     </div>
   );

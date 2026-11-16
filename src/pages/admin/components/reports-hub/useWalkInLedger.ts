@@ -31,6 +31,7 @@ export function useWalkInLedger(yearId: string): { rows: WalkInRow[]; loading: b
             studentName: turnover.student?.name ?? 'Unknown student',
             gradeLevel: turnover.student?.gradeLevel ?? undefined,
             sectionName: turnover.student?.sectionName ?? undefined,
+            material: turnover.material ?? 'pet_plastic',
             bottles: turnover.totalBottles ?? 0,
             ml: turnover.totalMl ?? 0,
             grams: turnover.totalGrams ?? 0,

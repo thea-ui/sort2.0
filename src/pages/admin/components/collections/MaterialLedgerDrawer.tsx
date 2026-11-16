@@ -18,7 +18,6 @@ export interface MaterialLedgerTarget {
   color: string;
   strongColor: string;
   currentKg: number;
-  pricePerKg: number;
   status: string;
   statusTone: LedgerStatusTone;
 }
@@ -107,11 +106,8 @@ export const MaterialLedgerDrawer: React.FC<MaterialLedgerDrawerProps> = ({ targ
           <div className="grid grid-cols-3 gap-2.5">
             {[
               { label: 'On hand', value: `${target.currentKg.toFixed(1)} kg` },
-              { label: 'Market rate', value: `₱${target.pricePerKg}/kg` },
-              {
-                label: 'Est. value',
-                value: `₱${Math.round(target.currentKg * target.pricePerKg).toLocaleString()}`,
-              },
+              { label: 'Sold to date', value: `${totalKg.toFixed(1)} kg` },
+              { label: 'Sales', value: `${ledgerRows.length}` },
             ].map((stat) => (
               <div
                 key={stat.label}

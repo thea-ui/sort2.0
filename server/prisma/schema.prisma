@@ -201,6 +201,11 @@ model Report {
   locationKey     String        @map("location_key")
   reporterId      String        @map("reporter_id")
   pointsAwarded   Int           @default(0) @map("points_awarded")
+  // Breakdown of pointsAwarded: top-3 rank bonus + student material bonus.
+  rankPointsAwarded     Int @default(0) @map("rank_points_awarded")
+  materialPointsAwarded Int @default(0) @map("material_points_awarded")
+  /** Per-material awarded points, e.g. {"pet_plastic":2,"cardboard":2}. */
+  materialPointsBreakdown Json? @map("material_points_breakdown")
   pointsAwardedAt DateTime?     @map("points_awarded_at")
   imageUrl        String?       @db.Text @map("image_url")
   // File-backed photo evidence (relative to server/uploads). New uploads are
@@ -212,6 +217,9 @@ model Report {
   assignedMrfId   String?       @map("assigned_mrf_id")
   reporterRank    Int?          @map("reporter_rank")
   completedAt     DateTime?     @map("completed_at")
+  // Recyclable material breakdown chosen by the student at report time.
+  materials          String[] @default([])
+  otherMaterialLabel String?  @map("other_material_label")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -546,6 +554,20 @@ model PointRule {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("point_rules")
+}
+
+/**
+ * Per-material bonus points for recyclable reports. Students pick the materials
+ * on the report; a single material earns its rule's points, while a mixed
+ * selection (2+ materials) always earns exactly 1 point.
+ */
+model MaterialPointRule {
+  code      String   @id
+  label     String
+  points    Int      @default(2)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("material_point_rules")
 }
 
 model AcademicQuarter {
@@ -937,6 +959,8 @@ model WalkInTurnover {
   studentId      String   @map("student_id")
   recordedById   String?  @map("recorded_by_id")
   recordedByName String   @map("recorded_by_name")
+  /** pet_plastic | aluminum_cans | cardboard */
+  material       String   @default("pet_plastic") @map("material")
   totalMl        Int      @map("total_ml")
   totalBottles   Int      @map("total_bottles")
   totalGrams     Int      @map("total_grams")

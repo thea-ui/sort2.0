@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMockData } from '../../hooks/useMockData';
 import { useTheme } from '../../hooks/useTheme';
 import { resolveBrandIdentity } from '../../utils/brandIdentity';
@@ -60,6 +60,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     try {
@@ -68,6 +69,23 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
       // Private mode / storage errors must not break the shell.
     }
   }, []);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (notificationsRef.current?.contains(event.target as Node)) return;
+      setNotificationsOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNotificationsOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [notificationsOpen]);
 
   if (!currentUser) return null;
 
@@ -258,7 +276,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
             <AccessibilityMenu userId={currentUser.id} />
 
             {/* Notifications */}
-            <div className="relative">
+            <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileDropdownOpen(false); }}
                 aria-label="Notifications"
@@ -267,70 +285,82 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
               >
                 <Bell size={16} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-white">
-                    {unreadCount}
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-rose-500 text-[9px] font-bold text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white shadow-xl animate-fade-in">
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                    <h4 className="font-bold text-xs text-[var(--text-strong)] uppercase tracking-wider">My Notifications & Updates</h4>
-                    <div className="flex items-center gap-2">
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleClearAll(); }}
-                          className="text-[9px] text-[var(--accent)] font-bold hover:underline cursor-pointer"
-                        >
-                          Clear all
-                        </button>
-                      )}
-                      <span className="text-[10px] px-2 py-0.5 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full font-bold border border-[var(--accent)]/20">
-                        Live Feed
-                      </span>
-                    </div>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
-                    {myNotifications.map(notif => {
-                      const isVerified = notif.type === 'REPORT_VERIFIED';
-                      const isDispatched = notif.type === 'REPORT_DISPATCHED';
-                      const isCompleted = notif.type === 'REPORT_COMPLETED';
-                      const isDismissed = notif.type === 'REPORT_DISMISSED';
-
-                      const Icon = isCompleted ? CheckCircle2 : isVerified ? Zap : isDispatched ? Truck : isDismissed ? XCircle : Clock;
-                      const color = isCompleted ? 'text-emerald-700' : isVerified ? 'text-amber-700' : isDispatched ? 'text-[var(--text-strong)]' : isDismissed ? 'text-rose-600' : 'text-amber-700';
-                      const label = isCompleted ? 'MRF Completed Cleanup' : isVerified ? 'Report Verified + Points' : isDispatched ? 'MRF Collector Dispatched' : isDismissed ? 'Report Dismissed' : 'Update';
-
-                      return (
-                        <div
-                          key={notif.id}
-                          onClick={() => handleDismissNotification(notif.id)}
-                          className="p-3 hover:bg-gray-50 transition-colors cursor-pointer space-y-0.5"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className={`text-xs font-extrabold flex items-center gap-1 ${color}`}>
-                              <Icon size={11} /> {label}
-                            </span>
-                            <span className="text-[9px] text-gray-400 font-medium">{new Date(notif.timestamp).toLocaleString()}</span>
-                          </div>
-                          <p className="text-[11px] text-gray-700 font-semibold">{notif.title}</p>
-                          <p className="text-[10px] text-gray-500">{notif.message}</p>
-                        </div>
-                      );
-                    })}
-                    {myNotifications.length === 0 && (
-                      <p className="text-xs text-gray-400 text-center py-6">No notifications yet.</p>
+                <div className="animate-fade-in fixed inset-x-4 top-16 z-50 overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
+                  <div className="flex items-center justify-between border-b border-[var(--primary)]/10 px-4 py-3">
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[var(--text-strong)]/50">
+                      Notifications
+                    </h4>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleClearAll(); }}
+                        className="cursor-pointer text-[11px] font-bold text-[var(--accent)] hover:underline"
+                      >
+                        Clear all
+                      </button>
                     )}
                   </div>
-                  <div className="p-2.5 bg-gray-50 border-t border-gray-100 text-center">
-                    <button
-                      onClick={() => { setNotificationsOpen(false); setActiveTab('report-history'); }}
-                      className="text-xs text-[var(--accent)] font-bold hover:underline cursor-pointer"
-                    >
-                      View Full Activity History →
-                    </button>
-                  </div>
+
+                  {myNotifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-2.5 px-6 py-10 text-center">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--primary)]/15 text-[var(--text-strong)]/45">
+                        <CheckCircle2 size={19} />
+                      </span>
+                      <p className="text-[12.5px] font-medium text-[var(--text-strong)]/55">You&apos;re all caught up</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="max-h-[min(60svh,24rem)] divide-y divide-[var(--primary)]/10 overflow-y-auto">
+                        {myNotifications.map(notif => {
+                          const isVerified = notif.type === 'REPORT_VERIFIED';
+                          const isDispatched = notif.type === 'REPORT_DISPATCHED';
+                          const isCompleted = notif.type === 'REPORT_COMPLETED';
+                          const isDismissed = notif.type === 'REPORT_DISMISSED';
+
+                          const Icon = isCompleted ? CheckCircle2 : isVerified ? Zap : isDispatched ? Truck : isDismissed ? XCircle : Clock;
+                          const color = isCompleted ? 'text-emerald-700' : isVerified ? 'text-amber-700' : isDispatched ? 'text-[var(--text-strong)]' : isDismissed ? 'text-rose-600' : 'text-amber-700';
+                          const label = isCompleted ? 'MRF Completed Cleanup' : isVerified ? 'Report Verified + Points' : isDispatched ? 'MRF Collector Dispatched' : isDismissed ? 'Report Dismissed' : 'Update';
+
+                          return (
+                            <button
+                              key={notif.id}
+                              type="button"
+                              onClick={() => handleDismissNotification(notif.id)}
+                              className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--primary)]/[0.03]"
+                            >
+                              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/[0.04]">
+                                <Icon size={14} className={color} />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="flex items-baseline justify-between gap-2">
+                                  <span className={`truncate text-[11px] font-extrabold ${color}`}>{label}</span>
+                                  <span className="shrink-0 text-[9px] font-medium text-[var(--text-strong)]/35">
+                                    {new Date(notif.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                  </span>
+                                </span>
+                                <span className="mt-0.5 block truncate text-[11px] font-semibold text-[var(--text-strong)]">{notif.title}</span>
+                                <span className="mt-0.5 line-clamp-2 block text-[10.5px] leading-relaxed text-[var(--text-strong)]/50">{notif.message}</span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="border-t border-[var(--primary)]/10 px-4 py-2.5 text-center">
+                        <button
+                          onClick={() => { setNotificationsOpen(false); setActiveTab('report-history'); }}
+                          className="cursor-pointer text-[11px] font-bold text-[var(--accent)] hover:underline"
+                        >
+                          View activity history
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -382,16 +412,17 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
 
       </div>
 
-      {/* Primary action FAB (mobile) */}
-      {activeTab !== 'submit-report' && (
+      {/* Primary action FAB (mobile) — hidden where the page already offers a
+          contextual report path (stream rows) or shows the form itself. */}
+      {activeTab !== 'submit-report' && activeTab !== 'bin-map' && activeTab !== 'gamification' && (
         <button
           type="button"
           onClick={() => setActiveTab('submit-report')}
           aria-label="File a report"
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-4 text-sm font-extrabold text-white shadow-lg shadow-[var(--accent)]/30 transition-transform active:scale-95 lg:hidden"
+          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-extrabold text-white shadow-lg shadow-[var(--accent)]/30 transition-transform active:scale-95 sm:w-auto sm:gap-2 sm:px-4 lg:hidden"
         >
           <Camera size={17} />
-          Report
+          <span className="hidden sm:inline">Report</span>
         </button>
       )}
 

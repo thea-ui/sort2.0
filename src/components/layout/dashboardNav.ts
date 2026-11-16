@@ -4,7 +4,6 @@ import {
   BarChart2,
   ClipboardCheck,
   ClipboardList,
-  Coins,
   FileSpreadsheet,
   FolderTree,
   Gift,
@@ -53,7 +52,6 @@ export const SETTINGS_SUBITEMS = [
   { id: 'locations', label: 'Locations', icon: MapPin },
   { id: 'school-sync', label: 'School & Sync', icon: RefreshCw },
   { id: 'report-setup', label: 'Report Setup', icon: ClipboardList },
-  { id: 'market-rates', label: 'Market Rates', icon: Coins },
   { id: 'points-rewards', label: 'Points & Rewards', icon: Award },
   { id: 'danger-zone', label: 'Danger Zone', icon: AlertTriangle },
 ];
@@ -65,6 +63,7 @@ export const MRF_NAV_GROUPS: ShellNavGroup[] = [
     items: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
       { id: 'dispatches', label: 'Dispatches', icon: Truck },
+      { id: 'mrf-bin-map', label: 'Bin Map', icon: MapPin },
     ],
   },
   {
@@ -104,7 +103,6 @@ export const ADMIN_NAV_GROUPS: ShellNavGroup[] = [
       { id: 'admin-reports-hub', label: 'Reports', icon: FolderTree },
       { id: 'admin-collections', label: 'Collections', icon: Scale },
       { id: 'admin-rewards', label: 'Rewards', icon: Gift },
-      { id: 'admin-bin-map', label: 'Bin Map', icon: MapPin },
       { id: 'admin-campus-news', label: 'Campus News', icon: Newspaper },
     ],
   },
@@ -145,6 +143,7 @@ const PAGE_TITLE_ALIASES: Record<string, string> = {
   'admin-settings': 'Settings',
   'admin-warnings': 'Warnings & Offenses',
   'admin-sync': 'Sync Logs',
+  'admin-bin-map': 'Bin Map',
 };
 
 /** Human-readable page title for the topbar's two-line label stack. */

@@ -728,6 +728,8 @@ export const MockDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       coordinates: newReport.coordinates,
       imageUrl: newReport.imageUrl,
       reportType: (reportData as any).reportType || 'WASTE',
+      materials: newReport.materials ?? [],
+      otherMaterialLabel: newReport.otherMaterialLabel ?? null,
     }).then(serverRes => {
       if (serverRes && serverRes.id) {
         setReports(prev => prev.map(r => r.id === newReport.id ? { ...r, id: serverRes.id } : r));

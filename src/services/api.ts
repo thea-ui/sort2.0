@@ -390,6 +390,17 @@ export const apiService = {
     return fetchAPI('/settings/point-rules');
   },
 
+  getMaterialPointRules: async (): Promise<any[]> => {
+    return fetchAPI('/settings/material-points');
+  },
+
+  updateMaterialPointRules: async (rules: { code: string; points: number }[]): Promise<any[]> => {
+    return fetchAPI('/settings/material-points', {
+      method: 'PUT',
+      body: JSON.stringify({ rules }),
+    });
+  },
+
   getAcademicQuarters: async (): Promise<any[]> => {
     return fetchAPI('/settings/academic-quarters');
   },
@@ -586,7 +597,7 @@ export const apiService = {
     });
   },
 
-  sellMarketBatch: async (params: { categoryCode: string; buyerName?: string }): Promise<any> => {
+  sellMarketBatch: async (params: { categoryCode: string; buyerName?: string; pricePerKg: number }): Promise<any> => {
     return fetchAPI('/market/sell-batch', {
       method: 'POST',
       body: JSON.stringify(params),
@@ -693,7 +704,7 @@ export const apiService = {
     });
   },
 
-  sellAssetScrapBatch: async (data: { materialCode: string; buyerName?: string; approvalReference?: string }): Promise<any> => {
+  sellAssetScrapBatch: async (data: { materialCode: string; buyerName?: string; approvalReference?: string; pricePerKg: number }): Promise<any> => {
     return fetchAPI('/asset-scrap/sell-batch', {
       method: 'POST',
       body: JSON.stringify(data),

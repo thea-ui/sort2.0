@@ -250,10 +250,16 @@ router.post('/approve-sale', requireAdmin, async (req: Request, res: Response): 
 });
 
 // POST /api/asset-scrap/sell-batch — execute a batch sale (caps at threshold, leaves remainder)
+// The ₱/kg price is entered at sale time; no fixed market rate is used.
 router.post('/sell-batch', requireRole('MRF', 'ADMIN'), async (req: Request, res: Response): Promise<any> => {
   try {
-    const { materialCode, buyerName, approvalReference } = req.body;
+    const { materialCode, buyerName, approvalReference, pricePerKg } = req.body;
     if (!materialCode) return res.status(400).json({ error: 'materialCode is required' });
+
+    const price = Number(pricePerKg);
+    if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({ error: 'A valid price per kg is required to complete the sale' });
+    }
 
     const stock = await prisma.assetScrapStock.findUnique({ where: { materialCode } });
     if (!stock) return res.status(404).json({ error: 'Scrap material not found' });
@@ -269,8 +275,7 @@ router.post('/sell-batch', requireRole('MRF', 'ADMIN'), async (req: Request, res
 
     const weightSold = stock.accumulatedKg >= stock.thresholdLimitKg ? stock.thresholdLimitKg : stock.accumulatedKg;
     const remainingKg = Math.max(0, stock.accumulatedKg - weightSold);
-    const pricePerKg = stock.marketPricePerKg;
-    const totalRevenue = Math.round(weightSold * pricePerKg);
+    const totalRevenue = Math.round(weightSold * price);
 
     const buyer = (buyerName && String(buyerName).trim()) || 'Junk / Scrap Buyer';
 
@@ -280,7 +285,7 @@ router.post('/sell-batch', requireRole('MRF', 'ADMIN'), async (req: Request, res
           materialCode: stock.materialCode,
           materialName: stock.materialName,
           weightKg: parseFloat(weightSold.toFixed(1)),
-          marketPriceKg: pricePerKg,
+          marketPriceKg: price,
           totalRevenue,
           buyerName: buyer,
           approvalReference: approvalReference ? String(approvalReference) : stock.approvalReference,

@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import type { TableColumn } from '../../../../components/data-table';
 import { formatLongDate } from '../../../../utils/dateFormat';
 import type { LeaderboardRecord, LedgerRow, PointRecord, ReportHubRow, StockRecord, WalkInRow } from './reportHubTypes';
+import { walkInMaterialLabel } from './reportHubTypes';
 import { LedgerStatusBadge } from './LedgerStatusBadge';
 import { num, peso } from './ledgerFormatters';
 
@@ -211,11 +212,18 @@ export function walkinTableColumns(onView: (row: WalkInRow) => void): TableColum
     },
     { key: 'grade', header: 'Grade / Section', value: gradeSection, cell: gradeSection, className: 'min-w-[150px]' },
     {
+      key: 'material',
+      header: 'Material',
+      value: (row) => walkInMaterialLabel(row.material),
+      cell: (row) => walkInMaterialLabel(row.material),
+      className: 'min-w-[150px]',
+    },
+    {
       key: 'bottles',
-      header: 'Bottles',
+      header: 'Items',
       align: 'right',
       value: (row) => row.bottles,
-      cell: (row) => row.bottles,
+      cell: (row) => (row.material === 'cardboard' ? '—' : row.bottles),
       footer: (rows) => num(rows.reduce((sum, row) => sum + row.bottles, 0)),
       skeleton: 'number',
     },
@@ -224,7 +232,7 @@ export function walkinTableColumns(onView: (row: WalkInRow) => void): TableColum
       header: 'Volume (L)',
       align: 'right',
       value: (row) => row.ml / 1000,
-      cell: (row) => num(row.ml / 1000),
+      cell: (row) => (row.material === 'cardboard' ? '—' : num(row.ml / 1000)),
       footer: (rows) => num(rows.reduce((sum, row) => sum + row.ml, 0) / 1000),
       skeleton: 'number',
     },

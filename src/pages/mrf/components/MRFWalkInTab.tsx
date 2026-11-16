@@ -3,8 +3,10 @@ import { Recycle, User, Scale, Coins, FileText, CheckCircle2, Loader2, Clock, Gi
 import { useMockData } from '../../../hooks/useMockData';
 import {
   computeWalkInPoints,
+  computeWalkInWeightPoints,
   formatLitres,
   useWalkInTurnover,
+  WALK_IN_MATERIALS,
 } from '../../../hooks/useWalkInTurnover';
 import { WalkInStudentPicker } from './WalkInStudentPicker';
 import { BottleSizeStepper } from './BottleSizeStepper';
@@ -25,8 +27,12 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
     searching,
     selected,
     setSelected,
+    material,
+    setMaterial,
     lines,
     setQuantity,
+    paperKg,
+    setPaperKg,
     notes,
     setNotes,
     totalMl,
@@ -42,11 +48,27 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
     resetForm,
   } = useWalkInTurnover();
 
-  const previewPoints = computeWalkInPoints(totalMl, ratePer500ml);
+  const isWeighed = material === 'cardboard';
+  const previewPoints = isWeighed
+    ? computeWalkInWeightPoints(totalGrams, ratePer500ml)
+    : computeWalkInPoints(totalMl, ratePer500ml);
   const projectedGrams = (selectedProgress?.yearGrams ?? 0) + totalGrams;
   const nextReward = selectedProgress?.nextReward ?? null;
   const progressPct = nextReward ? Math.min(100, Math.round((projectedGrams / nextReward.requiredGrams) * 100)) : 100;
-  const canSubmit = Boolean(selected) && totalBottles > 0 && !submitting;
+  const canSubmit = Boolean(selected) && (isWeighed ? totalGrams > 0 : totalBottles > 0) && !submitting;
+  const summaryStats = isWeighed
+    ? [
+        { label: 'Weight', value: `${(totalGrams / 1000).toFixed(2)} kg` },
+        { label: 'Category', value: 'Paper' },
+      ]
+    : [
+        {
+          label: material === 'aluminum_cans' ? 'Cans' : 'Bottles',
+          value: String(totalBottles),
+        },
+        { label: 'Volume', value: formatLitres(totalMl) },
+        { label: 'Est. kg', value: (totalGrams / 1000).toFixed(2) },
+      ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,10 +118,60 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
                   <Recycle size={13} className="text-[var(--accent)]" />
                 </div>
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Step 2 · Count Bottles
+                  Step 2 · Material &amp; Count
                 </span>
               </div>
-              <BottleSizeStepper lines={lines} onChange={setQuantity} disabled={submitting} />
+
+              <div className="flex flex-wrap gap-2">
+                {WALK_IN_MATERIALS.map((option) => {
+                  const active = material === option.code;
+                  return (
+                    <button
+                      key={option.code}
+                      type="button"
+                      aria-pressed={active}
+                      disabled={submitting}
+                      onClick={() => setMaterial(option.code)}
+                      className={`cursor-pointer rounded-xl border px-3 py-2 text-[11px] font-bold transition-colors ${
+                        active
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-strong)]'
+                          : 'border-gray-200 bg-white text-[var(--text-strong)]/65 hover:border-[var(--accent)]/30'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isWeighed ? (
+                <div className="rounded-2xl border border-gray-200 bg-white p-3.5 space-y-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Weight at the station (kg)
+                  </label>
+                  <input
+                    type="number"
+                    min={0.01}
+                    max={500}
+                    step={0.01}
+                    value={paperKg}
+                    disabled={submitting}
+                    onChange={(e) => setPaperKg(e.target.value)}
+                    placeholder="e.g. 12.5"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm font-bold text-[var(--text-strong)] outline-none focus:border-[var(--accent)] focus:bg-white"
+                  />
+                  <p className="text-[10px] font-medium text-gray-400">
+                    Weighed at the station. Every 500 g earns {ratePer500ml} point{ratePer500ml === 1 ? '' : 's'}.
+                  </p>
+                </div>
+              ) : (
+                <BottleSizeStepper
+                  lines={lines}
+                  onChange={setQuantity}
+                  disabled={submitting}
+                  material={material}
+                />
+              )}
             </div>
           </div>
 
@@ -113,12 +185,8 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Bottles', value: String(totalBottles) },
-                { label: 'Litres', value: formatLitres(totalMl) },
-                { label: 'Est. kg', value: (totalGrams / 1000).toFixed(2) },
-              ].map((stat) => (
+            <div className={`grid gap-2 ${isWeighed ? 'grid-cols-2' : 'grid-cols-3'}`}>
+              {summaryStats.map((stat) => (
                 <div key={stat.label} className="bg-white border border-gray-100 rounded-xl p-2.5 text-center">
                   <p className="text-sm font-black text-[var(--text-strong)]">{stat.value}</p>
                   <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{stat.label}</p>
@@ -214,24 +282,30 @@ export const MRFWalkInTab: React.FC<MRFWalkInTabProps> = ({ showToast }) => {
           </p>
         ) : (
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            {today.map((turnover) => (
-              <div
-                key={turnover.id}
-                className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-3.5 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-extrabold text-[var(--text-strong)] truncate">
-                    {turnover.student?.name || 'Student'}
-                  </p>
-                  <p className="text-[10px] text-[var(--text-strong)]/50 font-semibold">
-                    {new Date(turnover.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ·{' '}
-                    {turnover.totalBottles} bottle{turnover.totalBottles === 1 ? '' : 's'} ·{' '}
-                    {formatLitres(turnover.totalMl)} L · {(turnover.totalGrams / 1000).toFixed(2)} kg
-                  </p>
+            {today.map((turnover) => {
+              const turnoverMaterial = turnover.material ?? 'pet_plastic';
+              const label = WALK_IN_MATERIALS.find((option) => option.code === turnoverMaterial)?.label ?? 'Plastic Bottles';
+              const detail = turnoverMaterial === 'cardboard'
+                ? `${(turnover.totalGrams / 1000).toFixed(2)} kg`
+                : `${turnover.totalBottles} ${turnoverMaterial === 'aluminum_cans' ? 'can' : 'bottle'}${turnover.totalBottles === 1 ? '' : 's'} · ${formatLitres(turnover.totalMl)} L · ${(turnover.totalGrams / 1000).toFixed(2)} kg`;
+              return (
+                <div
+                  key={turnover.id}
+                  className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-3.5 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-extrabold text-[var(--text-strong)] truncate">
+                      {turnover.student?.name || 'Student'}
+                    </p>
+                    <p className="text-[10px] text-[var(--text-strong)]/50 font-semibold">
+                      {new Date(turnover.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ·{' '}
+                      {label} · {detail}
+                    </p>
+                  </div>
+                  <span className="text-xs font-black text-[var(--accent)] shrink-0">+{turnover.pointsAwarded} pts</span>
                 </div>
-                <span className="text-xs font-black text-[var(--accent)] shrink-0">+{turnover.pointsAwarded} pts</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -66,27 +66,27 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
     <div className="space-y-5">
       {/* Term status banner */}
       {termStatus && termStatus.state !== 'NO_TERM' && (
-        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[var(--primary)]/10 text-[var(--text-strong)] border border-[var(--primary)]/20 flex items-center justify-center shrink-0">
-              <Calendar size={18} />
+        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-[var(--primary)]/10 bg-white p-3.5 sm:flex-row sm:items-center sm:p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--text-strong)]">
+              <Calendar size={17} />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-extrabold text-[var(--text-strong)]">{termStatus.quarterName || 'Academic Term'}</p>
-              <p className="text-[11px] text-[var(--text-strong)]/55 font-medium">
+              <p className="truncate text-[11px] font-medium text-[var(--text-strong)]/55">
                 {termStatus.state === 'IN_TERM' &&
-                  `${termStatus.daysRemaining} day${termStatus.daysRemaining === 1 ? '' : 's'} left · Top-3 awards finalize after the term closes.`}
+                  `${termStatus.daysRemaining} day${termStatus.daysRemaining === 1 ? '' : 's'} left · top-3 awards at term close`}
                 {termStatus.state === 'GRACE' &&
-                  `Term closed · Verifying late collections (${termStatus.graceDays}-day grace window).`}
+                  `Term closed · ${termStatus.graceDays}-day grace window`}
                 {termStatus.state === 'CLOSED' &&
                   (termStatus.resultsReady
-                    ? 'Final standings locked · Top-3 certificates issued.'
-                    : 'Final standings locked · Awaiting certificate issuance.')}
+                    ? 'Top-3 certificates issued'
+                    : 'Awaiting certificate issuance')}
               </p>
             </div>
           </div>
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold border shrink-0 ${
+            className={`inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border px-3 py-1.5 text-[10px] font-extrabold ${
               termStatus.state === 'IN_TERM'
                 ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/25'
                 : termStatus.state === 'GRACE'
@@ -115,8 +115,8 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-[var(--text-strong)]">Eco-Milestone Certificate</h3>
-              <p className="text-[11px] text-[var(--text-strong)]/55 font-medium">
-                Reach {threshold} eco-points to claim instantly — no need to wait for the term to end.
+              <p className="text-[11px] font-medium text-[var(--text-strong)]/55">
+                Reach {threshold} eco-points to claim instantly.
               </p>
             </div>
           </div>
@@ -153,8 +153,8 @@ export const CertificateVault: React.FC<CertificateVaultProps> = ({ currentUser,
             {ranked.length === 0 ? (
               <p className="text-[11px] text-[var(--text-strong)]/50 font-medium">
                 {termStatus?.state === 'CLOSED'
-                  ? 'No ranked award was issued to you for the last term.'
-                  : 'Top 3 finishers receive Eco-Champion, Eco-Leader, and Eco-Advocate certificates once the term ends.'}
+                  ? 'No ranked award was issued for the last term.'
+                  : 'Finish top 3 this term to earn a ranked certificate.'}
               </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

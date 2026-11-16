@@ -4,6 +4,42 @@ import { RecordWalkInResult, WalkInProgress, WalkInStudentOption, WalkInTurnover
 
 export const BOTTLE_PRESETS_ML = [250, 330, 350, 500, 600, 1000, 1500, 2000];
 
+export const WALK_IN_MATERIALS = [
+  { code: 'pet_plastic', label: 'Plastic Bottles' },
+  { code: 'aluminum_cans', label: 'Aluminum Cans' },
+  { code: 'cardboard', label: 'Paper & Cardboard' },
+] as const;
+
+export type WalkInMaterial = (typeof WALK_IN_MATERIALS)[number]['code'];
+
+const ALUMINUM_GRAM_PRESETS: { ml: number; grams: number }[] = [
+  { ml: 250, grams: 11 },
+  { ml: 330, grams: 13 },
+  { ml: 355, grams: 14 },
+  { ml: 500, grams: 16 },
+];
+
+/** Display-only mirror of the server gram estimates, by material. */
+export function gramsForWalkInItem(material: WalkInMaterial, bottleMl: number): number {
+  if (!Number.isFinite(bottleMl) || bottleMl <= 0) return 0;
+  if (material === 'aluminum_cans') {
+    if (bottleMl > 500) return Math.round(bottleMl * 0.032);
+    let best = ALUMINUM_GRAM_PRESETS[0];
+    for (const preset of ALUMINUM_GRAM_PRESETS) {
+      if (Math.abs(preset.ml - bottleMl) < Math.abs(best.ml - bottleMl)) best = preset;
+    }
+    return best.grams;
+  }
+  return gramsForBottle(bottleMl);
+}
+
+/** Paper & cardboard: same rate per 500 g. */
+export function computeWalkInWeightPoints(totalGrams: number, ratePer500 = 1): number {
+  if (!Number.isFinite(totalGrams) || totalGrams <= 0) return 0;
+  const rate = Number.isFinite(ratePer500) && ratePer500 > 0 ? Math.floor(ratePer500) : 1;
+  return Math.max(1, Math.floor((totalGrams / 500) * rate));
+}
+
 const GRAM_PRESETS: { ml: number; grams: number }[] = [
   { ml: 250, grams: 12 },
   { ml: 330, grams: 15 },
@@ -53,7 +89,9 @@ export function useWalkInTurnover() {
   const [results, setResults] = useState<WalkInStudentOption[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<WalkInStudentOption | null>(null);
+  const [material, setMaterialState] = useState<WalkInMaterial>('pet_plastic');
   const [lines, setLines] = useState<Record<number, number>>({});
+  const [paperKg, setPaperKg] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,13 +168,27 @@ export function useWalkInTurnover() {
     });
   }, []);
 
-  const entries = Object.entries(lines).map(([ml, qty]) => ({ bottleMl: Number(ml), quantity: qty }));
-  const totalMl = entries.reduce((sum, e) => sum + e.bottleMl * e.quantity, 0);
-  const totalBottles = entries.reduce((sum, e) => sum + e.quantity, 0);
-  const totalGrams = entries.reduce((sum, e) => sum + gramsForBottle(e.bottleMl) * e.quantity, 0);
+  const setMaterial = useCallback((next: WalkInMaterial) => {
+    setMaterialState(next);
+    setLines({});
+    setPaperKg('');
+  }, []);
+
+  const isWeighed = material === 'cardboard';
+  const entries = isWeighed
+    ? []
+    : Object.entries(lines).map(([ml, qty]) => ({ bottleMl: Number(ml), quantity: qty }));
+  const paperGrams = Math.max(0, Math.round((parseFloat(paperKg) || 0) * 1000));
+  const totalMl = isWeighed ? 0 : entries.reduce((sum, e) => sum + e.bottleMl * e.quantity, 0);
+  const totalBottles = isWeighed ? 0 : entries.reduce((sum, e) => sum + e.quantity, 0);
+  const totalGrams = isWeighed
+    ? paperGrams
+    : entries.reduce((sum, e) => sum + gramsForWalkInItem(material, e.bottleMl) * e.quantity, 0);
 
   const resetForm = useCallback(() => {
+    setMaterialState('pet_plastic');
     setLines({});
+    setPaperKg('');
     setNotes('');
     setSelected(null);
     setQuery('');
@@ -145,19 +197,23 @@ export function useWalkInTurnover() {
   }, []);
 
   const submit = useCallback(async (): Promise<RecordWalkInResult | null> => {
-    if (!selected || totalBottles === 0 || submitting) return null;
+    const hasItems = material === 'cardboard' ? paperGrams > 0 : totalBottles > 0;
+    if (!selected || !hasItems || submitting) return null;
     setSubmitting(true);
     setError(null);
     try {
       const result = await apiService.recordWalkIn({
         studentId: selected.id,
+        material,
         items: entries,
+        weightKg: material === 'cardboard' ? Number(paperKg) : undefined,
         notes: notes.trim() || undefined,
         idempotencyKey: idempotencyRef.current,
       });
       setReceipt(result);
       idempotencyRef.current = crypto.randomUUID();
       setLines({});
+      setPaperKg('');
       setNotes('');
       await refreshToday();
       return result;
@@ -167,7 +223,7 @@ export function useWalkInTurnover() {
     } finally {
       setSubmitting(false);
     }
-  }, [selected, totalBottles, submitting, entries, notes, refreshToday]);
+  }, [selected, material, paperGrams, totalBottles, submitting, entries, paperKg, notes, refreshToday]);
 
   return {
     query,
@@ -176,8 +232,12 @@ export function useWalkInTurnover() {
     searching,
     selected,
     setSelected,
+    material,
+    setMaterial,
     lines,
     setQuantity,
+    paperKg,
+    setPaperKg,
     notes,
     setNotes,
     entries,

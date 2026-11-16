@@ -234,11 +234,20 @@ export function useAssetScrap() {
     }
   };
 
-  const sellBatch = async (materialCode: string, buyerName?: string, approvalReference?: string) => {
+  const sellBatch = async (
+    materialCode: string,
+    buyerName?: string,
+    approvalReference?: string,
+    pricePerKg?: number,
+  ) => {
     const item = state.stocksRecord[materialCode];
     if (!item || item.accumulatedKg <= 0) return null;
+    const price = Number(pricePerKg);
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new Error('Enter the agreed price per kg before completing the sale.');
+    }
     try {
-      const res = await apiService.sellAssetScrapBatch({ materialCode, buyerName, approvalReference });
+      const res = await apiService.sellAssetScrapBatch({ materialCode, buyerName, approvalReference, pricePerKg: price });
       if (res?.transaction) {
         await fetchScrapData();
         broadcastChange();

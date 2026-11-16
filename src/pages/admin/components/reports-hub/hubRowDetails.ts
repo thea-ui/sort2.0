@@ -9,6 +9,7 @@ import type {
   StockRecord,
   WalkInRow,
 } from './reportHubTypes';
+import { walkInMaterialLabel } from './reportHubTypes';
 
 /** Label/value pairs shown by the admin row-detail pop-up. */
 export interface HubRowDetailField {
@@ -96,8 +97,13 @@ export function walkinRowDetail(row: WalkInRow): HubRowDetail {
       { label: 'Date', value: formatLongDate(row.date) },
       { label: 'Student', value: row.studentName },
       { label: 'Grade / Section', value: gradeSection(row) },
-      { label: 'Bottles', value: num(row.bottles) },
-      { label: 'Volume (L)', value: num(row.ml / 1000) },
+      { label: 'Material', value: walkInMaterialLabel(row.material) },
+      ...(row.material === 'cardboard'
+        ? []
+        : [
+            { label: 'Items', value: num(row.bottles) },
+            { label: 'Volume (L)', value: num(row.ml / 1000) },
+          ]),
       { label: 'Weight (g)', value: num(row.grams) },
       { label: 'Points', value: num(row.points) },
       { label: 'Recorded by', value: orDash(row.recordedBy) },

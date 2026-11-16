@@ -1,0 +1,216 @@
+<mxfile host="app.diagrams.net" agent="opencode" type="device">
+  <diagram name="DFD Level 1 - SORT (Updated + Highlights)" id="sort-dfd1-updated">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1650" pageHeight="1650" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="boundary" value="SMART OPERATIONAL RECOVERY AND TRACKING SYSTEM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFDE7;strokeColor=#C69B26;verticalAlign=top;fontStyle=1;fontSize=13;fontColor=#00271D;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="430" y="40" width="700" height="1500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="LEGEND — HIGHLIGHTS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;verticalAlign=top;fontStyle=1;fontSize=11;fontColor=#00271D;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="250" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-new" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E7F7F1;strokeColor=#00A77C;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="52" y="68" width="22" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-new-t" value="New element (recent additions)" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="84" y="61" width="200" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-upd" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF6D6;strokeColor=#C69B26;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="52" y="92" width="22" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-upd-t" value="Updated label / new field" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="84" y="85" width="200" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-unch" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="52" y="116" width="22" height="13" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-unch-t" value="Unchanged" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="84" y="109" width="200" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ad" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="130" y="160" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="st" value="Student" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="130" y="520" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="te" value="Teacher" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="130" y="860" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="mrf" value="MRF Staff" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="130" y="1100" width="40" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p1" value="1.0&lt;br&gt;Submit Campus Report" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="96" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="2.0&lt;br&gt;Verify and Audit Report" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="186" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="3.0&lt;br&gt;Dispatch and Assign Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="276" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" value="4.0&lt;br&gt;Log Collection and Update Bin" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="366" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" value="5.0&lt;br&gt;Award Points, Challenges and Update Standings" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="456" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" value="6.0&lt;br&gt;Record Walk-in Material Turnover and Unlock Rewards" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF6D6;strokeColor=#C69B26;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="630" y="546" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p7" value="7.0&lt;br&gt;Manage Rewards and Claims" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="636" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p8" value="8.0&lt;br&gt;Issue Certificates" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="726" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p9" value="9.0&lt;br&gt;Manage Asset Ledger and Scrap Recovery" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="816" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p10" value="10.0&lt;br&gt;Manage Recyclable Market, Sales and Revenue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF6D6;strokeColor=#C69B26;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="630" y="906" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p11" value="11.0&lt;br&gt;Manage Users, Offenses and Sanctions" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="996" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p12" value="12.0&lt;br&gt;Manage Settings, School Year, Point Rules, News and Snapshots" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF6D6;strokeColor=#C69B26;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1086" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p13" value="13.0&lt;br&gt;Maintain Enrollment and Campus Map Mirror" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1176" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p14" value="14.0&lt;br&gt;Authenticate and Manage Accounts" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1266" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p15" value="15.0&lt;br&gt;Monitor Bins and Live Bin Map" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E7F7F1;strokeColor=#00A77C;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1356" width="320" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="p16" value="16.0&lt;br&gt;Generate Impact and Residual Analytics" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E7F7F1;strokeColor=#00A77C;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1446" width="320" height="54" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d1" value="D1  Reports, Materials and Points Breakdown" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF6D6;strokeColor=#C69B26;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="60" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" value="D2  Point History, Rank and Material Rules" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF6D6;strokeColor=#C69B26;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="150" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" value="D3  Challenges and Progress" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="240" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" value="D4  Waste Bins" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="330" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" value="D5  Walk-in Material Turnovers" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF6D6;strokeColor=#C69B26;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="420" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d6" value="D6  Rewards and Claims" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="510" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d7" value="D7  Users and Sessions" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="600" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d8" value="D8  Offenses" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="690" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d9" value="D9  Certificates" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="780" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d10" value="D10  Asset Ledger and Scrap Stocks" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="870" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d11" value="D11  Market Stocks, Sales and Revenue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF6D6;strokeColor=#C69B26;strokeWidth=2;fontSize=11;fontColor=#00271D;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="960" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d12" value="D12  School Years and Snapshots" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1050" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d13" value="D13  Settings, Campus News and Audit Logs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1140" width="230" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="d14" value="D14  Campus Map Mirror and Sync Logs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1230" width="230" height="44" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note-residual" value="Note: residual (non-biodegradable) waste is monitored by volume and pickup activity, not weight." style="text;html=1;align=left;verticalAlign=middle;fontSize=9;fontStyle=2;fontColor=#00795A;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1504" width="500" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="Verify / Dismiss" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" value="Assign MRF" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" value="Issue Term Certificates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" value="Asset Actions" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" value="Approve Sale" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" value="Manage Accounts" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p11"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" value="Settings, Points and School Year" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p12"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" value="Sync Command" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p13"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" value="Login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ad" target="p14"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e10" value="Waste Report, Materials and Photo" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="st" target="p1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11" value="Reward Claim" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="st" target="p7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12" value="Claim Milestone" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="st" target="p8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13" value="Login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="st" target="p14"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e14" value="Waste / Asset Report" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="te" target="p1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e15" value="Login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="te" target="p14"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e16" value="Accept Dispatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="mrf" target="p3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e17" value="Collection and Weight" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="mrf" target="p4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e18" value="Material Turnover Record" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="mrf" target="p6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e19" value="Release Claim" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="mrf" target="p7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e20" value="Sale Batch and Price per Kg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="mrf" target="p10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e21" value="Login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="mrf" target="p14"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e22" value="New Report with Materials" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1" target="d1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e23" value="Pending Reports" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="p2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e24" value="is_verified" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2" target="d1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e25" value="Verified Reports" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="p3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e26" value="Dispatch Status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p3" target="d1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e27" value="Assigned Reports" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="p4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e28" value="Collected and Weight" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4" target="d1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e29" value="Bin Fill Level" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4" target="d4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e30" value="Collected Reports" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="p5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e31" value="Rank and Material Point Rules" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d2" target="p5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e32" value="Points and Rank" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p5" target="d7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e33" value="Points and Breakdown" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p5" target="d1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e34" value="Point History" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p5" target="d2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e35" value="Challenge Progress" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p5" target="d3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e36" value="Material, Turnover and Items" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p6" target="d5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e37" value="Awarded Points" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p6" target="d7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e38" value="Unlocked Claims" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p6" target="d6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e39" value="Turnover Credit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p6" target="d2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e40" value="Unlocked Claims" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d6" target="p7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e41" value="Claim Status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p7" target="d6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e42" value="Reward Disbursement" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p7" target="d2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e43" value="Points and Standings" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d7" target="p8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e44" value="Issued Certificate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p8" target="d9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e45" value="Asset Ledger and Scrap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p9" target="d10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e46" value="Stock, Sale and Revenue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#C69B26;strokeWidth=1.5;fontColor=#8A6A14;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p10" target="d11"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e47" value="Users and Roles" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p11" target="d7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e48" value="Offense and Sanction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p11" target="d8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e49" value="Settings, News and Config" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p12" target="d13"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e50" value="Snapshots and Archive" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p12" target="d12"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e51" value="Map, Buildings, Rooms" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p13" target="d14"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e52" value="Student Roster" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p13" target="d7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e53" value="School Years and Terms" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p13" target="d12"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e54" value="Sessions" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#333333;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p14" target="d7"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e55" value="Material Point Rules" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p12" target="d2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e56" value="Bin Map and Fill Levels" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d4" target="p15"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e57" value="Live Bin Map and Fill Levels" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p15" target="st"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e58" value="Live Bin Map and Fill Levels" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p15" target="te"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e59" value="Live Bin Map and Fill Levels" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p15" target="mrf"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e60" value="Live Bin Map and Fill Levels" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p15" target="ad"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e61" value="Report and Pickup History" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d1" target="p16"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e62" value="Turnover Volume" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d5" target="p16"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e63" value="Bin Capacity and Levels" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d4" target="p16"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e64" value="Audit Logs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="d13" target="p16"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e65" value="Impact, Residual and Operational Analytics" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#00A77C;strokeWidth=2;fontColor=#00795A;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p16" target="ad"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

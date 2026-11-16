@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Gift, Sparkles, X } from 'lucide-react';
 import { RecordWalkInResult } from '../../../types';
-import { formatLitres } from '../../../hooks/useWalkInTurnover';
+import { formatLitres, WALK_IN_MATERIALS } from '../../../hooks/useWalkInTurnover';
 
 interface WalkInReceiptProps {
   receipt: RecordWalkInResult;
@@ -10,6 +10,19 @@ interface WalkInReceiptProps {
 
 export const WalkInReceipt: React.FC<WalkInReceiptProps> = ({ receipt, onClose }) => {
   const { turnover, student, progress, newlyUnlocked, alreadyProcessed } = receipt;
+  const material = turnover.material ?? 'pet_plastic';
+  const materialLabel = WALK_IN_MATERIALS.find((option) => option.code === material)?.label ?? 'Plastic Bottles';
+  const isWeighed = material === 'cardboard';
+  const stats = isWeighed
+    ? [
+        { label: 'Category', value: 'Paper' },
+        { label: 'Weight', value: `${(turnover.totalGrams / 1000).toFixed(2)} kg` },
+      ]
+    : [
+        { label: material === 'aluminum_cans' ? 'Cans' : 'Bottles', value: String(turnover.totalBottles) },
+        { label: 'Volume', value: `${formatLitres(turnover.totalMl)} L` },
+        { label: 'Est. weight', value: `${(turnover.totalGrams / 1000).toFixed(2)} kg` },
+      ];
 
   return (
     <div
@@ -37,7 +50,7 @@ export const WalkInReceipt: React.FC<WalkInReceiptProps> = ({ receipt, onClose }
               <h3 className="text-sm font-bold text-white">
                 {alreadyProcessed ? 'Turnover already recorded' : 'Turnover recorded'}
               </h3>
-              <p className="text-[11px] text-white/60 font-semibold">{student.name}</p>
+              <p className="text-[11px] text-white/60 font-semibold">{student.name} · {materialLabel}</p>
             </div>
           </div>
         </div>
@@ -52,12 +65,8 @@ export const WalkInReceipt: React.FC<WalkInReceiptProps> = ({ receipt, onClose }
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Bottles', value: String(turnover.totalBottles) },
-              { label: 'Volume', value: `${formatLitres(turnover.totalMl)} L` },
-              { label: 'Est. weight', value: `${(turnover.totalGrams / 1000).toFixed(2)} kg` },
-            ].map((stat) => (
+          <div className={`grid gap-2 ${stats.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            {stats.map((stat) => (
               <div key={stat.label} className="bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-center">
                 <p className="text-sm font-black text-[var(--text-strong)]">{stat.value}</p>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{stat.label}</p>
@@ -72,7 +81,8 @@ export const WalkInReceipt: React.FC<WalkInReceiptProps> = ({ receipt, onClose }
                 This school year
               </p>
               <p className="text-xs font-bold text-[var(--text-strong)]">
-                {(progress.yearGrams / 1000).toFixed(2)} kg collected · {progress.yearBottles} bottles
+                {(progress.yearGrams / 1000).toFixed(2)} kg collected
+                {progress.yearBottles > 0 ? ` · ${progress.yearBottles} items` : ''}
               </p>
               {progress.nextReward && (
                 <p className="text-[10px] text-[var(--text-strong)]/50 font-semibold mt-0.5">

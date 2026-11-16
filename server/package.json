@@ -34,7 +34,8 @@
     "db:wipe-accounts": "tsx prisma/wipe-accounts.ts",
     "db:wipe-tenant": "tsx src/scripts/wipe-tenant-data.ts",
     "db:reset-tenant": "tsx src/scripts/reset-tenant.ts",
-    "branding:sync": "tsx src/scripts/sync-branding.ts"
+    "branding:sync": "tsx src/scripts/sync-branding.ts",
+    "db:backfill-material-points": "tsx src/scripts/backfill-material-points.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.0",

@@ -59,6 +59,8 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
   const [weighing, setWeighing] = useState(false);
   // Destructive flows run through ConfirmDialog — never window.confirm/prompt.
   const [sellTarget, setSellTarget] = useState<{ code: string; name: string; kg: number } | null>(null);
+  const [sellBuyer, setSellBuyer] = useState('');
+  const [sellPrice, setSellPrice] = useState('');
   const [disposeTarget, setDisposeTarget] = useState<ScrapItem | null>(null);
   const [disposeRef, setDisposeRef] = useState('');
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -79,18 +81,32 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
   }, [showWeigh, weighTarget, pendingItems]);
 
   const handleSell = (materialCode: string, materialName: string, accumulatedKg: number, thresholdKg: number) => {
+    setSellBuyer('');
+    setSellPrice('');
     setSellTarget({ code: materialCode, name: materialName, kg: Math.min(accumulatedKg, thresholdKg) });
   };
 
   const confirmSell = async () => {
     if (!sellTarget) return;
+    const price = Number(sellPrice);
+    if (!Number.isFinite(price) || price <= 0) {
+      showToast('Enter the agreed price per kg before selling the batch.');
+      return;
+    }
     const { code: materialCode, name: materialName } = sellTarget;
     setSellTarget(null);
     setBusy(materialCode);
     try {
-      const tx = await sellBatch(materialCode);
+      const tx = await sellBatch(
+        materialCode,
+        sellBuyer.trim() || undefined,
+        undefined,
+        price,
+      );
       if (tx) {
-        showToast(`Sold ${tx.weightKg} kg of ${materialName} for ₱${tx.totalRevenue.toLocaleString()}`);
+        showToast(
+          `Sold ${tx.weightKg} kg of ${materialName} at ₱${tx.marketPriceKg}/kg for ₱${tx.totalRevenue.toLocaleString()}`,
+        );
       } else {
         showToast(`Batch sale could not be completed for ${materialName}.`);
       }
@@ -360,16 +376,13 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
                         </div>
                       </div>
                       <div>
-                        <span className={MICRO_LABEL}>Est. rate</span>
-                        <p className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
-                          <span className={NUMBER}>₱{mat.marketPricePerKg}</span>
-                          <span className="font-medium text-[var(--text-strong)]/40"> / kg</span>
-                        </p>
-                      </div>
-                      <div>
-                        <span className={MICRO_LABEL}>Est. value</span>
+                        <span className={MICRO_LABEL}>Sold revenue</span>
                         <p className={`mt-1 text-sm ${NUMBER} text-[var(--text-strong)]`}>
-                          ₱{Math.round(currentKg * mat.marketPricePerKg).toLocaleString()}
+                          ₱
+                          {salesHistory
+                            .filter((sale) => sale.materialCode === mat.materialCode)
+                            .reduce((sum, sale) => sum + (sale.totalRevenue || 0), 0)
+                            .toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -583,14 +596,49 @@ export const AssetScrapStockTab: React.FC<AssetScrapStockTabProps> = ({ showToas
         title="Sell scrap batch"
         description={
           sellTarget
-            ? `Sell ${sellTarget.kg.toFixed(1)} kg of ${sellTarget.name} as scrap? This disposes of the accumulated batch.`
+            ? `Sell ${sellTarget.kg.toFixed(1)} kg of ${sellTarget.name} as scrap? Enter the junk shop and agreed price for this transaction.`
             : undefined
         }
         confirmLabel="Sell batch"
         destructive
         loading={sellTarget !== null && busy === sellTarget.code}
         onConfirm={confirmSell}
-      />
+      >
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label
+              htmlFor="scrap-sell-buyer"
+              className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block"
+            >
+              Junk shop / buyer
+            </label>
+            <Input
+              id="scrap-sell-buyer"
+              value={sellBuyer}
+              onChange={(event) => setSellBuyer(event.target.value)}
+              placeholder="e.g. Metro Junk Shop"
+            />
+          </div>
+          <div className="space-y-1">
+            <label
+              htmlFor="scrap-sell-price"
+              className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block"
+            >
+              Price per kg (₱)
+            </label>
+            <Input
+              id="scrap-sell-price"
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputMode="decimal"
+              value={sellPrice}
+              onChange={(event) => setSellPrice(event.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+      </ConfirmDialog>
 
       {/* Disposal reference (replaces the legacy window.prompt) */}
       <ConfirmDialog

@@ -94,11 +94,11 @@ export const HotspotsCard: React.FC<HotspotsCardProps> = ({
       </span>
       <button
         type="button"
-        onClick={() => onNavigate?.('admin-bin-map')}
+        onClick={() => onNavigate?.('admin-settings')}
         className="text-[11px] font-bold text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] px-2.5 py-1 rounded-full border border-[var(--accent)]/20 flex items-center gap-1 cursor-pointer hover:bg-[color-mix(in_srgb,var(--accent)_20%,white)] transition-colors"
       >
         <ExternalLink size={11} />
-        View Bin Map
+        Manage Bin Map
       </button>
     </div>
   </div>

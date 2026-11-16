@@ -1,6 +1,5 @@
 import React from 'react';
-import { residualRecords, sumResidualKg } from '../../../utils/wasteStreams';
-import { Cylinder, FileText, Package, Trash2, Wine } from 'lucide-react';
+import { Cylinder, FileText, Package, Wine } from 'lucide-react';
 import { Report, User as UserType } from '../../../types';
 import { useRecycleMarket } from '../../../hooks/useRecycleMarket';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -9,6 +8,7 @@ import { GradeParticipationCard } from './impact/GradeParticipationCard';
 import { WasteCompositionCard } from './impact/WasteCompositionCard';
 import { MonthlyVolumeChart } from './impact/MonthlyVolumeChart';
 import { HotspotsCard } from './impact/HotspotsCard';
+import { ResidualMonitoringCard } from './impact/ResidualMonitoringCard';
 
 export interface AdminImpactTabProps {
   reports?: Report[];
@@ -21,7 +21,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
   users = [],
   onNavigate,
 }) => {
-  const { stocksRecord } = useRecycleMarket();
+  const { stocksRecord, salesHistory } = useRecycleMarket();
 
   const activeUsers = users;
   const activeReports = reports;
@@ -46,16 +46,29 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
   const paperKg = stocksRecord['cardboard']?.accumulatedKg || 0;
   const glassKg = stocksRecord['glass']?.accumulatedKg || 0;
 
-  // Residual waste — single shared definition (see utils/wasteStreams).
-  const residualReports = residualRecords(collectedReports);
-  const residualKg = sumResidualKg(residualReports);
+  // Recyclable streams only — residual is never weighed, so it is not part of
+  // this composition (kg and value would always be meaningless for it).
+  const totalCollectedKg = plasticKg + aluminumKg + paperKg + glassKg;
 
-  const totalCollectedKg = plasticKg + aluminumKg + paperKg + glassKg + residualKg;
+  // Selling prices are entered manually per sale, so valuations use the latest
+  // realized ₱/kg per material (0 until a sale exists) — never a fixed rate.
+  const latestPriceByCategory = (code: string): number => {
+    let latest = 0;
+    let latestAt = '';
+    salesHistory.forEach((sale) => {
+      if (sale.categoryCode !== code || !sale.marketPriceKg) return;
+      if (!latestAt || sale.soldAt > latestAt) {
+        latestAt = sale.soldAt;
+        latest = sale.marketPriceKg;
+      }
+    });
+    return latest;
+  };
 
-  const pricePet = stocksRecord['pet_plastic']?.marketPricePerKg || 18;
-  const priceGlass = stocksRecord['glass']?.marketPricePerKg || 15;
-  const priceAluminum = stocksRecord['aluminum_cans']?.marketPricePerKg || 45;
-  const pricePaper = stocksRecord['cardboard']?.marketPricePerKg || 12;
+  const pricePet = latestPriceByCategory('pet_plastic');
+  const priceGlass = latestPriceByCategory('glass');
+  const priceAluminum = latestPriceByCategory('aluminum_cans');
+  const pricePaper = latestPriceByCategory('cardboard');
 
   const wasteRampShades = [
     { bgColor: 'bg-[var(--ramp-1)]/10', textColor: 'text-[var(--ramp-1)]', barColor: 'bg-[var(--ramp-1)]', valueColor: 'text-[var(--ramp-1-strong)]' },
@@ -65,7 +78,7 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
   ];
 
   // Recoverable streams wear the ramp by volume rank — the largest stream takes
-  // the brand accent and the ramp steps toward gold; residual stays neutral.
+  // the brand accent and the ramp steps toward gold.
   const wasteComposition = [
     ...[
       {
@@ -107,18 +120,6 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
         icon: item.icon,
         ...wasteRampShades[idx % wasteRampShades.length],
       })),
-    {
-      id: 'residual',
-      name: 'Residual Waste',
-      pct: totalCollectedKg > 0 ? Math.round((residualKg / totalCollectedKg) * 100) : 0,
-      weightKg: residualKg,
-      estValuePhp: 0,
-      icon: Trash2,
-      bgColor: 'bg-[var(--text-strong)]/10',
-      textColor: 'text-[var(--text-strong)]/60',
-      barColor: 'bg-[var(--text-strong)]/30',
-      valueColor: 'text-[var(--text-strong)]/60',
-    },
   ];
 
   const totalValuePhp = wasteComposition.reduce((sum, item) => sum + item.estValuePhp, 0);
@@ -274,6 +275,10 @@ export const AdminImpactTab: React.FC<AdminImpactTabProps> = ({
           totalHighPriority={totalHighPriority}
           onNavigate={onNavigate}
         />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <ResidualMonitoringCard reports={activeReports} onNavigate={onNavigate} />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Recycle, Loader2, Scale } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { WalkInProgress, WalkInTurnover } from '../../../types';
-import { formatLitres } from '../../../hooks/useWalkInTurnover';
+import { formatLitres, WALK_IN_MATERIALS } from '../../../hooks/useWalkInTurnover';
 
 export const WalkInActivityCard: React.FC = () => {
   const [turnovers, setTurnovers] = useState<WalkInTurnover[]>([]);
@@ -32,7 +32,7 @@ export const WalkInActivityCard: React.FC = () => {
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-bold text-[var(--text-strong)]/50 uppercase tracking-widest flex items-center gap-2">
           <Recycle size={14} className="text-[var(--accent)]" />
-          <span>Bottle Turn-ins</span>
+          <span>Recyclable Turn-ins</span>
         </h3>
         {progress && progress.yearGrams > 0 && (
           <span className="flex items-center gap-1 text-[10px] font-black text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/25 px-2.5 py-1 rounded-full">
@@ -47,12 +47,16 @@ export const WalkInActivityCard: React.FC = () => {
         </div>
       ) : turnovers.length === 0 ? (
         <p className="text-xs text-[var(--text-strong)]/50 font-medium text-center py-6">
-          No bottle turn-ins yet. Bring plastic bottles to the MRF Walk-in Station to earn points and
-          unlock prizes!
+          No turn-ins yet. Bring plastic bottles, aluminum cans, or paper & cardboard to the MRF
+          Walk-in Station to earn points and unlock prizes!
         </p>
       ) : (
         <div className="space-y-2">
-          {turnovers.map((turnover) => (
+          {turnovers.map((turnover) => {
+            const turnoverMaterial = turnover.material ?? 'pet_plastic';
+            const label = WALK_IN_MATERIALS.find((option) => option.code === turnoverMaterial)?.label ?? 'Plastic Bottles';
+            const isWeighed = turnoverMaterial === 'cardboard';
+            return (
             <div
               key={turnover.id}
               className="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-3.5 py-2.5 border border-gray-100"
@@ -63,15 +67,18 @@ export const WalkInActivityCard: React.FC = () => {
                     month: 'short',
                     day: 'numeric',
                   })}{' '}
-                  · {turnover.totalBottles} bottle{turnover.totalBottles === 1 ? '' : 's'}
+                  · {label}
                 </p>
                 <p className="text-[10px] text-[var(--text-strong)]/50 font-semibold">
-                  {formatLitres(turnover.totalMl)} L · {(turnover.totalGrams / 1000).toFixed(2)} kg
+                  {isWeighed
+                    ? `${(turnover.totalGrams / 1000).toFixed(2)} kg`
+                    : `${turnover.totalBottles} ${turnoverMaterial === 'aluminum_cans' ? 'can' : 'bottle'}${turnover.totalBottles === 1 ? '' : 's'} · ${formatLitres(turnover.totalMl)} L · ${(turnover.totalGrams / 1000).toFixed(2)} kg`}
                 </p>
               </div>
               <span className="text-xs font-black text-[var(--accent)] shrink-0">+{turnover.pointsAwarded} pts</span>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

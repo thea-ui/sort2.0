@@ -56,6 +56,12 @@ export interface Report {
   reporterGradeLevel?: string | null;
   reporterSection?: string | null;
   pointsAwarded: number;
+  /** Top-3 rank portion of pointsAwarded. */
+  rankPointsAwarded?: number;
+  /** Material bonus portion of pointsAwarded. */
+  materialPointsAwarded?: number;
+  /** Per-material awarded points, e.g. { pet_plastic: 2, cardboard: 2 }. */
+  materialPointsBreakdown?: Record<string, number> | null;
   timestamp: string;
   /** Local evidence source (data URL) — present on optimistic/local reports. */
   imageUrl?: string;
@@ -66,6 +72,10 @@ export interface Report {
   assignedMrfId?: string;
   assignedMrfName?: string;
   reportType?: 'WASTE' | 'ASSET';
+  /** Recyclable materials identified by the student (e.g. pet_plastic). */
+  materials?: string[];
+  /** Optional free-text label when the student chose "Mixed / Others". */
+  otherMaterialLabel?: string | null;
   reporterRank?: number | null;
   pointsAwardedAt?: string | null;
   completionNotes?: string;
@@ -150,6 +160,8 @@ export interface WalkInTurnover {
   id: string;
   studentId: string;
   recordedByName?: string;
+  /** pet_plastic | aluminum_cans | cardboard */
+  material?: string;
   totalMl: number;
   totalBottles: number;
   totalGrams: number;
@@ -199,6 +211,10 @@ export interface UnlockedClaimSummary {
 export interface RecordWalkInInput {
   studentId: string;
   items: { bottleMl: number; quantity: number }[];
+  /** pet_plastic | aluminum_cans | cardboard */
+  material?: string;
+  /** Required for cardboard; weighed kilogrammes. */
+  weightKg?: number;
   notes?: string;
   idempotencyKey: string;
 }
