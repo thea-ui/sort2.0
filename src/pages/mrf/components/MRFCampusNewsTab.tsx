@@ -24,7 +24,7 @@ const TAG_OPTIONS = [
   { tag: 'UPDATE', tagColor: 'bg-gray-100 text-gray-700 border-gray-200', iconColor: 'bg-gray-500' },
 ];
 
-export const AdminCampusNewsTab: React.FC = () => {
+export const MRFCampusNewsTab: React.FC = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);

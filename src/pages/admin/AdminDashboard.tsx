@@ -7,7 +7,6 @@ import { AdminLeaderboardTab } from './components/AdminLeaderboardTab';
 import { AdminCollectionsTab } from './components/AdminCollectionsTab';
 import { AdminBinMapTab } from './components/AdminBinMapTab';
 import { AdminSettingsTab } from './components/AdminSettingsTab';
-import { AdminCampusNewsTab } from './components/AdminCampusNewsTab';
 import { AdminUsersTab } from './components/AdminUsersTab';
 import { AdminAuditLogsTab } from './components/AdminAuditLogsTab';
 import { ReportsHubTab } from './components/reports-hub/ReportsHubTab';
@@ -90,9 +89,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab, setAc
 
       {/* BIN MAP MANAGEMENT TAB */}
       {activeTab === 'admin-bin-map' && <AdminBinMapTab bins={bins} reports={reports} />}
-
-      {/* CAMPUS NEWS TAB */}
-      {activeTab === 'admin-campus-news' && <AdminCampusNewsTab />}
 
       {/* USER ACCOUNTS & ROLE MANAGEMENT */}
       {activeTab === 'admin-users' && <AdminUsersTab users={users} />}

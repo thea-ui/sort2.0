@@ -98,6 +98,7 @@ if (existsSync(localCreds) && cfg.accounts?.student?.identifier && !cfg.accounts
     await check('student can read settings', 'GET', '/api/settings', [200], { token: student.token, forbidPii: true });
     await check('student cannot mutate settings', 'PATCH', '/api/settings', [403], { token: student.token, body: {} });
     await check('student cannot mutate market', 'PATCH', '/api/market/stocks/pet_plastic', [403], { token: student.token, body: {} });
+    await check('student cannot mutate campus news', 'POST', '/api/settings/campus-news', [403], { token: student.token, body: {} });
     await check('student cannot mutate bins', 'PATCH', '/api/bins/00000000-0000-0000-0000-000000000000', [403], { token: student.token, body: {} });
     await check('student PII-stripped user list', 'GET', '/api/users', [200], { token: student.token, forbidPii: true });
     // Audit logs carry actor names, details and IP addresses: admin only.
@@ -171,8 +172,10 @@ if (existsSync(localCreds) && cfg.accounts?.student?.identifier && !cfg.accounts
         await check('admin passes admin guard (no 401/403)', 'PATCH', '/api/settings/asset-categories/00000000-0000-0000-0000-000000000000', [400, 404, 500], { token: staff.token, body: {} });
         await check('admin sees full user records', 'GET', '/api/users', [200], { token: staff.token });
   } else {
-        // No-op probe (empty body) — proves MRF clears requireRole without mutating data.
+        // No-op probes (empty/missing ids) — prove MRF clears requireRole
+        // without mutating data.
         await check('mrf passes MRF guard (no 401/403)', 'PATCH', '/api/market/stocks/pet_plastic', [200, 400, 500], { token: staff.token, body: {} });
+        await check('mrf can manage campus news (no 401/403)', 'PATCH', '/api/settings/campus-news/00000000-0000-0000-0000-000000000000', [400, 404, 500], { token: staff.token, body: {} });
       }
     } else {
       warnings.push({ name: `${role} login`, detail: `EnrollPro rejected (status ${staff.status}) — check credentials` });

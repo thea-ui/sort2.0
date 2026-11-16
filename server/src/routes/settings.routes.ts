@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { getActiveSchoolYearId } from '../services/rollover.service.js';
 import { rescheduleBinReset } from '../services/bin-reset.service.js';
 import { rescheduleSync } from '../services/sync-scheduler.service.js';
-import { authenticate, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticate, requireAdmin, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import {
   getPublicBranding,
   sanitizeBrandingPatch,
@@ -918,7 +918,7 @@ router.get('/campus-news', async (req: Request, res: Response): Promise<any> => 
 });
 
 // POST /api/settings/campus-news
-router.post('/campus-news', requireAdmin, async (req: Request, res: Response): Promise<any> => {
+router.post('/campus-news', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response): Promise<any> => {
   try {
     const { title, body, tag, tagColor, iconColor } = req.body;
     const news = await prisma.campusNews.create({
@@ -937,7 +937,7 @@ router.post('/campus-news', requireAdmin, async (req: Request, res: Response): P
 });
 
 // PATCH /api/settings/campus-news/:id
-router.patch('/campus-news/:id', requireAdmin, async (req: Request, res: Response): Promise<any> => {
+router.patch('/campus-news/:id', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response): Promise<any> => {
   try {
     const id = String(req.params.id);
     const { title, body, tag, tagColor, iconColor, isPublished } = req.body;
@@ -959,7 +959,7 @@ router.patch('/campus-news/:id', requireAdmin, async (req: Request, res: Respons
 });
 
 // DELETE /api/settings/campus-news/:id
-router.delete('/campus-news/:id', requireAdmin, async (req: Request, res: Response): Promise<any> => {
+router.delete('/campus-news/:id', requireRole('ADMIN', 'MRF'), async (req: Request, res: Response): Promise<any> => {
   try {
     const id = String(req.params.id);
     await prisma.campusNews.delete({ where: { id } });

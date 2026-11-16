@@ -7,6 +7,7 @@ import { AdminLogin } from './pages/admin/AdminLogin';
 import { MRFLogin } from './pages/mrf/MRFLogin';
 import { StudentLayout } from './components/layout/StudentLayout';
 import { ToastViewport } from './components/common/Toast';
+import { LoadingScreen } from './components/common/LoadingScreen';
 import { primeAtlasMapCache } from './hooks/useAtlasMap';
 import { usePathRoute } from './hooks/usePathRoute';
 import { PwaRuntime } from './pwa/PwaRuntime';
@@ -20,7 +21,7 @@ const TeacherDashboard = lazy(() =>
   import('./pages/teacher/TeacherDashboard').then((m) => ({ default: m.TeacherDashboard }))
 );
 const MRFDashboard = lazy(() =>
-  import('./pages/mrf/MRFDashboard').then((m) => ({ default: m.MRFDashboard }))
+  import('./pages/mrf/MRFDashboardRoute').then((m) => ({ default: m.MRFDashboardRoute }))
 );
 const AdminDashboard = lazy(() =>
   import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
@@ -31,16 +32,9 @@ const ReportPrintPage = lazy(() =>
 );
 
 function RouteFallback() {
-  // Loading gate (SMART master handoff Part 1 §4): centered 48px primary ring
-  // spinner with a status label — never a blank screen.
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
-      <div className="flex flex-col items-center gap-4" role="status" aria-label="Loading">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-muted-foreground font-medium">Loading...</p>
-      </div>
-    </div>
-  );
+  // Loading gate (SMART master handoff Part 1 A4): branded, animated screen
+  // instead of a blank page while the session or a role bundle hydrates.
+  return <LoadingScreen />;
 }
 
 function DashboardContent({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (tab: string) => void }) {

@@ -82,6 +82,10 @@ export const MRF_NAV_GROUPS: ShellNavGroup[] = [
     ],
   },
   {
+    title: 'COMMUNICATIONS',
+    items: [{ id: 'mrf-campus-news', label: 'Campus News', icon: Newspaper }],
+  },
+  {
     title: 'RECORDS',
     items: [{ id: 'mrf-history', label: 'History', icon: History }],
   },
@@ -103,7 +107,6 @@ export const ADMIN_NAV_GROUPS: ShellNavGroup[] = [
       { id: 'admin-reports-hub', label: 'Reports', icon: FolderTree },
       { id: 'admin-collections', label: 'Collections', icon: Scale },
       { id: 'admin-rewards', label: 'Rewards', icon: Gift },
-      { id: 'admin-campus-news', label: 'Campus News', icon: Newspaper },
     ],
   },
   {
