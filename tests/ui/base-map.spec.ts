@@ -193,20 +193,25 @@ test.describe('Bin Map base layer — ATLAS first', () => {
     await expect(page.getByTestId('campus-map-fallback').locator('img')).toHaveCount(1);
   });
 
-  test('admin bin map renders the ATLAS base and station popovers', async ({ page }) => {
+  test('admin Settings → Locations renders the ATLAS base and editable pins', async ({ page }) => {
     const seeded = await seedSession(page, 'ADMIN');
     test.skip(!seeded, 'no usable ADMIN test identity');
 
     await mockAtlasMap(page);
     await mockAtlasImage(page, false);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Bin Map' }).first().click();
+
+    // The standalone admin Bin Map tab is no longer a sidebar destination;
+    // the reachable admin map surface is Settings → Locations.
+    const sidebar = page.locator('aside');
+    await sidebar.getByRole('button', { name: 'Settings' }).click();
+    await sidebar.getByRole('button', { name: 'Locations' }).first().click();
 
     await expect(page.getByTestId('atlas-base-map')).toBeVisible();
-    const pins = page.getByTestId('campus-map-frame').getByTestId('station-pin');
+    const pins = page.getByTestId('editor-pin');
     await expect(pins.first()).toBeVisible();
     await pins.first().click();
-    await expect(page.getByText('Campus Stations', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit Station Details' })).toBeVisible();
   });
 
   test('MRF direct pickup map renders the ATLAS base and pin popovers', async ({ page }) => {

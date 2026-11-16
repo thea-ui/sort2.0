@@ -4,12 +4,15 @@ import './index.css'
 import App from './App.tsx'
 import { ThemeProvider } from './hooks/useTheme'
 import { TextScaleProvider } from './hooks/useTextScale'
+import { PwaInstallProvider } from './pwa/PwaInstallProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <TextScaleProvider>
-        <App />
+        <PwaInstallProvider>
+          <App />
+        </PwaInstallProvider>
       </TextScaleProvider>
     </ThemeProvider>
   </StrictMode>,

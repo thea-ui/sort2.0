@@ -9,6 +9,7 @@ import { StudentLayout } from './components/layout/StudentLayout';
 import { ToastViewport } from './components/common/Toast';
 import { primeAtlasMapCache } from './hooks/useAtlasMap';
 import { usePathRoute } from './hooks/usePathRoute';
+import { PwaRuntime } from './pwa/PwaRuntime';
 
 // Route-level code splitting: each role dashboard is loaded on demand so the
 // public landing page never ships the admin/MRF bundles.
@@ -137,6 +138,7 @@ function App() {
     <ErrorBoundary>
       <MockDataProvider>
         <AppShell activeTab={activeTab} setActiveTab={setActiveTab} />
+        <PwaRuntime />
         <ToastViewport />
       </MockDataProvider>
     </ErrorBoundary>

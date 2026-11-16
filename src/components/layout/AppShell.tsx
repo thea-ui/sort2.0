@@ -58,6 +58,8 @@ export interface AppShellProps {
   onLogout: () => void;
   headerActions?: React.ReactNode;
   persistKey?: string;
+  /** Optional sidebar actions (e.g. install app), aware of the collapsed rail. */
+  sidebarFooterActions?: (options: { collapsed: boolean }) => React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -404,6 +406,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   onLogout,
   headerActions,
   persistKey = 'sortv2_sidebar_collapsed',
+  sidebarFooterActions,
   children,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -479,6 +482,12 @@ export const AppShell: React.FC<AppShellProps> = ({
             collapsed={collapsed}
           />
         </nav>
+
+        {sidebarFooterActions && (
+          <div className={collapsed ? 'px-2 pb-1' : 'px-3 pb-2'}>
+            {sidebarFooterActions({ collapsed })}
+          </div>
+        )}
 
         <ShellNavFooter user={user} onLogout={onLogout} collapsed={collapsed} />
       </aside>

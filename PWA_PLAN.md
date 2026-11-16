@@ -1,9 +1,31 @@
 # PWA_PLAN.md — Installable SORT for Student, Teacher, Admin, and MRF
 
-Status: **Planned — no code changed yet**
+Status: **Implemented (Phases 0–4, 6) — Phase 5 shortcuts intentionally deferred**
 Date: 2026-11-16
 Scope owner: SORTv2
 Mode: **Online-only** (no offline writes, no offline queue, no background sync)
+
+### Implementation log (2026-11-16)
+
+- Added `vite-plugin-pwa` 2.0 (generateSW, prompt updates) + generated icon set
+  in `public/pwa/` from `public/sort-logo.svg`.
+- Dynamic manifest + Apple icon routes:
+  `GET /api/settings/public/manifest.webmanifest`,
+  `GET /api/settings/public/apple-touch-icon.png`.
+- Tenant install icons generated from the synced EnrollPro logo (`sharp`,
+  `uploads/pwa/<logoHash>/`); default SORT icons remain the fallback.
+- Install surfaces: student/teacher sidebar + mobile card/profile menu,
+  Admin/MRF sidebar + More-sheet row. One visible control per viewport.
+- Manual update prompt and offline banner mounted in `PwaRuntime`; service
+  worker is production-only and deferred after first paint.
+- Guards added: `npm run pwa:validate`, `npm run pwa:smoke`,
+  `npm run test:pwa`, dev service-worker isolation spec.
+- Verified locally: lint, build, 167 unit tests, 99 server tests, auth/ATLAS
+  smokes, full UI suite, 34 PWA Playwright tests (4 desktop iOS-instruction
+  tests skipped by design), and 5/5 `pwa:smoke` checks.
+- Known limitation: tenant icons appear after the next EnrollPro branding sync;
+  tenants whose logo synced before this change keep the default SORT install
+  icons until then. Phase 5 shortcut deep links (`?tab=`) are not shipped.
 
 ---
 

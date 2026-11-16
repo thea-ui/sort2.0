@@ -18,6 +18,7 @@ import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils'
 import { getInitials } from '../../../utils/userDisplay';
 import { apiService } from '../../../services/api';
 import { CampusNewsCard } from '../../../components/common/CampusNewsCard';
+import { InstallAppCard } from '../../../components/pwa/InstallAppCard';
 import {
   studentPanel,
   studentPanelHeader,
@@ -118,6 +119,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ currentUser, reports, 
 
   return (
     <div className="w-full space-y-4 pb-8 animate-fade-in sm:space-y-6">
+      <InstallAppCard userId={currentUser.id} />
+
       {/* Hero */}
       <section className="overflow-hidden rounded-2xl border border-[var(--primary)]/10 bg-white">
         <div className="grid gap-4 p-4 sm:gap-5 sm:p-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">

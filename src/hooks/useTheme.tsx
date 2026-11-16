@@ -4,6 +4,7 @@ import {
   resolveBrandIdentity,
   type ResolvableBranding,
 } from '../utils/brandIdentity';
+import { resolveManifestThemeColor } from '../pwa/themeColor';
 
 // ─── Contract ──────────────────────────────────────────────────────────
 // SORT consumes tenant branding from its own public settings endpoint
@@ -240,7 +241,9 @@ let lastFaviconHref: string | null = null;
 
 function setFavicon(href: string): void {
   const fullHref = href.startsWith('http') ? href : `${window.location.origin}${href}`;
-  let link = document.querySelector<HTMLLinkElement>("link[rel*='icon']");
+  // Exact rel match: `rel*='icon'` also matches `apple-touch-icon`, which would
+  // overwrite the install icon whenever the tenant branding refreshes.
+  let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
   if (!link) {
     link = document.createElement('link');
     link.rel = 'icon';
@@ -250,6 +253,16 @@ function setFavicon(href: string): void {
   lastFaviconHref = fullHref;
   link.type = faviconType(href);
   link.href = fullHref;
+}
+
+function setMeta(name: string, content: string): void {
+  let meta = document.querySelector<HTMLMetaElement>(`meta[name='${name}']`);
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = name;
+    document.head.appendChild(meta);
+  }
+  if (meta.content !== content) meta.content = content;
 }
 
 /**
@@ -268,9 +281,15 @@ function applyFavicon(logoUrl: string | null): void {
   probe.src = tenantLogo;
 }
 
-export function applyBrowserMetadata(state: ResolvableBranding): void {
-  document.title = resolveBrandIdentity(state).title;
+export function applyBrowserMetadata(
+  state: ResolvableBranding & { colors?: { primary?: string } }
+): void {
+  const identity = resolveBrandIdentity(state);
+  document.title = identity.title;
   applyFavicon(state.logoUrl);
+
+  setMeta('theme-color', resolveManifestThemeColor(state.colors?.primary));
+  setMeta('apple-mobile-web-app-title', identity.acronym.slice(0, 12));
 }
 
 // ─── Dev-only resolution log (deployment triage; stripped from prod output) ──

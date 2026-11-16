@@ -14,6 +14,8 @@ import { AppShell, ShellNavFooter, ShellNavList } from './AppShell';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileNavSheet } from './MobileNavSheet';
 import { LogoutConfirmDialog } from '../common/LogoutConfirmDialog';
+import { InstallAppButton } from '../pwa/InstallAppButton';
+import { InstallAppMenuItem } from '../pwa/InstallAppMenuItem';
 import {
   ADMIN_NAV_GROUPS,
   MOBILE_PRIMARY_ITEMS,
@@ -146,6 +148,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onNavigate={handleNavSelect}
         onLogout={() => setLogoutConfirmOpen(true)}
         headerActions={notificationsButton}
+        sidebarFooterActions={({ collapsed }) => <InstallAppButton collapsed={collapsed} />}
       >
         {children}
       </AppShell>
@@ -161,7 +164,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
         title={isMRF ? 'MRF Operations' : 'Admin Control'}
-        footer={<ShellNavFooter user={shellUser} onLogout={() => setLogoutConfirmOpen(true)} />}
+        footer={
+          <>
+            <InstallAppMenuItem onAfterClick={() => setMobileNavOpen(false)} />
+            <ShellNavFooter user={shellUser} onLogout={() => setLogoutConfirmOpen(true)} />
+          </>
+        }
       >
         <ShellNavList groups={navGroups} activeTab={activeTab} onNavigate={handleNavSelect} />
       </MobileNavSheet>

@@ -2,14 +2,16 @@ import React from 'react';
 import { LogOut } from 'lucide-react';
 import { User } from '../../types';
 import { ROLE_LABELS, getInitials } from '../../utils/userDisplay';
+import { InstallAppMenuItem } from '../pwa/InstallAppMenuItem';
 
 interface ProfileMenuProps {
   user: User;
   onClose: () => void;
   onLogout: () => void;
+  showInstall?: boolean;
 }
 
-export const ProfileMenu: React.FC<ProfileMenuProps> = ({ user, onClose, onLogout }) => {
+export const ProfileMenu: React.FC<ProfileMenuProps> = ({ user, onClose, onLogout, showInstall = false }) => {
   return (
     <div className="w-64 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
       {/* Account Header */}
@@ -24,8 +26,11 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ user, onClose, onLogou
         </div>
       </div>
 
-      {/* Passwords are managed by EnrollPro, so the menu only offers sign out. */}
       <div className="p-1.5">
+        {showInstall && (
+          <InstallAppMenuItem onAfterClick={onClose} cardUserId={user.id} hideOnDesktop />
+        )}
+        {/* Passwords are managed by EnrollPro, so the menu only offers sign out. */}
         <button
           type="button"
           onClick={() => {

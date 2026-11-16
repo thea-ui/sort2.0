@@ -3,7 +3,9 @@ import { promises as fs, existsSync, mkdirSync, readdirSync, unlinkSync } from '
 import path from 'node:path';
 
 import { prisma } from '../lib/prisma.js';
+import { UPLOADS_DIR } from '../lib/uploads.js';
 import { saveBranding, type BrandingPatch, type PublicBranding } from './branding.service.js';
+import { generateTenantPwaIcons } from './pwa-icons.service.js';
 
 const DEFAULT_ENROLLPRO_BASE = 'https://dev-jegs.buru-degree.ts.net/api';
 const SETTINGS_TIMEOUT_MS = 20_000;
@@ -12,7 +14,7 @@ const LOGO_FILENAME = 'logo-enrollpro-sync';
 const LOGO_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
 
 /** SORT serves synced assets from its own origin; see index.ts static mount. */
-export const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
+export { UPLOADS_DIR };
 
 export interface EnrollProPaletteColor {
   hex: string;
@@ -162,6 +164,12 @@ export async function downloadEnrollProLogo(logoRelativePath: string): Promise<s
     const target = path.join(UPLOADS_DIR, fileName);
     if (!existsSync(target)) await fs.writeFile(target, buffer);
     removeStaleSyncedLogos(fileName);
+
+    // Generate install-screen icons from the same bytes. Failures are logged
+    // and the manifest keeps the bundled SORT icon set.
+    const hash = fileName.match(/-([0-9a-f]{10})\./i)?.[1]?.toLowerCase();
+    if (hash) await generateTenantPwaIcons(buffer, hash);
+
     return `/uploads/${fileName}`;
   } catch (err: any) {
     console.warn('[Branding] Logo download failed (keeping previous logo):', err?.message || err);

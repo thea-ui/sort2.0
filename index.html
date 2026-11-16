@@ -3,8 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/SORT_LOGO.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="/api/settings/public/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/api/settings/public/apple-touch-icon.png" />
+    <meta name="theme-color" content="#00271D" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SORT" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>S.O.R.T. — Smart Operational Recovery & Tracking</title>
+    <script>
+      // Capture the install prompt as early as possible. Chrome fires
+      // `beforeinstallprompt` once; the React provider consumes the stored
+      // event when the user clicks an install control.
+      (function () {
+        try {
+          window.addEventListener('beforeinstallprompt', function (event) {
+            event.preventDefault();
+            window.__sortPwaInstallEvent = event;
+            window.dispatchEvent(new CustomEvent('sort:pwa-install-available'));
+          });
+          window.addEventListener('appinstalled', function () {
+            window.__sortPwaInstallEvent = null;
+            window.dispatchEvent(new CustomEvent('sort:pwa-installed'));
+          });
+        } catch (e) {}
+      })();
+    </script>
     <script>
       // Pre-hydration theme boot: apply the last resolved tenant variables
       // before first paint so a branded deployment never flashes the default

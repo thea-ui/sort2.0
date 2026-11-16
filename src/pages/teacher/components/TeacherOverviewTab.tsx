@@ -19,6 +19,7 @@ import {
 import { User, Report } from '../../../types';
 import { cleanReportTitle, cleanLocationName } from '../../../utils/reportUtils';
 import { getInitials } from '../../../utils/userDisplay';
+import { InstallAppCard } from '../../../components/pwa/InstallAppCard';
 
 interface TeacherOverviewTabProps {
   currentUser: User;
@@ -54,6 +55,7 @@ export const TeacherOverviewTab: React.FC<TeacherOverviewTabProps> = ({
 }) => {
   return (
     <div className="w-full space-y-4 pb-8 sm:space-y-6">
+      <InstallAppCard userId={currentUser.id} />
 
       {/* ── 2026 Faculty Hero Card ── */}
       <div className="rounded-2xl border border-[var(--primary)]/10 bg-white p-4 sm:p-6">

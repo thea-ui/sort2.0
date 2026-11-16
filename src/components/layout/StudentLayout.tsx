@@ -20,6 +20,7 @@ import {
 import { SortLogo } from '../common/SortLogo';
 import { PixelGridBackground } from './PixelGridBackground';
 import { ProfileMenu } from '../common/ProfileMenu';
+import { InstallAppButton } from '../pwa/InstallAppButton';
 import { AccessibilityMenu } from '../common/AccessibilityMenu';
 import { LogoutConfirmDialog } from '../common/LogoutConfirmDialog';
 import { filterNotificationsForUser } from '../../utils/notifications';
@@ -200,6 +201,9 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
         </nav>
 
         <div className={`border-t border-slate-200 ${sidebarCollapsed ? 'p-2' : 'p-3'}`}>
+          <div className={sidebarCollapsed ? 'mb-1' : 'mb-2'}>
+            <InstallAppButton collapsed={sidebarCollapsed} />
+          </div>
           {sidebarCollapsed ? (
             <div
               className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)]/10 text-[var(--accent)]"
@@ -386,6 +390,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
                     user={currentUser}
                     onClose={() => setProfileDropdownOpen(false)}
                     onLogout={() => setLogoutConfirmOpen(true)}
+                    showInstall
                   />
                 </div>
               )}
@@ -427,7 +432,10 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children, activeTa
       )}
 
       {/* Mobile Bottom Navigation */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--shell-border)] bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
+      <div
+        data-testid="student-bottom-nav"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--shell-border)] bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+      >
         <nav className="flex items-stretch justify-around px-1.5 py-1">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;

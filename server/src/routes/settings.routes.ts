@@ -15,6 +15,11 @@ import {
   MAX_BRANDING_STREAM_CLIENTS,
 } from '../services/branding.service.js';
 import { syncEnrollProBranding } from '../services/enrollpro-branding.service.js';
+import {
+  buildFallbackPwaManifest,
+  resolvePwaManifest,
+} from '../services/pwa-manifest.service.js';
+import { resolveTenantPwaIcons } from '../services/pwa-icons.service.js';
 import { clampMaxCacheDays } from '../services/offline-auth.service.js';
 import { MATERIAL_CODES, MATERIAL_LABELS } from '../services/material-point-rules.js';
 
@@ -31,6 +36,43 @@ router.get('/public', async (_req, res) => {
     res.json({ settings: branding });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch public settings' });
+  }
+});
+
+// Installable-app manifest. Generated from the same tenant branding as the
+// theme, with a default SORT manifest on any failure so a database outage can
+// never make the app uninstallable.
+let pwaManifestWarnedAt = 0;
+
+router.get('/public/manifest.webmanifest', async (_req, res) => {
+  const cacheControl = 'public, max-age=60, stale-while-revalidate=300';
+  try {
+    const branding = await getPublicBranding();
+    const manifest = await resolvePwaManifest(branding);
+    res.set('Cache-Control', cacheControl);
+    res.type('application/manifest+json').send(JSON.stringify(manifest));
+  } catch (error: any) {
+    const now = Date.now();
+    if (now - pwaManifestWarnedAt > 5 * 60_000) {
+      pwaManifestWarnedAt = now;
+      console.warn('[PWA] manifest fallback:', error?.message || error);
+    }
+    res.set('Cache-Control', cacheControl);
+    res.type('application/manifest+json').send(JSON.stringify(buildFallbackPwaManifest()));
+  }
+});
+
+// iOS reads apple-touch-icon at install time; tenant icons are generated from
+// the synced logo and fall back to the bundled SORT mark.
+router.get('/public/apple-touch-icon.png', async (_req, res) => {
+  try {
+    const branding = await getPublicBranding();
+    const icons = resolveTenantPwaIcons(branding.logoUrl);
+    res.set('Cache-Control', 'public, max-age=3600');
+    return res.redirect(302, icons?.appleTouch ?? '/pwa/apple-touch-icon.png');
+  } catch {
+    res.set('Cache-Control', 'public, max-age=3600');
+    return res.redirect(302, '/pwa/apple-touch-icon.png');
   }
 });
 
