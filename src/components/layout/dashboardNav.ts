@@ -105,6 +105,7 @@ export const ADMIN_NAV_GROUPS: ShellNavGroup[] = [
     items: [
       { id: 'admin-reports', label: 'Verify Reports', icon: ClipboardCheck },
       { id: 'admin-reports-hub', label: 'Reports', icon: FolderTree },
+      { id: 'admin-bin-map', label: 'Bin Map', icon: MapPin },
       { id: 'admin-collections', label: 'Collections', icon: Scale },
       { id: 'admin-rewards', label: 'Rewards', icon: Gift },
     ],
