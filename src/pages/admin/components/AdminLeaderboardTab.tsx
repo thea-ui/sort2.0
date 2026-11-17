@@ -20,6 +20,20 @@ interface LeaderboardRow {
   points: number;
 }
 
+const rankBadgeClass = (rank: number): string => {
+  if (rank === 1) return 'bg-[var(--ramp-1)] text-white';
+  if (rank === 2) return 'bg-[var(--ramp-2)] text-white';
+  if (rank === 3) return 'bg-[var(--ramp-3)] text-white';
+  return 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]/60';
+};
+
+const rankPointsClass = (rank: number): string => {
+  if (rank === 1) return 'text-[var(--ramp-1-strong)]';
+  if (rank === 2) return 'text-[var(--ramp-2-strong)]';
+  if (rank === 3) return 'text-[var(--ramp-3-strong)]';
+  return 'text-[var(--text-strong)]/60';
+};
+
 export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
   users,
   reports = [],
@@ -59,15 +73,9 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
       skeleton: 'number',
       cell: (row) => (
         <span
-          className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-[11px] font-black ${
-            row.rank === 1
-              ? 'bg-[var(--ramp-1)] text-white'
-              : row.rank === 2
-                ? 'bg-[var(--ramp-2)] text-white'
-                : row.rank === 3
-                  ? 'bg-[var(--ramp-3)] text-white'
-                  : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]/60'
-          }`}
+          className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-[11px] font-black ${rankBadgeClass(
+            row.rank,
+          )}`}
         >
           {row.rank}
         </span>
@@ -110,15 +118,7 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
       skeleton: 'number',
       cell: (row) => (
         <span
-          className={`font-black inline-flex items-center gap-1 ${
-            row.rank === 1
-              ? 'text-[var(--ramp-1-strong)]'
-              : row.rank === 2
-                ? 'text-[var(--ramp-2-strong)]'
-                : row.rank === 3
-                  ? 'text-[var(--ramp-3-strong)]'
-                  : 'text-[var(--text-strong)]/60'
-          }`}
+          className={`font-black inline-flex items-center gap-1 ${rankPointsClass(row.rank)}`}
         >
           <Flame size={14} fill="currentColor" />
           {row.points}
@@ -208,6 +208,37 @@ export const AdminLeaderboardTab: React.FC<AdminLeaderboardTabProps> = ({
         searchText={(row) => `${row.name} ${row.dept}`}
         emptyTitle="No students on the leaderboard yet"
         emptyHint="Points appear here once student reports are verified."
+        mobileCard={(row) => (
+          <div className="flex items-center gap-3">
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-black ${rankBadgeClass(
+                row.rank,
+              )}`}
+            >
+              {row.rank}
+            </span>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-sm font-bold text-[var(--accent)]">
+              {row.name.charAt(0)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-[var(--text-strong)]">{row.name}</p>
+              <p className="truncate text-[11px] font-medium text-[var(--text-strong)]/50">
+                {row.dept}
+              </p>
+              <p className="mt-0.5 text-[11px] font-semibold text-[var(--text-strong)]/55">
+                {row.reports} {row.reports === 1 ? 'report' : 'reports'}
+              </p>
+            </div>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 text-sm font-black ${rankPointsClass(
+                row.rank,
+              )}`}
+            >
+              <Flame size={14} fill="currentColor" />
+              {row.points}
+            </span>
+          </div>
+        )}
       />
     </div>
   );

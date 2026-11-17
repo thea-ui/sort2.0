@@ -508,7 +508,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
               <div className="flex items-center gap-2.5 min-w-0">
                 <span
-                  className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-[0.08em] whitespace-nowrap"
+                  className="hidden sm:inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-[0.08em] whitespace-nowrap"
                   style={{
                     color: 'var(--theme-primary)',
                     backgroundColor: 'rgba(var(--theme-primary-rgb), 0.08)',
@@ -516,14 +516,14 @@ export const AppShell: React.FC<AppShellProps> = ({
                 >
                   {portalLabel}
                 </span>
-                <span className="h-4 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-                <span className="text-[15px] font-extrabold text-slate-900 uppercase tracking-[0.08em] truncate">
+                <span className="hidden sm:block h-4 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+                <span className="text-sm font-extrabold text-slate-900 uppercase tracking-[0.08em] truncate sm:text-[15px]">
                   {pageTitle}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               {headerActions}
 
               {(currentTerm || schoolYear) && (

@@ -4,44 +4,27 @@ import { useRecycleMarket } from '../../hooks/useRecycleMarket';
 import { useAssetScrap } from '../../hooks/useAssetScrap';
 import { toast } from '../../hooks/useToast';
 import { Report } from '../../types';
-import { isReportDoneAndExpired, cleanReportTitle, cleanLocationName, parseReportTags, stripReportTags } from '../../utils/reportUtils';
+import { cleanReportTitle, cleanLocationName } from '../../utils/reportUtils';
 import { ASSET_DISPOSITIONS } from '../../utils/assetDispositions';
+import { formatShortDate } from '../../utils/dateFormat';
 import { apiService } from '../../services/api';
 import {
   Truck,
-  Scale,
   MapPin,
   CheckCircle2,
-  Play,
-  X,
-  Wrench,
   AlertCircle,
   ArrowRight,
   ArrowLeft,
-  Activity,
-  LayoutDashboard,
   Zap,
   Recycle,
   Armchair,
   Trash2,
-  AlertTriangle,
   Eye,
-  Map as MapIcon,
-  Target,
-  User,
   Users,
-  Clock,
   Coins,
-  DollarSign,
-  Plus,
-  Sparkles,
   Filter,
-  Check,
   ChevronRight,
   FolderTree,
-  ShoppingBag,
-  Navigation,
-  Maximize2,
 } from 'lucide-react';
 import { MRFDirectPickupTab } from './components/MRFDirectPickupTab';
 import { MRFWalkInTab } from './components/MRFWalkInTab';
@@ -50,9 +33,8 @@ import { MRFMarketTab } from './components/MRFMarketTab';
 import { MRFAssetLedgerPage } from './components/MRFAssetLedgerPage';
 import { AssetScrapStockTab } from './components/AssetScrapStockTab';
 import { MRFHistoryTab } from './components/MRFHistoryTab';
-import { CollectedItemsInput } from './components/CollectedItemsInput';
-import { computeCollectionTotals } from '../../utils/collectionTotals';
-import { ModalPortal } from '../../components/common/ModalPortal';
+import { MRFTaskPage, TaskCompletionPayload } from './components/MRFTaskPage';
+import { DataTable, TableColumn } from '../../components/data-table';
 import { PhotoLightbox } from '../../components/common/PhotoLightbox';
 import { useReportPhoto } from '../../hooks/useReportPhoto';
 
@@ -99,6 +81,14 @@ export function deriveAssetCategory(description?: string): string {
 
 type DispatchFolderKey = 'RECYCLABLE' | 'ASSET' | 'GENERAL';
 
+function formatReportCategory(category?: string): string {
+  if (!category) return 'General';
+  if (category === 'NON_BIODEGRADABLE') return 'Non-Biodegradable';
+  if (category === 'BIODEGRADABLE') return 'Biodegradable';
+  if (category === 'RECYCLABLE') return 'Recyclable';
+  return category.charAt(0) + category.slice(1).toLowerCase().replace(/_/g, ' ');
+}
+
 /** Folder bucket for an active dispatch: recyclables first, then assets, else general waste. */
 function getDispatchKind(rep: Report): DispatchFolderKey {
   const d = rep.description.toUpperCase();
@@ -128,24 +118,13 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     currentUser
   } = useMockData();
 
-  // Completion & Detail Modal States
-  const [completeModalReport, setCompleteModalReport] = useState<Report | null>(null);
-  const [mrfDetailReport, setMrfDetailReport] = useState<Report | null>(null);
+  // Dispatch task page (details + weighing) & photo lightbox
+  const [dispatchTaskId, setDispatchTaskId] = useState<string | null>(null);
   const [mrfPhotoFull, setMrfPhotoFull] = useState(false);
-  const mrfDetailPhotoSrc = useReportPhoto(mrfDetailReport?.photoUrl, mrfDetailReport?.imageUrl);
-  const [weightKg, setWeightKg] = useState<string>('');
-  const [itemWeights, setItemWeights] = useState<Record<string, string>>({
-    pet_plastic: '',
-    aluminum_cans: '',
-    cardboard: '',
-    glass: '',
-  });
-  const [assetOutcome, setAssetOutcome] = useState<string>(ASSET_DISPOSITIONS[1].value);
-  const [assetScrapMaterial, setAssetScrapMaterial] = useState<string>('ferrous_metal');
-  const [assetScrapKg, setAssetScrapKg] = useState<string>('');
-  const [otherMaterialName, setOtherMaterialName] = useState<string>('');
-  const [otherMaterialKg, setOtherMaterialKg] = useState<string>('');
-  const [completionNotes, setCompletionNotes] = useState<string>('');
+  const dispatchTask = dispatchTaskId
+    ? reports.find((report) => report.id === dispatchTaskId) ?? null
+    : null;
+  const mrfDetailPhotoSrc = useReportPhoto(dispatchTask?.photoUrl, dispatchTask?.imageUrl);
 
   // Dispatch Assignment Filter
   const [showOnlyMyAssigned, setShowOnlyMyAssigned] = useState<boolean>(true);
@@ -275,6 +254,86 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
   const activeDispatchFolder = dispatchFolders.find((folder) => folder.key === dispatchFolder) ?? null;
 
+  const dispatchColumns = React.useMemo<TableColumn<DispatchGroup>[]>(() => {
+    const isAssetFolder = activeDispatchFolder?.key === 'ASSET';
+    return [
+      {
+        key: 'item',
+        header: isAssetFolder ? 'Asset' : 'Report',
+        value: (group) => cleanReportTitle(group.firstReport.title),
+        cell: (group) => (
+          <div className="min-w-0">
+            <p className="truncate font-bold text-[var(--text-strong)]">
+              {cleanReportTitle(group.firstReport.title)}
+            </p>
+            <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--text-strong)]/45">
+              {isAssetFolder
+                ? deriveAssetCategory(group.firstReport.description)
+                : formatReportCategory(group.firstReport.category)}
+              {group.allReports.length > 1 && (
+                <span className="ml-1.5 inline-flex items-center gap-1">
+                  <Users size={9} /> {group.allReports.length} merged
+                </span>
+              )}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: 'location',
+        header: 'Location',
+        className: 'hidden md:table-cell',
+        value: (group) => cleanLocationName(group.firstReport.locationName),
+        cell: (group) => (
+          <span className="block max-w-[210px] truncate font-semibold text-[var(--text-strong)]/70 lg:max-w-[340px]">
+            {cleanLocationName(group.firstReport.locationName)}
+          </span>
+        ),
+      },
+      {
+        key: 'reported',
+        header: 'Reported',
+        className: 'hidden lg:table-cell',
+        value: (group) => group.firstReport.timestamp,
+        cell: (group) => (
+          <span className="whitespace-nowrap text-[var(--text-strong)]/55">
+            {formatShortDate(group.firstReport.timestamp)}
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        value: (group) => group.firstReport.status,
+        cell: (group) => (
+          <span
+            className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${
+              group.firstReport.status === 'PENDING'
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-[var(--primary)]/15 bg-[var(--background)] text-[var(--text-strong)]/65'
+            }`}
+          >
+            {group.firstReport.status === 'PENDING' ? 'Unconfirmed' : 'Ongoing'}
+          </span>
+        ),
+      },
+      {
+        key: 'actions',
+        header: 'Action',
+        align: 'right',
+        cell: (group) => (
+          <button
+            type="button"
+            onClick={() => setDispatchTaskId(group.firstReport.id)}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--primary)]/15 bg-white px-3 py-1.5 text-[11px] font-bold text-[var(--text-strong)]/70 transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--accent)]"
+          >
+            <Eye size={12} /> View
+          </button>
+        ),
+      },
+    ];
+  }, [activeDispatchFolder]);
+
   const handleSellBatch = async (
     cat: ItemizedRecyclableCategory,
     buyerName?: string,
@@ -328,35 +387,34 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
     showToast(`Dispatch confirmed! Admin status updated to "Ongoing / Doing it now".`);
   };
 
-  const openCompleteModal = (report: Report) => {
-    setItemWeights({ pet_plastic: '', aluminum_cans: '', cardboard: '', glass: '' });
-    setOtherMaterialKg('');
-    setOtherMaterialName(report.otherMaterialLabel || '');
-    setWeightKg('');
-    setCompletionNotes('');
-    setCompleteModalReport(report);
-  };
+  const handleTaskComplete = async (report: Report, payload: TaskCompletionPayload) => {
+    const {
+      itemWeights,
+      otherMaterialName,
+      otherMaterialKg,
+      assetOutcome,
+      assetScrapMaterial,
+      assetScrapKg,
+      weightKg,
+      notes,
+    } = payload;
 
-  const handleCompleteSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!completeModalReport) return;
-    const report = completeModalReport;
+    const isRecyclable =
+      report.category === 'RECYCLABLE' || report.description.toUpperCase().includes('WASTE');
 
-    const isRecyclable = completeModalReport.category === 'RECYCLABLE' ||
-      completeModalReport.description.toUpperCase().includes('WASTE');
-
-    const isAsset = completeModalReport.reportType === 'ASSET' ||
-      completeModalReport.description.toUpperCase().includes('FURNITURE') ||
-      completeModalReport.description.toUpperCase().includes('ELECTRONICS') ||
-      completeModalReport.description.toUpperCase().includes('FIXTURES') ||
-      completeModalReport.description.toUpperCase().includes('EQUIPMENT');
+    const isAsset =
+      report.reportType === 'ASSET' ||
+      report.description.toUpperCase().includes('FURNITURE') ||
+      report.description.toUpperCase().includes('ELECTRONICS') ||
+      report.description.toUpperCase().includes('FIXTURES') ||
+      report.description.toUpperCase().includes('EQUIPMENT');
 
     if (isRecyclable) {
       const otherParsedKg = parseFloat(otherMaterialKg) || 0;
       const otherLabel = otherMaterialName.trim();
 
-      // Require at least one weight entered
-      const hasAnyWeight = Object.values(itemWeights).some(v => (parseFloat(v) || 0) > 0) || otherParsedKg > 0;
+      const hasAnyWeight =
+        Object.values(itemWeights).some((value) => (parseFloat(value) || 0) > 0) || otherParsedKg > 0;
       if (!hasAnyWeight) {
         showToast('Please enter at least one weight before confirming.');
         return;
@@ -369,7 +427,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
         if (parsed > 0) {
           addStockKg(catId, parsed);
           totalWeight += parsed;
-          const cat = RECYCLABLE_CATEGORIES.find(c => c.id === catId);
+          const cat = RECYCLABLE_CATEGORIES.find((entry) => entry.id === catId);
           itemsLogged.push(`${cat?.shortName || catId}: ${parsed}kg`);
         }
       }
@@ -381,18 +439,25 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
         itemsLogged.push(`${otherLabel || 'Other material'}: ${otherParsedKg}kg (not in market stock)`);
       }
 
-      const finalNotes = otherParsedKg > 0
-        ? [completionNotes.trim(), `Other material logged: ${otherLabel || 'Unnamed material'} — ${otherParsedKg}kg (not added to market stock)`].filter(Boolean).join('\n')
-        : completionNotes;
+      const finalNotes =
+        otherParsedKg > 0
+          ? [
+              notes.trim(),
+              `Other material logged: ${otherLabel || 'Unnamed material'} — ${otherParsedKg}kg (not added to market stock)`,
+            ]
+              .filter(Boolean)
+              .join('\n')
+          : notes;
 
-      updateReportStatus(completeModalReport.id, 'COLLECTED', totalWeight, finalNotes);
+      updateReportStatus(report.id, 'COLLECTED', totalWeight, finalNotes);
       showToast(`Logged: ${itemsLogged.join(', ')}. Collection submitted to Admin.`);
     } else if (isAsset) {
       const dispositionValue = LEGACY_ASSET_OUTCOME[assetOutcome] || assetOutcome;
-      const disposition = ASSET_DISPOSITIONS.find(d => d.value === dispositionValue) || ASSET_DISPOSITIONS[1];
+      const disposition =
+        ASSET_DISPOSITIONS.find((entry) => entry.value === dispositionValue) || ASSET_DISPOSITIONS[1];
       const parsedKg = parseFloat(assetScrapKg) || 0;
 
-      updateReportStatus(report.id, 'RESOLVED', undefined, completionNotes, disposition.value);
+      updateReportStatus(report.id, 'RESOLVED', undefined, notes, disposition.value);
 
       // Record the asset in the ledger first so the scrap item can reference it.
       const assetTitle = cleanReportTitle(report.title);
@@ -408,7 +473,7 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
           condition: disposition.condition,
           sourceReportId: report.id,
           locationName: cleanLocationName(report.locationName),
-          notes: completionNotes || undefined,
+          notes: notes || undefined,
         });
         assetRecordId = assetRecord?.id;
       } catch (err) {
@@ -430,9 +495,11 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               sourceAssetId: assetRecordId,
               sourceReportId: report.id,
             });
-            showToast(disposition.hazmat
-              ? `E-waste recorded (${parsedKg} kg) — route to a DENR-accredited handler (not sold as ordinary scrap).`
-              : `Recorded ${parsedKg} kg of scrap; asset logged in the ledger.`);
+            showToast(
+              disposition.hazmat
+                ? `E-waste recorded (${parsedKg} kg) — route to a DENR-accredited handler (not sold as ordinary scrap).`
+                : `Recorded ${parsedKg} kg of scrap; asset logged in the ledger.`,
+            );
           } else {
             await createScrapItem({
               materialCode: scrapMaterialCode,
@@ -441,9 +508,11 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
               sourceAssetId: assetRecordId,
               sourceReportId: report.id,
             });
-            showToast(disposition.hazmat
-              ? 'E-waste logged as unweighed — record its disposal in Scrap Stock.'
-              : 'Asset logged as unweighed scrap — weigh it in Scrap Stock when ready.');
+            showToast(
+              disposition.hazmat
+                ? 'E-waste logged as unweighed — record its disposal in Scrap Stock.'
+                : 'Asset logged as unweighed scrap — weigh it in Scrap Stock when ready.',
+            );
           }
         } catch (err) {
           console.warn('Scrap item creation notice:', err);
@@ -452,22 +521,14 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       } else {
         showToast(`Asset outcome recorded: ${disposition.value}.`);
       }
-
-      setAssetScrapKg('');
     } else {
-        // Non-recyclable collections (residual, biodegradable) are weighed
-        // manually. Previously this passed `undefined`, so residual was
-        // always recorded as 0 kg and could never be monitored by weight.
-        updateReportStatus(completeModalReport.id, 'COLLECTED', parseFloat(weightKg) || 0, completionNotes);
+      // Non-recyclable collections (residual, biodegradable) are weighed
+      // manually, so residual is monitored by weight rather than always 0 kg.
+      updateReportStatus(report.id, 'COLLECTED', parseFloat(weightKg) || 0, notes);
       showToast(`Job finished! Cleanup verified and collection report sent to Admin.`);
     }
 
-    setCompleteModalReport(null);
-    setWeightKg('');
-    setItemWeights({ pet_plastic: '', aluminum_cans: '', cardboard: '', glass: '' });
-    setOtherMaterialName('');
-    setOtherMaterialKg('');
-    setCompletionNotes('');
+    setDispatchTaskId(null);
   };
 
   return (
@@ -695,6 +756,18 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
 
       {/* ── 2. ACTIVE DISPATCHES DEDICATED VIEW ── */}
       {activeTab === 'dispatches' && (
+        dispatchTask ? (
+          <MRFTaskPage
+            key={dispatchTask.id}
+            report={dispatchTask}
+            folderLabel={activeDispatchFolder?.label ?? 'Tasks'}
+            photoSrc={mrfDetailPhotoSrc}
+            onBack={() => setDispatchTaskId(null)}
+            onConfirmDispatch={handleConfirmDispatch}
+            onComplete={(payload) => handleTaskComplete(dispatchTask, payload)}
+            onOpenPhoto={() => setMrfPhotoFull(true)}
+          />
+        ) : (
         <div className="space-y-4 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 mb-4">
             <div className="flex items-center gap-2">
@@ -802,117 +875,73 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
                 </span>
               </div>
 
-              {visibleDispatchGroups.length === 0 ? (
-                <div className="bg-white/90 backdrop-blur-md border border-white/80 rounded-3xl p-8 text-center text-xs text-[var(--text-strong)]/50">
-                  No active tasks in this folder right now.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {visibleDispatchGroups.map(group => {
-                const rep = group.firstReport;
-                const mergedCount = group.allReports.length;
-                const isRecyclable = rep.category === 'RECYCLABLE' || rep.description.toUpperCase().includes('WASTE');
-                const isAsset = rep.reportType === 'ASSET' ||
-                  rep.description.toUpperCase().includes('FURNITURE') ||
-                  rep.description.toUpperCase().includes('ELECTRONICS') ||
-                  rep.description.toUpperCase().includes('FIXTURES') ||
-                  rep.description.toUpperCase().includes('EQUIPMENT');
-
-                const CategoryIcon = isRecyclable ? Recycle : isAsset ? Armchair : Trash2;
-                const categoryLabel = isRecyclable ? 'Recyclables' : isAsset ? 'Asset Task' : 'General Waste';
-                const categoryStyle = isRecyclable
-                  ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                  : isAsset
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-zinc-100 text-zinc-600';
-
-                const isPending = rep.status === 'PENDING';
-                const cardAccent = isPending ? 'border-l-amber-400' : 'border-l-[var(--accent)]';
-
-                return (
-                  <div
-                    key={rep.id}
-                    className={`bg-white/95 backdrop-blur-md border border-white/80 border-l-4 ${cardAccent} rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row justify-between items-start gap-5`}
-                  >
-                    <div className="space-y-2 min-w-0 flex-1">
-                      {/* Pills row */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`flex items-center gap-1.5 text-[9px] font-black uppercase px-2.5 py-1 rounded-full ${categoryStyle}`}>
-                          <CategoryIcon size={11} />
-                          {categoryLabel}
-                        </span>
-                        {rep.urgency === 'HIGH' && (
-                          <span className="flex items-center gap-1 text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-[var(--danger)]/10 text-[var(--danger-strong)]">
-                            <AlertTriangle size={10} /> Urgent
-                          </span>
-                        )}
-                        <span className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full ${
-                          isPending ? 'bg-amber-100 text-amber-700' : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)]'
-                        }`}>
-                          {isPending ? 'Unconfirmed' : 'Ongoing'}
-                        </span>
-                        {mergedCount > 1 && (
-                          <span className="bg-[color-mix(in_srgb,var(--primary)_10%,white)] border border-[var(--primary)]/25 text-[var(--text-strong)] text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
-                            <Users size={11} /> {mergedCount} reports merged
-                          </span>
-                        )}
-                      </div>
-
-                      {/* High-Visibility Location Badge */}
-                      <div className="bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/30 px-3 py-1.5 rounded-xl inline-flex items-center gap-1.5 text-xs text-[var(--text-strong)]">
-                        <MapPin size={14} className="text-[var(--accent)] shrink-0" />
-                        <span className="font-extrabold text-sm text-[var(--text-strong)]">{cleanLocationName(rep.locationName)}</span>
-                      </div>
-
-                      {/* Title */}
-                      <h4 className="text-base font-bold text-[var(--text-strong)] tracking-tight leading-snug">{cleanReportTitle(rep.title)}</h4>
-
-                      {/* Description — clean, no box */}
-                      <p className="text-xs text-[var(--text-strong)]/60 leading-relaxed">
-                        {rep.description}
-                      </p>
-
-                      {/* Reporter */}
-                      <p className="text-[11px] text-[var(--text-strong)]/50 font-medium flex flex-wrap items-center gap-2">
-                        <span>
-                          <span className="font-bold text-[var(--text-strong)]">{rep.reporterName}</span> · {rep.timestamp}
-                        </span>
-                      </p>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="shrink-0 w-full sm:w-auto self-center flex flex-col gap-2">
-                      <button
-                        onClick={() => setMrfDetailReport(rep)}
-                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-[var(--text-strong)] text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Eye size={13} className="text-[var(--accent)]" /> View Map & Details
-                      </button>
-
-                      {isPending ? (
-                        <button
-                          onClick={() => handleConfirmDispatch(rep)}
-                          className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-bold shadow-md shadow-[var(--accent)]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              <DataTable
+                columns={dispatchColumns}
+                rows={visibleDispatchGroups}
+                rowKey={(group) => group.firstReport.id}
+                searchable
+                searchPlaceholder={
+                  activeDispatchFolder?.key === 'ASSET'
+                    ? 'Search asset, location, or reporter…'
+                    : 'Search report, location, or reporter…'
+                }
+                searchText={(group) =>
+                  `${cleanReportTitle(group.firstReport.title)} ${cleanLocationName(group.firstReport.locationName)} ${group.firstReport.reporterName} ${group.firstReport.category} ${group.firstReport.description}`
+                }
+                emptyTitle="No active tasks in this folder."
+                emptyHint="New dispatches appear here automatically."
+                mobileCard={(group) => {
+                  const rep = group.firstReport;
+                  const pending = rep.status === 'PENDING';
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-[var(--text-strong)]">
+                            {cleanReportTitle(rep.title)}
+                          </p>
+                          <p className="mt-0.5 truncate text-[10px] font-semibold text-[var(--text-strong)]/45">
+                            {activeDispatchFolder?.key === 'ASSET'
+                              ? deriveAssetCategory(rep.description)
+                              : formatReportCategory(rep.category)}
+                            {group.allReports.length > 1 && ` · ${group.allReports.length} merged`}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${
+                            pending
+                              ? 'border-amber-200 bg-amber-50 text-amber-800'
+                              : 'border-[var(--primary)]/15 bg-[var(--background)] text-[var(--text-strong)]/65'
+                          }`}
                         >
-                          <Play size={13} /> Confirm Dispatch
-                        </button>
-                      ) : (
+                          {pending ? 'Unconfirmed' : 'Ongoing'}
+                        </span>
+                      </div>
+                      <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--text-strong)]/60">
+                        <MapPin size={12} className="shrink-0 text-[var(--accent)]" />
+                        <span className="truncate">{cleanLocationName(rep.locationName)}</span>
+                      </p>
+                      <div className="flex items-center justify-between gap-2 border-t border-[var(--primary)]/5 pt-2">
+                        <span className="text-[10px] font-medium text-[var(--text-strong)]/40">
+                          {formatShortDate(rep.timestamp)}
+                        </span>
                         <button
-                          onClick={() => openCompleteModal(rep)}
-                          className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary)] text-white text-xs font-bold shadow-md shadow-[var(--primary)]/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                          type="button"
+                          onClick={() => setDispatchTaskId(rep.id)}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--primary)]/15 bg-white px-3 py-1.5 text-[11px] font-bold text-[var(--text-strong)]/70 transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--accent)]"
                         >
-                          <CheckCircle2 size={13} /> Complete & Finish
+                          <Eye size={12} /> View
                         </button>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                );
-                  })}
-                </div>
-              )}
+                  );
+                }}
+                paginate={false}
+              />
             </div>
           )}
         </div>
+        )
       )}
 
       {/* ── WALK-IN BOTTLE STATION ── */}
@@ -952,421 +981,6 @@ export const MRFDashboard: React.FC<MRFDashboardProps> = ({ activeTab, setActive
       {activeTab === 'mrf-history' && (
         <MRFHistoryTab reports={reports} />
       )}
-
-      {/* ── JOB COMPLETION MODAL (Redesigned) ── */}
-      {completeModalReport && (
-        <ModalPortal>
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in"
-          onClick={(e) => { if (e.target === e.currentTarget) setCompleteModalReport(null); }}
-        >
-          {(() => {
-            const isRecyclable = completeModalReport.category === 'RECYCLABLE' || completeModalReport.description.toUpperCase().includes('WASTE');
-            const isAsset = completeModalReport.reportType === 'ASSET' ||
-              completeModalReport.description.toUpperCase().includes('FURNITURE') ||
-              completeModalReport.description.toUpperCase().includes('ELECTRONICS') ||
-              completeModalReport.description.toUpperCase().includes('FIXTURES') ||
-              completeModalReport.description.toUpperCase().includes('EQUIPMENT');
-
-            const totalWeight = isRecyclable
-              ? computeCollectionTotals(itemWeights, otherMaterialKg).totalWeight
-              : (parseFloat(weightKg) || 0);
-
-            const urgencyConfig = {
-              LOW: { label: 'Low Priority', dot: 'bg-emerald-400', ring: 'ring-emerald-400/20', text: 'text-emerald-700', bg: 'bg-emerald-50' },
-              MEDIUM: { label: 'Medium Priority', dot: 'bg-amber-400', ring: 'ring-amber-400/20', text: 'text-amber-700', bg: 'bg-amber-50' },
-              HIGH: { label: 'High Priority', dot: 'bg-red-500', ring: 'ring-red-400/20', text: 'text-red-700', bg: 'bg-red-50' },
-            }[completeModalReport.urgency] || { label: 'Standard', dot: 'bg-gray-400', ring: 'ring-gray-400/20', text: 'text-gray-600', bg: 'bg-gray-50' };
-
-            return (
-              <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-y-auto relative my-auto max-h-[92dvh]">
-
-            {/* ── Header ── */}
-            <div className="bg-gradient-to-br from-[var(--primary)] via-[var(--primary-light)] to-[var(--primary)] px-6 pt-6 pb-5 relative overflow-hidden">
-              <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, var(--accent) 0%, transparent 50%), radial-gradient(circle at 80% 20%, var(--accent) 0%, transparent 50%)' }} />
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setCompleteModalReport(null); }}
-                className="absolute top-4 right-4 p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer z-10"
-              >
-                <X size={16} />
-              </button>
-
-                <div className="flex items-start gap-3 relative z-10">
-                  <div className="h-11 w-11 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_20%,white)] ring-1 ring-[var(--accent)]/30 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 size={20} className="text-[var(--accent)]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white tracking-tight">Complete Task Assignment</h3>
-                    <p className="text-xs font-black text-white mt-1 leading-snug truncate">{cleanReportTitle(completeModalReport.title)}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <MapPin size={11} className="text-white/50 flex-shrink-0" />
-                      <p className="text-[11px] text-white/60 font-medium truncate">{cleanLocationName(completeModalReport.locationName)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Meta row */}
-                <div className="flex items-center gap-2 mt-4 relative z-10 flex-wrap">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 ring-1 ring-white/10 text-white/80`}>
-                    {isAsset ? deriveAssetCategory(completeModalReport.description) : completeModalReport.category}
-                  </span>
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${urgencyConfig.bg} ${urgencyConfig.text} ring-1 ring-current/10`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${urgencyConfig.dot} ring-2 ${urgencyConfig.ring}`} />
-                    {urgencyConfig.label}
-                  </span>
-                  {completeModalReport.assignedMrfName && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/10 ring-1 ring-white/10 text-white/60">
-                      <User size={10} />
-                      {completeModalReport.assignedMrfName}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Body ── */}
-              <form onSubmit={handleCompleteSubmit} className="p-6 space-y-4">
-
-                {/* RECYCLABLE: Itemized Weight Inputs — only the materials the
-                    student identified are shown, so MRF just weighs and confirms. */}
-                {isRecyclable && completeModalReport && (() => {
-                  const reportedCodes = completeModalReport.materials ?? [];
-                  const hasReportedMaterials = reportedCodes.length > 0;
-                  const reportedCategories = hasReportedMaterials
-                    ? RECYCLABLE_CATEGORIES.filter(cat => reportedCodes.includes(cat.id))
-                    : RECYCLABLE_CATEGORIES;
-
-                  return (
-                    <div className="space-y-3">
-                      {hasReportedMaterials && (
-                        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[var(--primary)]/10 bg-[var(--background)]/50 px-3 py-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)]/40">
-                            Student identified
-                          </span>
-                          {reportedCategories.map(cat => (
-                            <span
-                              key={cat.id}
-                              className="rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]"
-                            >
-                              {cat.shortName}
-                            </span>
-                          ))}
-                          {reportedCodes.includes('others') && (
-                            <span className="rounded-full border border-[var(--primary)]/15 bg-white px-2 py-0.5 text-[10px] font-bold text-[var(--text-strong)]/70">
-                              Mixed / Others{completeModalReport.otherMaterialLabel ? `: ${completeModalReport.otherMaterialLabel}` : ''}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <CollectedItemsInput
-                        categories={reportedCategories}
-                        itemWeights={itemWeights}
-                        onWeightChange={(catId, value) => setItemWeights(prev => ({ ...prev, [catId]: value }))}
-                        otherName={otherMaterialName}
-                        onOtherNameChange={setOtherMaterialName}
-                        otherKg={otherMaterialKg}
-                        onOtherKgChange={setOtherMaterialKg}
-                      />
-                    </div>
-                  );
-                })()}
-
-                {/* ASSET: Outcome Dropdown */}
-                {isAsset && (() => {
-                  const tags = parseReportTags(completeModalReport.description);
-                  const observation = tags['observation'];
-                  const freeText = stripReportTags(completeModalReport.description);
-                  return (
-                  <div className="space-y-3">
-                    {/* Asset details — header already shows name, category, and location */}
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Asset Details</span>
-                        {observation && (
-                          <span className="text-[10px] font-bold text-amber-800 bg-white border border-amber-200 px-2 py-0.5 rounded-full capitalize">
-                            {observation}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-[var(--text-strong)]/60 font-semibold">
-                        Reported by {completeModalReport.reporterName}
-                      </p>
-                      {freeText && (
-                        <p className="text-[11px] text-[var(--text-strong)]/70 leading-relaxed">{freeText}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center">
-                        <Wrench size={14} className="text-amber-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-[var(--text-strong)]">Select Asset Outcome</p>
-                        <p className="text-[10px] text-gray-400 font-medium">Choose resolution status for this asset</p>
-                      </div>
-                    </div>
-                    <select
-                      value={assetOutcome}
-                      onChange={e => setAssetOutcome(e.target.value)}
-                      className="w-full rounded-xl border-2 border-gray-100 bg-white px-3.5 py-2.5 text-xs font-bold text-gray-900 outline-none cursor-pointer focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
-                    >
-                      <optgroup label="Reuse / Recovery">
-                        {ASSET_DISPOSITIONS.filter(d => !d.scrap && !d.hazmat).map(d => (
-                          <option key={d.value} value={d.value}>{d.value}</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Disposal">
-                        {ASSET_DISPOSITIONS.filter(d => d.scrap || d.hazmat).map(d => (
-                          <option key={d.value} value={d.value}>{d.value}</option>
-                        ))}
-                      </optgroup>
-                    </select>
-
-                    {(() => {
-                      const sel = ASSET_DISPOSITIONS.find(d => d.value === assetOutcome);
-                      if (!sel) return null;
-                      if (sel.scrap) {
-                        return (
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Material</label>
-                              <select
-                                value={assetScrapMaterial}
-                                onChange={e => setAssetScrapMaterial(e.target.value)}
-                                className="w-full rounded-xl border-2 border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-900 outline-none cursor-pointer focus:border-amber-400"
-                              >
-                                <option value="ferrous_metal">Ferrous Metal (Steel/Iron)</option>
-                                <option value="non_ferrous_metal">Non-Ferrous Metal (Aluminum/Copper)</option>
-                                <option value="plastic">Hard Plastic</option>
-                                <option value="wood">Wood / Lumber</option>
-                                <option value="glass">Glass</option>
-                                <option value="mixed">Mixed / Other</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Weight (kg) — optional</label>
-                              <input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                placeholder="0.0"
-                                value={assetScrapKg}
-                                onChange={e => setAssetScrapKg(e.target.value)}
-                                className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-3 py-2 text-xs font-bold text-gray-900 outline-none focus:bg-white focus:border-amber-400"
-                              />
-                            </div>
-                          </div>
-                        );
-                      }
-                      if (sel.hazmat) {
-                        return (
-                          <p className="text-[11px] text-rose-600 font-bold bg-rose-50 rounded-xl px-3 py-2 border border-rose-200">
-                            E-waste must go to a DENR-accredited handler — it will not be added to sellable scrap stock.
-                          </p>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                  );
-                })()}
-
-                {/* GENERAL TRASH: Standard Completion */}
-                {!isRecyclable && !isAsset && (
-                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
-                    <div>
-                      <p className="text-xs font-bold text-[var(--text-strong)] mb-1">Standard Waste Collection</p>
-                      <p className="text-[11px] text-gray-500 leading-relaxed">
-                        Confirming will mark this task as done and notify <span className="font-bold text-gray-700">{completeModalReport.reporterName}</span>.
-                      </p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Collected Weight (kg) — optional
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        placeholder="Leave blank if not weighed"
-                        value={weightKg}
-                        onChange={e => setWeightKg(e.target.value)}
-                        className="w-full rounded-xl border-2 border-gray-100 bg-white px-3.5 py-2.5 text-xs text-gray-900 outline-none placeholder:text-gray-300 focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20 transition-all"
-                      />
-                      <p className="text-[10px] text-gray-400">
-                        Only recyclables are weighed. Residual and biodegradable batches are monitored by report and pickup counts, so you can leave this blank.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Notes */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Completion Notes (optional)</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Add any observations, issues, or notes for Admin..."
-                    value={completionNotes}
-                    onChange={e => setCompletionNotes(e.target.value)}
-                    className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-3.5 py-2.5 text-xs text-gray-900 outline-none resize-none placeholder:text-gray-300 focus:bg-white focus:border-[var(--accent)]/40 focus:ring-2 focus:ring-[var(--accent)]/20 transition-all"
-                  />
-                </div>
-
-                {/* Submit */}
-                {isRecyclable && totalWeight === 0 && (
-                  <p className="text-[11px] text-amber-600 font-bold text-center bg-amber-50 rounded-xl px-3 py-2 border border-amber-200">
-                    Enter at least one weight above to confirm collection.
-                  </p>
-                )}
-                <button
-                  type="submit"
-                  disabled={isRecyclable && totalWeight === 0}
-                  className={`w-full py-3.5 rounded-2xl text-white text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
-                    isRecyclable && totalWeight === 0
-                      ? 'bg-gray-300 cursor-not-allowed shadow-none'
-                      : 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-dark)] hover:from-[var(--accent-dark)] hover:to-[var(--accent-darker)] shadow-lg shadow-[var(--accent)]/25 hover:shadow-[var(--accent)]/40 cursor-pointer'
-                  }`}
-                >
-                  <CheckCircle2 size={16} />
-                  {isRecyclable && totalWeight > 0
-                    ? `Confirm Completion — ${totalWeight.toFixed(1)} kg Total`
-                    : 'Confirm Completion & Notify'
-                  }
-                </button>
-              </form>
-            </div>
-            );
-          })()}
-        </div>
-        </ModalPortal>
-      )}
-
-      {/* ── MRF TASK DETAILS & CAMPUS MINI-MAP PREVIEW MODAL ── */}
-      {mrfDetailReport && (() => {
-        const minLat = 14.5975, maxLat = 14.6035, minLng = 120.9815, maxLng = 120.9885;
-        const lat = mrfDetailReport.coordinates?.lat || 14.6000;
-        const lng = mrfDetailReport.coordinates?.lng || 120.9850;
-        const pctY = Math.max(8, Math.min(92, ((maxLat - lat) / (maxLat - minLat)) * 100));
-        const pctX = Math.max(8, Math.min(92, ((lng - minLng) / (maxLng - minLng)) * 100));
-
-        const isScattered = mrfDetailReport.isScatteredDebris === true ||
-          (
-            (mrfDetailReport.title.toLowerCase().includes('scattered debris') ||
-             mrfDetailReport.locationName.toLowerCase().includes('scattered debris') ||
-             mrfDetailReport.description.toLowerCase().includes('[scattered debris pin]')) &&
-            !mrfDetailReport.description.toLowerCase().includes('[associated bin id') &&
-            !mrfDetailReport.description.toLowerCase().includes('[location:')
-          );
-
-        const isPending = mrfDetailReport.status === 'PENDING';
-
-        return (
-          <ModalPortal>
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
-            <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl space-y-4 relative my-auto max-h-[92dvh] overflow-y-auto">
-              
-              {/* Close Button */}
-              <button
-                onClick={() => setMrfDetailReport(null)}
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer z-20"
-              >
-                <X size={18} />
-              </button>
-
-              {/* Modal Header */}
-              <div className="flex items-start gap-3 border-b border-gray-100 pb-3 pr-8">
-                <div className="h-11 w-11 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_15%,white)] text-[var(--accent)] flex items-center justify-center font-bold shrink-0">
-                  <Truck size={22} />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[var(--primary)] text-white">
-                      Task ID: {mrfDetailReport.id}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                      isPending ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-[color-mix(in_srgb,var(--primary)_10%,white)] text-[var(--text-strong)] border border-[var(--primary)]/25'
-                    }`}>
-                      {isPending ? 'Unconfirmed Dispatch' : 'Ongoing Task'}
-                    </span>
-                  </div>
-                  <h3 className="text-base font-heading font-black text-[var(--text-strong)] leading-snug">
-                    {cleanReportTitle(mrfDetailReport.title)}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Prominent High-Visibility Campus Location Banner */}
-              <div className="bg-[color-mix(in_srgb,var(--accent)_10%,white)] border border-[var(--accent)]/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs">
-                <div>
-                  <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-wider block">Target Pickup Location</span>
-                  <h4 className="text-lg font-heading font-black text-[var(--text-strong)] leading-tight mt-0.5">{cleanLocationName(mrfDetailReport.locationName)}</h4>
-                  {isScattered && (
-                    <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono font-bold text-gray-700 bg-white/90 border border-[var(--accent)]/30 px-2.5 py-0.5 rounded-md">
-                      <Navigation size={10} className="text-[var(--accent)]" /> Grid [{lat.toFixed(4)}, {lng.toFixed(4)}]
-                    </span>
-                  )}
-                </div>
-                <div className="h-10 w-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <MapPin size={22} />
-                </div>
-              </div>
-
-              {/* Photo Evidence & Report Description Card */}
-              <div className="space-y-2">
-                {mrfDetailPhotoSrc && (
-                  <button
-                    type="button"
-                    onClick={() => setMrfPhotoFull(true)}
-                    className="group relative block w-full rounded-2xl overflow-hidden border border-gray-200 h-44 sm:h-52 bg-gray-100 shadow-inner cursor-zoom-in"
-                  >
-                    <img src={mrfDetailPhotoSrc} alt="Waste report evidence" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur-xs text-white text-[10px] px-2.5 py-1 rounded-lg font-mono flex items-center gap-1.5">
-                      <Maximize2 size={11} /> Tap to view full screen
-                    </span>
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-black/60 p-2.5 text-white">
-                        <Maximize2 size={18} />
-                      </span>
-                    </span>
-                  </button>
-                )}
-
-                <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 text-xs text-gray-800 space-y-1">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Task Notes & Description:</span>
-                  <p className="font-medium leading-relaxed italic text-gray-700">"{mrfDetailReport.description}"</p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-3 border-t border-gray-100 flex gap-3">
-                {isPending ? (
-                  <button
-                    onClick={() => {
-                      handleConfirmDispatch(mrfDetailReport);
-                      setMrfDetailReport(null);
-                    }}
-                    className="flex-1 py-3 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-dark)] text-white text-xs font-bold shadow-md shadow-[var(--accent)]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Play size={15} /> Confirm Dispatch (Start Task)
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      const rep = mrfDetailReport;
-                      setMrfDetailReport(null);
-                      if (rep) openCompleteModal(rep);
-                    }}
-                    className="flex-1 py-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary)] text-white text-xs font-bold shadow-md shadow-[var(--primary)]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <CheckCircle2 size={15} /> Complete & Finish Task
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-          </ModalPortal>
-        );
-      })()}
 
       <PhotoLightbox
         src={mrfPhotoFull ? mrfDetailPhotoSrc : null}

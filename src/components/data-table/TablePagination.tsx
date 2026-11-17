@@ -40,7 +40,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   const pages = getPageWindow(page, totalPages);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-[var(--table-border)]">
+    <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--table-border)] px-4 py-4 sm:flex-row sm:gap-4 sm:px-5">
       <p className="text-[12.5px] text-[var(--table-muted)]">
         Showing <span className="font-medium text-[var(--table-text)]">{rangeStart}</span> to{' '}
         <span className="font-medium text-[var(--table-text)]">{rangeEnd}</span> of{' '}
@@ -48,7 +48,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
       </p>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+        <div className="hidden items-center gap-2 sm:flex">
           <span className="text-[12.5px] text-[var(--table-muted)]">Rows per page:</span>
           <Select
             aria-label="Rows per page"
@@ -63,11 +63,15 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           />
         </div>
 
+        <span className="text-xs font-semibold text-[var(--table-muted)] sm:hidden">
+          Page {page} of {totalPages}
+        </span>
+
         <nav className="flex items-center gap-1" aria-label="Table pagination">
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 max-sm:hidden"
             onClick={() => onPageChange(1)}
             disabled={page <= 1}
             aria-label="First page"
@@ -77,7 +81,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="h-10 w-10 sm:h-8 sm:w-8"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
             aria-label="Previous page"
@@ -90,11 +94,13 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             const showGap = previous !== undefined && pageNumber - previous > 1;
             return (
               <React.Fragment key={pageNumber}>
-                {showGap && <span className="px-1 text-muted-foreground">...</span>}
+                {showGap && (
+                  <span className="px-1 text-muted-foreground max-sm:hidden">...</span>
+                )}
                 <Button
                   variant={pageNumber === page ? 'default' : 'outline'}
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 max-sm:hidden"
                   onClick={() => onPageChange(pageNumber)}
                   aria-current={pageNumber === page ? 'page' : undefined}
                 >
@@ -107,7 +113,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="h-10 w-10 sm:h-8 sm:w-8"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
             aria-label="Next page"
@@ -117,7 +123,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 max-sm:hidden"
             onClick={() => onPageChange(totalPages)}
             disabled={page >= totalPages}
             aria-label="Last page"

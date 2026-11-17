@@ -15,8 +15,16 @@ import { SubmittedReportDetails } from './components/TeacherSubmitSuccessView';
 
 import { useSystemPresets } from '../../hooks/useSystemPresets';
 import { toast } from '../../hooks/useToast';
+import { materialLabel } from '../../utils/materials';
 
 type BinCategory = 'BIODEGRADABLE' | 'NON_BIODEGRADABLE' | 'RECYCLABLE';
+
+function resolveWasteCategory(title: string): BinCategory {
+  const t = (title || '').toUpperCase();
+  if (t.includes('NON')) return 'NON_BIODEGRADABLE';
+  if (t.includes('BIO')) return 'BIODEGRADABLE';
+  return 'RECYCLABLE';
+}
 
 interface TeacherDashboardProps {
   activeTab: string;
@@ -106,6 +114,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
     setLastSubmittedReport(null);
   };
   const [urgency, setUrgency] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [otherMaterialLabel, setOtherMaterialLabel] = useState('');
 
   // ── Derived counts ────────────────────────────────────────────────────
   const personalReports = reports.filter(r =>
@@ -173,23 +183,26 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
       return;
     }
 
+    const isWasteReport = pillarCategory === 'waste';
+    const wasteReportCat = resolveWasteCategory(reportTitle);
+    if (isWasteReport && wasteReportCat === 'RECYCLABLE' && selectedMaterials.length === 0) {
+      toast.error('Select at least one material inside the recyclable bin.');
+      return;
+    }
+
     setIsSubmitting(true);
     submitTimerRef.current = window.setTimeout(() => {
       const isWaste = pillarCategory === 'waste';
-
-      let reportCat: BinCategory | 'GENERAL' = 'GENERAL';
-      if (isWaste) {
-        const t = (reportTitle || '').toUpperCase();
-        if (t.includes('NON')) reportCat = 'NON_BIODEGRADABLE';
-        else if (t.includes('BIO')) reportCat = 'BIODEGRADABLE';
-        else if (t.includes('RECYC')) reportCat = 'RECYCLABLE';
-        else reportCat = 'RECYCLABLE';
-      }
+      const reportCat: BinCategory | 'GENERAL' = isWaste ? resolveWasteCategory(reportTitle) : 'GENERAL';
+      const materialNames = isWaste && reportCat === 'RECYCLABLE'
+        ? selectedMaterials.map((code) => materialLabel(code))
+        : [];
 
       const pillarText   = `[Pillar: ${pillarCategory.toUpperCase()}]`;
       const obsText      = `[Observation: ${observation}]`;
       const pinText      = isCustomDebrisPin ? '[Custom Debris Pin]' : `[Location: ${selectedBuilding}]`;
-      const formattedDesc = `${pillarText} ${obsText} ${pinText} ${notes}`.trim();
+      const materialsText = materialNames.length > 0 ? `[Materials: ${materialNames.join(', ')}]` : '';
+      const formattedDesc = `${pillarText} ${obsText} ${pinText} ${materialsText} ${notes}`.trim();
       const trimmedRoom = roomNumber.trim();
       const trimmedBuilding = selectedBuilding.trim();
       const buildingAndRoom = isCustomDebrisPin
@@ -208,6 +221,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
           coordinates: gpsCoords || { lat: 14.6000, lng: 120.9850 },
           imageUrl: capturedImage || undefined,
           reportType: isWaste ? 'WASTE' : 'ASSET',
+          materials: isWaste && reportCat === 'RECYCLABLE' ? selectedMaterials : [],
+          otherMaterialLabel:
+            isWaste && reportCat === 'RECYCLABLE' && selectedMaterials.includes('others')
+              ? otherMaterialLabel.trim() || null
+              : null,
         });
       } catch (err: any) {
         // createReport throws on duplicate/dispatched/unverified-limit guards:
@@ -240,6 +258,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
       setCapturedImage(null);
       setGpsCoords(null);
       setIsCustomDebrisPin(false);
+      setSelectedMaterials([]);
+      setOtherMaterialLabel('');
       setPillarCategory('waste');
       setSelectedBuilding('');
       setRoomNumber('');
@@ -325,6 +345,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, s
           lastSubmittedReport={lastSubmittedReport}
           urgency={urgency}
           setUrgency={setUrgency}
+          selectedMaterials={selectedMaterials}
+          setSelectedMaterials={setSelectedMaterials}
+          otherMaterialLabel={otherMaterialLabel}
+          setOtherMaterialLabel={setOtherMaterialLabel}
           isPinningMode={isPinningMode}
           setIsPinningMode={setIsPinningMode}
           isCustomDebrisPin={isCustomDebrisPin}

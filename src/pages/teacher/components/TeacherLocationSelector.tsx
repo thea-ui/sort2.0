@@ -244,10 +244,15 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleSelectStation(station);
-                                  setActivePopoverStation(null);
+                                  if (slot.isAvailable) {
+                                    handleSelectWasteCategory(slot.type, slot.bin?.id);
+                                    setActivePopoverStation(null);
+                                  }
                                 }}
                                 className={`w-full flex items-center justify-between p-1.5 rounded-xl transition-all cursor-pointer text-left border ${
-                                  'hover:bg-gray-50 border-transparent'
+                                  wasteCategory === slot.type
+                                    ? 'bg-[var(--accent)]/15 border-[var(--accent)]/40'
+                                    : 'hover:bg-gray-50 border-transparent'
                                 }`}
                               >
                                 <div className="flex items-center gap-2 truncate">
@@ -303,7 +308,17 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
             )}
 
             <div className="space-y-1.5 pt-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Campus Locations</span>
+              <div className="relative">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search bin location or building..."
+                  value={locationSearch}
+                  onChange={e => setLocationSearch(e.target.value)}
+                  className="w-full rounded-2xl border border-gray-200 bg-[#F8FAFC] pl-9 pr-4 py-2.5 text-xs text-[var(--text-strong)] outline-none transition-all focus:border-[var(--accent)] focus:bg-white font-medium"
+                />
+              </div>
+              <span className="block pt-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Campus Locations</span>
               <div className="grid grid-cols-2 gap-2">
                 {filteredStations.map((station) => {
                   const isSel = selectedLocation === station.locationName;
@@ -484,45 +499,6 @@ export const TeacherLocationSelector: React.FC<TeacherLocationSelectorProps> = (
           </>
         )}
 
-        {isWasteCategory && (
-          <>
-            <div className="relative">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search bin location or building..."
-                value={locationSearch}
-                onChange={e => setLocationSearch(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-[#F8FAFC] pl-9 pr-4 py-2.5 text-xs text-[var(--text-strong)] outline-none transition-all focus:border-[var(--accent)] focus:bg-white font-medium"
-              />
-            </div>
-
-            <div className="border border-[var(--primary)]/10 rounded-2xl overflow-hidden divide-y divide-[var(--primary)]/10 max-h-44 overflow-y-auto bg-white">
-              {filteredLocations.map(loc => {
-                const isSelected = selectedLocation === loc;
-                return (
-                  <div
-                    key={loc}
-                    onClick={() => handleLocationSelect(loc)}
-                    className={`px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${
-                      isSelected ? 'bg-[var(--accent)]/15 font-semibold' : 'hover:bg-[var(--background)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />
-                      <span className={`text-xs ${isSelected ? 'text-[var(--text-strong)] font-bold' : 'text-[var(--text-strong)]/80 font-medium'}`}>
-                        {loc}
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-bold px-3 py-0.5 rounded-full border bg-[var(--accent)]/20 text-[var(--accent)] border-[var(--accent)]/40">
-                      Available
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
       </div>
     </div>
   );

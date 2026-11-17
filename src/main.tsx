@@ -6,7 +6,9 @@ import { ThemeProvider } from './hooks/useTheme'
 import { TextScaleProvider } from './hooks/useTextScale'
 import { PwaInstallProvider } from './pwa/PwaInstallProvider'
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')!;
+
+createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider>
       <TextScaleProvider>
@@ -17,3 +19,28 @@ createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </StrictMode>,
 )
+
+// Fade out the pre-hydration splash once React has committed its first tree.
+// The React LoadingScreen renders the same visuals underneath, so the handoff
+// is seamless for every role; the timeout is a safety net if rendering fails.
+const bootSplash = document.getElementById('boot-splash');
+if (bootSplash) {
+  let dismissed = false;
+  const dismissSplash = () => {
+    if (dismissed) return;
+    dismissed = true;
+    bootSplash.classList.add('is-hidden');
+    window.setTimeout(() => bootSplash.remove(), 400);
+  };
+  const observer = new MutationObserver(() => {
+    if (rootElement.childElementCount > 0) {
+      observer.disconnect();
+      requestAnimationFrame(() => requestAnimationFrame(dismissSplash));
+    }
+  });
+  observer.observe(rootElement, { childList: true });
+  window.setTimeout(() => {
+    observer.disconnect();
+    dismissSplash();
+  }, 10000);
+}

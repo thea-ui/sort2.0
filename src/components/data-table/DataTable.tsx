@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
+import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { Select } from '../ui/Select';
 import {
   Table,
   TableBody,
@@ -11,6 +13,7 @@ import {
   TableRow,
 } from '../ui/Table';
 import { cn } from '../../utils/cn';
+import { MobileCardList } from './MobileCardList';
 import { EmptyState, ErrorState, LoadingSkeleton } from './TableStates';
 import { TablePagination } from './TablePagination';
 import { TableToolbar } from './TableToolbar';
@@ -42,6 +45,11 @@ export interface DataTableProps<T> {
   paginate?: boolean;
   /** Minimum table width (e.g. `1100px`) for wide ledgers inside the scroller. */
   minWidth?: string;
+  /**
+   * Mobile (< `md`) card renderer paired with the responsive table. When omitted
+   * the card body is derived from the table columns.
+   */
+  mobileCard?: (row: T) => React.ReactNode;
   className?: string;
 }
 
@@ -50,6 +58,9 @@ const ALIGN_CLASS: Record<'left' | 'center' | 'right', string> = {
   center: 'text-center',
   right: 'text-right',
 };
+
+const columnHeaderLabel = <T,>(column: TableColumn<T>): string =>
+  typeof column.header === 'string' && column.header.trim() !== '' ? column.header : column.key;
 
 /**
  * Generic table (SMART master handoff Part 2, SORT content): card shell with a
@@ -77,6 +88,7 @@ export function DataTable<T>({
   toolbarActions,
   paginate = true,
   minWidth,
+  mobileCard,
   className = '',
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
@@ -127,6 +139,8 @@ export function DataTable<T>({
   const showToolbar = searchable || filters.length > 0 || toolbarActions !== undefined;
   const showHeader = Boolean(title || description || showToolbar);
   const colSpan = Math.max(columns.length, 1);
+  const sortableColumns = columns.filter((column) => column.value);
+  const showMobileSort = sortableColumns.length > 0;
 
   return (
     <Card className={cn('border border-[var(--table-border)] shadow-sm bg-[var(--table-card)] rounded-2xl p-0 overflow-hidden', className)}>
@@ -152,7 +166,46 @@ export function DataTable<T>({
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      {showMobileSort && (
+        <div className="flex items-center gap-2 border-b border-[var(--table-border)] px-4 py-3 md:hidden">
+          <Select
+            aria-label="Sort rows by"
+            size="sm"
+            className="min-w-0 flex-1"
+            value={sort?.key ?? ''}
+            onValueChange={(next) => {
+              if (!next) {
+                setSort(null);
+                return;
+              }
+              setSort((prev) => (prev?.key === next ? prev : { key: next, dir: 'asc' }));
+            }}
+            options={[
+              { label: 'Default order', value: '' },
+              ...sortableColumns.map((column) => ({
+                label: columnHeaderLabel(column),
+                value: column.key,
+              })),
+            ]}
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 shrink-0"
+            onClick={() =>
+              setSort((prev) =>
+                prev ? { ...prev, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : prev,
+              )
+            }
+            disabled={!sort}
+            aria-label={sort?.dir === 'desc' ? 'Sort ascending' : 'Sort descending'}
+          >
+            {sort?.dir === 'desc' ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
+          </Button>
+        </div>
+      )}
+
+      <div className="hidden overflow-x-auto md:block">
         <Table style={minWidth ? { minWidth } : undefined}>
           <TableHeader>
             <TableRow className="border-b border-[var(--table-border)] bg-[var(--table-header-bg)] hover:bg-[var(--table-header-bg)]">
@@ -251,6 +304,23 @@ export function DataTable<T>({
             </TableFooter>
           )}
         </Table>
+      </div>
+
+      <div className="md:hidden">
+        <MobileCardList
+          columns={columns}
+          rows={visibleRows}
+          rowKey={rowKey}
+          renderCard={mobileCard}
+          onRowClick={onRowClick}
+          loading={loading}
+          error={error}
+          onRetry={onRetry}
+          emptyTitle={emptyTitle}
+          emptyHint={emptyHint}
+          searchTerm={searchable ? search : undefined}
+          skeletonRows={pagination.rowsPerPage}
+        />
       </div>
 
       {paginate && !loading && !error && sortedRows.length > 0 && (

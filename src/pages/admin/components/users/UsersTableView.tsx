@@ -162,6 +162,72 @@ export const UsersTableView: React.FC<UsersTableViewProps> = ({ users, loading, 
       emptyTitle="No user accounts found"
       emptyHint="No accounts match your current filter criteria."
       minWidth="980px"
+      mobileCard={(u) => {
+        const roleCfg = ROLE_CONFIG[u.role];
+        const IconComponent = roleCfg.icon;
+        const section = getUserSectionLabel(u);
+        return (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[12px] font-black ${roleCfg.bg} ${roleCfg.text} ${roleCfg.border}`}
+              >
+                {u.name.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 break-words text-sm font-bold leading-tight text-[var(--text-strong)]">
+                  {u.name}
+                </p>
+                <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--text-strong)]/60">
+                  {u.email}
+                </p>
+                <p className="truncate font-mono text-[10px] text-[var(--text-strong)]/40">
+                  {u.employeeId}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onInspect(u)}
+                className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-[var(--primary)]/10 bg-white text-[var(--text-strong)]/50 transition-colors hover:border-[var(--accent)]/25 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+                aria-label={`Inspect ${u.name}`}
+              >
+                <Eye size={16} />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase ${roleCfg.badgeBg}`}
+              >
+                <IconComponent size={12} />
+                {u.role}
+              </span>
+              {u.role === 'STUDENT' && u.portalAccountActive === false && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-700">
+                  <AlertTriangle size={10} />
+                  Not login-ready
+                </span>
+              )}
+              {section && (
+                <span className="rounded-md border border-[var(--primary)]/10 bg-[color-mix(in_srgb,var(--primary)_5%,white)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-strong)]/70">
+                  {section}
+                </span>
+              )}
+              {u.warningsCount > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-2 py-0.5 text-[10px] font-extrabold text-[var(--warning-strong)]">
+                  <BadgeAlert size={12} />
+                  {u.warningsCount}
+                </span>
+              )}
+              {u.role === 'STUDENT' && (
+                <span className="ml-auto text-xs font-bold text-[var(--accent)]">
+                  {u.points.toLocaleString()} pts
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      }}
     />
   );
 };

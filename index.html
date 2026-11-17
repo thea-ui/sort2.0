@@ -30,6 +30,97 @@
         } catch (e) {}
       })();
     </script>
+    <style>
+      /* Pre-hydration boot splash. Shown before React mounts on every reload
+         (all roles) so the app never flashes a blank white page. main.tsx
+         fades it out once the first React commit lands. */
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: var(--background, #f9f3f0);
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.35s ease, visibility 0.35s ease;
+      }
+
+      #boot-splash.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      .boot-center {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        width: 100%;
+        max-width: 22rem;
+        flex-direction: column;
+        align-items: center;
+        padding: 0 1.5rem;
+        text-align: center;
+        font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+
+      .boot-mark {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 167, 124, 0.15);
+        border-color: color-mix(in srgb, var(--accent, #00a77c) 15%, white);
+        background: #ffffff;
+      }
+
+      .boot-mark img {
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+      }
+
+      .boot-ring {
+        position: absolute;
+        inset: -9px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: var(--accent, #00a77c);
+        border-right-color: color-mix(in srgb, var(--accent, #00a77c) 45%, transparent);
+        opacity: 0.75;
+        animation: boot-spin 1s linear infinite;
+      }
+
+      .boot-name {
+        margin: 1rem 0 0;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #111827;
+      }
+
+      .boot-label {
+        margin: 0.35rem 0 0;
+        font-size: 12px;
+        font-weight: 500;
+        color: rgba(17, 24, 39, 0.5);
+      }
+
+      @keyframes boot-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-ring {
+          animation: none;
+        }
+      }
+    </style>
     <script>
       // Pre-hydration theme boot: apply the last resolved tenant variables
       // before first paint so a branded deployment never flashes the default
@@ -51,6 +142,41 @@
     </script>
   </head>
   <body>
+    <div id="boot-splash" role="status" aria-label="Loading">
+      <div class="boot-center">
+        <div class="boot-mark">
+          <span class="boot-ring" aria-hidden="true"></span>
+          <img id="boot-logo" src="/SORT_LOGO.png" alt="" />
+        </div>
+        <p class="boot-name" id="boot-name">S.O.R.T.</p>
+        <p class="boot-label">Loading…</p>
+      </div>
+    </div>
+    <script>
+      // Use the last cached tenant brand on the boot splash so a reload never
+      // flashes the default SORT green for a branded school.
+      (function () {
+        try {
+          var raw = localStorage.getItem('sortv2_theme_cache_v2');
+          if (!raw) return;
+          var theme = JSON.parse(raw) || {};
+          var logoUrl = typeof theme.logoUrl === 'string' ? theme.logoUrl.trim() : '';
+          var schoolName = typeof theme.schoolName === 'string' ? theme.schoolName.trim() : '';
+          var logo = document.getElementById('boot-logo');
+          var name = document.getElementById('boot-name');
+          if (logoUrl && logo) {
+            // Keep the bundled mark visible until the tenant logo is ready so
+            // the card never goes blank on a slow first paint.
+            var probe = new Image();
+            probe.onload = function () {
+              logo.src = logoUrl;
+            };
+            probe.src = logoUrl;
+          }
+          if (schoolName && name) name.textContent = schoolName;
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

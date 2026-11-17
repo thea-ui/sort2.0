@@ -1,6 +1,8 @@
 export { DataTable } from './DataTable';
 export type { DataTableProps } from './DataTable';
 export { Dash } from './Dash';
+export { MobileCardList } from './MobileCardList';
+export type { MobileCardListProps } from './MobileCardList';
 export { TablePagination } from './TablePagination';
 export { TableToolbar } from './TableToolbar';
 export { EmptyState, ErrorState, LoadingSkeleton } from './TableStates';

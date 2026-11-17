@@ -23,6 +23,7 @@ import { TeacherLocationSelector } from './TeacherLocationSelector';
 import { TeacherAssetItemGrid } from './TeacherAssetItemGrid';
 import { TeacherConditionUrgency } from './TeacherConditionUrgency';
 import { TeacherNotesSection } from './TeacherNotesSection';
+import { TeacherMaterialsSelector } from './TeacherMaterialsSelector';
 
 interface TeacherSubmitReportTabProps {
   bins?: any[];
@@ -55,6 +56,10 @@ interface TeacherSubmitReportTabProps {
   lastSubmittedReport?: SubmittedReportDetails | null;
   urgency: 'LOW' | 'MEDIUM' | 'HIGH';
   setUrgency: (u: 'LOW' | 'MEDIUM' | 'HIGH') => void;
+  selectedMaterials: string[];
+  setSelectedMaterials: (materials: string[]) => void;
+  otherMaterialLabel: string;
+  setOtherMaterialLabel: (label: string) => void;
   isPinningMode: boolean;
   setIsPinningMode: (p: boolean) => void;
   isCustomDebrisPin: boolean;
@@ -96,6 +101,10 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
   lastSubmittedReport = null,
   urgency,
   setUrgency,
+  selectedMaterials,
+  setSelectedMaterials,
+  otherMaterialLabel,
+  setOtherMaterialLabel,
   isPinningMode,
   setIsPinningMode,
   isCustomDebrisPin,
@@ -185,6 +194,8 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
     const catLabel = catType === 'BIODEGRADABLE' ? 'Biodegradable' : catType === 'NON_BIODEGRADABLE' ? 'Non-Biodegradable' : 'Recyclable';
     setReportTitle(catLabel);
     setSelectedItem(catLabel);
+    setSelectedMaterials([]);
+    setOtherMaterialLabel('');
   };
 
   const handleConditionSelect = (condLabel: string) => {
@@ -201,11 +212,14 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
     if (submitSuccess) {
       setSelectedCategoryState(null);
       setSelectedItem('');
+      setWasteCategory(null);
       setSelectedLocation('');
       setLocationSearch('');
       setNotes('');
       setCapturedImage(null);
       setGpsCoords(null);
+      setSelectedMaterials([]);
+      setOtherMaterialLabel('');
       setSelectedConditionState('Damaged');
       setSelectedUrgencyState('MEDIUM');
     }
@@ -215,11 +229,14 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
     setSubmitSuccess?.(false);
     setSelectedCategoryState(null);
     setSelectedItem('');
+    setWasteCategory(null);
     setSelectedLocation('');
     setLocationSearch('');
     setNotes('');
     setCapturedImage(null);
     setGpsCoords(null);
+    setSelectedMaterials([]);
+    setOtherMaterialLabel('');
     setSelectedConditionState('Damaged');
     setSelectedUrgencyState('MEDIUM');
   };
@@ -364,6 +381,15 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
             handleSelectWasteCategory={handleSelectWasteCategory}
           />
 
+          {isWasteCategory && wasteCategory === 'RECYCLABLE' && (
+            <TeacherMaterialsSelector
+              selectedMaterials={selectedMaterials}
+              setSelectedMaterials={setSelectedMaterials}
+              otherMaterialLabel={otherMaterialLabel}
+              setOtherMaterialLabel={setOtherMaterialLabel}
+            />
+          )}
+
           {activeMeta && !isWasteCategory && (
             <TeacherAssetItemGrid
               activeMeta={activeMeta}
@@ -408,6 +434,11 @@ export const TeacherSubmitReportTab: React.FC<TeacherSubmitReportTabProps> = ({
               <p className="text-center text-[11px] text-amber-700 font-bold flex items-center justify-center gap-1">
                 <AlertTriangle size={12} />
                 <span>Select a {isWasteCategory ? 'bin' : 'room'} location to enable submission.</span>
+              </p>
+            ) : isWasteCategory && !wasteCategory ? (
+              <p className="text-center text-[11px] text-amber-700 font-bold flex items-center justify-center gap-1">
+                <AlertTriangle size={12} />
+                <span>Select a waste category for this bin to enable submission.</span>
               </p>
             ) : (
               <p className="text-center text-[10px] text-gray-400 font-medium">
